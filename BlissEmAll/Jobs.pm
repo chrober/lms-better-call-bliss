@@ -33,6 +33,35 @@ sub _write_json {
     write_file($path, {binmode => ':raw'}, _json()->encode($value));
 }
 
+sub _repeat_capacity_hint {
+    my $job = shift;
+    my $total = $job->{track_count};
+    for my $rule (
+        ['artist', $job->{capability}->{artist_window}],
+        ['album', $job->{capability}->{album_window}],
+    ) {
+        my ($field, $window) = @$rule;
+        next unless $window > 0;
+        my %counts;
+        for my $label (values %{$job->{labels}}) {
+            my $value = $label->{$field} || '';
+            $counts{$value}++ if length $value;
+        }
+        for my $value (sort keys %counts) {
+            my $occurrences = $counts{$value};
+            my $available = $total - $occurrences;
+            my $required = $window * ($occurrences - 1);
+            next if $available >= $required;
+            my $kind = ucfirst($field);
+            return "$kind repeat window $window cannot be satisfied: "
+                . "$occurrences of $total tracks are '$value', but $required "
+                . "other-$field separators are required and only $available are available. "
+                . "Reorder only cannot fix this; reduce the window or use bridge insertion.";
+        }
+    }
+    return;
+}
+
 sub start_reorder_preview {
     my ($playlist_id) = @_;
     die "Optimizer binary is unavailable"
@@ -95,11 +124,25 @@ sub start_reorder_preview {
         labels => $built->{labels},
         original_positions => $built->{original_positions},
         capability => $built->{capability},
+        restart_count => $built->{request}->{route}->{search}->{restart_count},
         process => $process,
         result_path => $result_path,
         stderr_path => $stderr_path,
     };
     $log->info("job=$job_id stage=Optimizing playlist_id=$playlist_id");
+    if (main::DEBUGLOG && $log->is_debug) {
+        my $capability = $built->{capability};
+        $log->debug(
+            "job=$job_id request tracks=" . scalar(@{$built->{request}->{source_tracks}})
+            . " algorithm=$capability->{algorithm}"
+            . " seed_limit=$capability->{seed_limit}"
+            . " learned_percent=$capability->{learned_percent}"
+            . " matrix=" . ($capability->{matrix_available} ? 'present' : 'absent')
+            . " repeat_artist=$capability->{artist_window}"
+            . " repeat_album=$capability->{album_window}"
+            . " repeat_track=$capability->{track_window}"
+        );
+    }
     Slim::Utils::Timers::setTimer(undef, time() + 0.5, sub { _poll($job_id) });
     return $jobs{$job_id};
 }
@@ -119,28 +162,76 @@ sub _poll {
     my $exit = $job->{process}->exit_code;
     $job->{finished_at} = time();
     delete $job->{process};
-    if (defined $exit && $exit == 0) {
-        eval {
-            my $payload = read_file($job->{result_path}, binmode => ':raw');
-            $job->{artifact} = _json()->decode($payload);
-        };
-        if ($@ || !$job->{artifact}) {
-            $job->{state} = 'failed';
-            $job->{stage} = 'Failed';
-            $job->{error} = 'Optimizer returned invalid JSON';
-        } else {
-            $job->{state} = 'completed';
-            $job->{stage} = 'Completed';
-        }
+    my $payload = eval { read_file($job->{result_path}, binmode => ':raw') } || '';
+    my $decode_error;
+    if (length $payload) {
+        eval { $job->{artifact} = _json()->decode($payload) };
+        $decode_error = $@;
+    }
+    if ($job->{artifact}) {
+        $job->{state} = 'completed';
+        $job->{stage} = 'Completed';
     } else {
         my $stderr = eval { read_file($job->{stderr_path}, binmode => ':raw') } || '';
+        my $native = eval { _json()->decode($stderr) };
         $stderr =~ s/\s+/ /g;
         $stderr = substr($stderr, 0, 400);
+        my $code = ref($native) eq 'HASH' && $native->{code}
+            ? $native->{code}
+            : (length $payload ? 'INVALID_RESULT' : 'OPTIMIZER_FAILED');
+        my $message = ref($native) eq 'HASH' && $native->{message}
+            ? $native->{message}
+            : ($stderr || $decode_error || 'Optimizer produced no result');
+        $message =~ s/\s+/ /g;
+        $message = substr($message, 0, 400);
+        my $ui_message = $message;
+        if ($message =~ /source track '([^']+)'/) {
+            my $label = $job->{labels}->{$1};
+            $ui_message .= sprintf(
+                ' (%s - %s)',
+                $label->{artist} || 'Unknown Artist',
+                $label->{title} || $1,
+            ) if $label;
+        }
+        if ($code eq 'ROUTE_SEARCH_FAILED') {
+            my $hint = _repeat_capacity_hint($job);
+            $ui_message .= " $hint" if $hint;
+        }
         $job->{state} = 'failed';
         $job->{stage} = 'Failed';
-        $job->{error} = $stderr || 'Optimizer exited unsuccessfully';
+        $job->{error_code} = $code;
+        $job->{error} = $ui_message;
+        $job->{native_message} = $message;
     }
-    $log->info("job=$job_id stage=$job->{stage}");
+    if ($job->{state} eq 'failed') {
+        my $code = $job->{error_code} || 'UNKNOWN_FAILURE';
+        my $message = $job->{native_message} || $job->{error};
+        my $elapsed_ms = int(1000 * ($job->{finished_at} - $job->{started_at}));
+        $log->error(
+            "job=$job_id stage=Failed code=$code exit="
+            . (defined $exit ? $exit : 'unknown')
+            . " elapsed_ms=$elapsed_ms"
+            . " message=$message"
+        );
+        main::DEBUGLOG && $log->is_debug && $log->debug(
+            "job=$job_id diagnostics source_count=$job->{track_count}"
+        );
+    } else {
+        my $elapsed_ms = int(1000 * ($job->{finished_at} - $job->{started_at}));
+        my $selected = $job->{artifact}->{selected_strategy} || 'adaptive';
+        my $candidate = $selected eq 'adaptive-arc'
+            ? $job->{artifact}->{arc}
+            : $job->{artifact}->{primary};
+        $log->info(
+            "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
+            . " tracks=$job->{track_count} strategy=$selected"
+            . sprintf(
+                ' objective=%.3f worst_transition=%.3f',
+                $candidate->{objective},
+                $candidate->{worst_transition},
+            )
+        );
+    }
 }
 
 sub get {

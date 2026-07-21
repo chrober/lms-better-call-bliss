@@ -22,6 +22,25 @@ Verified path:
 The run also established runtime-specific integration rules now encoded in the
 plugin: use LMS 9.1's multi-root `getAudioDirs()` API, emit real JSON booleans,
 and untie LMS's `STDERR` trap while creating a redirected child process.
+Native filesystem paths are compared while still in locale bytes, then decoded
+exactly once with `utf8decode_locale()` before JSON serialization. This keeps
+non-ASCII filenames identical to their `bliss.db` identities. CUE identities
+also receive the same `.CUE_TRACK.<number>` suffix used by BlissMixer.
+
+Native failures are decoded into a stable code and message. The UI identifies
+the affected LMS track when available, while `server.log` receives an ERROR
+record containing job ID, code, exit status, elapsed time, and message. DEBUG
+adds the captured scoring/repeat configuration without logging a full playlist.
+The structured stderr artifact is authoritative even when LMS has already
+reaped the child and `Proc::Background` can no longer recover its true exit
+status. Result JSON is attempted first; an empty/invalid result then falls back
+to the native error envelope regardless of the observed exit code.
+
+For a route-search failure, the plugin also checks simple hard-constraint
+capacity. If one artist or album occurs too often to fit its configured window,
+the UI reports the occurrence count, required separators, available separators,
+and that fixed-set reordering cannot repair the conflict. It never silently
+weakens inherited repeat windows.
 
 ## Current UX boundary
 

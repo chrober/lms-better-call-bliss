@@ -18,6 +18,7 @@ my $log = Slim::Utils::Log->addLogCategory({
     category     => 'plugin.blissemall',
     defaultLevel => 'INFO',
     description  => 'DEBUG_PLUGIN_BLISSEMALL',
+    logGroups    => 'SCANNER',
 });
 my $prefs = preferences('plugin.blissemall');
 my $initialized = 0;

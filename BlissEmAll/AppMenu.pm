@@ -2,8 +2,12 @@ package Plugins::BlissEmAll::AppMenu;
 
 use strict;
 use Slim::Schema;
+use Slim::Utils::Prefs;
+use Time::HiRes qw(time);
 use Plugins::BlissEmAll::BlissCompatibility;
 use Plugins::BlissEmAll::Jobs;
+
+my $plugin_prefs = preferences('plugin.blissemall');
 
 sub _status_name {
     my $status = shift;
@@ -88,6 +92,7 @@ sub reviewFeed {
         {name => "Tracks: $pt->{track_count} original -> $pt->{track_count} proposed", type => 'text'},
         {name => "Scoring: $scoring", type => 'text'},
         {name => "Repeat windows: artist $status->{artist_window}; album $status->{album_window}; track $status->{track_window}", type => 'text'},
+        {name => 'Search restarts: ' . int($plugin_prefs->get('restart_count') || 50) . '; large playlists may take several minutes', type => 'text'},
     );
     if ($status->{ready}) {
         push @items, {
@@ -133,9 +138,10 @@ sub _jobsFeed {
             : $_->{state} ne 'running'
     } Plugins::BlissEmAll::Jobs::all();
     my @items = map {
+        my $elapsed = int((($_->{finished_at} || time()) - $_->{started_at}));
         {
             name => "$_->{playlist_title} - $_->{stage}",
-            description => "Reorder only; $_->{track_count} tracks",
+            description => "Reorder only; $_->{track_count} tracks; ${elapsed}s elapsed",
             url => \&jobFeed,
             passthrough => [{job_id => $_->{id}}],
         }
@@ -166,9 +172,11 @@ sub jobFeed {
         return;
     }
     if ($job->{state} eq 'running') {
+        my $elapsed = int(time() - $job->{started_at});
         $cb->({items => [
             {name => "Preview: $job->{playlist_title}", type => 'text'},
-            {name => 'Stage: Optimizing', type => 'text'},
+            {name => "Stage: Optimizing (${elapsed}s elapsed)", type => 'text'},
+            {name => "Search restarts: $job->{restart_count}", type => 'text'},
             {
                 name => 'Refresh status',
                 url => \&jobFeed,
@@ -178,19 +186,23 @@ sub jobFeed {
         return;
     }
     if ($job->{state} eq 'failed') {
+        my $code = $job->{error_code} || 'UNKNOWN_FAILURE';
         $cb->({items => [
-            {name => "Preview failed: $job->{error}", type => 'text'},
+            {name => "Preview failed [$code]", type => 'text'},
+            {name => $job->{error}, type => 'text'},
             {name => "Job ID: $job->{id}", type => 'text'},
         ]});
         return;
     }
 
     my $artifact = $job->{artifact};
+    my $elapsed = int($job->{finished_at} - $job->{started_at});
     my $selected = $artifact->{selected_strategy} || 'adaptive';
     my $candidate = $selected eq 'adaptive-arc' ? $artifact->{arc} : $artifact->{primary};
     $cb->({items => [
         {name => "Preview: $job->{playlist_title}", type => 'text'},
         {name => "Tracks: $job->{track_count} original -> $job->{track_count} proposed", type => 'text'},
+        {name => "Completed in ${elapsed}s using $job->{restart_count} restarts", type => 'text'},
         {name => "Selected strategy: $selected", type => 'text'},
         {name => sprintf('Objective %.3f; worst transition %.3f', $candidate->{objective}, $candidate->{worst_transition}), type => 'text'},
         {name => $artifact->{repeat_validation}->{valid} ? 'Constraints: repeat windows satisfied' : 'Constraints: violation detected', type => 'text'},

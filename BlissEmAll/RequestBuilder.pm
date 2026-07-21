@@ -4,19 +4,27 @@ use strict;
 use JSON::XS ();
 use Slim::Schema;
 use Slim::Utils::Prefs;
+use Slim::Utils::Unicode;
 use Plugins::BlissEmAll::BlissCompatibility;
 
 my $plugin_prefs = preferences('plugin.blissemall');
 
 sub _database_file {
-    my ($path, $roots) = @_;
+    my ($track, $roots) = @_;
+    my $path = $track->path;
     $path =~ s{\\}{/}g;
     for my $configured_root (sort { length($b) <=> length($a) } @$roots) {
         my $root = $configured_root;
         $root =~ s{\\}{/}g;
         $root =~ s{/+$}{};
-        return substr($path, length($root) + 1)
-            if index($path, $root . '/') == 0;
+        if (index($path, $root . '/') == 0) {
+            my $relative = substr($path, length($root) + 1);
+            $relative = Slim::Utils::Unicode::utf8decode_locale($relative);
+            my @url_parts = split(/#/, $track->url);
+            $relative .= '.CUE_TRACK.' . $track->tracknum
+                if @url_parts == 2;
+            return $relative;
+        }
     }
     die "Track is outside the configured music folders";
 }
@@ -42,7 +50,7 @@ sub build_reorder_request {
         push @source_tracks, {
             id            => $id,
             lms_url       => $track->url,
-            database_file => _database_file($track->path, $capability->{music_roots}),
+            database_file => _database_file($track, $capability->{music_roots}),
             title         => $title,
             artist        => $artist,
             album         => $album,
