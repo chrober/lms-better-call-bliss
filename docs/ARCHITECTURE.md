@@ -25,3 +25,22 @@ The initial release uses one process per job. Compatibility is discovered with
 `bliss-playlist-optimizer version --json`; absence or incompatibility disables
 the feature without affecting BlissMixer.
 
+## First vertical slice
+
+The first live milestone supports only **Reorder only** and stops at Preview.
+It resolves saved playlists through LMS objects, captures BlissMixer's Adaptive
+seed, learned blend, and repeat windows, writes a private versioned request in
+the LMS cache, and runs the bundled ARM64 optimizer with an argument array.
+The Applications UI renders the job state, selected strategy, objective, worst
+transition, repeat validation, and numbered proposed order. Playlist
+persistence remains disabled until this path is proven on a real server.
+
+The learned matrix is optional. When it is absent, the same Adaptive core uses
+seed variance without a learned contribution; capability detection must not
+disable the plugin. Semantic providers are likewise outside the native process
+and remain optional and failure-tolerant.
+
+LMS ties `STDERR` to its logging adapter. Native jobs therefore follow LMS's
+scanner pattern: open private output handles, temporarily untie `STDERR`, fork
+with an argument array through `Proc::Background`, restore the tie immediately,
+and poll without blocking the server event loop.

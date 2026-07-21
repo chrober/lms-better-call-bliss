@@ -1,0 +1,18 @@
+[% PROCESS settings/header.html %]
+
+[% WRAPPER settingSection %]
+  <p>
+    Bliss scoring strategy, dynamic weighting, learned-matrix blend, and repeat
+    windows are inherited read-only from BlissMixer for every preview.
+  </p>
+
+  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX" desc="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC" %]
+    <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
+  [% END %]
+
+  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_RESTART_COUNT" desc="PLUGIN_BLISSEMALL_RESTART_COUNT_DESC" %]
+    <input type="number" min="10" max="500" class="stdedit" name="pref_restart_count" id="restart_count" value="[% prefs.restart_count %]" size="6">
+  [% END %]
+[% END %]
+
+[% PROCESS settings/footer.html %]

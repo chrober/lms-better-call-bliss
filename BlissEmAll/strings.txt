@@ -1,0 +1,31 @@
+PLUGIN_BLISSEMALL_NAME
+	EN	Bliss 'Em All
+	DE	Bliss 'Em All
+
+PLUGIN_BLISSEMALL_DESC
+	EN	Preview auditable, Bliss-powered playlist optimization.
+	DE	Vorschau fuer nachvollziehbare, Bliss-basierte Playlist-Optimierung.
+
+DEBUG_PLUGIN_BLISSEMALL
+	EN	Bliss 'Em All
+	DE	Bliss 'Em All
+
+PLUGIN_BLISSEMALL_SETTINGS
+	EN	Bliss 'Em All
+	DE	Bliss 'Em All
+
+PLUGIN_BLISSEMALL_OUTPUT_SUFFIX
+	EN	Default output suffix
+	DE	Standard-Suffix fuer Ausgaben
+
+PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC
+	EN	Used later when a reviewed preview is saved as a new playlist.
+	DE	Wird spaeter verwendet, wenn eine gepruefte Vorschau als neue Playlist gespeichert wird.
+
+PLUGIN_BLISSEMALL_RESTART_COUNT
+	EN	Route search restarts
+	DE	Neustarts der Routensuche
+
+PLUGIN_BLISSEMALL_RESTART_COUNT_DESC
+	EN	Deterministic search effort used for reorder previews.
+	DE	Deterministischer Suchaufwand fuer Sortiervorschauen.
