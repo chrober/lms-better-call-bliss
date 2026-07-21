@@ -15,8 +15,8 @@ PLUGIN_BLISSEMALL_SETTINGS
 	DE	Bliss 'Em All
 
 PLUGIN_BLISSEMALL_OUTPUT_SUFFIX
-	EN	Default output suffix
-	DE	Standard-Suffix fuer Ausgaben
+	EN	Default output suffix [not connected yet]
+	DE	Standard-Suffix fuer Ausgaben [noch nicht angebunden]
 
 PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC
 	EN	Used later when a reviewed preview is saved as a new playlist.
@@ -29,3 +29,59 @@ PLUGIN_BLISSEMALL_RESTART_COUNT
 PLUGIN_BLISSEMALL_RESTART_COUNT_DESC
 	EN	Deterministic search effort used for reorder previews.
 	DE	Deterministischer Suchaufwand fuer Sortiervorschauen.
+
+PLUGIN_BLISSEMALL_EXTENDED_SUFFIX
+	EN	Extended-playlist suffix [not connected yet]
+	DE	Suffix fuer erweiterte Playlists [noch nicht angebunden]
+
+PLUGIN_BLISSEMALL_EXTENDED_SUFFIX_DESC
+	EN	Stored for future bridge and extension modes; currently has no runtime effect.
+	DE	Fuer kuenftige Bruecken- und Erweiterungsmodi gespeichert; derzeit ohne Laufzeitwirkung.
+
+PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET
+	EN	Automatic bridge budget [not connected yet]
+	DE	Automatisches Brueckenbudget [noch nicht angebunden]
+
+PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET_DESC
+	EN	Maximum additions proposed by Extend automatically once candidate discovery is connected.
+	DE	Maximale Zahl zusaetzlicher Titel fuer Automatisch erweitern, sobald die Kandidatensuche angebunden ist.
+
+PLUGIN_BLISSEMALL_LASTFM_ENABLED
+	EN	Use Last.fm evidence [not connected yet]
+	DE	Last.fm-Hinweise verwenden [noch nicht angebunden]
+
+PLUGIN_BLISSEMALL_LASTFM_ENABLED_DESC
+	EN	Optional anonymous similarity evidence. Future request failures will degrade to local Bliss evidence.
+	DE	Optionale anonyme Aehnlichkeitshinweise. Kuenftige Fehler fallen auf lokale Bliss-Daten zurueck.
+
+PLUGIN_BLISSEMALL_LISTENBRAINZ_ENABLED
+	EN	Use ListenBrainz evidence [not connected yet]
+	DE	ListenBrainz-Hinweise verwenden [noch nicht angebunden]
+
+PLUGIN_BLISSEMALL_LISTENBRAINZ_ENABLED_DESC
+	EN	Optional MBID-aware evidence. Future request failures will not fail optimization.
+	DE	Optionale MBID-basierte Hinweise. Kuenftige Fehler lassen die Optimierung nicht fehlschlagen.
+
+PLUGIN_BLISSEMALL_SEMANTIC_CACHE_DAYS
+	EN	Semantic cache freshness, days [not connected yet]
+	DE	Aktualitaet des semantischen Cache in Tagen [noch nicht angebunden]
+
+PLUGIN_BLISSEMALL_SEMANTIC_CACHE_DAYS_DESC
+	EN	Future provider results remain fresh for this many days.
+	DE	Kuenftige Provider-Ergebnisse gelten so viele Tage als aktuell.
+
+PLUGIN_BLISSEMALL_SEMANTIC_STALE_DAYS
+	EN	Maximum stale evidence, days [not connected yet]
+	DE	Maximales Alter von Hinweisen in Tagen [noch nicht angebunden]
+
+PLUGIN_BLISSEMALL_SEMANTIC_STALE_DAYS_DESC
+	EN	Future offline fallback may reuse cached evidence up to this age.
+	DE	Der kuenftige Offline-Rueckfall darf Cache-Daten bis zu diesem Alter verwenden.
+
+PLUGIN_BLISSEMALL_REPORT_RETENTION_DAYS
+	EN	Report retention, days [not connected yet]
+	DE	Aufbewahrung von Berichten in Tagen [noch nicht angebunden]
+
+PLUGIN_BLISSEMALL_REPORT_RETENTION_DAYS_DESC
+	EN	Stored for future persistent reports; results are currently session-only.
+	DE	Fuer kuenftige dauerhafte Berichte gespeichert; Ergebnisse existieren derzeit nur pro Sitzung.

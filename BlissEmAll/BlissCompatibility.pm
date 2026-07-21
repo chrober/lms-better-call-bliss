@@ -25,6 +25,8 @@ sub snapshot {
     my @problems;
     push @problems, 'BlissMixer is not enabled' unless $bliss_enabled;
     push @problems, 'bliss.db is missing or unreadable' unless -r $database;
+    push @problems, 'learned_matrix.json is required by the bundled optimizer'
+        unless -r $matrix;
     push @problems, 'bliss-playlist-optimizer is not installed'
         unless $optimizer_binary && -x $optimizer_binary;
     push @problems, 'the LMS library scan is still running' if $scanning;

@@ -16,14 +16,40 @@ sub page {
     );
 }
 
-sub prefs { return ($prefs, qw(output_suffix restart_count)); }
+sub prefs {
+    return ($prefs, qw(
+        output_suffix
+        extended_suffix
+        restart_count
+        auto_bridge_budget
+        report_retention_days
+        semantic_cache_days
+        semantic_stale_days
+        lastfm_enabled
+        listenbrainz_enabled
+    ));
+}
+
+sub _clamp {
+    my ($params, $name, $minimum, $maximum) = @_;
+    return unless defined $params->{$name};
+    my $value = int($params->{$name});
+    $value = $minimum if $value < $minimum;
+    $value = $maximum if $value > $maximum;
+    $params->{$name} = $value;
+}
 
 sub handler {
     my ($class, $client, $params) = @_;
-    if (defined $params->{pref_restart_count}) {
-        my $value = int($params->{pref_restart_count});
-        $params->{pref_restart_count} = 10 if $value < 10;
-        $params->{pref_restart_count} = 500 if $value > 500;
+    _clamp($params, 'pref_restart_count', 10, 500);
+    _clamp($params, 'pref_auto_bridge_budget', 0, 100);
+    _clamp($params, 'pref_report_retention_days', 1, 3650);
+    _clamp($params, 'pref_semantic_cache_days', 1, 365);
+    _clamp($params, 'pref_semantic_stale_days', 1, 3650);
+    if (defined $params->{pref_semantic_cache_days}
+        && defined $params->{pref_semantic_stale_days}
+        && $params->{pref_semantic_stale_days} < $params->{pref_semantic_cache_days}) {
+        $params->{pref_semantic_stale_days} = $params->{pref_semantic_cache_days};
     }
     return $class->SUPER::handler($client, $params);
 }

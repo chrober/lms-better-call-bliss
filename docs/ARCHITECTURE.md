@@ -35,10 +35,13 @@ The Applications UI renders the job state, selected strategy, objective, worst
 transition, repeat validation, and numbered proposed order. Playlist
 persistence remains disabled until this path is proven on a real server.
 
-The learned matrix is optional. When it is absent, the same Adaptive core uses
-seed variance without a learned contribution; capability detection must not
-disable the plugin. Semantic providers are likewise outside the native process
-and remain optional and failure-tolerant.
+The product architecture allows a future matrix-free Adaptive fallback, but the
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.2.0`
+therefore treats the learned matrix as a required core capability and reports
+its absence in System status. Making it optional requires an implemented and
+tested native fallback; the plugin must not claim one based only on the design
+intent. Semantic providers are outside the native process and remain optional
+and failure-tolerant.
 
 LMS ties `STDERR` to its logging adapter. Native jobs therefore follow LMS's
 scanner pattern: open private output handles, temporarily untie `STDERR`, fork

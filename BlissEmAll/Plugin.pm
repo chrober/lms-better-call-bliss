@@ -12,6 +12,7 @@ use Slim::Utils::Prefs;
 
 use Plugins::BlissEmAll::AppMenu;
 use Plugins::BlissEmAll::BlissCompatibility;
+use Plugins::BlissEmAll::ContextMenu;
 use Plugins::BlissEmAll::Jobs;
 
 my $log = Slim::Utils::Log->addLogCategory({
@@ -30,7 +31,17 @@ sub initPlugin {
     my $class = shift;
     return 1 if $initialized;
 
-    $prefs->init({output_suffix => 'Optimized', restart_count => 50});
+    $prefs->init({
+        output_suffix => 'Optimized',
+        extended_suffix => 'Extended',
+        restart_count => 50,
+        auto_bridge_budget => 8,
+        report_retention_days => 30,
+        semantic_cache_days => 30,
+        semantic_stale_days => 90,
+        lastfm_enabled => 0,
+        listenbrainz_enabled => 0,
+    });
     my $dir = dirname(__FILE__);
     if (main::ISWINDOWS) {
         Slim::Utils::Misc::addFindBinPaths(catdir($dir, 'Bin', 'windows'));
@@ -43,6 +54,7 @@ sub initPlugin {
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
     Plugins::BlissEmAll::BlissCompatibility::init($optimizer_binary);
     Plugins::BlissEmAll::Jobs::init($optimizer_binary);
+    Plugins::BlissEmAll::ContextMenu::init();
 
     if (main::WEBUI) {
         require Plugins::BlissEmAll::Settings;
@@ -66,6 +78,7 @@ sub initPlugin {
 }
 
 sub shutdownPlugin {
+    Plugins::BlissEmAll::ContextMenu::shutdown();
     Plugins::BlissEmAll::Jobs::shutdown();
     $initialized = 0;
 }

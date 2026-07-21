@@ -7,7 +7,8 @@ Verified path:
 
 1. LMS discovered the plugin and registered **Bliss 'Em All** under
    Applications / My Apps.
-2. System status reported BlissMixer, `bliss.db`, the optional learned matrix,
+2. System status reported BlissMixer, `bliss.db`, the learned matrix required
+   by the current optimizer build,
    the native optimizer, and scanner state.
 3. The review screen captured the server's real Adaptive configuration: three
    seed tracks, 20% learned blend, and artist/album/track look-back windows of
@@ -44,7 +45,20 @@ weakens inherited repeat windows.
 
 ## Current UX boundary
 
-Only **Reorder only** is executable. **Preserve order and fill gaps** is shown
-as the next mode, while playlist creation is visibly disabled. A Run action is
-terminal so that OPML navigation cannot replay it; users return to **Active
-previews** or **Recent results** for safe, read-only refreshes.
+The `0.2.0` plugin exposes the complete planned UX shell. Only **Optimize order
+> Reorder only > Run preview** is executable. Ordering/extension alternatives,
+numeric inputs, bridge discovery, semantic providers, cancellation, durable
+history, report export, and playlist creation are each visibly marked **Not
+connected yet**. Informational playlist and track context entries are also
+registered, but do not start actions.
+
+A Run action is terminal so OPML navigation cannot replay it; users return to
+**Active previews** or **Recent results** for safe, read-only refreshes. See
+[`UX_STATUS.md`](UX_STATUS.md) for the screen-by-screen feature matrix.
+
+The full-shell deployment also established the piCorePlayer development path:
+manual plugins belong beneath `<LMS cache>/Plugins`, while
+`<LMS cache>/InstalledPlugins/Plugins` is extension-manager-owned and may purge
+hand-copied folders during restart. The live `0.2.0` shell is therefore staged
+at `Cache/Plugins/BlissEmAll` until the plugin ZIP and extension repository are
+published.
