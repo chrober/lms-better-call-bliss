@@ -12,6 +12,10 @@
   [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_RESTART_COUNT" desc="PLUGIN_BLISSEMALL_RESTART_COUNT_DESC" %]
     <input type="number" min="10" max="500" class="stdedit" name="pref_restart_count" id="restart_count" value="[% prefs.restart_count %]" size="6">
   [% END %]
+
+  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX" desc="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC" %]
+    <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
+  [% END %]
 [% END %]
 
 [% WRAPPER settingSection %]
@@ -20,10 +24,6 @@
     The values below define the intended UX contract, but changing them does not
     enable playlist writing, bridge insertion, semantic requests, or durable reports.
   </p>
-
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX" desc="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC" %]
-    <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
-  [% END %]
 
   [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_EXTENDED_SUFFIX" desc="PLUGIN_BLISSEMALL_EXTENDED_SUFFIX_DESC" %]
     <input type="text" class="stdedit" name="pref_extended_suffix" id="extended_suffix" value="[% prefs.extended_suffix %]" size="30">

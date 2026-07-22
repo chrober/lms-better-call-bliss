@@ -15,12 +15,12 @@ PLUGIN_BLISSEMALL_SETTINGS
 	DE	Bliss 'Em All
 
 PLUGIN_BLISSEMALL_OUTPUT_SUFFIX
-	EN	Default output suffix [not connected yet]
-	DE	Standard-Suffix fuer Ausgaben [noch nicht angebunden]
+	EN	Default optimized-copy suffix
+	DE	Standard-Suffix fuer optimierte Kopien
 
 PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC
-	EN	Used later when a reviewed preview is saved as a new playlist.
-	DE	Wird spaeter verwendet, wenn eine gepruefte Vorschau als neue Playlist gespeichert wird.
+	EN	Initial suffix used when a reviewed preview is saved as a new playlist.
+	DE	Anfaenglicher Suffix beim Speichern einer geprueften Vorschau als neue Playlist.
 
 PLUGIN_BLISSEMALL_RESTART_COUNT
 	EN	Route search restarts

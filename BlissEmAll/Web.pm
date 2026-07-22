@@ -3,6 +3,7 @@ package Plugins::BlissEmAll::Web;
 use strict;
 use Slim::Schema;
 use Slim::Utils::Log;
+use Slim::Utils::Prefs;
 use Slim::Web::HTTP;
 use Slim::Web::Pages;
 use Plugins::BlissEmAll::BlissCompatibility;
@@ -10,6 +11,7 @@ use Plugins::BlissEmAll::JobOptions;
 use Plugins::BlissEmAll::Jobs;
 
 my $log = Slim::Utils::Log::logger('plugin.blissemall');
+my $plugin_prefs = preferences('plugin.blissemall');
 my $page = 'plugins/BlissEmAll/index.html';
 
 sub init {
@@ -65,6 +67,11 @@ sub _result_view {
         playlist_title => $job->{playlist_title},
         output_mode => $job->{options}->{output_mode},
         output_name => $job->{options}->{output_name},
+        write_state => $job->{write_state},
+        write_stage => $job->{write_stage},
+        write_error_code => $job->{write_error_code},
+        write_error => $job->{write_error},
+        persistence => $job->{persistence},
     };
     if ($job->{state} eq 'failed') {
         $view->{error_code} = $job->{error_code};
@@ -108,14 +115,25 @@ sub handler {
         && !length($form->{output_name} || '')) {
         for my $playlist (@$playlists) {
             if ($playlist->{id} == $form->{playlist_id}) {
-                $form->{output_name} = $playlist->{title} . ' Optimized';
+                my $suffix = $plugin_prefs->get('output_suffix') || 'Optimized';
+                $form->{output_name} = $playlist->{title} . ' ' . $suffix;
                 last;
             }
         }
     }
 
     my ($job, $error);
-    if ($params->{run_preview}) {
+    if ($params->{create_copy}) {
+        eval {
+            die "Preview job is no longer available"
+                unless $params->{job_id};
+            $job = Plugins::BlissEmAll::Jobs::get($params->{job_id});
+            die "Preview job is no longer available" unless $job;
+            Plugins::BlissEmAll::Jobs::create_copy($params->{job_id});
+        };
+        $error = $@;
+        $error =~ s/\s+/ /g if $error;
+    } elsif ($params->{run_preview}) {
         eval {
             die "Choose a saved playlist"
                 unless defined $form->{playlist_id} && "$form->{playlist_id}" =~ /^\d+$/;

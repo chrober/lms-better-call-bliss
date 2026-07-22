@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.3.0` UX shell. The shell is
+model and the exact boundary of the current `0.4.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -32,7 +32,7 @@ fall through to the working reorder-only mode.
 | Select saved playlist | Working | Lists LMS saved playlists with at least two tracks. |
 | Optimize order | Working for Reorder only | Original tracks may move. |
 | Preserve order and fill gaps | Not connected yet | Original sequence remains fixed; additions may occupy gaps only. |
-| Reorder only | Working, preview only | Uses every original track exactly once and inserts none. |
+| Reorder only | Working | Uses every original track exactly once and inserts none; a reviewed result can be saved as a new copy. |
 | Extend automatically | Not connected yet | Adds up to the configured budget only where a bridge materially helps. |
 | Add exactly N tracks | Not connected yet | Adds exactly a user-entered number of unique eligible tracks. |
 | One bridge per transition | Not connected yet | Adds one track in each of the `S - 1` original transitions, yielding `2S - 1` tracks. |
@@ -64,8 +64,9 @@ be preferred; evidence from the full source artist pool is only a fallback.
 | Additions and reasons | Shell only | Correctly reports no additions for Reorder only; future bridge provenance is not connected. |
 | Transition summary | Partial | Aggregate objective/worst transition are real; per-leg drill-down is not connected. |
 | Warnings | Partial | Repeat validation and read-only safety are real; provider warnings await providers. |
-| Full report | Partial | In-memory artifact identity is shown; persistence and download are not connected. |
-| Create optimized copy / overwrite source choice | Partial | Captured per job, but no M3U or LMS playlist mutation occurs yet. |
+| Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
+| Create optimized copy | Working | Separate post-Preview action writes and verifies a new LMS playlist; name collisions fail closed. |
+| Overwrite source | Not connected yet | Captured for UX continuity but never mutates the source. |
 | Change options and rerun | Not connected yet | Draft restoration is not implemented. |
 | Discard result | Not connected yet | Session results expire naturally on LMS restart. |
 
@@ -76,11 +77,12 @@ submitted values belong to that job only and never update BlissMixer's global
 preferences. The current bundled optimizer supports only Adaptive routing and
 requires a learned matrix; unsupported strategies are disabled and labeled.
 
-Only **Route search restarts** currently changes execution. The following
-settings are persisted to establish their future contract but are labeled
+**Route search restarts** changes execution and **Normal output suffix** supplies
+the default create-copy name. The following settings are persisted to establish
+their future contract but are labeled
 **not connected yet** on the settings page:
 
-- normal and extended output suffixes;
+- extended output suffix;
 - automatic bridge budget;
 - Last.fm and ListenBrainz enablement;
 - semantic cache freshness and stale-offline lifetime; and
@@ -92,11 +94,15 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.3.0` is still a read-only preview milestone. No visible shell-only
-item starts an optimizer job, and no path creates, replaces, renames, or edits a
-playlist. Playlist persistence will remain disabled until atomic writing, exact
-LMS M3U formatting, scanner refresh/verification, collision handling, and a
-recoverable failure path are implemented and tested together.
+Version `0.4.0` keeps Preview read-only and permits only an explicit,
+post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
+M3U serializer, verifies the same-directory temporary file, atomically renames
+it, creates the LMS catalog object, and compares both catalog and final-file
+order with the optimizer result. It rejects an existing name without touching
+it and removes only artifacts created by the failed attempt. Lyrion's playlist
+object is updated directly, so this workflow does not depend on a library scan.
+Source overwrite, extension modes, and every other shell-only action remain
+unreachable.
 
 ## piCorePlayer development deployment
 

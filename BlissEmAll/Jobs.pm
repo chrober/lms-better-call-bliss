@@ -10,6 +10,7 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Timers;
 use Plugins::BlissEmAll::RequestBuilder;
+use Plugins::BlissEmAll::PlaylistWriter;
 
 my $log = Slim::Utils::Log::logger('plugin.blissemall');
 my $server_prefs = preferences('server');
@@ -123,6 +124,7 @@ sub start_reorder_preview {
         track_count => scalar @{$built->{request}->{source_tracks}},
         labels => $built->{labels},
         original_positions => $built->{original_positions},
+        track_urls => $built->{track_urls},
         capability => $built->{capability},
         options => $built->{options},
         restart_count => $built->{request}->{route}->{search}->{restart_count},
@@ -256,6 +258,65 @@ sub get {
 sub all {
     _poll($_) for grep { $jobs{$_}->{state} eq 'running' } keys %jobs;
     return sort { $b->{started_at} <=> $a->{started_at} } values %jobs;
+}
+
+sub create_copy {
+    my $job_id = shift;
+    my $job = get($job_id);
+    die "JOB_NOT_FOUND: Preview job is no longer available\n" unless $job;
+    die "PREVIEW_NOT_COMPLETE: Wait for the preview to complete\n"
+        unless $job->{state} eq 'completed' && $job->{artifact};
+    die "OUTPUT_MODE_MISMATCH: This job requested Overwrite source\n"
+        unless $job->{options}->{output_mode} eq 'create_copy';
+    return $job->{persistence} if $job->{write_state}
+        && $job->{write_state} eq 'completed' && $job->{persistence};
+    die "CREATE_IN_PROGRESS: Playlist creation is already running\n"
+        if $job->{write_state} && $job->{write_state} eq 'running';
+
+    $job->{write_state} = 'running';
+    $job->{write_stage} = 'Creating';
+    $log->info(
+        "job=$job_id stage=Creating output_mode=create_copy"
+    );
+    my $result;
+    eval {
+        $result = Plugins::BlissEmAll::PlaylistWriter::create_copy(
+            $job, $job->{options}->{output_name},
+        );
+    };
+    if ($@ || !$result) {
+        my $error = $@ || 'CREATE_FAILED: Unknown playlist creation failure';
+        $error =~ s/\s+/ /g;
+        $error = substr($error, 0, 500);
+        my ($code, $message) = $error =~ /^([A-Z_]+):\s*(.*)$/;
+        $job->{write_state} = 'failed';
+        $job->{write_stage} = 'Create failed';
+        $job->{write_error_code} = $code || 'CREATE_FAILED';
+        $job->{write_error} = $message || $error;
+        if ($job->{write_error_code} eq 'OUTPUT_EXISTS'
+            || $job->{write_error_code} eq 'INVALID_OUTPUT_NAME') {
+            $log->warn(
+                "job=$job_id stage=CreateRejected"
+                . " code=$job->{write_error_code}"
+            );
+        } else {
+            $log->error(
+                "job=$job_id stage=CreateFailed code=$job->{write_error_code}"
+                . " message=$job->{write_error}"
+            );
+        }
+        die "$job->{write_error_code}: $job->{write_error}\n";
+    }
+
+    $job->{write_state} = 'completed';
+    $job->{write_stage} = 'Created and verified';
+    $job->{persistence} = $result;
+    $log->info(
+        "job=$job_id stage=CreatedAndVerified"
+        . " playlist_id=$result->{playlist_id}"
+        . " tracks=$result->{track_count}"
+    );
+    return $result;
 }
 
 sub shutdown {

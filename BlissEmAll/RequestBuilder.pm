@@ -40,7 +40,7 @@ sub build_reorder_request {
     my @tracks = $playlist->tracks;
     die "At least two local tracks are required" unless @tracks >= 2;
 
-    my (@source_tracks, %labels, %original_positions);
+    my (@source_tracks, %labels, %original_positions, %track_urls);
     my $position = 0;
     for my $track (@tracks) {
         die "Playlist contains a non-local item" unless $track && !$track->remote;
@@ -58,6 +58,7 @@ sub build_reorder_request {
         };
         $labels{$id} = {artist => $artist, title => $title, album => $album};
         $original_positions{$id} = ++$position;
+        $track_urls{$id} = $track->url;
     }
 
     my $artifacts = {
@@ -118,6 +119,7 @@ sub build_reorder_request {
         playlist => $playlist,
         labels => \%labels,
         original_positions => \%original_positions,
+        track_urls => \%track_urls,
         capability => $capability,
         options => $options,
     };

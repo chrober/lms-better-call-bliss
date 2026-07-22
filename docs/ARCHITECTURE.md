@@ -25,9 +25,10 @@ The initial release uses one process per job. Compatibility is discovered with
 `bliss-playlist-optimizer version --json`; absence or incompatibility disables
 the feature without affecting BlissMixer.
 
-## First vertical slice
+## First writable vertical slice
 
-The first live milestone supports only **Reorder only** and stops at Preview.
+The connected live milestone supports only **Reorder only** through Preview and
+explicit **Create optimized copy**.
 It resolves saved playlists through LMS objects, initializes Adaptive and repeat
 values from BlissMixer, accepts validated per-job overrides, writes a private
 versioned request in the LMS cache, and runs the bundled ARM64 optimizer with an
@@ -36,10 +37,14 @@ objective, worst transition, repeat validation, and numbered proposed order.
 The rich form lives under Extras because the generic Applications/OPML adapter
 supports hierarchical choices and one search-style text prompt, but does not
 carry a portable set of checkbox, dropdown, and numeric form controls. Playlist
-persistence remains disabled until this path is proven on a real server.
+persistence is a separate post-Preview action. It resolves the result back to
+LMS track objects, uses Lyrion's core M3U formatter, verifies the temporary
+playlist, atomically publishes a new file, creates the catalog object, and
+verifies catalog and final-file order. A name collision fails closed; source
+playlist overwrite is not reachable.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
-currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.3.0`
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.4.0`
 therefore treats the learned matrix as a required core capability and reports
 its absence in System status. Making it optional requires an implemented and
 tested native fallback; the plugin must not claim one based only on the design

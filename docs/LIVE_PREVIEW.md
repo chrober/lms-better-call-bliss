@@ -49,7 +49,7 @@ Version `0.3.0` was deployed and exercised on the same ARM64 server on
 2026-07-22. LMS registered the rich editor under Extras and no longer returned
 Bliss 'Em All in the Applications query.
 
-The 13-track, single-artist Soulfly playlist completed successfully after the
+An anonymized 13-track, single-artist playlist completed successfully after the
 job set artist and album look-back windows to zero. The same submitted job also
 overrode Adaptive context tracks to 2, learned blend to 33%, track look-back to
 100, and route-search restarts to 12. Inspection of the private
@@ -62,7 +62,7 @@ BlissMixer preferences are defaults rather than immutable execution settings,
 and that disabling an impossible artist constraint is an explicit job choice
 rather than an automatic weakening by the optimizer.
 
-A second Soulfly preview selected **Overwrite source** with different per-job
+A second preview of the same playlist selected **Overwrite source** with different per-job
 values. The result page retained that choice and displayed **Not executed**;
 the INFO start record included the effective algorithm, seed/blend, repeat
 windows, restarts, and output mode. Its request artifact separately retained
@@ -78,8 +78,32 @@ Reorder only > Run read-only preview** remains executable. Adaptive parameters,
 repeat windows, search restarts, and output disposition are now job fields;
 BlissMixer values are defaults only. Ordering/extension alternatives, static or
 forest routing, bridge discovery, semantic providers, cancellation, durable
-history, report export, and playlist persistence remain visibly marked **Not
+history, report export, and source overwrite remain visibly marked **Not
 connected yet**.
+
+## Create-copy persistence verification
+
+Version `0.4.0` connected **Create optimized copy** as a separate action after
+a completed Preview and was exercised on the same ARM64 LMS server on
+2026-07-22. A 13-track single-artist playlist was previewed with artist and
+album look-back disabled for that job. Creating its optimized copy produced a
+new LMS playlist with 13 tracks and a new catalog ID.
+
+Independent JSON-RPC verification mapped the optimizer's selected source IDs
+back to URLs and confirmed that the resulting LMS catalog order matched exactly.
+The published M3U contained 13 `#EXTURL:file:///` records, 13 `#EXTINF`
+records, and the corresponding decoded local paths in Lyrion's native format.
+The source URL-list SHA-256 remained
+`12931afcd693afc1ea4f20c34171ede78db85677c3760b30128a25a58f0bdeb8`
+before and after creation.
+
+A second completed Preview intentionally reused the same output name. Creation
+failed with stable code `OUTPUT_EXISTS`; the existing output and source were
+unchanged and no `.blissemall-*` temporary file remained. The server log
+correlated the Creating and CreatedAndVerified stages with the preview job ID.
+The persistence path does not launch a scanner: like Lyrion's own playlist-save
+command it updates the playlist object directly, then additionally verifies
+catalog and file order.
 
 A submitted preview renders a refresh link using its session job ID. See
 [`UX_STATUS.md`](UX_STATUS.md) for the screen-by-screen feature matrix.

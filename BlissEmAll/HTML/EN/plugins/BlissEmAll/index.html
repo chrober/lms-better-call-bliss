@@ -22,7 +22,7 @@
 </p>
 
 [% IF blissemall_error %]
-  <div class="bea-error"><b>Preview could not start:</b> [% blissemall_error | html %]</div>
+  <div class="bea-error"><b>Operation failed:</b> [% blissemall_error | html %]</div>
 [% END %]
 
 [% IF !blissemall_capability.ready %]
@@ -116,7 +116,7 @@
 
   <fieldset class="bea-section">
     <legend>Output after accepting a preview</legend>
-    <p class="bea-warning"><b>Preview milestone:</b> playlist writing is not connected yet. This choice is recorded with the job but no playlist will be created or overwritten.</p>
+    <p class="bea-note">Create optimized copy is connected after a successful preview. Overwrite source remains unavailable.</p>
     <div class="bea-row">
       <label><input type="radio" name="output_mode" value="create_copy"[% IF blissemall_form.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
     </div>
@@ -138,7 +138,7 @@
     <legend>Preview result</legend>
     <p><b>[% blissemall_job.playlist_title | html %]</b> - [% blissemall_job.stage | html %]</p>
     <p>Job ID: [% blissemall_job.id | html %]</p>
-    <p>Requested output: [% IF blissemall_job.output_mode == 'overwrite_source' %]overwrite source[% ELSE %]create copy "[% blissemall_job.output_name | html %]"[% END %] <b>[Not executed]</b></p>
+    <p>Requested output: [% IF blissemall_job.output_mode == 'overwrite_source' %]overwrite source <b>[Not connected yet]</b>[% ELSE %]create copy "[% blissemall_job.output_name | html %]"[% END %]</p>
     [% IF blissemall_job.state == 'running' %]
       <p><a href="[% webroot %]plugins/BlissEmAll/index.html?job_id=[% blissemall_job.id %]">Refresh result</a></p>
     [% ELSIF blissemall_job.state == 'failed' %]
@@ -150,13 +150,35 @@
           <li>[% track.artist | html %] - [% track.title | html %] <span class="bea-disabled">(was #[% track.original_position %])</span></li>
         [% END %]
       </ol>
+      [% IF blissemall_job.write_state == 'completed' %]
+        <div class="bea-ok">
+          Created and verified saved playlist
+          <b>[% blissemall_job.persistence.title | html %]</b>
+          ([% blissemall_job.persistence.track_count %] tracks,
+          LMS ID [% blissemall_job.persistence.playlist_id %]).
+        </div>
+      [% ELSIF blissemall_job.write_state == 'failed' %]
+        <div class="bea-error">
+          <b>[% blissemall_job.write_error_code | html %]</b>:
+          [% blissemall_job.write_error | html %]
+          No incomplete copy remains.
+        </div>
+      [% ELSIF blissemall_job.output_mode == 'create_copy' %]
+        <form action="[% webroot %]plugins/BlissEmAll/index.html" method="post">
+          <input type="hidden" name="job_id" value="[% blissemall_job.id | html %]">
+          <input class="inputbutton" type="submit" name="create_copy" value="Create optimized copy">
+        </form>
+        <p class="bea-note">Creates a new playlist; the source remains unchanged. Name collisions fail safely.</p>
+      [% ELSE %]
+        <p class="bea-warning">Overwrite source is not connected yet. No playlist can be written for this result.</p>
+      [% END %]
     [% END %]
   </fieldset>
 [% END %]
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>Bridge insertion modes, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist create/overwrite actions.</p>
+  <p>Bridge insertion modes, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]
