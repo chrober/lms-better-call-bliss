@@ -39,14 +39,16 @@ supports hierarchical choices and one search-style text prompt, but does not
 carry a portable set of checkbox, dropdown, and numeric form controls. Playlist
 persistence is a separate post-Preview action. It resolves the result back to
 LMS track objects, uses Lyrion's core M3U formatter, verifies the temporary
-playlist, atomically publishes a new file, creates the catalog object, and
-verifies catalog and final-file order. Automatic extension invokes the native
-`bridge` command with a frozen empty semantic graph until optional providers
+playlist, claims the final path with exclusive creation, copies the verified
+bytes, creates the catalog object, and verifies catalog and final-file order.
+Automatic extension invokes the native `bridge` command with a frozen empty semantic graph until optional providers
 are connected. It validates native membership proofs, resolves opaque
 `bliss-row-N` identities read-only against the unchanged `bliss.db`, maps
 them to local LMS tracks including CUE entries, and freezes the resolved URLs
-in the in-memory job before persistence. A name collision fails closed; source
-playlist overwrite is not reachable.
+in the in-memory job before persistence. Automatic names come from the decoded
+local playlist filename rather than the potentially mojibaked catalog title and
+select the next free numbered suffix. Explicit name collisions and publication
+races fail closed; source playlist overwrite is not reachable.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
 currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.5.0`

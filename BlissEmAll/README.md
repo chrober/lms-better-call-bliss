@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.5.0` per-job UX shell. It contributes
+This directory contains the installable `0.5.1` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
@@ -21,10 +21,13 @@ URLs. The result shows every addition and every transition decision. Optional
 semantic providers are not connected in this slice, so it reports the honest
 Bliss-only evidence mode.
 
-After a successful reorder preview, Create optimized copy writes through
-Lyrion's core M3U formatter, atomically publishes a new file, creates the LMS
-playlist object, and verifies both file and catalog order. The source is never
-changed. Overwrite source remains visibly unavailable.
+Running results refresh automatically and completed/failed optimization and
+copy states are displayed in prominent banners with stable error codes. After
+a successful preview, Create optimized copy writes through Lyrion's core M3U
+formatter, exclusively creates a new file, creates the LMS playlist object, and
+verifies both file and catalog order. Blank names are Unicode-safe and select
+the next available numbered copy; explicit collisions fail visibly. The source
+is never changed. Overwrite source remains visibly unavailable.
 
 All other extension modes and source overwrite are visibly marked **Not
 connected yet**. See `docs/UX_STATUS.md` in the repository root for the exact

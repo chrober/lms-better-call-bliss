@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.5.0` UX shell. The shell is
+model and the exact boundary of the current `0.5.1` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -58,17 +58,17 @@ evidence from the full source artist pool is only a fallback.
 
 | Screen or action | Status | Current behavior |
 | --- | --- | --- |
-| Active preview | Partial | Real running job, retained only in LMS process memory. |
+| Active preview | Partial | Real running job, retained only in LMS process memory; the page polls automatically and keeps a manual refresh link. |
 | Result | Partial | Real completed/failed job, lost on LMS restart. |
-| Refresh result | Working | Re-reads the selected in-memory job. |
+| Refresh result | Working | Automatically re-reads the selected in-memory job every 1.5 seconds while running; manual refresh remains available. |
 | Cancel preview | Not connected yet | No cancellable native-process handle is exposed. |
-| Result summary | Working | Shows selected strategy, objective, worst transition, and constraint validation. |
+| Result summary | Working | Prominently reports running, Preview success/failure, and copy success/failure, then shows selected strategy, objective, worst transition, and constraint validation. |
 | Proposed order | Working | Shows every original track and its original position. |
 | Additions and reasons | Working for automatic extension | Labels every added local track, its original endpoints, direct-gap percentile, and evidence tier/pool; zero-addition results are explicit. |
 | Transition summary | Partial | Aggregate reorder diagnostics are real; automatic extension shows one decision/reason per original gap, while a general per-leg drill-down remains open. |
 | Warnings | Partial | Repeat validation and read-only safety are real; provider warnings await providers. |
 | Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
-| Create optimized copy | Working | Separate post-Preview action writes and verifies a new LMS playlist; name collisions fail closed. |
+| Create optimized copy | Working | Separate post-Preview action writes and verifies a new LMS playlist. Blank names preserve Unicode from the decoded source filename and choose the next free numbered suffix; explicit collisions fail visibly and safely. |
 | Overwrite source | Not connected yet | Captured for UX continuity but never mutates the source. |
 | Change options and rerun | Not connected yet | Draft restoration is not implemented. |
 | Discard result | Not connected yet | Session results expire naturally on LMS restart. |
@@ -96,12 +96,14 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.5.0` keeps Preview read-only and permits only an explicit,
+Version `0.5.1` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
-M3U serializer, verifies the same-directory temporary file, atomically renames
-it, creates the LMS catalog object, and compares both catalog and final-file
-order with the optimizer result. It rejects an existing name without touching
-it and removes only artifacts created by the failed attempt. Lyrion's playlist
+M3U serializer, verifies the same-directory temporary file, exclusively claims
+the final path without overwrite semantics, copies the verified bytes, creates
+the LMS catalog object, and compares both catalog and final-file order with the
+optimizer result. It rejects an explicit existing name without touching it,
+automatically chooses a free numbered name only when the field was left blank,
+and removes only artifacts created by the failed attempt. Lyrion's playlist
 object is updated directly, so this workflow does not depend on a library scan.
 Source overwrite, other extension modes, and every other shell-only action remain
 unreachable. Automatic extension additionally requires the native source

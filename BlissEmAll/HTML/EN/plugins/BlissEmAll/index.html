@@ -11,6 +11,7 @@
   .bea-warning { padding: .7em; border-left: 4px solid #c80; background: #fff8df; }
   .bea-error { padding: .7em; border-left: 4px solid #b00; background: #fee; }
   .bea-ok { padding: .7em; border-left: 4px solid #080; background: #efe; }
+  .bea-info { padding: .7em; border-left: 4px solid #1783c6; background: #eef8ff; }
   .bea-disabled { color: #777; }
   .bea-order { margin-top: .8em; }
 </style>
@@ -23,6 +24,37 @@
 
 [% IF blissemall_error %]
   <div class="bea-error"><b>Operation failed:</b> [% blissemall_error | html %]</div>
+[% END %]
+
+[% IF blissemall_job %]
+  [% IF blissemall_job.state == 'running' %]
+    <div class="bea-info"><b>Optimization is running.</b> This page refreshes automatically until the result is available.</div>
+    <script>
+      window.setTimeout(function () {
+        window.location.replace('[% webroot %]plugins/BlissEmAll/index.html?job_id=[% blissemall_job.id %]');
+      }, 1500);
+    </script>
+  [% ELSIF blissemall_job.state == 'failed' %]
+    <div class="bea-error">
+      <b>Optimization failed - [% blissemall_job.error_code | html %]:</b>
+      [% blissemall_job.error | html %]
+      No playlist was changed.
+    </div>
+  [% ELSIF blissemall_job.write_state == 'completed' %]
+    <div class="bea-ok">
+      <b>Success.</b> Created and verified
+      "[% blissemall_job.persistence.title | html %]"
+      with [% blissemall_job.persistence.track_count %] tracks.
+    </div>
+  [% ELSIF blissemall_job.write_state == 'failed' %]
+    <div class="bea-error">
+      <b>Copy not created - [% blissemall_job.write_error_code | html %]:</b>
+      [% blissemall_job.write_error | html %]
+      The source and any existing copy were left unchanged.
+    </div>
+  [% ELSE %]
+    <div class="bea-ok"><b>Preview completed successfully.</b> Review the result below, then create the optimized copy if it looks right.</div>
+  [% END %]
 [% END %]
 
 [% IF !blissemall_capability.ready %]
@@ -140,6 +172,7 @@
       <label for="output_name">Copy name</label>
       <input type="text" maxlength="255" name="output_name" id="output_name" value="[% blissemall_form.output_name | html %]" size="45">
     </div>
+    <p class="bea-note">Leave blank to generate a name from the playlist filename. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
     <div class="bea-row">
       <label><input type="radio" name="output_mode" value="overwrite_source"[% IF blissemall_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
       <span class="bea-disabled">Will require explicit confirmation once writing is connected.</span>
@@ -156,7 +189,7 @@
     <p>Job ID: [% blissemall_job.id | html %]</p>
     <p>Requested output: [% IF blissemall_job.output_mode == 'overwrite_source' %]overwrite source <b>[Not connected yet]</b>[% ELSE %]create copy "[% blissemall_job.output_name | html %]"[% END %]</p>
     [% IF blissemall_job.state == 'running' %]
-      <p><a href="[% webroot %]plugins/BlissEmAll/index.html?job_id=[% blissemall_job.id %]">Refresh result</a></p>
+      <p><a href="[% webroot %]plugins/BlissEmAll/index.html?job_id=[% blissemall_job.id %]">Refresh result now</a></p>
     [% ELSIF blissemall_job.state == 'failed' %]
       <div class="bea-error"><b>[% blissemall_job.error_code | html %]</b>: [% blissemall_job.error | html %]</div>
     [% ELSE %]

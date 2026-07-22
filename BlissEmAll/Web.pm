@@ -1,14 +1,18 @@
 package Plugins::BlissEmAll::Web;
 
 use strict;
+use File::Basename qw(basename);
 use Slim::Schema;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
+use Slim::Utils::Misc;
+use Slim::Utils::Unicode;
 use Slim::Web::HTTP;
 use Slim::Web::Pages;
 use Plugins::BlissEmAll::BlissCompatibility;
 use Plugins::BlissEmAll::JobOptions;
 use Plugins::BlissEmAll::Jobs;
+use Plugins::BlissEmAll::PlaylistWriter;
 
 my $log = Slim::Utils::Log::logger('plugin.blissemall');
 my $plugin_prefs = preferences('plugin.blissemall');
@@ -27,6 +31,19 @@ sub shutdown {
     );
 }
 
+sub _playlist_title {
+    my $playlist = shift;
+    my $url = eval { $playlist->url } || '';
+    if ($url =~ /^file:/i) {
+        my $path = Slim::Utils::Misc::pathFromFileURL($url);
+        my $decoded = Slim::Utils::Unicode::utf8decode_locale($path || '');
+        my $filename = basename($decoded || '');
+        $filename =~ s/\.[^.]+$//;
+        return $filename if length $filename;
+    }
+    return $playlist->title || $playlist->name;
+}
+
 sub _playlists {
     my @rows;
     for my $playlist (sort {
@@ -37,7 +54,7 @@ sub _playlists {
         next unless $count >= 2;
         push @rows, {
             id => 0 + $playlist->id,
-            title => $playlist->title || $playlist->name,
+            title => _playlist_title($playlist),
             count => 0 + $count,
         };
     }
@@ -164,15 +181,23 @@ sub handler {
     my $form = _form_from_params($params, $defaults);
     my $playlists = _playlists();
 
+    my $trimmed_output_name = $form->{output_name} || '';
+    $trimmed_output_name =~ s/^\s+|\s+$//g;
+    $form->{output_name} = $trimmed_output_name;
+    $form->{output_name_generated} = 0;
     if (defined $form->{playlist_id}
         && "$form->{playlist_id}" =~ /^\d+$/
-        && !length($form->{output_name} || '')) {
+        && !length($form->{output_name})) {
         for my $playlist (@$playlists) {
             if ($playlist->{id} == $form->{playlist_id}) {
                 my $suffix = $form->{extension_mode} eq 'automatic'
                     ? ($plugin_prefs->get('extended_suffix') || 'Extended')
                     : ($plugin_prefs->get('output_suffix') || 'Optimized');
-                $form->{output_name} = $playlist->{title} . ' ' . $suffix;
+                $form->{output_name} =
+                    Plugins::BlissEmAll::PlaylistWriter::available_copy_name(
+                        $playlist->{title} . ' ' . $suffix,
+                    );
+                $form->{output_name_generated} = 1;
                 last;
             }
         }
@@ -189,6 +214,7 @@ sub handler {
         };
         $error = $@;
         $error =~ s/\s+/ /g if $error;
+        $error = undef if $job && ($job->{write_state} || '') eq 'failed';
     } elsif ($params->{run_preview}) {
         eval {
             die "Choose a saved playlist"

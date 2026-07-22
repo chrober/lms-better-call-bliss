@@ -360,6 +360,7 @@ sub create_copy {
     eval {
         $result = Plugins::BlissEmAll::PlaylistWriter::create_copy(
             $job, $job->{options}->{output_name},
+            $job->{options}->{output_name_generated},
         );
     };
     if ($@ || !$result) {
@@ -389,6 +390,7 @@ sub create_copy {
     $job->{write_state} = 'completed';
     $job->{write_stage} = 'Created and verified';
     $job->{persistence} = $result;
+    $job->{options}->{output_name} = $result->{title};
     $log->info(
         "job=$job_id stage=CreatedAndVerified"
         . " playlist_id=$result->{playlist_id}"

@@ -1,6 +1,9 @@
 package Plugins::BlissEmAll::PlaylistWriter;
 
 use strict;
+use Errno qw(EEXIST);
+use Fcntl qw(O_CREAT O_EXCL O_WRONLY);
+use File::Copy qw(copy);
 use File::Spec::Functions qw(catfile);
 use Scalar::Util qw(blessed);
 use Slim::Formats::Playlists::M3U;
@@ -22,6 +25,52 @@ sub _same_urls {
             && $expected->[$index] eq $actual->[$index];
     }
     return 1;
+}
+
+sub _normalized_name {
+    my $requested_name = shift;
+    my $name = Slim::Utils::Misc::cleanupFilename($requested_name || '');
+    $name =~ s/^\s+|\s+$//g;
+    _fail('INVALID_OUTPUT_NAME', 'Enter a name for the optimized copy')
+        unless length $name;
+    _fail('INVALID_OUTPUT_NAME', 'The optimized copy name is too long')
+        if length($name) > 255;
+    return $name;
+}
+
+sub _target_for_name {
+    my ($playlist_dir, $name) = @_;
+    my $encoded_name = Slim::Utils::Unicode::encode_locale($name);
+    my $path = catfile($playlist_dir, $encoded_name . '.m3u');
+    my $url = Slim::Utils::Misc::fileURLFromPath($path);
+    my $existing = Slim::Schema->objectForUrl({
+        url => $url,
+        playlist => 1,
+    });
+    return ($path, $url, blessed($existing) ? $existing : undef);
+}
+
+sub _name_exists {
+    my ($playlist_dir, $name) = @_;
+    my ($path, undef, $existing) = _target_for_name($playlist_dir, $name);
+    return -e $path || blessed($existing);
+}
+
+sub available_copy_name {
+    my $requested_name = shift;
+    my $playlist_dir = Slim::Utils::Misc::getPlaylistDir();
+    _fail('PLAYLIST_DIR_MISSING', 'The LMS playlist folder is not configured')
+        unless $playlist_dir && -d $playlist_dir;
+    my $base = _normalized_name($requested_name);
+    return $base unless _name_exists($playlist_dir, $base);
+    for my $number (2 .. 9999) {
+        my $suffix = ' (' . $number . ')';
+        my $stem = substr($base, 0, 255 - length($suffix));
+        $stem =~ s/\s+$//;
+        my $candidate = $stem . $suffix;
+        return $candidate unless _name_exists($playlist_dir, $candidate);
+    }
+    _fail('OUTPUT_NAME_EXHAUSTED', 'Could not find a free optimized copy name');
 }
 
 sub _resolved_tracks {
@@ -57,7 +106,7 @@ sub _resolved_tracks {
 }
 
 sub create_copy {
-    my ($job, $requested_name) = @_;
+    my ($job, $requested_name, $automatic_name) = @_;
     _fail('INVALID_JOB', 'A completed preview is required')
         unless $job && $job->{state} eq 'completed' && $job->{artifact};
 
@@ -65,18 +114,10 @@ sub create_copy {
     _fail('PLAYLIST_DIR_MISSING', 'The LMS playlist folder is not configured')
         unless $playlist_dir && -d $playlist_dir && -w $playlist_dir;
 
-    my $name = Slim::Utils::Misc::cleanupFilename($requested_name || '');
-    $name =~ s/^\s+|\s+$//g;
-    _fail('INVALID_OUTPUT_NAME', 'Enter a name for the optimized copy')
-        unless length $name;
-
-    my $encoded_name = Slim::Utils::Unicode::encode_locale($name);
-    my $final_path = catfile($playlist_dir, $encoded_name . '.m3u');
-    my $final_url = Slim::Utils::Misc::fileURLFromPath($final_path);
-    my $existing = Slim::Schema->objectForUrl({
-        url => $final_url,
-        playlist => 1,
-    });
+    my $name = _normalized_name($requested_name);
+    $name = available_copy_name($name) if $automatic_name;
+    my ($final_path, $final_url, $existing) =
+        _target_for_name($playlist_dir, $name);
     _fail('OUTPUT_EXISTS', "A playlist named '$name' already exists")
         if -e $final_path || blessed($existing);
 
@@ -87,7 +128,7 @@ sub create_copy {
     _fail('TEMP_COLLISION', 'The private output temporary file already exists')
         if -e $temp_path;
 
-    my ($playlist, $renamed);
+    my ($playlist, $published);
     my $ok = eval {
         my $written = Slim::Formats::Playlists::M3U->write(
             $urls, undef, $temp_path, 1,
@@ -105,9 +146,20 @@ sub create_copy {
         _fail('SERIALIZATION_MISMATCH', 'Temporary M3U order did not verify')
             unless _same_urls($urls, \@serialized_urls);
 
-        rename($temp_path, $final_path)
-            or _fail('RENAME_FAILED', "Could not publish optimized copy: $!");
-        $renamed = 1;
+        my $output;
+        unless (sysopen($output, $final_path, O_WRONLY | O_CREAT | O_EXCL)) {
+            _fail('OUTPUT_EXISTS', "A playlist named '$name' already exists")
+                if $! == EEXIST;
+            _fail('PUBLISH_FAILED', "Could not publish optimized copy: $!");
+        }
+        $published = 1;
+        binmode($output, ':raw');
+        my $copied = copy($temp_path, $output);
+        my $closed = close($output);
+        _fail('PUBLISH_FAILED', "Could not publish optimized copy: $!")
+            unless $copied && $closed;
+        unlink($temp_path)
+            or _fail('TEMP_CLEANUP_FAILED', "Could not remove temporary copy: $!");
 
         $playlist = Slim::Schema->updateOrCreate({
             url => $final_url,
@@ -152,7 +204,7 @@ sub create_copy {
                 Slim::Schema->forceCommit;
             };
         }
-        unlink $final_path if $renamed && -e $final_path;
+        unlink $final_path if $published && -e $final_path;
         die $error || "CREATE_FAILED: Unknown playlist creation failure\n";
     }
 

@@ -25,6 +25,7 @@ sub defaults {
         trigger_percent => int($trigger_percent),
         output_mode => 'create_copy',
         output_name => '',
+        output_name_generated => 0,
     };
 }
 
@@ -98,6 +99,8 @@ sub normalize {
         die "Output playlist name is too long" if length($name) > 255;
         $options->{output_name} = $name;
     }
+    $options->{output_name_generated} =
+        $input->{output_name_generated} ? 1 : 0;
 
     return $options;
 }

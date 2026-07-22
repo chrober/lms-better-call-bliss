@@ -137,8 +137,32 @@ plugin source and can compile its older templates under the live namespace.
 Rollback copies now live beneath `Cache/BlissEmAll-backups`, outside the
 scanned plugin root.
 
-A submitted preview renders a refresh link using its session job ID. See
+A submitted preview polls automatically and retains a manual refresh link using
+its session job ID. See
 [`UX_STATUS.md`](UX_STATUS.md) for the screen-by-screen feature matrix.
+
+## UX feedback and Unicode-safe naming verification
+
+Version `0.5.1` was exercised through the actual Extras HTTP workflow on
+2026-07-22 with an anonymized 13-track, single-artist playlist whose filename
+ends in an emoji flag. The LMS catalog title exposed mojibaked bytes, while its
+file URL retained the correct UTF-8 filename. The plugin now decodes that file
+URL for display and automatic naming; the proposed optimized-copy name retained
+both regional-indicator code points.
+
+The submitted running page contained the automatic 1.5-second poll and visible
+running banner. An intentionally impossible artist repeat window completed with
+a prominent `ROUTE_SEARCH_FAILED` banner, capacity guidance, and an explicit
+statement that no playlist changed. A second valid run displayed the Preview
+success banner without requiring log inspection.
+
+An explicit create attempt then reused the source playlist name. The page
+displayed `Copy not created - OUTPUT_EXISTS` and stated that the source and
+existing copy were unchanged. The sole matching M3U retained SHA-256
+`02c9abebedd751d8182615c09db554eea3a9c1cedcc961823f24c1ab1824f333`
+before and after the attempt. Final-path publication now uses exclusive
+creation, so it has no overwrite-capable rename. Blank-name jobs instead choose
+the next available suffix such as `(2)`.
 
 The full-shell deployment also established the piCorePlayer development path:
 manual plugins belong beneath `<LMS cache>/Plugins`, while

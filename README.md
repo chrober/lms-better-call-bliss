@@ -24,15 +24,19 @@ parameters and repeat windows, choose Reorder only or Extend automatically,
 choose **Create optimized copy**, enter its new name, and select **Run read-only
 preview**. Use a zero artist or album look-back to disable that constraint for a
 single-artist or single-album collection. Automatic extension may add zero up
-to the configured bridge budget and reports every transition decision. Preview
-is read-only. Only the separate **Create optimized copy** action on a completed
+to the configured bridge budget and reports every transition decision. The
+result page refreshes while the native job runs and presents prominent
+running, success, optimization-failure, and copy-failure messages. Preview is
+read-only. Only the separate **Create optimized copy** action on a completed
 result writes anything.
 
 Requests, native output, and stderr are kept beneath the LMS cache in
-`blissemall/jobs`. Creation uses Lyrion's core M3U formatter, publishes a new
-file atomically, creates the LMS playlist object, and verifies both catalog and
-file order before reporting success. Existing names are rejected and the
-source playlist is never changed.
+`blissemall/jobs`. Creation uses Lyrion's core M3U formatter, exclusively
+creates a new file, creates the LMS playlist object, and verifies both catalog
+and file order before reporting success. A blank copy name is derived from the
+decoded playlist filename, preserving Unicode such as emoji, and receives the
+next free numbered suffix when necessary. Explicit existing names are rejected,
+and the source playlist is never changed.
 
 Automatic bridge discovery currently uses the local Bliss-only fallback. The
 optional Last.fm and ListenBrainz evidence adapters remain visibly unconnected;
