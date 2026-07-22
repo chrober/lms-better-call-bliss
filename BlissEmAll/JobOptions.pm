@@ -7,6 +7,10 @@ my $plugin_prefs = preferences('plugin.blissemall');
 
 sub defaults {
     my $capability = shift;
+    my $bridge_budget = $plugin_prefs->get('auto_bridge_budget');
+    $bridge_budget = 8 unless defined $bridge_budget;
+    my $trigger_percent = $plugin_prefs->get('auto_trigger_percent');
+    $trigger_percent = 70 unless defined $trigger_percent;
     return {
         ordering_policy => 'optimize_order',
         extension_mode => 'none',
@@ -17,6 +21,8 @@ sub defaults {
         album_window => int($capability->{album_window}),
         track_window => int($capability->{track_window}),
         restart_count => int($plugin_prefs->get('restart_count') || 50),
+        max_added_tracks => int($bridge_budget),
+        trigger_percent => int($trigger_percent),
         output_mode => 'create_copy',
         output_name => '',
     };
@@ -45,8 +51,9 @@ sub normalize {
 
     $options->{extension_mode} = $input->{extension_mode}
         if defined $input->{extension_mode};
-    die "Only Reorder only is connected"
-        unless $options->{extension_mode} eq 'none';
+    die "Extension mode must be Reorder only or Extend automatically"
+        unless $options->{extension_mode} eq 'none'
+            || $options->{extension_mode} eq 'automatic';
 
     $options->{algorithm} = $input->{algorithm}
         if defined $input->{algorithm};
@@ -70,6 +77,12 @@ sub normalize {
     );
     $options->{restart_count} = _integer(
         $input, 'restart_count', 0, 500, $options->{restart_count},
+    );
+    $options->{max_added_tracks} = _integer(
+        $input, 'max_added_tracks', 0, 100, $options->{max_added_tracks},
+    );
+    $options->{trigger_percent} = _integer(
+        $input, 'trigger_percent', 0, 100, $options->{trigger_percent},
     );
 
     $options->{output_mode} = $input->{output_mode}

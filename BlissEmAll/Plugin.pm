@@ -36,6 +36,7 @@ sub initPlugin {
         extended_suffix => 'Extended',
         restart_count => 50,
         auto_bridge_budget => 8,
+        auto_trigger_percent => 70,
         report_retention_days => 30,
         semantic_cache_days => 30,
         semantic_stale_days => 90,
@@ -87,9 +88,9 @@ sub statusCommand {
     my $status = Plugins::BlissEmAll::BlissCompatibility::snapshot();
     $request->addResult('ready', 0 + $status->{ready});
     $request->addResult('problem_count', scalar @{$status->{problems}});
-    $request->addResult('ux_contract', 'extras-job-editor-v2');
+    $request->addResult('ux_contract', 'extras-job-editor-v3');
     $request->addResult(
-        'working_mode', 'per-job-adaptive/reorder-only/create-copy',
+        'working_mode', 'per-job-adaptive/reorder-or-auto-extend/create-copy',
     );
     $request->setStatusDone();
 }

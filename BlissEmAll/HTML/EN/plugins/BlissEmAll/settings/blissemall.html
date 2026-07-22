@@ -5,8 +5,8 @@
   <p>
     Bliss scoring and repeat values are initialized from BlissMixer whenever
     the Extras job editor opens. They can then be overridden for one job without
-    changing either plugin's global settings. The value below supplies the
-    default route-search effort for new jobs.
+    changing either plugin's global settings. The values below supply the
+    defaults for new jobs.
   </p>
 
   [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_RESTART_COUNT" desc="PLUGIN_BLISSEMALL_RESTART_COUNT_DESC" %]
@@ -16,14 +16,6 @@
   [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX" desc="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC" %]
     <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
   [% END %]
-[% END %]
-
-[% WRAPPER settingSection %]
-  <h3>Stored for features that are not connected yet</h3>
-  <p>
-    The values below define the intended UX contract, but changing them does not
-    enable playlist writing, bridge insertion, semantic requests, or durable reports.
-  </p>
 
   [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_EXTENDED_SUFFIX" desc="PLUGIN_BLISSEMALL_EXTENDED_SUFFIX_DESC" %]
     <input type="text" class="stdedit" name="pref_extended_suffix" id="extended_suffix" value="[% prefs.extended_suffix %]" size="30">
@@ -32,6 +24,18 @@
   [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET" desc="PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET_DESC" %]
     <input type="number" min="0" max="100" class="stdedit" name="pref_auto_bridge_budget" id="auto_bridge_budget" value="[% prefs.auto_bridge_budget %]" size="6">
   [% END %]
+
+  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_AUTO_TRIGGER_PERCENT" desc="PLUGIN_BLISSEMALL_AUTO_TRIGGER_PERCENT_DESC" %]
+    <input type="number" min="0" max="100" class="stdedit" name="pref_auto_trigger_percent" id="auto_trigger_percent" value="[% prefs.auto_trigger_percent %]" size="6">
+  [% END %]
+[% END %]
+
+[% WRAPPER settingSection %]
+  <h3>Stored for features that are not connected yet</h3>
+  <p>
+    The values below define the intended UX contract, but changing them does not
+    enable semantic requests or durable reports.
+  </p>
 
   [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_LASTFM_ENABLED" desc="PLUGIN_BLISSEMALL_LASTFM_ENABLED_DESC" %]
     <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %]>

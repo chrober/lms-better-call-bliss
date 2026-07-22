@@ -76,10 +76,11 @@ moves the editor to Extras after verifying that the generic Applications/OPML
 adapter cannot carry the required portable multi-field form. **Optimize order >
 Reorder only > Run read-only preview** remains executable. Adaptive parameters,
 repeat windows, search restarts, and output disposition are now job fields;
-BlissMixer values are defaults only. Ordering/extension alternatives, static or
-forest routing, bridge discovery, semantic providers, cancellation, durable
-history, report export, and source overwrite remain visibly marked **Not
-connected yet**.
+BlissMixer values are defaults only. Version `0.5.0` additionally connects
+automatic Bliss-only bridge discovery. Preserve-order and exact-count
+alternatives, static or forest routing, semantic providers, cancellation,
+durable history, report export, and source overwrite remain visibly marked
+**Not connected yet**.
 
 ## Create-copy persistence verification
 
@@ -104,6 +105,37 @@ correlated the Creating and CreatedAndVerified stages with the preview job ID.
 The persistence path does not launch a scanner: like Lyrion's own playlist-save
 command it updates the playlist object directly, then additionally verifies
 catalog and file order.
+
+## Automatic extension verification
+
+Version `0.5.0` connected **Extend automatically** on 2026-07-22. A
+seven-track anonymized playlist was submitted with Adaptive seed limit 3,
+learned blend 20%, artist/album/track windows 5/10/100, zero route restarts, a
+one-track bridge budget, and a 0th-percentile trigger. The ARM64 native
+`bridge` command completed in about 20 seconds over 63,822 usable Bliss rows.
+
+The Preview selected one bridge through the explicit
+`bliss-only-empty-graph` fallback. The plugin validated the final-sequence
+proofs, resolved the opaque row to a local LMS track, rendered the eight-track
+order with **Added bridge**, and showed all original-gap decisions. No optional
+network provider was contacted.
+
+The explicit Create action produced a new eight-track saved playlist. Independent
+comparison of the native `final_sequence`, request source-ID-to-URL mapping,
+and LMS JSON-RPC output reported exact order equality. Exactly one output URL
+was outside the seven source URLs. The M3U contained eight
+`#EXTURL:file:///` and eight `#EXTINF` records, no private temporary file
+remained, and the source still contained seven tracks with URL-list SHA-256
+`e85f20d212a21823d60cf6d733ba7e288a076dd2065692e93b66bd26b77b2b6a`.
+Server-log lifecycle records captured the effective extension mode, budget,
+trigger, repeat/scoring parameters, final and added counts, evidence mode,
+Creating, and CreatedAndVerified stages under one job ID.
+
+The deployment also exposed an important development rule: a rollback copy
+must not remain beneath `Cache/Plugins`, because Lyrion scans it as another
+plugin source and can compile its older templates under the live namespace.
+Rollback copies now live beneath `Cache/BlissEmAll-backups`, outside the
+scanned plugin root.
 
 A submitted preview renders a refresh link using its session job ID. See
 [`UX_STATUS.md`](UX_STATUS.md) for the screen-by-screen feature matrix.

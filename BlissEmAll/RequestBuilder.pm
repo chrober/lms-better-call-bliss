@@ -103,7 +103,14 @@ sub build_reorder_request {
             album => $options->{album_window},
             track => $options->{track_window},
         },
-        extension => {mode => $options->{extension_mode}},
+        extension => $options->{extension_mode} eq 'automatic'
+            ? {
+                mode => 'automatic',
+                candidate_limit => 5,
+                max_added_tracks => $options->{max_added_tracks},
+                trigger_percentile => $options->{trigger_percent} / 100,
+            }
+            : {mode => 'none'},
         semantic_evidence => {
             path => $semantic_path,
             schema_identity => 'semantic-evidence-v1',

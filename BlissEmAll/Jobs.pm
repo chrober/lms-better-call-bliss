@@ -9,6 +9,7 @@ use Time::HiRes qw(time);
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Timers;
+use Plugins::BlissEmAll::BridgeResolver;
 use Plugins::BlissEmAll::RequestBuilder;
 use Plugins::BlissEmAll::PlaylistWriter;
 
@@ -34,6 +35,13 @@ sub _write_json {
     write_file($path, {binmode => ':raw'}, _json()->encode($value));
 }
 
+sub _file_identity {
+    my $path = shift;
+    my @stat = stat($path);
+    return unless @stat;
+    return join(':', @stat[0, 1, 7, 9]);
+}
+
 sub _repeat_capacity_hint {
     my $job = shift;
     my $total = $job->{track_count};
@@ -57,7 +65,8 @@ sub _repeat_capacity_hint {
             return "$kind repeat window $window cannot be satisfied: "
                 . "$occurrences of $total tracks are '$value', but $required "
                 . "other-$field separators are required and only $available are available. "
-                . "Reorder only cannot fix this; reduce the window or use bridge insertion.";
+                . "The base route cannot satisfy this; reduce or disable the window "
+                . "before using either Reorder only or Extend automatically.";
         }
     }
     return;
@@ -82,6 +91,10 @@ sub start_reorder_preview {
     my $built = Plugins::BlissEmAll::RequestBuilder::build_reorder_request(
         $playlist_id, $job_id, $semantic_path, $options,
     );
+    my $native_command = $built->{options}->{extension_mode} eq 'automatic'
+        ? 'bridge' : 'route';
+    my $database_identity = _file_identity($built->{capability}->{database});
+    die "Could not stat bliss.db" unless $database_identity;
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
     my $stderr_path = $dir . '/stderr.log';
@@ -104,7 +117,7 @@ sub start_reorder_preview {
                 stdout => $result_fh,
                 stderr => $stderr_fh,
             },
-            $optimizer_binary, 'route', '--request', $request_path,
+            $optimizer_binary, $native_command, '--request', $request_path,
         );
     };
     $launch_error = $@;
@@ -117,17 +130,23 @@ sub start_reorder_preview {
     $jobs{$job_id} = {
         id => $job_id,
         state => 'running',
-        stage => 'Optimizing',
+        stage => $native_command eq 'bridge'
+            ? 'Optimizing and selecting additions' : 'Optimizing',
         started_at => time(),
         playlist_id => 0 + $playlist_id,
         playlist_title => $built->{playlist}->title || $built->{playlist}->name,
         track_count => scalar @{$built->{request}->{source_tracks}},
+        source_track_ids => [
+            map { $_->{id} } @{$built->{request}->{source_tracks}}
+        ],
         labels => $built->{labels},
         original_positions => $built->{original_positions},
         track_urls => $built->{track_urls},
         capability => $built->{capability},
         options => $built->{options},
         restart_count => $built->{request}->{route}->{search}->{restart_count},
+        native_command => $native_command,
+        database_identity => $database_identity,
         process => $process,
         result_path => $result_path,
         stderr_path => $stderr_path,
@@ -135,6 +154,7 @@ sub start_reorder_preview {
     my $effective = $built->{options};
     $log->info(
         "job=$job_id stage=Optimizing playlist_id=$playlist_id"
+        . " extension=$effective->{extension_mode}"
         . " algorithm=$effective->{algorithm}"
         . " seed_limit=$effective->{seed_limit}"
         . " learned_percent=$effective->{learned_percent}"
@@ -142,12 +162,18 @@ sub start_reorder_preview {
         . " repeat_album=$effective->{album_window}"
         . " repeat_track=$effective->{track_window}"
         . " restarts=$effective->{restart_count}"
+        . ($effective->{extension_mode} eq 'automatic'
+            ? " max_added=$effective->{max_added_tracks}"
+                . " trigger_percent=$effective->{trigger_percent}"
+            : '')
         . " output_mode=$effective->{output_mode}"
     );
     if (main::DEBUGLOG && $log->is_debug) {
         my $capability = $built->{capability};
         $log->debug(
             "job=$job_id request tracks=" . scalar(@{$built->{request}->{source_tracks}})
+            . " command=$native_command"
+            . " extension=$effective->{extension_mode}"
             . " algorithm=$effective->{algorithm}"
             . " seed_limit=$effective->{seed_limit}"
             . " learned_percent=$effective->{learned_percent}"
@@ -184,8 +210,45 @@ sub _poll {
         $decode_error = $@;
     }
     if ($job->{artifact}) {
-        $job->{state} = 'completed';
-        $job->{stage} = 'Completed';
+        my $normalized;
+        my $normalize_ok = eval {
+            if ($job->{options}->{extension_mode} eq 'automatic') {
+                die "DATABASE_CHANGED: bliss.db changed while the preview was running\n"
+                    unless (_file_identity($job->{capability}->{database}) || '')
+                        eq $job->{database_identity};
+                $normalized =
+                    Plugins::BlissEmAll::BridgeResolver::resolve_automatic_preview($job);
+                for my $key (keys %$normalized) {
+                    $job->{$key} = $normalized->{$key};
+                }
+            } else {
+                die "RESULT_KIND_INVALID: Expected an adaptive route artifact\n"
+                    unless ($job->{artifact}->{artifact_kind} || '')
+                        eq 'adaptive-route-v1';
+                $job->{final_track_ids} = [
+                    @{$job->{artifact}->{selected_track_ids} || []}
+                ];
+                $job->{final_track_count} = scalar @{$job->{final_track_ids}};
+                $job->{bridge_track_ids} = [];
+                $job->{added_track_count} = 0;
+                $job->{additions} = [];
+            }
+            1;
+        };
+        if ($normalize_ok) {
+            $job->{state} = 'completed';
+            $job->{stage} = 'Completed';
+        } else {
+            my $message = $@ || 'RESULT_NORMALIZATION_FAILED: Invalid optimizer result';
+            $message =~ s/\s+/ /g;
+            $message = substr($message, 0, 400);
+            my ($code, $detail) = $message =~ /^([A-Z_]+):\s*(.*)$/;
+            $job->{state} = 'failed';
+            $job->{stage} = 'Failed';
+            $job->{error_code} = $code || 'RESULT_NORMALIZATION_FAILED';
+            $job->{error} = $detail || $message;
+            $job->{native_message} = $job->{error};
+        }
     } else {
         my $stderr = eval { read_file($job->{stderr_path}, binmode => ':raw') } || '';
         my $native = eval { _json()->decode($stderr) };
@@ -234,18 +297,33 @@ sub _poll {
     } else {
         my $elapsed_ms = int(1000 * ($job->{finished_at} - $job->{started_at}));
         my $selected = $job->{artifact}->{selected_strategy} || 'adaptive';
-        my $candidate = $selected eq 'adaptive-arc'
-            ? $job->{artifact}->{arc}
-            : $job->{artifact}->{primary};
-        $log->info(
-            "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
-            . " tracks=$job->{track_count} strategy=$selected"
-            . sprintf(
-                ' objective=%.3f worst_transition=%.3f',
-                $candidate->{objective},
-                $candidate->{worst_transition},
-            )
-        );
+        if ($job->{options}->{extension_mode} eq 'automatic') {
+            $log->info(
+                "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
+                . " source_tracks=$job->{track_count}"
+                . " final_tracks=$job->{final_track_count}"
+                . " added=$job->{added_track_count}"
+                . " strategy=$selected"
+                . " semantic_mode=$job->{artifact}->{semantic_mode}"
+                . sprintf(
+                    ' base_route_objective=%.3f',
+                    $job->{artifact}->{selected_route_objective},
+                )
+            );
+        } else {
+            my $candidate = $selected eq 'adaptive-arc'
+                ? $job->{artifact}->{arc}
+                : $job->{artifact}->{primary};
+            $log->info(
+                "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
+                . " tracks=$job->{track_count} strategy=$selected"
+                . sprintf(
+                    ' objective=%.3f worst_transition=%.3f',
+                    $candidate->{objective},
+                    $candidate->{worst_transition},
+                )
+            );
+        }
     }
 }
 

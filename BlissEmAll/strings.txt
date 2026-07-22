@@ -27,24 +27,32 @@ PLUGIN_BLISSEMALL_RESTART_COUNT
 	DE	Neustarts der Routensuche
 
 PLUGIN_BLISSEMALL_RESTART_COUNT_DESC
-	EN	Deterministic search effort used for reorder previews.
-	DE	Deterministischer Suchaufwand fuer Sortiervorschauen.
+	EN	Deterministic base-route search effort used by new previews; each job can override it.
+	DE	Deterministischer Suchaufwand fuer die Basisroute neuer Vorschauen; pro Auftrag aenderbar.
 
 PLUGIN_BLISSEMALL_EXTENDED_SUFFIX
-	EN	Extended-playlist suffix [not connected yet]
-	DE	Suffix fuer erweiterte Playlists [noch nicht angebunden]
+	EN	Default extended-copy suffix
+	DE	Standard-Suffix fuer erweiterte Kopien
 
 PLUGIN_BLISSEMALL_EXTENDED_SUFFIX_DESC
-	EN	Stored for future bridge and extension modes; currently has no runtime effect.
-	DE	Fuer kuenftige Bruecken- und Erweiterungsmodi gespeichert; derzeit ohne Laufzeitwirkung.
+	EN	Initial suffix used when an automatic extension preview is saved.
+	DE	Anfaenglicher Suffix beim Speichern einer automatisch erweiterten Vorschau.
 
 PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET
-	EN	Automatic bridge budget [not connected yet]
-	DE	Automatisches Brueckenbudget [noch nicht angebunden]
+	EN	Default automatic bridge budget
+	DE	Standardbudget fuer automatische Bruecken
 
 PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET_DESC
-	EN	Maximum additions proposed by Extend automatically once candidate discovery is connected.
-	DE	Maximale Zahl zusaetzlicher Titel fuer Automatisch erweitern, sobald die Kandidatensuche angebunden ist.
+	EN	Maximum additions proposed by Extend automatically; each job can override it.
+	DE	Maximale Zahl zusaetzlicher Titel fuer automatische Erweiterung; pro Auftrag aenderbar.
+
+PLUGIN_BLISSEMALL_AUTO_TRIGGER_PERCENT
+	EN	Default bridge trigger percentile (%)
+	DE	Standard-Perzentil fuer Bruecken (%)
+
+PLUGIN_BLISSEMALL_AUTO_TRIGGER_PERCENT_DESC
+	EN	Only transitions above this frozen contextual percentile are considered; each job can override it.
+	DE	Nur Uebergaenge oberhalb dieses eingefrorenen Kontext-Perzentils werden beruecksichtigt; pro Auftrag aenderbar.
 
 PLUGIN_BLISSEMALL_LASTFM_ENABLED
 	EN	Use Last.fm evidence [not connected yet]

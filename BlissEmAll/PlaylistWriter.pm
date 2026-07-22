@@ -26,25 +26,33 @@ sub _same_urls {
 
 sub _resolved_tracks {
     my $job = shift;
-    my @selected = @{$job->{artifact}->{selected_track_ids} || []};
-    my $source = $job->{track_urls} || {};
+    my @selected = @{$job->{final_track_ids} || []};
+    my $urls_by_id = $job->{track_urls} || {};
+    my %source = map { $_ => 1 } @{$job->{source_track_ids} || []};
+    my %bridge = map { $_ => 1 } @{$job->{bridge_track_ids} || []};
     _fail('INVALID_PREVIEW', 'The preview returned an unexpected track count')
-        unless @selected == $job->{track_count};
+        unless @selected == ($job->{final_track_count} || 0)
+            && @selected == $job->{track_count}
+                + scalar(@{$job->{bridge_track_ids} || []});
 
-    my (%seen, @tracks, @urls);
+    my (%seen, %seen_url, @tracks, @urls);
     for my $id (@selected) {
         _fail('INVALID_PREVIEW', "Unknown selected track '$id'")
-            unless exists $source->{$id};
+            unless exists $urls_by_id->{$id} && ($source{$id} || $bridge{$id});
         _fail('INVALID_PREVIEW', "Selected track '$id' occurs more than once")
             if $seen{$id}++;
-        my $track = Slim::Schema->objectForUrl($source->{$id});
+        _fail('INVALID_PREVIEW', "Selected track '$id' duplicates another URL")
+            if $seen_url{$urls_by_id->{$id}}++;
+        my $track = Slim::Schema->objectForUrl($urls_by_id->{$id});
         _fail('TRACK_NOT_FOUND', "Selected track '$id' is no longer in LMS")
             unless blessed($track) && $track->can('url') && !$track->remote;
         push @tracks, $track;
         push @urls, $track->url;
     }
     _fail('INVALID_PREVIEW', 'The preview does not contain every source track')
-        unless scalar(keys %seen) == scalar(keys %$source);
+        if scalar(grep { !$seen{$_} } keys %source);
+    _fail('INVALID_PREVIEW', 'The preview does not contain every resolved bridge')
+        if scalar(grep { !$seen{$_} } keys %bridge);
     return (\@tracks, \@urls);
 }
 

@@ -54,13 +54,29 @@
     <div class="bea-row">
       <label for="extension_mode">Extension</label>
       <select name="extension_mode" id="extension_mode">
-        <option value="none" selected>Reorder only [Working]</option>
-        <option disabled>Extend automatically [Not connected yet]</option>
+        <option value="none"[% IF blissemall_form.extension_mode == 'none' %] selected[% END %]>Reorder only [Working]</option>
+        <option value="automatic"[% IF blissemall_form.extension_mode == 'automatic' %] selected[% END %]>Extend automatically [Working]</option>
         <option disabled>Add exactly N tracks [Not connected yet]</option>
         <option disabled>One bridge per transition [Not connected yet]</option>
         <option disabled>Target length / double length [Not connected yet]</option>
       </select>
     </div>
+  </fieldset>
+
+  <fieldset class="bea-section">
+    <legend>Automatic extension</legend>
+    <p class="bea-note">Used only by Extend automatically. It may legitimately add zero tracks when no transition exceeds the trigger or no candidate improves it.</p>
+    <div class="bea-row">
+      <label for="max_added_tracks">Maximum additional tracks</label>
+      <input type="number" min="0" max="100" name="max_added_tracks" id="max_added_tracks" value="[% blissemall_form.max_added_tracks %]" required>
+      <span class="bea-disabled">Plugin default: [% blissemall_defaults.max_added_tracks %]</span>
+    </div>
+    <div class="bea-row">
+      <label for="trigger_percent">Bridge trigger percentile (%)</label>
+      <input type="number" min="0" max="100" name="trigger_percent" id="trigger_percent" value="[% blissemall_form.trigger_percent %]" required>
+      <span class="bea-disabled">Plugin default: [% blissemall_defaults.trigger_percent %]</span>
+    </div>
+    <p class="bea-note">Only transitions above this percentile are considered. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm/ListenBrainz evidence is not connected yet; this slice falls back to local Bliss evidence.</p>
   </fieldset>
 
   <fieldset class="bea-section">
@@ -144,12 +160,46 @@
     [% ELSIF blissemall_job.state == 'failed' %]
       <div class="bea-error"><b>[% blissemall_job.error_code | html %]</b>: [% blissemall_job.error | html %]</div>
     [% ELSE %]
-      <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Objective [% blissemall_job.objective %]; worst transition [% blissemall_job.worst_transition %].</div>
+      [% IF blissemall_job.automatic_extension %]
+        <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Added [% blissemall_job.added_track_count %] of at most [% blissemall_job.max_added_tracks %] tracks; final size [% blissemall_job.final_track_count %]. Base-route objective [% blissemall_job.base_route_objective %].</div>
+        <p class="bea-note">Trigger: above [% blissemall_job.trigger_percent %]th contextual percentile. Evidence mode: [% blissemall_job.semantic_mode | html %].</p>
+      [% ELSE %]
+        <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Objective [% blissemall_job.objective %]; worst transition [% blissemall_job.worst_transition %].</div>
+      [% END %]
       <ol class="bea-order">
         [% FOREACH track = blissemall_job.order %]
-          <li>[% track.artist | html %] - [% track.title | html %] <span class="bea-disabled">(was #[% track.original_position %])</span></li>
+          <li>[% track.artist | html %] - [% track.title | html %]
+            [% IF track.bridge %]<b>[Added bridge]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
+          </li>
         [% END %]
       </ol>
+      [% IF blissemall_job.automatic_extension %]
+        <h4>Additions and reasons</h4>
+        [% IF blissemall_job.added_track_count %]
+          <ul>
+            [% FOREACH addition = blissemall_job.additions %]
+              <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
+                "[% addition.left | html %]" and "[% addition.right | html %]";
+                direct gap [% addition.direct_percent %]th percentile;
+                evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]).
+              </li>
+            [% END %]
+          </ul>
+        [% ELSE %]
+          <p>No bridge met the trigger, acoustic-improvement, uniqueness, and repeat constraints. The optimized base order is still a valid result.</p>
+        [% END %]
+        <details>
+          <summary>Transition decisions</summary>
+          <ul>
+            [% FOREACH decision = blissemall_job.gap_decisions %]
+              <li>"[% decision.left | html %]" to "[% decision.right | html %]":
+                [% decision.reason | html %] at [% decision.direct_percent %]th percentile
+                ([% decision.semantic_pool | html %]).
+              </li>
+            [% END %]
+          </ul>
+        </details>
+      [% END %]
       [% IF blissemall_job.write_state == 'completed' %]
         <div class="bea-ok">
           Created and verified saved playlist
@@ -178,7 +228,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>Bridge insertion modes, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite.</p>
+  <p>Exact-count and other bridge modes, Preserve order and fill gaps, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

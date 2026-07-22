@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.4.0` UX shell. The shell is
+model and the exact boundary of the current `0.5.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -13,7 +13,7 @@ The UI uses three explicit states:
   start a job or mutate data.
 
 Items marked **Not connected yet** are informational. They must not silently
-fall through to the working reorder-only mode.
+fall through to either working mode.
 
 ## Entry points
 
@@ -30,10 +30,10 @@ fall through to the working reorder-only mode.
 | Step or option | Status | Contract |
 | --- | --- | --- |
 | Select saved playlist | Working | Lists LMS saved playlists with at least two tracks. |
-| Optimize order | Working for Reorder only | Original tracks may move. |
+| Optimize order | Working for Reorder only and Extend automatically | Original tracks may move. |
 | Preserve order and fill gaps | Not connected yet | Original sequence remains fixed; additions may occupy gaps only. |
 | Reorder only | Working | Uses every original track exactly once and inserts none; a reviewed result can be saved as a new copy. |
-| Extend automatically | Not connected yet | Adds up to the configured budget only where a bridge materially helps. |
+| Extend automatically | Working | Reorders the source, then adds up to the per-job budget only where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass. It may add zero. |
 | Add exactly N tracks | Not connected yet | Adds exactly a user-entered number of unique eligible tracks. |
 | One bridge per transition | Not connected yet | Adds one track in each of the `S - 1` original transitions, yielding `2S - 1` tracks. |
 | Target length | Not connected yet | Adds tracks until the exact total `T >= S` is reached. |
@@ -43,13 +43,16 @@ fall through to the working reorder-only mode.
 | Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Route-search restarts | Working, per job | Validated as 0-500 and passed to this job's native request. |
+| Automatic bridge budget | Working, per job | Validated as 0-100; limits successful additions rather than candidate analysis. |
+| Bridge trigger percentile | Working, per job | Validated as 0-100; only direct gaps strictly above this frozen contextual percentile are eligible. |
 | Static weighted / random-forest strategy | Not connected yet | Visible but disabled because native route currently accepts Adaptive only. |
-| Review | Working for reorder-only | The submitted form and result retain the job-specific values. |
-| Run preview | Working for reorder-only | Launches the native optimizer asynchronously and never writes a playlist. |
+| Review | Working for both connected modes | The submitted form and result retain the job-specific values. |
+| Run preview | Working for both connected modes | Launches the native optimizer asynchronously and never writes a playlist. |
 
-`S` is the original source-track count. Future bridge discovery will use local
-Bliss evidence first. Similar-artist evidence local to transition `A -> B` will
-be preferred; evidence from the full source artist pool is only a fallback.
+`S` is the original source-track count. Current automatic bridge discovery uses
+local Bliss evidence. Once optional semantic providers are connected,
+similar-artist evidence local to transition `A -> B` will be preferred;
+evidence from the full source artist pool is only a fallback.
 
 ## Result and job UX
 
@@ -61,8 +64,8 @@ be preferred; evidence from the full source artist pool is only a fallback.
 | Cancel preview | Not connected yet | No cancellable native-process handle is exposed. |
 | Result summary | Working | Shows selected strategy, objective, worst transition, and constraint validation. |
 | Proposed order | Working | Shows every original track and its original position. |
-| Additions and reasons | Shell only | Correctly reports no additions for Reorder only; future bridge provenance is not connected. |
-| Transition summary | Partial | Aggregate objective/worst transition are real; per-leg drill-down is not connected. |
+| Additions and reasons | Working for automatic extension | Labels every added local track, its original endpoints, direct-gap percentile, and evidence tier/pool; zero-addition results are explicit. |
+| Transition summary | Partial | Aggregate reorder diagnostics are real; automatic extension shows one decision/reason per original gap, while a general per-leg drill-down remains open. |
 | Warnings | Partial | Repeat validation and read-only safety are real; provider warnings await providers. |
 | Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
 | Create optimized copy | Working | Separate post-Preview action writes and verifies a new LMS playlist; name collisions fail closed. |
@@ -77,13 +80,12 @@ submitted values belong to that job only and never update BlissMixer's global
 preferences. The current bundled optimizer supports only Adaptive routing and
 requires a learned matrix; unsupported strategies are disabled and labeled.
 
-**Route search restarts** changes execution and **Normal output suffix** supplies
-the default create-copy name. The following settings are persisted to establish
-their future contract but are labeled
+**Route search restarts**, both output suffixes, automatic bridge budget, and
+automatic trigger percentile supply defaults for new jobs. Every value that
+affects optimization is copied into and may be overridden by the job. The
+following settings are persisted to establish their future contract but are labeled
 **not connected yet** on the settings page:
 
-- extended output suffix;
-- automatic bridge budget;
 - Last.fm and ListenBrainz enablement;
 - semantic cache freshness and stale-offline lifetime; and
 - persistent report retention.
@@ -94,15 +96,18 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.4.0` keeps Preview read-only and permits only an explicit,
+Version `0.5.0` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, atomically renames
 it, creates the LMS catalog object, and compares both catalog and final-file
 order with the optimizer result. It rejects an existing name without touching
 it and removes only artifacts created by the failed attempt. Lyrion's playlist
 object is updated directly, so this workflow does not depend on a library scan.
-Source overwrite, extension modes, and every other shell-only action remain
-unreachable.
+Source overwrite, other extension modes, and every other shell-only action remain
+unreachable. Automatic extension additionally requires the native source
+membership proofs, an unchanged database file identity during the job, exact
+source subsequence preservation, unique final membership, and successful
+read-only resolution of every proposed bridge to a local LMS track.
 
 ## piCorePlayer development deployment
 

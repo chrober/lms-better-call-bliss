@@ -22,6 +22,7 @@ sub prefs {
         extended_suffix
         restart_count
         auto_bridge_budget
+        auto_trigger_percent
         report_retention_days
         semantic_cache_days
         semantic_stale_days
@@ -43,6 +44,7 @@ sub handler {
     my ($class, $client, $params) = @_;
     _clamp($params, 'pref_restart_count', 10, 500);
     _clamp($params, 'pref_auto_bridge_budget', 0, 100);
+    _clamp($params, 'pref_auto_trigger_percent', 0, 100);
     _clamp($params, 'pref_report_retention_days', 1, 3650);
     _clamp($params, 'pref_semantic_cache_days', 1, 365);
     _clamp($params, 'pref_semantic_stale_days', 1, 3650);

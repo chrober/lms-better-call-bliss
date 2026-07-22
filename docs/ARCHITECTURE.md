@@ -27,8 +27,8 @@ the feature without affecting BlissMixer.
 
 ## First writable vertical slice
 
-The connected live milestone supports only **Reorder only** through Preview and
-explicit **Create optimized copy**.
+The connected live milestone supports **Reorder only** and **Extend
+automatically** through Preview and explicit **Create optimized copy**.
 It resolves saved playlists through LMS objects, initializes Adaptive and repeat
 values from BlissMixer, accepts validated per-job overrides, writes a private
 versioned request in the LMS cache, and runs the bundled ARM64 optimizer with an
@@ -40,11 +40,16 @@ carry a portable set of checkbox, dropdown, and numeric form controls. Playlist
 persistence is a separate post-Preview action. It resolves the result back to
 LMS track objects, uses Lyrion's core M3U formatter, verifies the temporary
 playlist, atomically publishes a new file, creates the catalog object, and
-verifies catalog and final-file order. A name collision fails closed; source
+verifies catalog and final-file order. Automatic extension invokes the native
+`bridge` command with a frozen empty semantic graph until optional providers
+are connected. It validates native membership proofs, resolves opaque
+`bliss-row-N` identities read-only against the unchanged `bliss.db`, maps
+them to local LMS tracks including CUE entries, and freezes the resolved URLs
+in the in-memory job before persistence. A name collision fails closed; source
 playlist overwrite is not reachable.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
-currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.4.0`
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.5.0`
 therefore treats the learned matrix as a required core capability and reports
 its absence in System status. Making it optional requires an implemented and
 tested native fallback; the plugin must not claim one based only on the design

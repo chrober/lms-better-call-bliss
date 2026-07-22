@@ -3,7 +3,7 @@
   <id>5ff183ce-3d88-4aa1-8fa5-28fed965af76</id>
   <name>PLUGIN_BLISSEMALL_NAME</name>
   <module>Plugins::BlissEmAll::Plugin</module>
-  <version>0.4.0</version>
+  <version>0.5.0</version>
   <description>PLUGIN_BLISSEMALL_DESC</description>
   <creator>Christian Robert</creator>
   <defaultState>

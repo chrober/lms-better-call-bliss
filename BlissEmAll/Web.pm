@@ -50,7 +50,7 @@ sub _form_from_params {
     for my $name (qw(
         playlist_id ordering_policy extension_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
-        output_mode output_name
+        max_added_tracks trigger_percent output_mode output_name
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }
@@ -67,6 +67,7 @@ sub _result_view {
         playlist_title => $job->{playlist_title},
         output_mode => $job->{options}->{output_mode},
         output_name => $job->{options}->{output_name},
+        extension_mode => $job->{options}->{extension_mode},
         write_state => $job->{write_state},
         write_stage => $job->{write_stage},
         write_error_code => $job->{write_error_code},
@@ -79,22 +80,75 @@ sub _result_view {
     } elsif ($job->{state} eq 'completed') {
         my $artifact = $job->{artifact};
         my $selected = $artifact->{selected_strategy} || 'adaptive';
-        my $candidate = $selected eq 'adaptive-arc'
-            ? $artifact->{arc} : $artifact->{primary};
         $view->{selected_strategy} = $selected;
-        $view->{objective} = sprintf('%.3f', $candidate->{objective});
-        $view->{worst_transition} = sprintf(
-            '%.3f', $candidate->{worst_transition},
-        );
+        if ($job->{options}->{extension_mode} eq 'automatic') {
+            my $preview = $artifact->{selection_preview} || {};
+            $view->{automatic_extension} = 1;
+            $view->{base_route_objective} = sprintf(
+                '%.3f', $artifact->{selected_route_objective},
+            );
+            $view->{added_track_count} = 0 + ($preview->{added_track_count} || 0);
+            $view->{final_track_count} = 0 + ($job->{final_track_count} || 0);
+            $view->{max_added_tracks} = 0 + ($preview->{max_added_tracks} || 0);
+            $view->{trigger_percent} = int(
+                100 * ($artifact->{trigger_percentile} || 0) + 0.5
+            );
+            $view->{semantic_mode} = $artifact->{semantic_mode};
+            my @additions;
+            for my $addition (@{$job->{additions} || []}) {
+                my $label = $job->{labels}->{$addition->{track_id}} || {};
+                my $left = $job->{labels}->{$addition->{left_track_id}} || {};
+                my $right = $job->{labels}->{$addition->{right_track_id}} || {};
+                push @additions, {
+                    artist => $label->{artist} || 'Unknown Artist',
+                    title => $label->{title} || $addition->{track_id},
+                    left => $left->{title} || $addition->{left_track_id},
+                    right => $right->{title} || $addition->{right_track_id},
+                    direct_percent => sprintf(
+                        '%.1f', 100 * ($addition->{direct_percentile} || 0),
+                    ),
+                    semantic_pool => $addition->{semantic_pool},
+                    semantic_tier => $addition->{semantic_tier},
+                };
+            }
+            $view->{additions} = \@additions;
+
+            my @decisions;
+            for my $decision (@{$preview->{decisions} || []}) {
+                my $left = $job->{labels}->{$decision->{left_track_id}} || {};
+                my $right = $job->{labels}->{$decision->{right_track_id}} || {};
+                my $reason = $decision->{reason} || 'unknown';
+                $reason =~ s/_/ /g;
+                push @decisions, {
+                    left => $left->{title} || $decision->{left_track_id},
+                    right => $right->{title} || $decision->{right_track_id},
+                    direct_percent => sprintf(
+                        '%.1f', 100 * ($decision->{direct_percentile} || 0),
+                    ),
+                    reason => $reason,
+                    semantic_pool => $decision->{semantic_pool} || 'bliss_only',
+                };
+            }
+            $view->{gap_decisions} = \@decisions;
+        } else {
+            my $candidate = $selected eq 'adaptive-arc'
+                ? $artifact->{arc} : $artifact->{primary};
+            $view->{objective} = sprintf('%.3f', $candidate->{objective});
+            $view->{worst_transition} = sprintf(
+                '%.3f', $candidate->{worst_transition},
+            );
+        }
         my @order;
         my $position = 0;
-        for my $id (@{$artifact->{selected_track_ids} || []}) {
+        my %bridge = map { $_ => 1 } @{$job->{bridge_track_ids} || []};
+        for my $id (@{$job->{final_track_ids} || []}) {
             my $label = $job->{labels}->{$id} || {};
             push @order, {
                 position => ++$position,
                 artist => $label->{artist} || 'Unknown Artist',
                 title => $label->{title} || $id,
                 original_position => $job->{original_positions}->{$id} || 0,
+                bridge => $bridge{$id} ? 1 : 0,
             };
         }
         $view->{order} = \@order;
@@ -115,7 +169,9 @@ sub handler {
         && !length($form->{output_name} || '')) {
         for my $playlist (@$playlists) {
             if ($playlist->{id} == $form->{playlist_id}) {
-                my $suffix = $plugin_prefs->get('output_suffix') || 'Optimized';
+                my $suffix = $form->{extension_mode} eq 'automatic'
+                    ? ($plugin_prefs->get('extended_suffix') || 'Extended')
+                    : ($plugin_prefs->get('output_suffix') || 'Optimized');
                 $form->{output_name} = $playlist->{title} . ' ' . $suffix;
                 last;
             }
