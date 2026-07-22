@@ -3,11 +3,9 @@ package Plugins::BlissEmAll::RequestBuilder;
 use strict;
 use JSON::XS ();
 use Slim::Schema;
-use Slim::Utils::Prefs;
 use Slim::Utils::Unicode;
 use Plugins::BlissEmAll::BlissCompatibility;
-
-my $plugin_prefs = preferences('plugin.blissemall');
+use Plugins::BlissEmAll::JobOptions;
 
 sub _database_file {
     my ($track, $roots) = @_;
@@ -30,9 +28,12 @@ sub _database_file {
 }
 
 sub build_reorder_request {
-    my ($playlist_id, $job_id, $semantic_path) = @_;
+    my ($playlist_id, $job_id, $semantic_path, $job_input) = @_;
     my $capability = Plugins::BlissEmAll::BlissCompatibility::snapshot();
     die join('; ', @{$capability->{problems}}) unless $capability->{ready};
+    my $options = Plugins::BlissEmAll::JobOptions::normalize(
+        $capability, $job_input,
+    );
 
     my $playlist = Slim::Schema->find('Playlist', $playlist_id);
     die "Saved playlist not found" unless $playlist && $playlist->can('tracks');
@@ -74,31 +75,34 @@ sub build_reorder_request {
         artifacts => $artifacts,
         source_tracks => \@source_tracks,
         scoring => {
-            algorithm => 'adaptive',
+            algorithm => $options->{algorithm},
             adaptive => {
-                seed_limit => $capability->{seed_limit},
-                learned_percent => $capability->{learned_percent},
+                seed_limit => $options->{seed_limit},
+                learned_percent => $options->{learned_percent},
             },
             captured_blissmixer_preferences => {
                 use_adaptive_weights => 1,
                 num_seed_tracks => $capability->{seed_limit},
                 learned_blend => $capability->{learned_percent},
+                no_repeat_artist => $capability->{artist_window},
+                no_repeat_album => $capability->{album_window},
+                no_repeat_track => $capability->{track_window},
             },
         },
         route => {
-            ordering_policy => 'optimize_order',
+            ordering_policy => $options->{ordering_policy},
             objective => 'bottleneck_then_sum',
             search => {
                 deterministic_seed => 20260721,
-                restart_count => int($plugin_prefs->get('restart_count') || 50),
+                restart_count => $options->{restart_count},
             },
         },
         repeat_windows => {
-            artist => $capability->{artist_window},
-            album => $capability->{album_window},
-            track => $capability->{track_window},
+            artist => $options->{artist_window},
+            album => $options->{album_window},
+            track => $options->{track_window},
         },
-        extension => {mode => 'none'},
+        extension => {mode => $options->{extension_mode}},
         semantic_evidence => {
             path => $semantic_path,
             schema_identity => 'semantic-evidence-v1',
@@ -115,6 +119,7 @@ sub build_reorder_request {
         labels => \%labels,
         original_positions => \%original_positions,
         capability => $capability,
+        options => $options,
     };
 }
 

@@ -35,7 +35,7 @@ sub playlistInfoHandler {
     return unless $playlist && $playlist->can('tracks');
     return {
         name => "Bliss 'Em All... [shortcut not connected yet]",
-        description => "Use Applications > Bliss 'Em All to select this playlist manually.",
+        description => "Use Extras > Bliss 'Em All to select this playlist manually.",
         type => 'text',
         favorites => 0,
     };

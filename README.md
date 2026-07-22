@@ -8,19 +8,21 @@ the learned matrix captured by the compatible BlissMixer fork.
 
 The current development milestone is installable on ARM64 LMS systems. It
 exposes the complete planned UX shell while connecting one safe vertical slice:
-saved-playlist selection, **Optimize order > Reorder only**, inherited Adaptive
-settings, background native preview, and result review. Every future-only item
+saved-playlist selection, **Optimize order > Reorder only**, per-job Adaptive
+and repeat settings initialized from BlissMixer defaults, background native
+preview, and result review. Every future-only item
 is visibly marked **Not connected yet** and cannot start a job. See
 [`docs/UX_STATUS.md`](docs/UX_STATUS.md) for the feature matrix.
 
 ## Try the live preview
 
 After installing the `BlissEmAll` directory and restarting LMS, open
-**Applications / My Apps > Bliss 'Em All**. Check **System status**, choose
-**Optimize a saved playlist**, select **Optimize order**, then **Reorder only**,
-review the inherited BlissMixer settings, and select **Run preview**. Completed jobs appear under
-**Recent results**, including the selected strategy, objective, worst
-transition, repeat-window validation, and numbered proposed order.
+**Extras > Bliss 'Em All**. Select a saved playlist, adjust its per-job Adaptive
+parameters and repeat windows, choose the future output disposition, and select
+**Run read-only preview**. Use a zero artist or album look-back to disable that
+constraint for a single-artist or single-album collection. The result area
+shows the selected strategy, objective, worst transition, and numbered proposed
+order.
 
 The action is read-only. Requests, native output, and stderr are kept beneath
 the LMS cache in `blissemall/jobs`; no playlist file is written.

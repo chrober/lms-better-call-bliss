@@ -1,10 +1,12 @@
 [% PROCESS settings/header.html %]
 
 [% WRAPPER settingSection %]
-  <h3>Working settings</h3>
+  <h3>Job defaults</h3>
   <p>
-    Bliss scoring strategy, dynamic weighting, learned-matrix blend, and repeat
-    windows are inherited read-only from BlissMixer for every preview.
+    Bliss scoring and repeat values are initialized from BlissMixer whenever
+    the Extras job editor opens. They can then be overridden for one job without
+    changing either plugin's global settings. The value below supplies the
+    default route-search effort for new jobs.
   </p>
 
   [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_RESTART_COUNT" desc="PLUGIN_BLISSEMALL_RESTART_COUNT_DESC" %]

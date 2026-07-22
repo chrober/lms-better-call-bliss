@@ -28,15 +28,18 @@ the feature without affecting BlissMixer.
 ## First vertical slice
 
 The first live milestone supports only **Reorder only** and stops at Preview.
-It resolves saved playlists through LMS objects, captures BlissMixer's Adaptive
-seed, learned blend, and repeat windows, writes a private versioned request in
-the LMS cache, and runs the bundled ARM64 optimizer with an argument array.
-The Applications UI renders the job state, selected strategy, objective, worst
-transition, repeat validation, and numbered proposed order. Playlist
+It resolves saved playlists through LMS objects, initializes Adaptive and repeat
+values from BlissMixer, accepts validated per-job overrides, writes a private
+versioned request in the LMS cache, and runs the bundled ARM64 optimizer with an
+argument array. The Extras web UI renders the job state, selected strategy,
+objective, worst transition, repeat validation, and numbered proposed order.
+The rich form lives under Extras because the generic Applications/OPML adapter
+supports hierarchical choices and one search-style text prompt, but does not
+carry a portable set of checkbox, dropdown, and numeric form controls. Playlist
 persistence remains disabled until this path is proven on a real server.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
-currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.2.0`
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.3.0`
 therefore treats the learned matrix as a required core capability and reports
 its absence in System status. Making it optional requires an implemented and
 tested native fallback; the plugin must not claim one based only on the design

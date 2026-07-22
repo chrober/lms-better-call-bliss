@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.2.0` UX shell. The shell is
+model and the exact boundary of the current `0.3.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -19,10 +19,11 @@ fall through to the working reorder-only mode.
 
 | Entry point | Status | Current behavior |
 | --- | --- | --- |
-| Applications / My Apps > Bliss 'Em All | Working | Opens the complete UX shell. |
-| Saved-playlist context > Bliss 'Em All... | Partial | Visible informational shortcut; directs the user to Applications. |
+| Extras > Bliss 'Em All | Working | Opens the rich per-job editor and result area. |
+| Applications / My Apps > Bliss 'Em All | Removed | The OPML adapter cannot provide the required portable multi-field form. |
+| Saved-playlist context > Bliss 'Em All... | Partial | Visible informational shortcut; directs the user to Extras. |
 | Track context > Bliss me there... | Not connected yet | Describes the planned route-to-track capability; starts no job. |
-| Full EN/DE menu localization | Not connected yet | The Applications shell is English-first; settings labels have EN/DE strings. |
+| Full EN/DE menu localization | Not connected yet | The Extras shell is English-first; settings labels have EN/DE strings. |
 
 ## Optimization wizard
 
@@ -38,7 +39,12 @@ fall through to the working reorder-only mode.
 | Target length | Not connected yet | Adds tracks until the exact total `T >= S` is reached. |
 | Double length | Not connected yet | Adds exactly `S` tracks, yielding `2S` tracks. |
 | Numeric editor for N/T | Not connected yet | Will validate values before review. |
-| Review | Working for reorder-only | Shows inherited scoring, repeat windows, restarts, providers, and size. |
+| Adaptive context tracks | Working, per job | Initialized from BlissMixer and passed to this job's native request. |
+| Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. |
+| Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
+| Route-search restarts | Working, per job | Validated as 0-500 and passed to this job's native request. |
+| Static weighted / random-forest strategy | Not connected yet | Visible but disabled because native route currently accepts Adaptive only. |
+| Review | Working for reorder-only | The submitted form and result retain the job-specific values. |
 | Run preview | Working for reorder-only | Launches the native optimizer asynchronously and never writes a playlist. |
 
 `S` is the original source-track count. Future bridge discovery will use local
@@ -49,9 +55,9 @@ be preferred; evidence from the full source artist pool is only a fallback.
 
 | Screen or action | Status | Current behavior |
 | --- | --- | --- |
-| Active previews | Partial | Real running jobs, retained only in LMS process memory. |
-| Recent results | Partial | Real completed/failed jobs, lost on LMS restart. |
-| Refresh status | Working | Re-reads the selected in-memory job. |
+| Active preview | Partial | Real running job, retained only in LMS process memory. |
+| Result | Partial | Real completed/failed job, lost on LMS restart. |
+| Refresh result | Working | Re-reads the selected in-memory job. |
 | Cancel preview | Not connected yet | No cancellable native-process handle is exposed. |
 | Result summary | Working | Shows selected strategy, objective, worst transition, and constraint validation. |
 | Proposed order | Working | Shows every original track and its original position. |
@@ -59,16 +65,16 @@ be preferred; evidence from the full source artist pool is only a fallback.
 | Transition summary | Partial | Aggregate objective/worst transition are real; per-leg drill-down is not connected. |
 | Warnings | Partial | Repeat validation and read-only safety are real; provider warnings await providers. |
 | Full report | Partial | In-memory artifact identity is shown; persistence and download are not connected. |
-| Create optimized playlist | Not connected yet | No M3U or LMS playlist mutation occurs. |
+| Create optimized copy / overwrite source choice | Partial | Captured per job, but no M3U or LMS playlist mutation occurs yet. |
 | Change options and rerun | Not connected yet | Draft restoration is not implemented. |
 | Discard result | Not connected yet | Session results expire naturally on LMS restart. |
 
 ## Settings
 
-The plugin inherits BlissMixer's scoring algorithm, dynamic weighting inputs,
-seed limit, learned percentage, and artist/album/track look-back windows. The
-current bundled optimizer requires a learned matrix; the System status screen
-reports it as a required capability instead of claiming a fallback exists.
+The Extras editor initializes scoring and repeat fields from BlissMixer. The
+submitted values belong to that job only and never update BlissMixer's global
+preferences. The current bundled optimizer supports only Adaptive routing and
+requires a learned matrix; unsupported strategies are disabled and labeled.
 
 Only **Route search restarts** currently changes execution. The following
 settings are persisted to establish their future contract but are labeled
@@ -86,7 +92,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.2.0` is still a read-only preview milestone. No visible shell-only
+Version `0.3.0` is still a read-only preview milestone. No visible shell-only
 item starts an optimizer job, and no path creates, replaces, renames, or edits a
 playlist. Playlist persistence will remain disabled until atomic writing, exact
 LMS M3U formatting, scanner refresh/verification, collision handling, and a

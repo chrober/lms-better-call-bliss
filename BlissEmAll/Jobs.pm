@@ -37,8 +37,8 @@ sub _repeat_capacity_hint {
     my $job = shift;
     my $total = $job->{track_count};
     for my $rule (
-        ['artist', $job->{capability}->{artist_window}],
-        ['album', $job->{capability}->{album_window}],
+        ['artist', $job->{options}->{artist_window}],
+        ['album', $job->{options}->{album_window}],
     ) {
         my ($field, $window) = @$rule;
         next unless $window > 0;
@@ -63,7 +63,7 @@ sub _repeat_capacity_hint {
 }
 
 sub start_reorder_preview {
-    my ($playlist_id) = @_;
+    my ($playlist_id, $options) = @_;
     die "Optimizer binary is unavailable"
         unless $optimizer_binary && -x $optimizer_binary;
 
@@ -79,7 +79,7 @@ sub start_reorder_preview {
     });
 
     my $built = Plugins::BlissEmAll::RequestBuilder::build_reorder_request(
-        $playlist_id, $job_id, $semantic_path,
+        $playlist_id, $job_id, $semantic_path, $options,
     );
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
@@ -124,23 +124,36 @@ sub start_reorder_preview {
         labels => $built->{labels},
         original_positions => $built->{original_positions},
         capability => $built->{capability},
+        options => $built->{options},
         restart_count => $built->{request}->{route}->{search}->{restart_count},
         process => $process,
         result_path => $result_path,
         stderr_path => $stderr_path,
     };
-    $log->info("job=$job_id stage=Optimizing playlist_id=$playlist_id");
+    my $effective = $built->{options};
+    $log->info(
+        "job=$job_id stage=Optimizing playlist_id=$playlist_id"
+        . " algorithm=$effective->{algorithm}"
+        . " seed_limit=$effective->{seed_limit}"
+        . " learned_percent=$effective->{learned_percent}"
+        . " repeat_artist=$effective->{artist_window}"
+        . " repeat_album=$effective->{album_window}"
+        . " repeat_track=$effective->{track_window}"
+        . " restarts=$effective->{restart_count}"
+        . " output_mode=$effective->{output_mode}"
+    );
     if (main::DEBUGLOG && $log->is_debug) {
         my $capability = $built->{capability};
         $log->debug(
             "job=$job_id request tracks=" . scalar(@{$built->{request}->{source_tracks}})
-            . " algorithm=$capability->{algorithm}"
-            . " seed_limit=$capability->{seed_limit}"
-            . " learned_percent=$capability->{learned_percent}"
+            . " algorithm=$effective->{algorithm}"
+            . " seed_limit=$effective->{seed_limit}"
+            . " learned_percent=$effective->{learned_percent}"
             . " matrix=" . ($capability->{matrix_available} ? 'present' : 'absent')
-            . " repeat_artist=$capability->{artist_window}"
-            . " repeat_album=$capability->{album_window}"
-            . " repeat_track=$capability->{track_window}"
+            . " repeat_artist=$effective->{artist_window}"
+            . " repeat_album=$effective->{album_window}"
+            . " repeat_track=$effective->{track_window}"
+            . " output_mode=$effective->{output_mode}"
         );
     }
     Slim::Utils::Timers::setTimer(undef, time() + 0.5, sub { _poll($job_id) });

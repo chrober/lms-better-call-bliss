@@ -43,22 +43,50 @@ the UI reports the occurrence count, required separators, available separators,
 and that fixed-set reordering cannot repair the conflict. It never silently
 weakens inherited repeat windows.
 
+## Per-job Extras editor verification
+
+Version `0.3.0` was deployed and exercised on the same ARM64 server on
+2026-07-22. LMS registered the rich editor under Extras and no longer returned
+Bliss 'Em All in the Applications query.
+
+The 13-track, single-artist Soulfly playlist completed successfully after the
+job set artist and album look-back windows to zero. The same submitted job also
+overrode Adaptive context tracks to 2, learned blend to 33%, track look-back to
+100, and route-search restarts to 12. Inspection of the private
+`request.json` confirmed those exact values; the completed native result used
+Adaptive routing with objective 4.924 and worst transition 0.548.
+
+The form captured the requested create-copy output name while remaining
+read-only. No playlist writer is reachable in this milestone. This proves that
+BlissMixer preferences are defaults rather than immutable execution settings,
+and that disabling an impossible artist constraint is an explicit job choice
+rather than an automatic weakening by the optimizer.
+
+A second Soulfly preview selected **Overwrite source** with different per-job
+values. The result page retained that choice and displayed **Not executed**;
+the INFO start record included the effective algorithm, seed/blend, repeat
+windows, restarts, and output mode. Its request artifact separately retained
+the BlissMixer defaults (seed 3, learned 20%, artist window 5) and the effective
+job values (seed 4, learned 25%, artist window 0).
+
 ## Current UX boundary
 
-The `0.2.0` plugin exposes the complete planned UX shell. Only **Optimize order
-> Reorder only > Run preview** is executable. Ordering/extension alternatives,
-numeric inputs, bridge discovery, semantic providers, cancellation, durable
-history, report export, and playlist creation are each visibly marked **Not
-connected yet**. Informational playlist and track context entries are also
-registered, but do not start actions.
+The original `0.2.0` live run used Applications/My Apps. Source version `0.3.0`
+moves the editor to Extras after verifying that the generic Applications/OPML
+adapter cannot carry the required portable multi-field form. **Optimize order >
+Reorder only > Run read-only preview** remains executable. Adaptive parameters,
+repeat windows, search restarts, and output disposition are now job fields;
+BlissMixer values are defaults only. Ordering/extension alternatives, static or
+forest routing, bridge discovery, semantic providers, cancellation, durable
+history, report export, and playlist persistence remain visibly marked **Not
+connected yet**.
 
-A Run action is terminal so OPML navigation cannot replay it; users return to
-**Active previews** or **Recent results** for safe, read-only refreshes. See
+A submitted preview renders a refresh link using its session job ID. See
 [`UX_STATUS.md`](UX_STATUS.md) for the screen-by-screen feature matrix.
 
 The full-shell deployment also established the piCorePlayer development path:
 manual plugins belong beneath `<LMS cache>/Plugins`, while
 `<LMS cache>/InstalledPlugins/Plugins` is extension-manager-owned and may purge
-hand-copied folders during restart. The live `0.2.0` shell is therefore staged
+hand-copied folders during restart. The development shell is therefore staged
 at `Cache/Plugins/BlissEmAll` until the plugin ZIP and extension repository are
 published.

@@ -1,0 +1,162 @@
+[%- pagetitle = 'PLUGIN_BLISSEMALL_NAME' | string; pageicon = 'PLUGIN_BLISSEMALL_NAME' -%]
+[%- pwd_list = BLOCK -%]/ [% 'PLUGIN_BLISSEMALL_NAME' | string %][% END -%]
+[% PROCESS pageheader.html %]
+
+<style>
+  .bea-section { margin: 1.2em 0; padding: 1em; border: 1px solid #aaa; }
+  .bea-section legend { font-weight: bold; }
+  .bea-row { margin: .65em 0; }
+  .bea-row label { display: inline-block; min-width: 19em; }
+  .bea-note { color: #666; margin: .35em 0 .8em 0; }
+  .bea-warning { padding: .7em; border-left: 4px solid #c80; background: #fff8df; }
+  .bea-error { padding: .7em; border-left: 4px solid #b00; background: #fee; }
+  .bea-ok { padding: .7em; border-left: 4px solid #080; background: #efe; }
+  .bea-disabled { color: #777; }
+  .bea-order { margin-top: .8em; }
+</style>
+
+<h2>Bliss 'Em All</h2>
+<p>
+  Configure one optimization job. Values initially come from BlissMixer, but
+  edits apply only to this job and never change BlissMixer's global settings.
+</p>
+
+[% IF blissemall_error %]
+  <div class="bea-error"><b>Preview could not start:</b> [% blissemall_error | html %]</div>
+[% END %]
+
+[% IF !blissemall_capability.ready %]
+  <div class="bea-warning">
+    <b>Preview unavailable.</b>
+    <ul>[% FOREACH problem = blissemall_capability.problems %]<li>[% problem | html %]</li>[% END %]</ul>
+  </div>
+[% END %]
+
+<form action="[% webroot %]plugins/BlissEmAll/index.html" method="post">
+  <fieldset class="bea-section">
+    <legend>Source and mode</legend>
+    <div class="bea-row">
+      <label for="playlist_id">Saved playlist</label>
+      <select name="playlist_id" id="playlist_id" required>
+        <option value="">Choose a playlist...</option>
+        [% FOREACH playlist = blissemall_playlists %]
+          <option value="[% playlist.id %]"[% IF blissemall_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
+        [% END %]
+      </select>
+    </div>
+    <div class="bea-row">
+      <label for="ordering_policy">Ordering</label>
+      <select name="ordering_policy" id="ordering_policy">
+        <option value="optimize_order" selected>Optimize order [Working]</option>
+        <option value="preserve_order" disabled>Preserve order and fill gaps [Not connected yet]</option>
+      </select>
+    </div>
+    <div class="bea-row">
+      <label for="extension_mode">Extension</label>
+      <select name="extension_mode" id="extension_mode">
+        <option value="none" selected>Reorder only [Working]</option>
+        <option disabled>Extend automatically [Not connected yet]</option>
+        <option disabled>Add exactly N tracks [Not connected yet]</option>
+        <option disabled>One bridge per transition [Not connected yet]</option>
+        <option disabled>Target length / double length [Not connected yet]</option>
+      </select>
+    </div>
+  </fieldset>
+
+  <fieldset class="bea-section">
+    <legend>Mixing strategy</legend>
+    <div class="bea-row">
+      <label for="algorithm">Strategy</label>
+      <select name="algorithm" id="algorithm">
+        <option value="adaptive" selected>Adaptive dynamic weighting [Working]</option>
+        <option disabled>Static weighted distance [Native route not connected yet]</option>
+        <option disabled>Random forest [Native route not connected yet]</option>
+      </select>
+    </div>
+    <div class="bea-row">
+      <label for="seed_limit">Adaptive context tracks</label>
+      <input type="number" min="1" max="50" name="seed_limit" id="seed_limit" value="[% blissemall_form.seed_limit %]" required>
+      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.seed_limit %]</span>
+    </div>
+    <div class="bea-row">
+      <label for="learned_percent">Learned-matrix blend (%)</label>
+      <input type="number" min="0" max="100" name="learned_percent" id="learned_percent" value="[% blissemall_form.learned_percent %]" required>
+      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.learned_percent %]</span>
+    </div>
+    <p class="bea-note">These values are passed to the optimizer request for this preview.</p>
+  </fieldset>
+
+  <fieldset class="bea-section">
+    <legend>Repeat constraints</legend>
+    <p class="bea-note">Use 0 to disable a constraint. For a single-artist playlist, set Artist look-back to 0.</p>
+    <div class="bea-row">
+      <label for="artist_window">Artist look-back (tracks)</label>
+      <input type="number" min="0" max="10000" name="artist_window" id="artist_window" value="[% blissemall_form.artist_window %]" required>
+      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.artist_window %]</span>
+    </div>
+    <div class="bea-row">
+      <label for="album_window">Album look-back (tracks)</label>
+      <input type="number" min="0" max="10000" name="album_window" id="album_window" value="[% blissemall_form.album_window %]" required>
+      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.album_window %]</span>
+    </div>
+    <div class="bea-row">
+      <label for="track_window">Track look-back (tracks)</label>
+      <input type="number" min="0" max="10000" name="track_window" id="track_window" value="[% blissemall_form.track_window %]" required>
+      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.track_window %]</span>
+    </div>
+  </fieldset>
+
+  <fieldset class="bea-section">
+    <legend>Search effort</legend>
+    <div class="bea-row">
+      <label for="restart_count">Route-search restarts</label>
+      <input type="number" min="0" max="500" name="restart_count" id="restart_count" value="[% blissemall_form.restart_count %]" required>
+    </div>
+  </fieldset>
+
+  <fieldset class="bea-section">
+    <legend>Output after accepting a preview</legend>
+    <p class="bea-warning"><b>Preview milestone:</b> playlist writing is not connected yet. This choice is recorded with the job but no playlist will be created or overwritten.</p>
+    <div class="bea-row">
+      <label><input type="radio" name="output_mode" value="create_copy"[% IF blissemall_form.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
+    </div>
+    <div class="bea-row">
+      <label for="output_name">Copy name</label>
+      <input type="text" maxlength="255" name="output_name" id="output_name" value="[% blissemall_form.output_name | html %]" size="45">
+    </div>
+    <div class="bea-row">
+      <label><input type="radio" name="output_mode" value="overwrite_source"[% IF blissemall_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
+      <span class="bea-disabled">Will require explicit confirmation once writing is connected.</span>
+    </div>
+  </fieldset>
+
+  <input class="inputbutton" type="submit" name="run_preview" value="Run read-only preview"[% IF !blissemall_capability.ready %] disabled[% END %]>
+</form>
+
+[% IF blissemall_job %]
+  <fieldset class="bea-section">
+    <legend>Preview result</legend>
+    <p><b>[% blissemall_job.playlist_title | html %]</b> - [% blissemall_job.stage | html %]</p>
+    <p>Job ID: [% blissemall_job.id | html %]</p>
+    <p>Requested output: [% IF blissemall_job.output_mode == 'overwrite_source' %]overwrite source[% ELSE %]create copy "[% blissemall_job.output_name | html %]"[% END %] <b>[Not executed]</b></p>
+    [% IF blissemall_job.state == 'running' %]
+      <p><a href="[% webroot %]plugins/BlissEmAll/index.html?job_id=[% blissemall_job.id %]">Refresh result</a></p>
+    [% ELSIF blissemall_job.state == 'failed' %]
+      <div class="bea-error"><b>[% blissemall_job.error_code | html %]</b>: [% blissemall_job.error | html %]</div>
+    [% ELSE %]
+      <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Objective [% blissemall_job.objective %]; worst transition [% blissemall_job.worst_transition %].</div>
+      <ol class="bea-order">
+        [% FOREACH track = blissemall_job.order %]
+          <li>[% track.artist | html %] - [% track.title | html %] <span class="bea-disabled">(was #[% track.original_position %])</span></li>
+        [% END %]
+      </ol>
+    [% END %]
+  </fieldset>
+[% END %]
+
+<fieldset class="bea-section bea-disabled">
+  <legend>Visible roadmap - not connected yet</legend>
+  <p>Bridge insertion modes, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist create/overwrite actions.</p>
+</fieldset>
+
+[% PROCESS pagefooter.html %]

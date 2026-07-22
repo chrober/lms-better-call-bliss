@@ -1,7 +1,7 @@
 package Plugins::BlissEmAll::Plugin;
 
 use strict;
-use base qw(Slim::Plugin::OPMLBased);
+use base qw(Slim::Plugin::Base);
 
 use File::Basename qw(dirname);
 use File::Spec::Functions qw(catdir);
@@ -10,10 +10,10 @@ use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 
-use Plugins::BlissEmAll::AppMenu;
 use Plugins::BlissEmAll::BlissCompatibility;
 use Plugins::BlissEmAll::ContextMenu;
 use Plugins::BlissEmAll::Jobs;
+use Plugins::BlissEmAll::Web;
 
 my $log = Slim::Utils::Log->addLogCategory({
     category     => 'plugin.blissemall',
@@ -59,17 +59,13 @@ sub initPlugin {
     if (main::WEBUI) {
         require Plugins::BlissEmAll::Settings;
         Plugins::BlissEmAll::Settings->new;
+        Plugins::BlissEmAll::Web::init();
     }
 
-    $class->SUPER::initPlugin(
-        feed   => \&Plugins::BlissEmAll::AppMenu::rootFeed,
-        tag    => 'blissemall',
-        is_app => 1,
-        weight => 50,
-    );
+    $class->SUPER::initPlugin();
     Slim::Control::Request::addDispatch(
         ['blissemall', 'status'],
-        [0, 1, 0, \&Plugins::BlissEmAll::AppMenu::statusCommand],
+        [0, 1, 0, \&statusCommand],
     );
 
     $initialized = 1;
@@ -78,11 +74,24 @@ sub initPlugin {
 }
 
 sub shutdownPlugin {
+    Plugins::BlissEmAll::Web::shutdown() if main::WEBUI;
     Plugins::BlissEmAll::ContextMenu::shutdown();
     Plugins::BlissEmAll::Jobs::shutdown();
     $initialized = 0;
 }
 
 sub optimizerBinary { return $optimizer_binary; }
+
+sub statusCommand {
+    my $request = shift;
+    my $status = Plugins::BlissEmAll::BlissCompatibility::snapshot();
+    $request->addResult('ready', 0 + $status->{ready});
+    $request->addResult('problem_count', scalar @{$status->{problems}});
+    $request->addResult('ux_contract', 'extras-job-editor-v1');
+    $request->addResult(
+        'working_mode', 'per-job-adaptive/reorder-only/read-only-preview',
+    );
+    $request->setStatusDone();
+}
 
 1;
