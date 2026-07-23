@@ -88,7 +88,7 @@ sub statusCommand {
     my $status = Plugins::BlissEmAll::BlissCompatibility::snapshot();
     $request->addResult('ready', 0 + $status->{ready});
     $request->addResult('problem_count', scalar @{$status->{problems}});
-    $request->addResult('ux_contract', 'extras-job-editor-v5');
+    $request->addResult('ux_contract', 'extras-job-editor-v6');
     $request->addResult(
         'working_mode', 'per-job-adaptive/reorder-or-auto-extend/create-copy',
     );

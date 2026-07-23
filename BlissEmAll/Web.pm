@@ -17,17 +17,25 @@ use Plugins::BlissEmAll::PlaylistWriter;
 my $log = Slim::Utils::Log::logger('plugin.blissemall');
 my $plugin_prefs = preferences('plugin.blissemall');
 my $page = 'plugins/BlissEmAll/index.html';
+my $icon =
+    'plugins/BlissEmAll/html/images/blissemall_MTL_icon_timeline.png';
 
 sub init {
     Slim::Web::Pages->addPageFunction($page, \&handler);
     Slim::Web::Pages->addPageLinks(
         'plugins', {'PLUGIN_BLISSEMALL_NAME' => $page},
     );
+    Slim::Web::Pages->addPageLinks(
+        'icons', {'PLUGIN_BLISSEMALL_NAME' => $icon},
+    );
 }
 
 sub shutdown {
     Slim::Web::Pages->addPageLinks(
         'plugins', {'PLUGIN_BLISSEMALL_NAME' => undef},
+    );
+    Slim::Web::Pages->addPageLinks(
+        'icons', {'PLUGIN_BLISSEMALL_NAME' => undef},
     );
 }
 

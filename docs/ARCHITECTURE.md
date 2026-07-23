@@ -9,7 +9,7 @@ The stable project identities selected at bootstrap are:
 | Plugin directory | `BlissEmAll` |
 | LMS command prefix | `blissemall` |
 | Plugin UUID | `5ff183ce-3d88-4aa1-8fa5-28fed965af76` |
-| Extension icon | `plugins/BlissEmAll/html/images/blissemall.png` |
+| Extension icon | `plugins/BlissEmAll/html/images/blissemall_MTL_icon_timeline.png` |
 | Native command | `bliss-playlist-optimizer` |
 
 The Perl plugin owns user interaction, LMS object resolution, MusicBrainz IDs,
@@ -55,6 +55,13 @@ in the in-memory job before persistence. Automatic names come from the decoded
 local playlist filename rather than the potentially mojibaked catalog title and
 select the next free numbered suffix. Explicit name collisions and publication
 races fail closed; source playlist overwrite is not reachable.
+
+The Extras icon is registered explicitly in the `icons` page-link category
+with the same string key as the plugin link. Material intentionally maps
+unrecognized Extras images to its generic extension glyph; the
+`MTL_icon_timeline` filename marker invokes Material's supported monochrome
+`timeline` glyph. Other skins and extension metadata use the actual packaged
+transparent monochrome PNG.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
 currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.5.0`

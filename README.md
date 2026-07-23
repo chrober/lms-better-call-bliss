@@ -38,6 +38,13 @@ route-search attempts are an advanced, deterministic effort control used only
 when source tracks may move; more attempts may improve the route at additional
 CPU cost.
 
+Status banners use explicit foreground/background pairs rather than inheriting
+the surrounding skin's text color, so warnings, failures, running state, and
+success remain readable in both light and dark hosts. The registered Extras
+icon follows Material's monochrome marker convention and resolves to its
+`timeline` glyph instead of the generic extension icon; classic/plugin
+metadata receives the packaged transparent monochrome route asset.
+
 Requests, native output, and stderr are kept beneath the LMS cache in
 `blissemall/jobs`. Creation uses Lyrion's core M3U formatter, exclusively
 creates a new file, creates the LMS playlist object, and verifies both catalog

@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.5.2` UX shell. The shell is
+model and the exact boundary of the current `0.5.3` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -20,7 +20,7 @@ fall through to either working mode.
 | Entry point | Status | Current behavior |
 | --- | --- | --- |
 | Extras > Bliss 'Em All | Working | Opens the rich per-job editor and result area. |
-| Extensions contribution icon | Working | Serves the packaged 512x512 transparent route-and-insert icon declared by `install.xml`. |
+| Extensions contribution icon | Working | Explicitly registers the packaged 512x512 transparent monochrome route icon. Material recognizes its `MTL_icon_timeline` marker and renders the theme-colored `timeline` glyph instead of the generic puzzle piece. |
 | Applications / My Apps > Bliss 'Em All | Removed | The OPML adapter cannot provide the required portable multi-field form. |
 | Saved-playlist context > Bliss 'Em All... | Partial | Visible informational shortcut; directs the user to Extras. |
 | Track context > Bliss me there... | Not connected yet | Describes the planned route-to-track capability; starts no job. |
@@ -45,6 +45,7 @@ fall through to either working mode.
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Relevance-aware controls | Working | Automatic-addition inputs are disabled outside automatic mode; route attempts are disabled for preserved order; guaranteed no-op preserved combinations disable submission and fail server validation if bypassed. |
+| Accessible status feedback | Working | Warning, error, success, and running/info banners use explicit high-contrast foreground/background pairs; theme text color is retained for secondary notes and disabled hints. |
 | Automatic bridge budget | Working, per job | Validated as 0-100; limits successful additions rather than candidate analysis. |
 | Bridge trigger percentile | Working, per job | Validated as 0-100; only direct gaps strictly above this frozen contextual percentile are eligible. |
 | Static weighted / random-forest strategy | Not connected yet | Visible but disabled because native route currently accepts Adaptive only. |
@@ -82,7 +83,7 @@ submitted values belong to that job only and never update BlissMixer's global
 preferences. The current bundled optimizer supports only Adaptive routing and
 requires a learned matrix; unsupported strategies are disabled and labeled.
 
-**Route search restarts**, both output suffixes, automatic bridge budget, and
+**Additional route-search attempts**, both output suffixes, automatic bridge budget, and
 automatic trigger percentile supply defaults for new jobs. Every value that
 affects optimization is copied into and may be overridden by the job. The
 following settings are persisted to establish their future contract but are labeled
@@ -98,7 +99,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.5.2` keeps Preview read-only and permits only an explicit,
+Version `0.5.3` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates

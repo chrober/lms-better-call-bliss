@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.5.2` per-job UX shell. It contributes
+This directory contains the installable `0.5.3` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
@@ -19,8 +19,15 @@ addition inputs are disabled when irrelevant, route-search attempts live under
 Advanced and are disabled for preserved order, and guaranteed no-op preserved
 combinations are rejected in both the page and server validator.
 
-The package includes a 512x512 transparent icon: four charcoal playlist nodes
-on a forward route with an amber fifth node inserted into the path.
+The package includes a 512x512 transparent monochrome route icon. Its filename
+contains Material's `MTL_icon_timeline` marker, so the Extras renderer selects
+the theme-colored monochrome `timeline` glyph instead of falling back to the
+generic extension/puzzle icon. `Web.pm` registers the icon explicitly under
+the same key as the Extras link.
+
+Warning, error, success, and information banners use explicit high-contrast
+foreground/background pairs. Notes and disabled hints follow the host
+`--text-color` with reduced emphasis rather than using fixed gray text.
 
 Automatic extension adds only candidates that pass the native contextual
 trigger, acoustic-improvement, uniqueness, and repeat gates, up to the per-job

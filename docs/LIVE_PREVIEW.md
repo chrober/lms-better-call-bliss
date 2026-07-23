@@ -194,3 +194,38 @@ and depicts four charcoal source-track nodes, an amber bridge node inserted into
 the route, and a forward arrow. It was generated with the built-in image tool
 on a flat chroma background, processed with the installed image-skill
 background-removal helper, and alpha/dimension validated before packaging.
+
+## Accessible banners and Material Extras icon verification
+
+Version `0.5.3` was deployed on 2026-07-23. The live status command reported
+`ready=1`, no compatibility problems, and
+`ux_contract=extras-job-editor-v6`.
+
+The status banners no longer inherit Material's light foreground color while
+using a light banner background. Warning, error, success, and information
+states now declare their own foreground/background pairs. Their WCAG contrast
+ratios are respectively 12.25:1, 12.00:1, 9.43:1, and 10.40:1. Secondary note
+and disabled text uses the active skin's `--text-color` with reduced emphasis.
+The live rendered page returned HTTP 200 and contained the explicit warning and
+error foreground rules.
+
+The earlier PNG was correctly present in the server's Extras payload, but
+Material's client deliberately maps any unrecognized Extras image to its
+generic `extension` glyph. The replacement is a transparent monochrome
+512x512 route asset named
+`blissemall_MTL_icon_timeline.png`. Both `install.xml` and `Web.pm`
+register that path. Material's supported marker parser resolves it to the
+theme-colored monochrome `timeline` glyph, while other consumers can load the
+actual PNG.
+
+Live `material-skin extras` verification returned:
+
+```text
+id=PLUGIN_BLISSEMALL_NAME
+icon=plugins/BlissEmAll/html/images/blissemall_MTL_icon_timeline.png
+material_glyph=timeline
+```
+
+The new icon URL returned HTTP 200 as `image/png`. The generated asset was
+processed with the installed image-skill chroma-removal helper, one-pixel edge
+contraction, high-quality 512x512 resampling, and alpha/fringe validation.
