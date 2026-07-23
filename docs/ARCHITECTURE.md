@@ -9,6 +9,7 @@ The stable project identities selected at bootstrap are:
 | Plugin directory | `BlissEmAll` |
 | LMS command prefix | `blissemall` |
 | Plugin UUID | `5ff183ce-3d88-4aa1-8fa5-28fed965af76` |
+| Extension icon | `plugins/BlissEmAll/html/images/blissemall.png` |
 | Native command | `bliss-playlist-optimizer` |
 
 The Perl plugin owns user interaction, LMS object resolution, MusicBrainz IDs,
@@ -36,8 +37,13 @@ argument array. The Extras web UI renders the job state, selected strategy,
 objective, worst transition, repeat validation, and numbered proposed order.
 The rich form lives under Extras because the generic Applications/OPML adapter
 supports hierarchical choices and one search-style text prompt, but does not
-carry a portable set of checkbox, dropdown, and numeric form controls. Playlist
-persistence is a separate post-Preview action. It resolves the result back to
+carry a portable set of checkbox, dropdown, and numeric form controls. The
+playlist job editor presents source ordering independently from additions.
+Client-side relevance
+rules disable automatic-addition inputs outside automatic mode and route-search
+attempts under preserved order. The Perl validator independently rejects
+preserved-order requests that cannot possibly change the playlist.
+Playlist persistence is a separate post-Preview action. It resolves the result back to
 LMS track objects, uses Lyrion's core M3U formatter, verifies the temporary
 playlist, claims the final path with exclusive creation, copies the verified
 bytes, creates the catalog object, and verifies catalog and final-file order.

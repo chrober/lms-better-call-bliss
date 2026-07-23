@@ -47,8 +47,6 @@ sub normalize {
 
     $options->{ordering_policy} = $input->{ordering_policy}
         if defined $input->{ordering_policy};
-    die "Only Optimize order is connected"
-        unless $options->{ordering_policy} eq 'optimize_order';
 
     $options->{extension_mode} = $input->{extension_mode}
         if defined $input->{extension_mode};
@@ -85,6 +83,14 @@ sub normalize {
     $options->{trigger_percent} = _integer(
         $input, 'trigger_percent', 0, 100, $options->{trigger_percent},
     );
+
+    die "Preserve source order requires an addition mode with a non-zero target"
+        if $options->{ordering_policy} eq 'preserve_order'
+            && ($options->{extension_mode} eq 'none'
+                || ($options->{extension_mode} eq 'automatic'
+                    && $options->{max_added_tracks} == 0));
+    die "Only Optimize source order is connected"
+        unless $options->{ordering_policy} eq 'optimize_order';
 
     $options->{output_mode} = $input->{output_mode}
         if defined $input->{output_mode};

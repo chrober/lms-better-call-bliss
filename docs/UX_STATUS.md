@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.5.1` UX shell. The shell is
+model and the exact boundary of the current `0.5.2` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -20,6 +20,7 @@ fall through to either working mode.
 | Entry point | Status | Current behavior |
 | --- | --- | --- |
 | Extras > Bliss 'Em All | Working | Opens the rich per-job editor and result area. |
+| Extensions contribution icon | Working | Serves the packaged 512x512 transparent route-and-insert icon declared by `install.xml`. |
 | Applications / My Apps > Bliss 'Em All | Removed | The OPML adapter cannot provide the required portable multi-field form. |
 | Saved-playlist context > Bliss 'Em All... | Partial | Visible informational shortcut; directs the user to Extras. |
 | Track context > Bliss me there... | Not connected yet | Describes the planned route-to-track capability; starts no job. |
@@ -30,19 +31,20 @@ fall through to either working mode.
 | Step or option | Status | Contract |
 | --- | --- | --- |
 | Select saved playlist | Working | Lists LMS saved playlists with at least two tracks. |
-| Optimize order | Working for Reorder only and Extend automatically | Original tracks may move. |
-| Preserve order and fill gaps | Not connected yet | Original sequence remains fixed; additions may occupy gaps only. |
-| Reorder only | Working | Uses every original track exactly once and inserts none; a reviewed result can be saved as a new copy. |
-| Extend automatically | Working | Reorders the source, then adds up to the per-job budget only where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass. It may add zero. |
+| Optimize source order | Working for no additions and automatic additions | Original tracks may move. |
+| Preserve source order | Not connected yet | Original sequence remains fixed; additions may occupy gaps or explicitly enabled endpoints only. |
+| No additional tracks | Working | Uses every original track exactly once and inserts none; unavailable with preserved order because that combination is a no-op. |
+| Add automatically | Working | Reorders the source, then adds up to the per-job budget only where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass. It may add zero. |
 | Add exactly N tracks | Not connected yet | Adds exactly a user-entered number of unique eligible tracks. |
-| One bridge per transition | Not connected yet | Adds one track in each of the `S - 1` original transitions, yielding `2S - 1` tracks. |
+| One bridge per source-track transition | Not connected yet | Adds one track in each of the `S - 1` original transitions, yielding `2S - 1` tracks. |
 | Target length | Not connected yet | Adds tracks until the exact total `T >= S` is reached. |
 | Double length | Not connected yet | Adds exactly `S` tracks, yielding `2S` tracks. |
 | Numeric editor for N/T | Not connected yet | Will validate values before review. |
-| Adaptive context tracks | Working, per job | Initialized from BlissMixer and passed to this job's native request. |
+| Musical context window (previous tracks) | Working, per job | Rolling preceding-track count used for every directional Adaptive leg. A bridge C between A and B is scored as history-to-C and updated-history-with-C-to-B; variance-based weighting begins with two available context tracks. |
 | Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
-| Route-search restarts | Working, per job | Validated as 0-500 and passed to this job's native request. |
+| Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
+| Relevance-aware controls | Working | Automatic-addition inputs are disabled outside automatic mode; route attempts are disabled for preserved order; guaranteed no-op preserved combinations disable submission and fail server validation if bypassed. |
 | Automatic bridge budget | Working, per job | Validated as 0-100; limits successful additions rather than candidate analysis. |
 | Bridge trigger percentile | Working, per job | Validated as 0-100; only direct gaps strictly above this frozen contextual percentile are eligible. |
 | Static weighted / random-forest strategy | Not connected yet | Visible but disabled because native route currently accepts Adaptive only. |
@@ -96,7 +98,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.5.1` keeps Preview read-only and permits only an explicit,
+Version `0.5.2` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates

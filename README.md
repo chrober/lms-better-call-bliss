@@ -20,7 +20,8 @@ cannot start a job. See
 
 After installing the `BlissEmAll` directory and restarting LMS, open
 **Extras > Bliss 'Em All**. Select a saved playlist, adjust its per-job Adaptive
-parameters and repeat windows, choose Reorder only or Extend automatically,
+parameters and repeat windows, choose whether to optimize the source-track order,
+then choose no additions or automatic additions,
 choose **Create optimized copy**, enter its new name, and select **Run read-only
 preview**. Use a zero artist or album look-back to disable that constraint for a
 single-artist or single-album collection. Automatic extension may add zero up
@@ -29,6 +30,13 @@ result page refreshes while the native job runs and presents prominent
 running, success, optimization-failure, and copy-failure messages. Preview is
 read-only. Only the separate **Create optimized copy** action on a completed
 result writes anything.
+
+The **Musical context window (previous tracks)** controls the rolling history
+used by directional Adaptive scoring. A bridge C between A and B is evaluated
+as history ending in A to C, then updated history ending in C to B. Additional
+route-search attempts are an advanced, deterministic effort control used only
+when source tracks may move; more attempts may improve the route at additional
+CPU cost.
 
 Requests, native output, and stderr are kept beneath the LMS cache in
 `blissemall/jobs`. Creation uses Lyrion's core M3U formatter, exclusively

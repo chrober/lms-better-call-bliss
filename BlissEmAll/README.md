@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.5.1` per-job UX shell. It contributes
+This directory contains the installable `0.5.2` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
@@ -12,6 +12,15 @@ the artist, album, and track repeat windows, Adaptive seed count, learned blend,
 and route-search restart count. Setting an artist or album window to zero
 disables that constraint, allowing single-artist or single-album collections to
 be optimized.
+
+The job editor labels ordering as **Source-track order**, additions separately,
+and Adaptive history as **Musical context window (previous tracks)**. Automatic
+addition inputs are disabled when irrelevant, route-search attempts live under
+Advanced and are disabled for preserved order, and guaranteed no-op preserved
+combinations are rejected in both the page and server validator.
+
+The package includes a 512x512 transparent icon: four charcoal playlist nodes
+on a forward route with an amber fifth node inserted into the path.
 
 Automatic extension adds only candidates that pass the native contextual
 trigger, acoustic-improvement, uniqueness, and repeat gates, up to the per-job

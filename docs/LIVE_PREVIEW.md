@@ -170,3 +170,27 @@ manual plugins belong beneath `<LMS cache>/Plugins`, while
 hand-copied folders during restart. The development shell is therefore staged
 at `Cache/Plugins/BlissEmAll` until the plugin ZIP and extension repository are
 published.
+
+## Clarified controls and extension icon verification
+
+Version `0.5.2` was deployed on 2026-07-23. The live status command reported
+`ready=1`, no compatibility problems, and
+`ux_contract=extras-job-editor-v5`. The rendered Extras page exposed
+**Source-track order**, **Additional tracks**, **Musical context window
+(previous tracks)**, and the Advanced **Additional route-search attempts**
+control together with the directional bridge explanation.
+
+The page contains relevance logic for automatic-addition fields, preserved
+order, route attempts, and guaranteed no-op combinations. A handcrafted
+Preserve source order + no-additions POST was rejected with the specific
+server-side message before native execution. A normal two-track reorder Preview
+then completed successfully while the irrelevant automatic-addition inputs were
+omitted, proving default handling remained intact.
+
+The extension metadata now declares
+`plugins/BlissEmAll/html/images/blissemall.png`. HTTP verification returned
+`image/png` at 512x512. The transparent ARGB asset remains legible at 32x32
+and depicts four charcoal source-track nodes, an amber bridge node inserted into
+the route, and a forward arrow. It was generated with the built-in image tool
+on a flat chroma background, processed with the installed image-skill
+background-removal helper, and alpha/dimension validated before packaging.

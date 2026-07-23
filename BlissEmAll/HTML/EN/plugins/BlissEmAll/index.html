@@ -1,4 +1,4 @@
-[%- pagetitle = 'PLUGIN_BLISSEMALL_NAME' | string; pageicon = 'PLUGIN_BLISSEMALL_NAME' -%]
+[%- pagetitle = 'PLUGIN_BLISSEMALL_NAME' | string; pageicon = icons.PLUGIN_BLISSEMALL_NAME -%]
 [%- pwd_list = BLOCK -%]/ [% 'PLUGIN_BLISSEMALL_NAME' | string %][% END -%]
 [% PROCESS pageheader.html %]
 
@@ -14,6 +14,8 @@
   .bea-info { padding: .7em; border-left: 4px solid #1783c6; background: #eef8ff; }
   .bea-disabled { color: #777; }
   .bea-order { margin-top: .8em; }
+  .bea-hidden { display: none; }
+  details.bea-section > summary { cursor: pointer; font-weight: bold; }
 </style>
 
 <h2>Bliss 'Em All</h2>
@@ -66,7 +68,7 @@
 
 <form action="[% webroot %]plugins/BlissEmAll/index.html" method="post">
   <fieldset class="bea-section">
-    <legend>Source and mode</legend>
+    <legend>Source and behavior</legend>
     <div class="bea-row">
       <label for="playlist_id">Saved playlist</label>
       <select name="playlist_id" id="playlist_id" required>
@@ -77,27 +79,30 @@
       </select>
     </div>
     <div class="bea-row">
-      <label for="ordering_policy">Ordering</label>
+      <label for="ordering_policy">Source-track order</label>
       <select name="ordering_policy" id="ordering_policy">
-        <option value="optimize_order" selected>Optimize order [Working]</option>
-        <option value="preserve_order" disabled>Preserve order and fill gaps [Not connected yet]</option>
+        <option value="optimize_order"[% IF blissemall_form.ordering_policy == 'optimize_order' %] selected[% END %]>Optimize source order [Working]</option>
+        <option value="preserve_order"[% IF blissemall_form.ordering_policy == 'preserve_order' %] selected[% END %] disabled>Preserve source order [Not connected yet]</option>
       </select>
     </div>
+    <p class="bea-note">Optimize may move the existing tracks. Preserve will keep them as immutable anchors and only permit additions between or around them once that workflow is connected.</p>
     <div class="bea-row">
-      <label for="extension_mode">Extension</label>
+      <label for="extension_mode">Additional tracks</label>
       <select name="extension_mode" id="extension_mode">
-        <option value="none"[% IF blissemall_form.extension_mode == 'none' %] selected[% END %]>Reorder only [Working]</option>
-        <option value="automatic"[% IF blissemall_form.extension_mode == 'automatic' %] selected[% END %]>Extend automatically [Working]</option>
+        <option value="none"[% IF blissemall_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
+        <option value="automatic"[% IF blissemall_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
         <option disabled>Add exactly N tracks [Not connected yet]</option>
-        <option disabled>One bridge per transition [Not connected yet]</option>
-        <option disabled>Target length / double length [Not connected yet]</option>
+        <option disabled>One bridge per source-track transition [Not connected yet]</option>
+        <option disabled>Reach target length [Not connected yet]</option>
+        <option disabled>Double playlist length [Not connected yet]</option>
       </select>
     </div>
+    <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without requesting any possible additions would leave the playlist unchanged. Choose an addition mode with a non-zero target.</div>
   </fieldset>
 
-  <fieldset class="bea-section">
-    <legend>Automatic extension</legend>
-    <p class="bea-note">Used only by Extend automatically. It may legitimately add zero tracks when no transition exceeds the trigger or no candidate improves it.</p>
+  <fieldset class="bea-section" id="automatic_extension_fields">
+    <legend>Automatic additions</legend>
+    <p class="bea-note">Used only by Add automatically. It may legitimately add zero tracks when no transition exceeds the trigger or no candidate improves it.</p>
     <div class="bea-row">
       <label for="max_added_tracks">Maximum additional tracks</label>
       <input type="number" min="0" max="100" name="max_added_tracks" id="max_added_tracks" value="[% blissemall_form.max_added_tracks %]" required>
@@ -122,7 +127,7 @@
       </select>
     </div>
     <div class="bea-row">
-      <label for="seed_limit">Adaptive context tracks</label>
+      <label for="seed_limit">Musical context window (previous tracks)</label>
       <input type="number" min="1" max="50" name="seed_limit" id="seed_limit" value="[% blissemall_form.seed_limit %]" required>
       <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.seed_limit %]</span>
     </div>
@@ -131,6 +136,7 @@
       <input type="number" min="0" max="100" name="learned_percent" id="learned_percent" value="[% blissemall_form.learned_percent %]" required>
       <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.learned_percent %]</span>
     </div>
+    <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
     <p class="bea-note">These values are passed to the optimizer request for this preview.</p>
   </fieldset>
 
@@ -154,13 +160,14 @@
     </div>
   </fieldset>
 
-  <fieldset class="bea-section">
-    <legend>Search effort</legend>
+  <details class="bea-section" id="advanced_search">
+    <summary>Advanced search effort</summary>
     <div class="bea-row">
-      <label for="restart_count">Route-search restarts</label>
+      <label for="restart_count">Additional route-search attempts</label>
       <input type="number" min="0" max="500" name="restart_count" id="restart_count" value="[% blissemall_form.restart_count %]" required>
     </div>
-  </fieldset>
+    <p class="bea-note" id="restart_help">Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.</p>
+  </details>
 
   <fieldset class="bea-section">
     <legend>Output after accepting a preview</legend>
@@ -179,8 +186,53 @@
     </div>
   </fieldset>
 
-  <input class="inputbutton" type="submit" name="run_preview" value="Run read-only preview"[% IF !blissemall_capability.ready %] disabled[% END %]>
+  <input class="inputbutton" id="run_preview" type="submit" name="run_preview" value="Run read-only preview"[% IF !blissemall_capability.ready %] disabled[% END %]>
 </form>
+
+<script>
+  (function () {
+    var ordering = document.getElementById('ordering_policy');
+    var extension = document.getElementById('extension_mode');
+    var automaticFields = document.getElementById('automatic_extension_fields');
+    var automaticInputs = automaticFields.querySelectorAll('input');
+    var maximumAdditions = document.getElementById('max_added_tracks');
+    var restarts = document.getElementById('restart_count');
+    var restartHelp = document.getElementById('restart_help');
+    var warning = document.getElementById('mode_combination_warning');
+    var submit = document.getElementById('run_preview');
+    var capabilityReady = !submit.disabled;
+
+    function synchronizeControls() {
+      var preserve = ordering.value === 'preserve_order';
+      var noAdditions = extension.value === 'none';
+      var automatic = extension.value === 'automatic';
+      var noneOption = extension.querySelector('option[value="none"]');
+      var zeroAutomaticBudget = automatic
+        && parseInt(maximumAdditions.value || '0', 10) === 0;
+      var invalidCombination = preserve
+        && (noAdditions || zeroAutomaticBudget);
+
+      noneOption.disabled = preserve;
+      warning.classList.toggle('bea-hidden', !invalidCombination);
+      submit.disabled = !capabilityReady || invalidCombination;
+
+      restarts.disabled = preserve;
+      restartHelp.textContent = preserve
+        ? 'Not used when source order is preserved.'
+        : 'Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.';
+
+      automaticFields.classList.toggle('bea-disabled', !automatic);
+      for (var index = 0; index < automaticInputs.length; index++) {
+        automaticInputs[index].disabled = !automatic;
+      }
+    }
+
+    ordering.addEventListener('change', synchronizeControls);
+    extension.addEventListener('change', synchronizeControls);
+    maximumAdditions.addEventListener('input', synchronizeControls);
+    synchronizeControls();
+  }());
+</script>
 
 [% IF blissemall_job %]
   <fieldset class="bea-section">

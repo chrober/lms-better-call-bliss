@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
 <extension>
   <id>5ff183ce-3d88-4aa1-8fa5-28fed965af76</id>
+  <icon>plugins/BlissEmAll/html/images/blissemall.png</icon>
   <name>PLUGIN_BLISSEMALL_NAME</name>
   <module>Plugins::BlissEmAll::Plugin</module>
-  <version>0.5.1</version>
+  <version>0.5.2</version>
   <description>PLUGIN_BLISSEMALL_DESC</description>
   <creator>Christian Robert</creator>
   <defaultState>
