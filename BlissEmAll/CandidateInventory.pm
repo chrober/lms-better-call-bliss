@@ -13,6 +13,7 @@ use Slim::Schema;
 use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::Unicode;
+use URI::Escape qw(uri_unescape);
 
 my $log = Slim::Utils::Log::logger('plugin.blissemall');
 my ($inventory_root, $audit_path, $cached_key, $cached_result, $last_status);
@@ -60,11 +61,34 @@ sub database_file_for_track {
 }
 
 sub _database_file_for_url {
-    my ($url, $tracknum, $roots) = @_;
+    my ($url, $tracknum, $root_descriptors, $roots) = @_;
     return unless $url && $url =~ /^file:/i;
+    my $file_url = $url;
+    $file_url =~ s/#.*$//;
+    for my $descriptor (@$root_descriptors) {
+        my $prefix = $descriptor->{url_prefix};
+        next unless index($file_url, $prefix . '/') == 0;
+        my $relative = substr($file_url, length($prefix) + 1);
+        $relative = uri_unescape($relative);
+        $relative = Slim::Utils::Unicode::utf8decode_locale($relative);
+        $relative .= '.CUE_TRACK.' . $tracknum
+            if $url =~ /#/ && $tracknum;
+        return $relative;
+    }
     return _relative_database_file(
         Slim::Utils::Misc::pathFromFileURL($url), $url, $tracknum, $roots,
     );
+}
+
+sub _root_descriptors {
+    my $roots = shift;
+    my @descriptors;
+    for my $root (@$roots) {
+        my $prefix = Slim::Utils::Misc::fileURLFromPath($root);
+        $prefix =~ s{/+$}{};
+        push @descriptors, {url_prefix => $prefix};
+    }
+    return \@descriptors;
 }
 
 sub _unmatched_reason {
@@ -141,19 +165,21 @@ sub _update_audit {
 sub prepare {
     my ($capability, $database_identity) = @_;
     die "Candidate inventory cache is not initialized" unless $inventory_root;
-    my $scan_time = 0 + (Slim::Music::Import->lastScanTime() || 0);
+    my $scan_time = int(Slim::Music::Import->lastScanTime() || 0);
     my $key = join('|', $database_identity, $scan_time);
     return $cached_result if $cached_result && ($cached_key || '') eq $key;
 
     my %lms_files;
     my $lms_track_count = 0;
+    my $roots = $capability->{music_roots} || [];
+    my $root_descriptors = _root_descriptors($roots);
     my $lms_sth = Slim::Schema->dbh->prepare(
         'SELECT url, tracknum FROM tracks WHERE remote = 0 AND audio = 1'
     );
     $lms_sth->execute;
     while (my ($url, $tracknum) = $lms_sth->fetchrow_array) {
         my $database_file = _database_file_for_url(
-            $url, $tracknum, $capability->{music_roots} || [],
+            $url, $tracknum, $root_descriptors, $roots,
         );
         next unless defined $database_file && length $database_file;
         $lms_files{$database_file} = 1;
@@ -192,7 +218,7 @@ sub prepare {
             artist => defined $artist ? $artist : '',
             album => defined $album ? $album : '',
             reason => defined $file && length $file
-                ? _unmatched_reason($file, $capability->{music_roots} || [])
+                ? _unmatched_reason($file, $roots)
                 : 'missing_bliss_file_identity',
         };
     }
