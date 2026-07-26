@@ -52,7 +52,7 @@ icon follows Material's monochrome marker convention and resolves to its
 metadata receives the packaged transparent monochrome route asset.
 
 Requests, native output, and stderr are kept beneath the LMS cache in
-`blissemall/jobs`. Version `0.9.0` also keeps one checksum-protected decoded
+`blissemall/jobs`. Version `0.10.0` also keeps one checksum-protected decoded
 library cache under `blissemall/library-cache`, keyed by the guarded `bliss.db`
 file identity. Cold jobs bulk-load the library with one SQLite query; warm jobs
 reuse the database hash, integrity result, and decoded features. Completion
@@ -75,6 +75,8 @@ separate mixing strategy.
 Automatic and exact-count bridge discovery currently use the local Bliss-only fallback. The
 optional Last.fm and ListenBrainz evidence adapters remain visibly unconnected;
 their absence never blocks acoustic extension.
+
+Before any addition search, version `0.10.0` freezes the current local LMS library as a checksum-protected, `bliss.db`-identity-bound row allowlist. The native optimizer applies this allowlist before semantic ranking, acoustic shortlisting, or contextual bridge scoring, while the existing post-result LMS resolution remains as a second mutation/race guard. Usable Bliss rows that cannot be matched to current local LMS tracks are excluded and retained in the persistent review ledger `<LMS cache>/blissemall/non-lms-bliss-rows.json`; the ledger records current and resolved entries with reason, metadata, row identity, and first/last-seen observations. The Extras page, `blissemall status`, and one concise server-log summary expose its current count and location.
 
 The plugin owns LMS menus, preferences, background jobs, optional semantic
 providers, reports, and atomic playlist persistence. The native optimizer will

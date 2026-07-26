@@ -66,6 +66,23 @@
   </div>
 [% END %]
 
+[% IF blissemall_candidate_inventory.ready %]
+  <details class="bea-section">
+    <summary>Bliss library membership audit</summary>
+    <p>
+      [% blissemall_candidate_inventory.allowed_row_count %] usable Bliss rows
+      match current local LMS tracks.
+      [% blissemall_candidate_inventory.unmatched_row_count %] usable Bliss rows
+      are excluded from bridge searches because they do not resolve to the
+      current LMS library.
+    </p>
+    <p class="bea-note">
+      Persistent review file:<br>
+      <code>[% blissemall_candidate_inventory.audit_path | html %]</code>
+    </p>
+  </details>
+[% END %]
+
 <form action="[% webroot %]plugins/BlissEmAll/index.html" method="post">
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>

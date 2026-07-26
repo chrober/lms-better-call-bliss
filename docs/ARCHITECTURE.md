@@ -26,7 +26,7 @@ The initial release uses one process per job. Compatibility is discovered with
 `bliss-playlist-optimizer version --json`; absence or incompatibility disables
 the feature without affecting BlissMixer.
 
-Version `0.9.0` preserves that process boundary while avoiding repeated database
+Version `0.10.0` preserves that process boundary while avoiding repeated database
 preparation. The plugin attaches the same `device:inode:size:mtime` identity it
 already uses for post-job mutation detection and gives the native process a
 plugin-owned `blissemall/library-cache` directory. A matching versioned cache
@@ -36,6 +36,10 @@ ordered SQLite query; a changed identity, checksum failure, incompatible cache,
 or decode error is a safe miss and rebuild. The plugin still compares the live
 database identity before resolving any added tracks, so cache reuse does not
 weaken the existing fail-closed result boundary.
+
+Addition jobs have a second frozen input: `lms-local-candidate-inventory-v1`. The plugin enumerates current non-remote audio tracks from the LMS catalog, derives the exact Bliss file identities (including CUE suffixes), intersects them with usable `TracksV2` rows, and writes a checksum-protected allowlist bound to both the LMS last-scan timestamp and the guarded `bliss.db` identity. The native process validates the schema, checksum, database binding, unique known row IDs, and source membership, then removes all non-allowlisted rows before semantic candidate construction and shortlisting. Post-result LMS object resolution remains mandatory as a time-of-check/time-of-use guard.
+
+The same inventory pass updates `<LMS cache>/blissemall/non-lms-bliss-rows.json`. This plugin-owned durable audit ledger retains active and historically resolved unmatched identities, first/last-seen timestamps, observation counts, current Bliss row ID and metadata, and a reason distinguishing a missing file from a file/CUE entry that exists but is not indexed by LMS. Full identities stay in that private file; normal LMS logs contain only counts and its location.
 
 For connected addition jobs, the plugin also passes a conservative internal-gap
 shortlist limit of 256. The native process reserves endpoint-local semantic
@@ -91,7 +95,7 @@ unrecognized Extras images to its generic extension glyph; the
 transparent monochrome PNG.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
-currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.9.0`
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.10.0`
 therefore treats the learned matrix as a required core capability and reports
 its absence in System status. Making it optional requires an implemented and
 tested native fallback; the plugin must not claim one based only on the design

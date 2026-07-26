@@ -3,28 +3,19 @@ package Plugins::BlissEmAll::RequestBuilder;
 use strict;
 use JSON::XS ();
 use Slim::Schema;
-use Slim::Utils::Unicode;
 use Plugins::BlissEmAll::BlissCompatibility;
+use Plugins::BlissEmAll::CandidateInventory;
 use Plugins::BlissEmAll::JobOptions;
 
 sub _database_file {
     my ($track, $roots) = @_;
-    my $path = $track->path;
-    $path =~ s{\\}{/}g;
-    for my $configured_root (sort { length($b) <=> length($a) } @$roots) {
-        my $root = $configured_root;
-        $root =~ s{\\}{/}g;
-        $root =~ s{/+$}{};
-        if (index($path, $root . '/') == 0) {
-            my $relative = substr($path, length($root) + 1);
-            $relative = Slim::Utils::Unicode::utf8decode_locale($relative);
-            my @url_parts = split(/#/, $track->url);
-            $relative .= '.CUE_TRACK.' . $track->tracknum
-                if @url_parts == 2;
-            return $relative;
-        }
-    }
-    die "Track is outside the configured music folders";
+    my $database_file =
+        Plugins::BlissEmAll::CandidateInventory::database_file_for_track(
+            $track, $roots,
+        );
+    die "Track is outside the configured music folders"
+        unless defined $database_file;
+    return $database_file;
 }
 
 sub build_reorder_request {

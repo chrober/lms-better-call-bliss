@@ -11,6 +11,7 @@ use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 
 use Plugins::BlissEmAll::BlissCompatibility;
+use Plugins::BlissEmAll::CandidateInventory;
 use Plugins::BlissEmAll::ContextMenu;
 use Plugins::BlissEmAll::Jobs;
 use Plugins::BlissEmAll::Web;
@@ -88,7 +89,14 @@ sub statusCommand {
     my $status = Plugins::BlissEmAll::BlissCompatibility::snapshot();
     $request->addResult('ready', 0 + $status->{ready});
     $request->addResult('problem_count', scalar @{$status->{problems}});
-    $request->addResult('ux_contract', 'extras-job-editor-v8');
+    my $inventory = Plugins::BlissEmAll::CandidateInventory::status();
+    $request->addResult('candidate_inventory_ready', 0 + $inventory->{ready});
+    $request->addResult(
+        'non_lms_bliss_row_count', 0 + $inventory->{unmatched_row_count},
+    ) if defined $inventory->{unmatched_row_count};
+    $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
+        if $inventory->{audit_path};
+    $request->addResult('ux_contract', 'extras-job-editor-v9');
     $request->addResult(
         'working_mode',
         'per-job-adaptive/optimize-or-preserve/none-auto-exact/create-copy',

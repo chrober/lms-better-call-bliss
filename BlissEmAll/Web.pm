@@ -10,6 +10,7 @@ use Slim::Utils::Unicode;
 use Slim::Web::HTTP;
 use Slim::Web::Pages;
 use Plugins::BlissEmAll::BlissCompatibility;
+use Plugins::BlissEmAll::CandidateInventory;
 use Plugins::BlissEmAll::JobOptions;
 use Plugins::BlissEmAll::Jobs;
 use Plugins::BlissEmAll::PlaylistWriter;
@@ -255,6 +256,8 @@ sub handler {
     $params->{blissemall_form} = $form;
     $params->{blissemall_defaults} = $defaults;
     $params->{blissemall_capability} = $capability;
+    $params->{blissemall_candidate_inventory}
+        = Plugins::BlissEmAll::CandidateInventory::status();
     $params->{blissemall_job} = _result_view($job) if $job;
     $params->{blissemall_error} = $error if $error;
     return Slim::Web::HTTP::filltemplatefile($page, $params);

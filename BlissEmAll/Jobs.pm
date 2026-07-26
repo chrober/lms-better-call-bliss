@@ -10,6 +10,7 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Timers;
 use Plugins::BlissEmAll::BridgeResolver;
+use Plugins::BlissEmAll::CandidateInventory;
 use Plugins::BlissEmAll::RequestBuilder;
 use Plugins::BlissEmAll::PlaylistWriter;
 
@@ -21,12 +22,13 @@ my $serial = 0;
 
 sub init {
     $optimizer_binary = shift;
-    $job_root = ($server_prefs->get('cachedir') || Slim::Utils::Prefs::dir())
-        . '/blissemall/jobs';
-    $library_cache_root = ($server_prefs->get('cachedir') || Slim::Utils::Prefs::dir())
-        . '/blissemall/library-cache';
+    my $cache_root = ($server_prefs->get('cachedir') || Slim::Utils::Prefs::dir())
+        . '/blissemall';
+    $job_root = $cache_root . '/jobs';
+    $library_cache_root = $cache_root . '/library-cache';
     make_path($job_root) unless -d $job_root;
     make_path($library_cache_root) unless -d $library_cache_root;
+    Plugins::BlissEmAll::CandidateInventory::init($cache_root);
 }
 
 sub _json {
@@ -100,6 +102,14 @@ sub start_reorder_preview {
     die "Could not stat bliss.db" unless $database_identity;
     $built->{request}->{artifacts}->{database}->{cache_identity}
         = $database_identity;
+    my $candidate_inventory;
+    if ($native_command eq 'bridge') {
+        $candidate_inventory = Plugins::BlissEmAll::CandidateInventory::prepare(
+            $built->{capability}, $database_identity,
+        );
+        $built->{request}->{artifacts}->{local_candidate_inventory}
+            = $candidate_inventory->{artifact};
+    }
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
     my $stderr_path = $dir . '/stderr.log';
@@ -153,6 +163,8 @@ sub start_reorder_preview {
         restart_count => $built->{request}->{route}->{search}->{restart_count},
         native_command => $native_command,
         database_identity => $database_identity,
+        candidate_inventory => $candidate_inventory
+            ? $candidate_inventory->{status} : undef,
         process => $process,
         result_path => $result_path,
         stderr_path => $stderr_path,
@@ -172,6 +184,10 @@ sub start_reorder_preview {
         . ($effective->{extension_mode} ne 'none'
             ? ' shortlist_limit='
                 . $built->{request}->{extension}->{shortlist_limit}
+                . ' local_candidates='
+                . $candidate_inventory->{status}->{allowed_row_count}
+                . ' non_lms_bliss_rows='
+                . $candidate_inventory->{status}->{unmatched_row_count}
             : '')
         . ($effective->{extension_mode} eq 'automatic'
             ? " max_added=$effective->{max_added_tracks}"

@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.9.0` per-job UX shell. It contributes
+This directory contains the installable `0.10.0` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
@@ -44,6 +44,8 @@ budget. Opaque Bliss row identities are validated, resolved read-only through
 URLs. The result shows every addition and every transition decision. Optional
 semantic providers are not connected in this slice, so it reports the honest
 Bliss-only evidence mode.
+
+Every addition job first snapshots current local LMS track identities and intersects them with usable `TracksV2` rows. The resulting checksum-protected allowlist is bound to the exact `bliss.db` file identity and applied natively before candidate shortlisting or scoring. Unmatched Bliss rows remain excluded even when their acoustic score would otherwise win. A persistent ledger at `<LMS cache>/blissemall/non-lms-bliss-rows.json` records their paths, metadata, reasons, first/last-seen times, observation counts, and resolved/current state for review; the Extras page shows the current count and file location after the first addition job.
 
 Exact-count extension accepts a per-job positive integer up to the number of
 internal source transitions. It succeeds only when the native bounded search
