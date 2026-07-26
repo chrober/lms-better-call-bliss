@@ -160,6 +160,7 @@ sub start_reorder_preview {
     my $effective = $built->{options};
     $log->info(
         "job=$job_id stage=Optimizing playlist_id=$playlist_id"
+        . " ordering=$effective->{ordering_policy}"
         . " extension=$effective->{extension_mode}"
         . " algorithm=$effective->{algorithm}"
         . " seed_limit=$effective->{seed_limit}"
@@ -188,6 +189,7 @@ sub start_reorder_preview {
         $log->debug(
             "job=$job_id request tracks=" . scalar(@{$built->{request}->{source_tracks}})
             . " command=$native_command"
+            . " ordering=$effective->{ordering_policy}"
             . " extension=$effective->{extension_mode}"
             . " algorithm=$effective->{algorithm}"
             . " seed_limit=$effective->{seed_limit}"

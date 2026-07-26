@@ -26,7 +26,7 @@ The initial release uses one process per job. Compatibility is discovered with
 `bliss-playlist-optimizer version --json`; absence or incompatibility disables
 the feature without affecting BlissMixer.
 
-Version `0.8.0` preserves that process boundary while avoiding repeated database
+Version `0.9.0` preserves that process boundary while avoiding repeated database
 preparation. The plugin attaches the same `device:inode:size:mtime` identity it
 already uses for post-job mutation detection and gives the native process a
 plugin-owned `blissemall/library-cache` directory. A matching versioned cache
@@ -51,6 +51,8 @@ behavior for parity and diagnosis.
 
 The connected milestone supports **Reorder only**, **Extend automatically**,
 and **Add exactly N tracks** through Preview and explicit **Create optimized copy**.
+Both addition modes support optimized source order or immutable preserved
+source order; preserved jobs add only inside existing gaps in this slice.
 It resolves saved playlists through LMS objects, initializes Adaptive and repeat
 values from BlissMixer, accepts validated per-job overrides, writes a private
 versioned request in the LMS cache, and runs the bundled ARM64 optimizer with an
@@ -89,7 +91,7 @@ unrecognized Extras images to its generic extension glyph; the
 transparent monochrome PNG.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
-currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.8.0`
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.9.0`
 therefore treats the learned matrix as a required core capability and reports
 its absence in System status. Making it optional requires an implemented and
 tested native fallback; the plugin must not claim one based only on the design

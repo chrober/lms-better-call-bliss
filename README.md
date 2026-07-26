@@ -7,9 +7,9 @@ installation for `bliss.db` and captured scoring settings, plus the platform's
 the learned matrix captured by the compatible BlissMixer fork.
 
 The current development milestone is installable on ARM64 LMS systems. It
-exposes the complete planned UX shell while connecting three safe writable paths:
-**Optimize order > Reorder only**, **Extend automatically**, and **Add exactly
-N tracks**. All use
+exposes the complete planned UX shell while connecting **Optimize order >
+Reorder only** plus automatic and exact-count additions with either optimized
+or preserved source order. All use
 per-job Adaptive and repeat settings initialized from BlissMixer defaults,
 background native Preview, result review, and explicit creation of a new copy.
 Automatic extension exposes a per-job bridge budget and trigger percentile;
@@ -22,7 +22,7 @@ cannot start a job. See
 
 After installing the `BlissEmAll` directory and restarting LMS, open
 **Extras > Bliss 'Em All**. Select a saved playlist, adjust its per-job Adaptive
-parameters and repeat windows, choose whether to optimize the source-track order,
+parameters and repeat windows, choose whether to optimize or preserve the source-track order,
 then choose no additions, automatic additions, or an exact number of additions,
 choose **Create optimized copy**, enter its new name, and select **Run read-only
 preview**. Use a zero artist or album look-back to disable that constraint for a
@@ -31,7 +31,9 @@ to the configured bridge budget and reports every transition decision. The
 result page refreshes while the native job runs and presents prominent
 running, success, optimization-failure, and copy-failure messages. Preview is
 read-only. Exact-count is currently bounded to one addition in each internal
-optimized transition, so its UI limit is `S - 1` for `S` source tracks. Only
+source-track transition, so its UI limit is `S - 1` for `S` source tracks.
+Preserved-order jobs keep every original track in the same relative position
+and fill only internal gaps. Only
 the separate **Create optimized copy** action on a completed
 result writes anything.
 
@@ -50,7 +52,7 @@ icon follows Material's monochrome marker convention and resolves to its
 metadata receives the packaged transparent monochrome route asset.
 
 Requests, native output, and stderr are kept beneath the LMS cache in
-`blissemall/jobs`. Version `0.8.0` also keeps one checksum-protected decoded
+`blissemall/jobs`. Version `0.9.0` also keeps one checksum-protected decoded
 library cache under `blissemall/library-cache`, keyed by the guarded `bliss.db`
 file identity. Cold jobs bulk-load the library with one SQLite query; warm jobs
 reuse the database hash, integrity result, and decoded features. Completion

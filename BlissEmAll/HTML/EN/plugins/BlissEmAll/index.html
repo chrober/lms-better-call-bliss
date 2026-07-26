@@ -82,10 +82,10 @@
       <label for="ordering_policy">Source-track order</label>
       <select name="ordering_policy" id="ordering_policy">
         <option value="optimize_order"[% IF blissemall_form.ordering_policy == 'optimize_order' %] selected[% END %]>Optimize source order [Working]</option>
-        <option value="preserve_order"[% IF blissemall_form.ordering_policy == 'preserve_order' %] selected[% END %] disabled>Preserve source order [Not connected yet]</option>
+        <option value="preserve_order"[% IF blissemall_form.ordering_policy == 'preserve_order' %] selected[% END %]>Preserve source order and fill gaps [Working]</option>
       </select>
     </div>
-    <p class="bea-note">Optimize may move the existing tracks. Preserve will keep them as immutable anchors and only permit additions between or around them once that workflow is connected.</p>
+    <p class="bea-note">Optimize may move the existing tracks. Preserve keeps every source track as an immutable anchor in its current order and permits additions only inside the existing gaps.</p>
     <div class="bea-row">
       <label for="extension_mode">Additional tracks</label>
       <select name="extension_mode" id="extension_mode">
@@ -124,7 +124,7 @@
       <input type="number" min="1" max="100" name="additional_track_count" id="additional_track_count" value="[% blissemall_form.additional_track_count %]" required>
       <span class="bea-disabled" id="exact_count_limit">Choose a playlist to see the current limit.</span>
     </div>
-    <p class="bea-note">This first connected slice inserts at most one track inside each optimized source-track transition. Opening and closing additions are not enabled.</p>
+    <p class="bea-note">This connected slice inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
     <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
   </fieldset>
 
@@ -297,6 +297,11 @@
       [% ELSE %]
         <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Objective [% blissemall_job.objective %]; worst transition [% blissemall_job.worst_transition %].</div>
       [% END %]
+      [% IF blissemall_job.preserve_order %]
+        <p class="bea-ok"><b>Source order preserved.</b> Every original track remains in its original relative position; only added bridges occupy the gaps.</p>
+      [% ELSIF blissemall_job.bridge_extension %]
+        <p class="bea-note">Source tracks were optimized before additions were selected.</p>
+      [% END %]
       <ol class="bea-order">
         [% FOREACH track = blissemall_job.order %]
           <li>[% track.artist | html %] - [% track.title | html %]
@@ -359,7 +364,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition and target-length presets, Preserve order and fill gaps, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite.</p>
+  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

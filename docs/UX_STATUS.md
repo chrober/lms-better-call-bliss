@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.8.0` UX shell. The shell is
+model and the exact boundary of the current `0.9.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -32,10 +32,10 @@ fall through to either working mode.
 | --- | --- | --- |
 | Select saved playlist | Working | Lists LMS saved playlists with at least two tracks. |
 | Optimize source order | Working for no additions, automatic additions, and exact-count additions | Original tracks may move. |
-| Preserve source order | Not connected yet | Original sequence remains fixed; additions may occupy gaps or explicitly enabled endpoints only. |
+| Preserve source order | Working for automatic and exact-count additions | Every original track remains an immutable anchor in its input order. This UI slice fills internal gaps only, with at most one added track per gap; endpoint controls remain unavailable. |
 | No additional tracks | Working | Uses every original track exactly once and inserts none; unavailable with preserved order because that combination is a no-op. |
-| Add automatically | Working | Reorders the source, then adds up to the per-job budget only where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass. It may add zero. |
-| Add exactly N tracks | Working | Adds exactly the validated user-entered number of unique eligible tracks or fails without returning a partial playlist. This first slice permits one addition per internal optimized transition and no endpoint additions, so `1 <= N <= S - 1`. |
+| Add automatically | Working | With optimized order, reorders the source before examining gaps; with preserved order, examines only the original gaps. It adds up to the per-job budget where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass, and may add zero. |
+| Add exactly N tracks | Working | Adds exactly the validated user-entered number of unique eligible tracks or fails without returning a partial playlist. Both ordering policies permit one addition per internal source-track transition and no endpoint additions, so `1 <= N <= S - 1`. |
 | One bridge per source-track transition | Not connected yet | Adds one track in each of the `S - 1` original transitions, yielding `2S - 1` tracks. |
 | Target length | Not connected yet | Adds tracks until the exact total `T >= S` is reached. |
 | Double length | Not connected yet | Adds exactly `S` tracks, yielding `2S` tracks. |
@@ -50,8 +50,8 @@ fall through to either working mode.
 | Bridge trigger percentile | Working, per job | Validated as 0-100; only direct gaps strictly above this frozen contextual percentile are eligible. |
 | Internal bridge shortlist | Working, implementation-level | Addition jobs deterministically narrow each large internal-gap pool to 256 high-recall candidates before strict scoring. Endpoint-local semantic evidence is reserved; strict dynamic Adaptive scoring and all safety gates remain authoritative. This is intentionally not a job control in the current UX. |
 | Static weighted / random-forest strategy | Not connected yet | Visible but disabled because native route currently accepts Adaptive only. |
-| Review | Working for all three connected modes | The submitted form and result retain the job-specific values. |
-| Run preview | Working for all three connected modes | Launches the native optimizer asynchronously and never writes a playlist. |
+| Review | Working for all connected combinations | The submitted form and result retain the job-specific values and explicitly state whether source order was optimized or preserved. |
+| Run preview | Working for all connected combinations | Launches the native optimizer asynchronously and never writes a playlist. |
 
 `S` is the original source-track count. Current automatic bridge discovery uses
 local Bliss evidence. Once optional semantic providers are connected,
@@ -100,7 +100,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.8.0` keeps Preview read-only and permits only an explicit,
+Version `0.9.0` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates
@@ -114,6 +114,8 @@ unreachable. Automatic and exact-count extension additionally require the native
 membership proofs, an unchanged database file identity during the job, exact
 source subsequence preservation, unique final membership, and successful
 read-only resolution of every proposed bridge to a local LMS track.
+Preserve-order jobs additionally require the artifact policy to match the job
+and the selected base-route IDs to equal the source IDs in exact order.
 Exact-count additionally requires the artifact's requested count to match the
 job, an explicit feasible state, and exactly `N` resolved bridges. A native
 infeasibility proof becomes a visible failed Preview and is never normalized

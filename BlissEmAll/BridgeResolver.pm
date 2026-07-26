@@ -63,6 +63,9 @@ sub resolve_bridge_preview {
 
     my $preview = $artifact->{selection_preview} || {};
     my $mode = $job->{options}->{extension_mode} || '';
+    my $ordering = $job->{options}->{ordering_policy} || '';
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong source-order policy')
+        unless ($artifact->{ordering_policy} || '') eq $ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong addition mode')
         unless (($mode eq 'automatic' || $mode eq 'exact_count')
             && ($preview->{mode} || '') eq $mode);
@@ -103,6 +106,8 @@ sub resolve_bridge_preview {
             && scalar(keys %source) == @source
             && scalar(keys %selected) == @selected
             && !scalar(grep { !$selected{$_} } @source);
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer changed preserved source order')
+        if $ordering eq 'preserve_order' && !_same_values(\@source, \@selected);
 
     my (@final, @originals, @bridges);
     my %seen;

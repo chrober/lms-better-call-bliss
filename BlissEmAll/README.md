@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.8.0` per-job UX shell. It contributes
+This directory contains the installable `0.9.0` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
@@ -18,6 +18,14 @@ and Adaptive history as **Musical context window (previous tracks)**. Automatic
 addition inputs are disabled when irrelevant, route-search attempts live under
 Advanced and are disabled for preserved order, and guaranteed no-op preserved
 combinations are rejected in both the page and server validator.
+
+**Preserve source order and fill gaps** is connected for automatic and
+exact-count additions. Every original track remains an immutable anchor in its
+input order. This first UI slice permits at most one addition in each internal
+gap and keeps opening/closing slots disabled. Preserve order with no possible
+addition is rejected as a guaranteed no-op. The plugin verifies the native
+ordering-policy echo, exact source order, final original subsequence, unique
+membership, and requested count before a result can be persisted.
 
 The package includes a 512x512 transparent monochrome route icon. Its filename
 contains Material's `MTL_icon_timeline` marker, so the Extras renderer selects

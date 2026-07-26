@@ -66,7 +66,7 @@ sub build_reorder_request {
         die 'Add exactly N tracks supports at most ' . $maximum
             . ($maximum == 1 ? ' additional track' : ' additional tracks')
             . ' for this playlist because the current workflow permits one '
-            . 'addition per internal optimized transition.' . chr(10)
+            . 'addition per internal source-track transition.' . chr(10)
             if $options->{additional_track_count} > $maximum;
     }
 

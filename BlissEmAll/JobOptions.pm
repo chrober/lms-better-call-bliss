@@ -48,6 +48,9 @@ sub normalize {
 
     $options->{ordering_policy} = $input->{ordering_policy}
         if defined $input->{ordering_policy};
+    die "Source-track order must be Optimize or Preserve"
+        unless $options->{ordering_policy} eq 'optimize_order'
+            || $options->{ordering_policy} eq 'preserve_order';
 
     $options->{extension_mode} = $input->{extension_mode}
         if defined $input->{extension_mode};
@@ -95,9 +98,6 @@ sub normalize {
             && ($options->{extension_mode} eq 'none'
                 || ($options->{extension_mode} eq 'automatic'
                     && $options->{max_added_tracks} == 0));
-    die "Only Optimize source order is connected"
-        unless $options->{ordering_policy} eq 'optimize_order';
-
     $options->{output_mode} = $input->{output_mode}
         if defined $input->{output_mode};
     die "Output mode must be Create optimized copy or Overwrite source"

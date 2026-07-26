@@ -92,6 +92,8 @@ sub _result_view {
         playlist_title => $job->{playlist_title},
         output_mode => $job->{options}->{output_mode},
         output_name => $job->{options}->{output_name},
+        ordering_policy => $job->{options}->{ordering_policy},
+        preserve_order => $job->{options}->{ordering_policy} eq 'preserve_order' ? 1 : 0,
         extension_mode => $job->{options}->{extension_mode},
         write_state => $job->{write_state},
         write_stage => $job->{write_stage},
