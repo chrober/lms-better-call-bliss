@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.7.0` UX shell. The shell is
+model and the exact boundary of the current `0.8.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -48,6 +48,7 @@ fall through to either working mode.
 | Accessible status feedback | Working | Warning, error, success, and running/info banners use explicit high-contrast foreground/background pairs; theme text color is retained for secondary notes and disabled hints. |
 | Automatic bridge budget | Working, per job | Validated as 0-100; limits successful additions rather than candidate analysis. |
 | Bridge trigger percentile | Working, per job | Validated as 0-100; only direct gaps strictly above this frozen contextual percentile are eligible. |
+| Internal bridge shortlist | Working, implementation-level | Addition jobs deterministically narrow each large internal-gap pool to 256 high-recall candidates before strict scoring. Endpoint-local semantic evidence is reserved; strict dynamic Adaptive scoring and all safety gates remain authoritative. This is intentionally not a job control in the current UX. |
 | Static weighted / random-forest strategy | Not connected yet | Visible but disabled because native route currently accepts Adaptive only. |
 | Review | Working for all three connected modes | The submitted form and result retain the job-specific values. |
 | Run preview | Working for all three connected modes | Launches the native optimizer asynchronously and never writes a playlist. |
@@ -99,7 +100,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.7.0` keeps Preview read-only and permits only an explicit,
+Version `0.8.0` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates

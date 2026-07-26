@@ -4,7 +4,7 @@
   <icon>plugins/BlissEmAll/html/images/blissemall_MTL_icon_timeline.png</icon>
   <name>PLUGIN_BLISSEMALL_NAME</name>
   <module>Plugins::BlissEmAll::Plugin</module>
-  <version>0.7.0</version>
+  <version>0.8.0</version>
   <description>PLUGIN_BLISSEMALL_DESC</description>
   <creator>Christian Robert</creator>
   <defaultState>

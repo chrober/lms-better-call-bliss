@@ -26,7 +26,7 @@ The initial release uses one process per job. Compatibility is discovered with
 `bliss-playlist-optimizer version --json`; absence or incompatibility disables
 the feature without affecting BlissMixer.
 
-Version `0.7.0` preserves that process boundary while avoiding repeated database
+Version `0.8.0` preserves that process boundary while avoiding repeated database
 preparation. The plugin attaches the same `device:inode:size:mtime` identity it
 already uses for post-job mutation detection and gives the native process a
 plugin-owned `blissemall/library-cache` directory. A matching versioned cache
@@ -36,6 +36,15 @@ ordered SQLite query; a changed identity, checksum failure, incompatible cache,
 or decode error is a safe miss and rebuild. The plugin still compares the live
 database identity before resolving any added tracks, so cache reuse does not
 weaken the existing fail-closed result boundary.
+
+For connected addition jobs, the plugin also passes a conservative internal-gap
+shortlist limit of 256. The native process reserves endpoint-local semantic
+evidence before filling the remainder with a deterministic acoustic proxy that
+reuses the prepared left Adaptive context. Shortlisting reduces the expensive
+strict search surface; it does not select a bridge. Final decisions still use
+the contextual two-leg Adaptive scorer and all semantic, repeat, membership,
+and acoustic gates. Omitting the limit at the native contract keeps exhaustive
+behavior for parity and diagnosis.
 
 ## First writable vertical slice
 
@@ -79,7 +88,7 @@ unrecognized Extras images to its generic extension glyph; the
 transparent monochrome PNG.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
-currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.7.0`
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.8.0`
 therefore treats the learned matrix as a required core capability and reports
 its absence in System status. Making it optional requires an implemented and
 tested native fallback; the plugin must not claim one based only on the design

@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.7.0` per-job UX shell. It contributes
+This directory contains the installable `0.8.0` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
@@ -41,6 +41,15 @@ Exact-count extension accepts a per-job positive integer up to the number of
 internal source transitions. It succeeds only when the native bounded search
 returns exactly that many unique bridges with membership proofs; infeasible
 searches fail visibly and no partial result can be persisted.
+
+Both connected addition modes use a deterministic 256-track internal-gap
+shortlist before strict bridge evaluation. This is an implementation-level
+performance bound, not a musical scoring replacement or user-visible job
+parameter. The proxy retains endpoint-local semantic candidates first and uses
+the prepared left Adaptive context plus learned candidate-to-right distance for
+the remainder. The strict dynamic Adaptive scorer and every semantic, repeat,
+membership, and acoustic gate still make the final choice. Debug performance
+output separates shortlisting from strict candidate scoring.
 
 Running results refresh automatically and completed/failed optimization and
 copy states are displayed in prominent banners with stable error codes. After

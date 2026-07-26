@@ -168,6 +168,10 @@ sub start_reorder_preview {
         . " repeat_album=$effective->{album_window}"
         . " repeat_track=$effective->{track_window}"
         . " restarts=$effective->{restart_count}"
+        . ($effective->{extension_mode} ne 'none'
+            ? ' shortlist_limit='
+                . $built->{request}->{extension}->{shortlist_limit}
+            : '')
         . ($effective->{extension_mode} eq 'automatic'
             ? " max_added=$effective->{max_added_tracks}"
                 . " trigger_percent=$effective->{trigger_percent}"

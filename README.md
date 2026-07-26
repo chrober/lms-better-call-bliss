@@ -50,7 +50,7 @@ icon follows Material's monochrome marker convention and resolves to its
 metadata receives the packaged transparent monochrome route asset.
 
 Requests, native output, and stderr are kept beneath the LMS cache in
-`blissemall/jobs`. Version `0.7.0` also keeps one checksum-protected decoded
+`blissemall/jobs`. Version `0.8.0` also keeps one checksum-protected decoded
 library cache under `blissemall/library-cache`, keyed by the guarded `bliss.db`
 file identity. Cold jobs bulk-load the library with one SQLite query; warm jobs
 reuse the database hash, integrity result, and decoded features. Completion
@@ -61,6 +61,13 @@ and file order before reporting success. A blank copy name is derived from the
 decoded playlist filename, preserving Unicode such as emoji, and receives the
 next free numbered suffix when necessary. Explicit existing names are rejected,
 and the source playlist is never changed.
+
+Addition jobs also use a deterministic 256-track internal-gap shortlist before
+strict bridge scoring. It reserves endpoint-local semantic evidence and fills
+the rest using a lightweight acoustic proxy. Final insertion decisions still
+come from dynamic two-leg Adaptive scoring and the normal semantic, repeat,
+membership, and acoustic gates; the shortlist is a performance bound, not a
+separate mixing strategy.
 
 Automatic and exact-count bridge discovery currently use the local Bliss-only fallback. The
 optional Last.fm and ListenBrainz evidence adapters remain visibly unconnected;

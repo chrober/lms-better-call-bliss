@@ -115,12 +115,14 @@ sub build_reorder_request {
         extension => $options->{extension_mode} eq 'automatic' ? {
                 mode => 'automatic',
                 candidate_limit => 5,
+                shortlist_limit => 256,
                 max_added_tracks => $options->{max_added_tracks},
                 trigger_percentile => $options->{trigger_percent} / 100,
             }
             : $options->{extension_mode} eq 'exact_count' ? {
                 mode => 'exact_count',
                 candidate_limit => 5,
+                shortlist_limit => 256,
                 max_tracks_per_gap => 1,
                 allow_opening_track => JSON::XS::false,
                 allow_closing_track => JSON::XS::false,
