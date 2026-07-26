@@ -41,6 +41,8 @@ Addition jobs have a second frozen input: `lms-local-candidate-inventory-v1`. Th
 
 The same inventory pass updates `<LMS cache>/blissemall/non-lms-bliss-rows.json`. This plugin-owned durable audit ledger retains active and historically resolved unmatched identities, first/last-seen timestamps, observation counts, current Bliss row ID and metadata, and a reason distinguishing a missing file from a file/CUE entry that exists but is not indexed by LMS. Full identities stay in that private file; normal LMS logs contain only counts and its location.
 
+The content-addressed allowlist is reused across LMS restarts through a checksum-verified current-state record only while both the `bliss.db` file identity and LMS last-scan timestamp remain unchanged. A library scan, Bliss database replacement, missing artifact, checksum failure, or generator revision change causes a cold rebuild. This keeps repeated jobs and routine LMS restarts fast without weakening membership freshness.
+
 For connected addition jobs, the plugin also passes a conservative internal-gap
 shortlist limit of 256. The native process reserves endpoint-local semantic
 evidence before filling the remainder with a deterministic acoustic proxy that

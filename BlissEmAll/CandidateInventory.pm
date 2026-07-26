@@ -16,12 +16,16 @@ use Slim::Utils::Unicode;
 use URI::Escape qw(uri_unescape);
 
 my $log = Slim::Utils::Log::logger('plugin.blissemall');
-my ($inventory_root, $audit_path, $cached_key, $cached_result, $last_status);
+my (
+    $inventory_root, $audit_path, $state_path,
+    $cached_key, $cached_result, $last_status,
+);
 
 sub init {
     my $cache_root = shift;
     $inventory_root = $cache_root . '/candidate-inventory';
     $audit_path = $cache_root . '/non-lms-bliss-rows.json';
+    $state_path = $inventory_root . '/current.json';
     make_path($inventory_root) unless -d $inventory_root;
 }
 
@@ -114,6 +118,53 @@ sub _load_ledger {
         ? $ledger : {schema_version => 1, rows => []};
 }
 
+sub _load_cached_inventory {
+    my ($key, $database_identity, $scan_time) = @_;
+    return unless $state_path && -r $state_path;
+    my $state = eval {
+        _json()->decode(read_file($state_path, binmode => ':raw'));
+    };
+    return unless ref($state) eq 'HASH'
+        && ($state->{builder_revision} || 0) == 1
+        && ($state->{cache_key} || '') eq $key;
+    my $path = $state->{inventory_path} || '';
+    return unless $path =~ /^\Q$inventory_root\E\/inventory-[0-9a-f]{64}\.json$/
+        && -r $path;
+    my $bytes = eval { read_file($path, binmode => ':raw') };
+    return unless defined $bytes;
+    my $sha256 = sha256_hex($bytes);
+    return unless $sha256 eq ($state->{inventory_sha256} || '');
+    my $inventory = eval { _json()->decode($bytes) };
+    return unless ref($inventory) eq 'HASH'
+        && ($inventory->{schema_identity} || '')
+            eq 'lms-local-candidate-inventory-v1'
+        && ($inventory->{database_cache_identity} || '') eq $database_identity
+        && 0 + ($inventory->{lms_scan_time} || 0) == $scan_time
+        && ref($inventory->{allowed_row_ids}) eq 'ARRAY';
+    my $ledger = _load_ledger();
+    my $status = {
+        ready => 1,
+        database_cache_identity => $database_identity,
+        lms_scan_time => $scan_time,
+        lms_local_track_count => 0 + ($inventory->{lms_local_track_count} || 0),
+        usable_bliss_row_count => 0 + ($inventory->{usable_bliss_row_count} || 0),
+        allowed_row_count => scalar(@{$inventory->{allowed_row_ids}}),
+        unmatched_row_count => 0 + ($ledger->{current_unmatched_count} || 0),
+        inventory_path => $path,
+        inventory_sha256 => $sha256,
+        audit_path => $audit_path,
+        cache_state => 'hit',
+    };
+    return {
+        artifact => {
+            path => $path,
+            sha256 => $sha256,
+            schema_identity => 'lms-local-candidate-inventory-v1',
+        },
+        status => $status,
+    };
+}
+
 sub _update_audit {
     my ($unmatched, $summary, $now) = @_;
     my $ledger = _load_ledger();
@@ -165,9 +216,24 @@ sub _update_audit {
 sub prepare {
     my ($capability, $database_identity) = @_;
     die "Candidate inventory cache is not initialized" unless $inventory_root;
-    my $scan_time = int(Slim::Music::Import->lastScanTime() || 0);
-    my $key = join('|', $database_identity, $scan_time);
+    my $scan_time_value = Slim::Music::Import->lastScanTime() || 0;
+    my $key = join('|', $database_identity, $scan_time_value);
+    my $scan_time = int($scan_time_value);
     return $cached_result if $cached_result && ($cached_key || '') eq $key;
+    if (my $disk = _load_cached_inventory(
+        $key, $database_identity, $scan_time,
+    )) {
+        $cached_key = $key;
+        $cached_result = $disk;
+        $last_status = $disk->{status};
+        $log->info(
+            'candidate_inventory stage=CacheHit'
+            . ' allowed=' . $last_status->{allowed_row_count}
+            . ' unmatched=' . $last_status->{unmatched_row_count}
+            . " audit=$audit_path"
+        );
+        return $cached_result;
+    }
 
     my %lms_files;
     my $lms_track_count = 0;
@@ -256,6 +322,7 @@ sub prepare {
         inventory_path => $path,
         inventory_sha256 => $sha256,
         audit_path => $audit_path,
+        cache_state => 'miss',
     };
     $cached_key = $key;
     $cached_result = {
@@ -266,6 +333,13 @@ sub prepare {
         },
         status => $last_status,
     };
+    _write_atomic($state_path, _json()->encode({
+        schema_version => 1,
+        builder_revision => 1,
+        cache_key => $key,
+        inventory_path => $path,
+        inventory_sha256 => $sha256,
+    }));
     $log->info(
         'candidate_inventory stage=Ready'
         . " lms_local=$lms_track_count bliss_usable=$usable_count"

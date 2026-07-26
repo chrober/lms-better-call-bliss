@@ -188,6 +188,8 @@ sub start_reorder_preview {
                 . $candidate_inventory->{status}->{allowed_row_count}
                 . ' non_lms_bliss_rows='
                 . $candidate_inventory->{status}->{unmatched_row_count}
+                . ' inventory_cache='
+                . $candidate_inventory->{status}->{cache_state}
             : '')
         . ($effective->{extension_mode} eq 'automatic'
             ? " max_added=$effective->{max_added_tracks}"
