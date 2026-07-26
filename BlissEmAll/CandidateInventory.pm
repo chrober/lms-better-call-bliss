@@ -120,27 +120,40 @@ sub _load_ledger {
 
 sub _load_cached_inventory {
     my ($key, $database_identity, $scan_time) = @_;
-    return unless $state_path && -r $state_path;
+    my $miss = sub {
+        my $reason = shift;
+        $log->info("candidate_inventory stage=CacheMiss reason=$reason");
+        return;
+    };
+    return $miss->('state_unreadable') unless $state_path && -r $state_path;
     my $state = eval {
         _json()->decode(read_file($state_path, binmode => ':raw'));
     };
-    return unless ref($state) eq 'HASH'
-        && ($state->{builder_revision} || 0) == 1
-        && ($state->{cache_key} || '') eq $key;
+    return $miss->('state_invalid') unless ref($state) eq 'HASH';
+    return $miss->('builder_revision_changed')
+        unless ($state->{builder_revision} || 0) == 1;
+    return $miss->('library_identity_changed')
+        unless ($state->{cache_key} || '') eq $key;
     my $path = $state->{inventory_path} || '';
-    return unless $path =~ /^\Q$inventory_root\E\/inventory-[0-9a-f]{64}\.json$/
-        && -r $path;
+    return $miss->('artifact_path_invalid')
+        unless $path =~ /^\Q$inventory_root\E\/inventory-[0-9a-f]{64}\.json$/;
+    return $miss->('artifact_unreadable') unless -r $path;
     my $bytes = eval { read_file($path, binmode => ':raw') };
-    return unless defined $bytes;
+    return $miss->('artifact_read_failed') unless defined $bytes;
     my $sha256 = sha256_hex($bytes);
-    return unless $sha256 eq ($state->{inventory_sha256} || '');
+    return $miss->('artifact_hash_mismatch')
+        unless $sha256 eq ($state->{inventory_sha256} || '');
     my $inventory = eval { _json()->decode($bytes) };
-    return unless ref($inventory) eq 'HASH'
-        && ($inventory->{schema_identity} || '')
-            eq 'lms-local-candidate-inventory-v1'
-        && ($inventory->{database_cache_identity} || '') eq $database_identity
-        && 0 + ($inventory->{lms_scan_time} || 0) == $scan_time
-        && ref($inventory->{allowed_row_ids}) eq 'ARRAY';
+    return $miss->('artifact_json_invalid') unless ref($inventory) eq 'HASH';
+    return $miss->('artifact_schema_changed')
+        unless ($inventory->{schema_identity} || '')
+            eq 'lms-local-candidate-inventory-v1';
+    return $miss->('artifact_database_mismatch')
+        unless ($inventory->{database_cache_identity} || '') eq $database_identity;
+    return $miss->('artifact_scan_mismatch')
+        unless 0 + ($inventory->{lms_scan_time} || 0) == $scan_time;
+    return $miss->('artifact_rows_invalid')
+        unless ref($inventory->{allowed_row_ids}) eq 'ARRAY';
     my $ledger = _load_ledger();
     my $status = {
         ready => 1,
@@ -219,7 +232,10 @@ sub prepare {
     my $scan_time_value = Slim::Music::Import->lastScanTime() || 0;
     my $key = join('|', $database_identity, $scan_time_value);
     my $scan_time = int($scan_time_value);
-    return $cached_result if $cached_result && ($cached_key || '') eq $key;
+    if ($cached_result && ($cached_key || '') eq $key) {
+        $cached_result->{status}->{cache_state} = 'memory';
+        return $cached_result;
+    }
     if (my $disk = _load_cached_inventory(
         $key, $database_identity, $scan_time,
     )) {
