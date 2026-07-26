@@ -313,3 +313,53 @@ gate is therefore a measured high-recall acoustic shortlist before strict
 contextual reranking, plus user-visible cancellation/resource bounds. Merely
 adding Rayon workers or caching preparation cannot make multi-gap exact search
 interactive.
+
+## Strict-rank bridge shortlist verification
+
+Version `0.8.0` was deployed on 2026-07-26 from plugin commit `d55e1c7` with
+optimizer commit `b6d3d10`. The ARM64 binary SHA-256 is
+`f2c3f8a743072625820ad8f3208f6595d5ee529cdb0232a50819af6c284252a6`.
+Both optimizer workflows passed, and the restarted server reported `ready=1`,
+zero compatibility problems, and `extras-job-editor-v7`.
+
+Addition requests now declare an internal-gap shortlist limit of 256. Each gap
+first uses the existing strict dynamic two-leg Adaptive rank over the frozen
+eligible pool, while endpoint-local semantic candidates are reserved. Only the
+256 retained candidates enter repeated evolving-route scoring. Existing native
+requests that omit the limit remain exhaustive.
+
+The two-track, one-gap exact-count oracle had 63,820 eligible candidates. The
+shortlisted result selected `bliss-row-49`, identical to the previous exhaustive
+result, and added exactly one track. It completed in 3,174 ms native versus
+3,888 ms exhaustive, an 18.4% reduction. Relevant stages were:
+
+| Stage | Exhaustive | Shortlisted |
+| --- | ---: | ---: |
+| Candidate preparation | 449 ms | 458 ms |
+| Initial gap ranking / shortlisting | 693 ms | 613 ms |
+| Repeated shortlisted gap scoring | included above | 2 ms |
+| Exact selection and final diagnostics | 688 ms | 2 ms |
+
+Two earlier proxy designs were rejected by this live oracle before this gate
+was accepted. A learned candidate-to-right proxy chose `bliss-row-983`; an exact
+local-objective proxy chose `bliss-row-764`. Neither matched the production
+rank contract, which prioritizes accepted status, semantic tier, worst-leg
+percentile, and detour percentile before bounded route comparison. Reusing that
+strict rank restored the exhaustive winner and is covered by deterministic
+worker-count and end-to-end parity tests.
+
+The formerly runaway 13-track, exact-eight request completed native analysis in
+21,142 ms with a feasible 21-track sequence and exactly eight proposed bridges.
+It previously exceeded four minutes and was stopped. The shortened run spent
+8,113 ms ranking and shortlisting all 12 original gaps, 37 ms in initial
+shortlisted rescoring, and 10,064 ms in bounded exact selection.
+
+The plugin then failed closed with `BRIDGE_TRACK_NOT_IN_LMS` because selected
+candidate `bliss-row-21660` did not resolve to a current local LMS track. No
+playlist was created or changed. This is a separate membership boundary rather
+than a performance failure: the optimizer currently enumerates usable Bliss
+rows, while LMS membership is validated only after native selection. The next
+correctness gate is a frozen, database-bound local-LMS candidate inventory (or
+an equivalent exclusion/retry contract) so non-LMS Bliss rows cannot enter the
+search. User-visible cancellation and bounded resource policy remain required
+before enabling the larger extension presets.
