@@ -111,9 +111,8 @@ sub _unmatched_reason {
 
 sub _load_ledger {
     return {schema_version => 1, rows => []} unless $audit_path && -r $audit_path;
-    my $ledger = eval {
-        _json()->decode(read_file($audit_path, binmode => ':raw'));
-    };
+    my $bytes = eval { scalar read_file($audit_path, binmode => ':raw') };
+    my $ledger = defined $bytes ? eval { _json()->decode($bytes) } : undef;
     return ref($ledger) eq 'HASH' && ref($ledger->{rows}) eq 'ARRAY'
         ? $ledger : {schema_version => 1, rows => []};
 }
@@ -126,9 +125,9 @@ sub _load_cached_inventory {
         return;
     };
     return $miss->('state_unreadable') unless $state_path && -r $state_path;
-    my $state = eval {
-        _json()->decode(read_file($state_path, binmode => ':raw'));
-    };
+    my $state_bytes = eval { scalar read_file($state_path, binmode => ':raw') };
+    my $state = defined $state_bytes
+        ? eval { _json()->decode($state_bytes) } : undef;
     return $miss->('state_invalid') unless ref($state) eq 'HASH';
     return $miss->('builder_revision_changed')
         unless ($state->{builder_revision} || 0) == 1;
