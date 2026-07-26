@@ -266,3 +266,50 @@ URLs exactly once, one additional URL, three unique URLs, and three total tracks
 in the saved copy. The test then deleted only that newly created playlist by its
 returned LMS ID through the core `playlists delete` command and confirmed that
 no matching saved playlist remained.
+
+## Prepared-library cache and timing verification
+
+Version `0.7.0` was deployed on 2026-07-26 from plugin commit `12f00e4` with
+optimizer commit `ec8b6a5`. The ARM64 binary SHA-256 is
+`fde138541697ca21cf32a64f132a8ed0adbc882c78d94feae6cef9052166f64d`.
+After restart, `blissemall status` returned `ready=1`, zero compatibility
+problems, and the unchanged `extras-job-editor-v7` UX contract.
+
+The cold path now streams the database hash, runs `quick_check`, and obtains all
+63,822 usable feature/metadata rows with one ordered SQLite query instead of one
+metadata query per track. It writes a checksum-protected 16.9 MiB cache bound to
+the plugin's `device:inode:size:mtime` database identity. Warm jobs reuse the
+database hash, integrity result, and decoded library; identity mismatch, cache
+checksum failure, format mismatch, or decode failure rebuilds it.
+
+An anonymized 13-track reorder-only Preview was executed twice with identical
+Adaptive and repeat settings. The proposed route and objective were identical:
+
+| Measurement | Cold cache | Warm cache |
+| --- | ---: | ---: |
+| Native total | 5,183 ms | 2,065 ms |
+| Plugin wall time | 5,510 ms | 2,357 ms |
+| Database cache | miss | hit |
+| Route search | 248 ms | 239 ms |
+
+The cold-only stages were database hashing (749 ms), open/integrity checking
+(288 ms), bulk library decoding (1,926 ms), and cache writing (883 ms). The warm
+path spent 664 ms decoding the cache. Remaining fixed per-process costs were
+request/schema validation (805 ms), semantic artifact/schema validation
+(279 ms), and source resolution (41 ms).
+
+A bounded two-track, one-gap exact-count Preview then completed with one added
+track in 3,888 ms native and 4,013 ms wall time on a warm cache. Its measured
+bridge stages were candidate preparation (449 ms), gap candidate scoring
+(693 ms), and exact bridge selection/revalidation (688 ms). This validates the
+timing contract and also shows that exhaustive bridge work remains the dominant
+scaling problem.
+
+For comparison, an eight-addition Preview over an anonymized 13-track
+single-artist collection was stopped after more than four minutes and roughly
+12 accumulated CPU-minutes. It remained read-only, the plugin reported a failed
+Preview, and the UI confirmed that no playlist was changed. The next performance
+gate is therefore a measured high-recall acoustic shortlist before strict
+contextual reranking, plus user-visible cancellation/resource bounds. Merely
+adding Rayon workers or caching preparation cannot make multi-gap exact search
+interactive.
