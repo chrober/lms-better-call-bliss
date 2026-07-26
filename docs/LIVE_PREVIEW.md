@@ -363,3 +363,49 @@ correctness gate is a frozen, database-bound local-LMS candidate inventory (or
 an equivalent exclusion/retry contract) so non-LMS Bliss rows cannot enter the
 search. User-visible cancellation and bounded resource policy remain required
 before enabling the larger extension presets.
+
+## Preserve source order and fill gaps verification
+
+Version `0.9.0` was deployed on 2026-07-26 from plugin commits `c562fa2` and
+`da4e99f`. The native optimizer remains commit `b6d3d10` with ARM64 SHA-256
+`f2c3f8a743072625820ad8f3208f6595d5ee529cdb0232a50819af6c284252a6`.
+After the final restart, `blissemall status` reported `ready=1`, no compatibility
+problems, `ux_contract=extras-job-editor-v8`, and working mode
+`per-job-adaptive/optimize-or-preserve/none-auto-exact/create-copy`.
+
+The live Extras page enabled **Preserve source order and fill gaps [Working]**.
+The previously disabled option is selectable, route-search attempts remain
+irrelevant in this mode, and Preserve plus no possible additions is still
+blocked in the browser and rejected independently by the Perl validator.
+
+Three read-only Preview paths were exercised:
+
+| Source | Mode | Result | Native | Wall |
+| ---: | --- | --- | ---: | ---: |
+| 13 tracks | Preserve + Add exactly 1 | 14 tracks, one resolved bridge | 10,658 ms | 11,026 ms |
+| 13 tracks | Preserve + Add automatically, budget 1 | 14 tracks, one resolved bridge | 10,418 ms | 10,531 ms |
+| 2 tracks | Preserve + Add automatically, 100th-percentile trigger | 2 tracks, zero additions | 3,163 ms | 3,510 ms |
+
+For both 13-track additions, `ordering_policy=preserve_order`, the native
+`source_track_ids` and `selected_track_ids` were identical in exact order, and
+the original-only subsequence of the final route was identical to those source
+IDs. The artifacts also reported true original-subsequence and unique-membership
+proofs. Both selected Bliss rows resolved to current local LMS tracks. The page
+showed the prominent **Source order preserved** result banner and labeled the
+inserted bridge in the numbered sequence.
+
+The zero-addition automatic result likewise retained exact source order, showed
+the preserved-order banner, and explicitly explained that no bridge met the
+trigger and safety gates. This remains a valid automatic result rather than a
+failure. A handcrafted Preserve plus no-additions form submission was rejected
+before job creation with the expected actionable no-op message.
+
+A separate two-track Preserve plus exact-one request produced a valid native
+preserved-order artifact but selected `bliss-row-8`, which was not a current
+local LMS track. The existing `BRIDGE_TRACK_NOT_IN_LMS` boundary rejected that
+result before persistence. This confirms the pre-search LMS-candidate inventory
+from checkpoint 23 remains necessary, while also demonstrating that the failure
+is independent of preserved-order correctness.
+
+No Create action was invoked during these tests. No saved playlist was created,
+overwritten, deleted, or otherwise changed.
