@@ -409,3 +409,26 @@ is independent of preserved-order correctness.
 
 No Create action was invoked during these tests. No saved playlist was created,
 overwritten, deleted, or otherwise changed.
+
+## LMS-local candidate inventory and audit verification
+
+Version `0.10.0` was deployed on 2026-07-26 from the feature series ending at plugin commit `924f10c`, with optimizer commits `60cc270` and `d6e39cd`. The active ARM64 binary SHA-256 is `889826b9b40e1ce3ac7a49b7c8b950d794f57608a119edea429b798562e88e52`; corrected optimizer CI run `30209142399` and ARM64 workflow run `30209142405` both passed. Live status reported `ready=1`, `problem_count=0`, `candidate_inventory_ready=1`, `non_lms_bliss_row_count=3`, and `ux_contract=extras-job-editor-v9`.
+
+The plugin intersected 63,822 usable Bliss rows with current non-remote LMS audio tracks and froze 63,819 allowed row IDs in the checksum-protected `lms-local-candidate-inventory-v1` artifact. The native result reported `local_candidate_track_count=63819` and `non_local_candidate_excluded_count=3`; those three rows never entered semantic ranking, shortlisting, or bridge scoring. Their private paths and metadata are intentionally omitted here.
+
+The excluded rows are retained in `/usr/local/slimserver/Cache/blissemall/non-lms-bliss-rows.json`. The live ledger contained three active entries with stable identity hashes, row IDs, metadata, `file_not_indexed_in_lms` reasons, and first/last-seen observation fields. Its SHA-256 and modification time remained unchanged across multiple LMS restarts and cache-hit jobs, proving that routine restarts neither erase nor rewrite the audit. The Extras page rendered the allowed/excluded counts and path; `blissemall status` returned the same path and count.
+
+The first cold intersection took approximately 14-18 seconds over the 64k-track library. Its content-addressed artifact and current-state record are reused only while the LMS last-scan timestamp and exact `bliss.db` identity remain unchanged. Same-process Preview startup measured 515-668 ms. After an LMS restart, checksum validation produced `candidate_inventory stage=CacheHit`; the first Preview reached its running page in 3,099 ms including other cold page/server work. Native allowlist load and validation took 190 ms in the captured result.
+
+Two read-only preserved-order exact-count paths completed after the final corrections:
+
+| Source | Requested | Result | Native | Inventory cache |
+| ---: | ---: | --- | ---: | --- |
+| 13 tracks | 1 addition | 14 tracks, one resolved bridge | 10,667 ms | miss |
+| 13 tracks | 8 additions | 21 tracks, eight resolved bridges | 40,284 ms | hit |
+
+The broader exact-eight regression deliberately exercised the candidate that had exposed a non-ASCII URL issue. Its file and catalog URL were valid, but the post-result resolver had passed a Unicode-flagged path to an API requiring locale bytes. Commit `924f10c` now prefers the verified locale-byte path, and commit `92b50d4` resolves the exact current local/audio catalog row rather than re-discovering an object by URL. The rerun completed all eight membership proofs.
+
+During live hardening, a JSON numeric field initially inherited a string flag after cache-key construction, and persisted JSON was initially read in list context. Both failed safely without playlist writes. Commits `3f0eb2c` and `ed24692` separated numeric serialization and forced scalar reads; the latter is also what preserves historical/resolved audit entries instead of falling back to an empty ledger on rebuild.
+
+The live plugin keeps the pre-deployment rollback at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/BlissEmAll-0.9.0-pre-007fde1`. Temporary upload and diagnostic files were removed. No Create action was invoked; no playlist was created, overwritten, or deleted.
