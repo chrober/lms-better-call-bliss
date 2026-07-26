@@ -35,7 +35,7 @@ sub _track_for_database_file {
         my @parts = split m{/}, $path;
         my $absolute = catfile($root, @parts);
         my $encoded = Slim::Utils::Unicode::utf8encode_locale($absolute);
-        $absolute = $encoded if !-e $absolute && -e $encoded;
+        $absolute = $encoded if defined $encoded && -e $encoded;
         next unless -e $absolute;
 
         my $url = Slim::Utils::Misc::fileURLFromPath($absolute);
