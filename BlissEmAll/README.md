@@ -46,8 +46,9 @@ Both connected addition modes use a deterministic 256-track internal-gap
 shortlist before strict bridge evaluation. This is an implementation-level
 performance bound, not a musical scoring replacement or user-visible job
 parameter. The proxy retains endpoint-local semantic candidates first and uses
-the prepared left Adaptive context plus the candidate-augmented dynamic right
-leg for the remainder. The strict dynamic Adaptive scorer and every semantic, repeat,
+the strict initial-gap dynamic two-leg Adaptive rank for the remainder,
+including accepted status, worst-leg percentile, and detour percentile. The
+evolving-state scorer and every semantic, repeat,
 membership, and acoustic gate still make the final choice. Debug performance
 output separates shortlisting from strict candidate scoring.
 

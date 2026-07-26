@@ -40,8 +40,8 @@ weaken the existing fail-closed result boundary.
 For connected addition jobs, the plugin also passes a conservative internal-gap
 shortlist limit of 256. The native process reserves endpoint-local semantic
 evidence before filling the remainder with a deterministic acoustic proxy that
-reuses the prepared left Adaptive context and scores the candidate-augmented
-dynamic right leg for the original gap. Shortlisting reduces the expensive
+uses the strict initial-gap dynamic two-leg Adaptive rank, including accepted
+status, worst-leg percentile, and detour percentile. Shortlisting reduces the expensive
 strict search surface; it does not select a bridge. Final decisions still use
 the contextual two-leg Adaptive scorer and all semantic, repeat, membership,
 and acoustic gates. Omitting the limit at the native contract keeps exhaustive

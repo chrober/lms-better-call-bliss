@@ -63,8 +63,9 @@ next free numbered suffix when necessary. Explicit existing names are rejected,
 and the source playlist is never changed.
 
 Addition jobs also use a deterministic 256-track internal-gap shortlist before
-strict bridge scoring. It reserves endpoint-local semantic evidence and fills
-the rest using a lightweight acoustic proxy. Final insertion decisions still
+repeated evolving-state bridge scoring. It reserves endpoint-local semantic
+evidence and fills the rest from the strict initial-gap dynamic Adaptive rank.
+Final insertion decisions still
 come from dynamic two-leg Adaptive scoring and the normal semantic, repeat,
 membership, and acoustic gates; the shortlist is a performance bound, not a
 separate mixing strategy.
