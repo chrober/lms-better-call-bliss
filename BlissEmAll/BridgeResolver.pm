@@ -55,17 +55,42 @@ sub _track_for_database_file {
     return;
 }
 
-sub resolve_automatic_preview {
+sub resolve_bridge_preview {
     my $job = shift;
     my $artifact = $job->{artifact} || {};
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer did not return a bridge artifact')
         unless ($artifact->{artifact_kind} || '') eq 'contextual-bridge-analysis-v1';
 
     my $preview = $artifact->{selection_preview} || {};
-    _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer did not return an automatic selection preview')
-        unless ($preview->{mode} || '') eq 'automatic'
-            && ref($preview->{final_sequence}) eq 'ARRAY';
-    _fail('BRIDGE_ARTIFACT_INVALID', 'The automatic preview failed its membership proofs')
+    my $mode = $job->{options}->{extension_mode} || '';
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong addition mode')
+        unless (($mode eq 'automatic' || $mode eq 'exact_count')
+            && ($preview->{mode} || '') eq $mode);
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
+        if $mode eq 'exact_count'
+            && (!exists $preview->{requested_added_tracks}
+                || $preview->{requested_added_tracks}
+                    != $job->{options}->{additional_track_count});
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview omitted its feasibility state')
+        if $mode eq 'exact_count' && !exists $preview->{feasible};
+    if ($mode eq 'exact_count' && !$preview->{feasible}) {
+        my $infeasibility = $preview->{infeasibility} || {};
+        my $code = $infeasibility->{code} || 'EXACT_COUNT_INFEASIBLE';
+        my $requested = 0 + ($preview->{requested_added_tracks} || 0);
+        my $found = 0 + ($infeasibility->{maximum_additions_found} || 0);
+        my $upper = 0 + ($infeasibility->{structural_upper_bound} || 0);
+        my $requested_noun = $requested == 1 ? 'track' : 'tracks';
+        _fail(
+            $code,
+            'Could not add exactly ' . $requested . ' ' . $requested_noun
+                . '. The search found '
+                . 'a maximum of ' . $found . '; the structural upper bound is '
+                . $upper . '. No partial result was accepted.',
+        );
+    }
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer did not return a final addition sequence')
+        unless ref($preview->{final_sequence}) eq 'ARRAY';
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The addition preview failed its membership proofs')
         unless $preview->{original_subsequence_preserved}
             && $preview->{unique_membership};
 
@@ -108,8 +133,17 @@ sub resolve_automatic_preview {
     _fail('BRIDGE_ARTIFACT_INVALID', 'The reported added-track count does not match the sequence')
         unless defined $preview->{added_track_count}
             && $preview->{added_track_count} == @bridges;
-    _fail('BRIDGE_ARTIFACT_INVALID', 'The automatic preview exceeded its bridge budget')
-        if @bridges > ($preview->{max_added_tracks} || 0);
+    if ($mode eq 'automatic') {
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The automatic preview exceeded its bridge budget')
+            if @bridges > ($preview->{max_added_tracks} || 0);
+    } else {
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
+            unless defined $preview->{requested_added_tracks}
+                && $preview->{requested_added_tracks}
+                    == $job->{options}->{additional_track_count};
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview returned a partial result')
+            unless @bridges == $job->{options}->{additional_track_count};
+    }
 
     my %decision_for;
     for my $decision (@{$preview->{decisions} || []}) {

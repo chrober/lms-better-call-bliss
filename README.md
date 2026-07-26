@@ -7,12 +7,14 @@ installation for `bliss.db` and captured scoring settings, plus the platform's
 the learned matrix captured by the compatible BlissMixer fork.
 
 The current development milestone is installable on ARM64 LMS systems. It
-exposes the complete planned UX shell while connecting two safe writable paths:
-**Optimize order > Reorder only** and **Extend automatically**. Both use
+exposes the complete planned UX shell while connecting three safe writable paths:
+**Optimize order > Reorder only**, **Extend automatically**, and **Add exactly
+N tracks**. All use
 per-job Adaptive and repeat settings initialized from BlissMixer defaults,
 background native Preview, result review, and explicit creation of a new copy.
-Automatic extension also exposes a per-job bridge budget and trigger
-percentile. Every future-only item is visibly marked **Not connected yet** and
+Automatic extension exposes a per-job bridge budget and trigger percentile;
+exact-count extension exposes a validated per-job count and never accepts a
+partial result. Every future-only item is visibly marked **Not connected yet** and
 cannot start a job. See
 [`docs/UX_STATUS.md`](docs/UX_STATUS.md) for the feature matrix.
 
@@ -21,14 +23,16 @@ cannot start a job. See
 After installing the `BlissEmAll` directory and restarting LMS, open
 **Extras > Bliss 'Em All**. Select a saved playlist, adjust its per-job Adaptive
 parameters and repeat windows, choose whether to optimize the source-track order,
-then choose no additions or automatic additions,
+then choose no additions, automatic additions, or an exact number of additions,
 choose **Create optimized copy**, enter its new name, and select **Run read-only
 preview**. Use a zero artist or album look-back to disable that constraint for a
 single-artist or single-album collection. Automatic extension may add zero up
 to the configured bridge budget and reports every transition decision. The
 result page refreshes while the native job runs and presents prominent
 running, success, optimization-failure, and copy-failure messages. Preview is
-read-only. Only the separate **Create optimized copy** action on a completed
+read-only. Exact-count is currently bounded to one addition in each internal
+optimized transition, so its UI limit is `S - 1` for `S` source tracks. Only
+the separate **Create optimized copy** action on a completed
 result writes anything.
 
 The **Musical context window (previous tracks)** controls the rolling history
@@ -53,7 +57,7 @@ decoded playlist filename, preserving Unicode such as emoji, and receives the
 next free numbered suffix when necessary. Explicit existing names are rejected,
 and the source playlist is never changed.
 
-Automatic bridge discovery currently uses the local Bliss-only fallback. The
+Automatic and exact-count bridge discovery currently use the local Bliss-only fallback. The
 optional Last.fm and ListenBrainz evidence adapters remain visibly unconnected;
 their absence never blocks acoustic extension.
 

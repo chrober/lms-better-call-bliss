@@ -74,7 +74,7 @@
       <select name="playlist_id" id="playlist_id" required>
         <option value="">Choose a playlist...</option>
         [% FOREACH playlist = blissemall_playlists %]
-          <option value="[% playlist.id %]"[% IF blissemall_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
+          <option value="[% playlist.id %]" data-track-count="[% playlist.count %]"[% IF blissemall_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
         [% END %]
       </select>
     </div>
@@ -91,7 +91,7 @@
       <select name="extension_mode" id="extension_mode">
         <option value="none"[% IF blissemall_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
         <option value="automatic"[% IF blissemall_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
-        <option disabled>Add exactly N tracks [Not connected yet]</option>
+        <option value="exact_count"[% IF blissemall_form.extension_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks [Working]</option>
         <option disabled>One bridge per source-track transition [Not connected yet]</option>
         <option disabled>Reach target length [Not connected yet]</option>
         <option disabled>Double playlist length [Not connected yet]</option>
@@ -114,6 +114,18 @@
       <span class="bea-disabled">Plugin default: [% blissemall_defaults.trigger_percent %]</span>
     </div>
     <p class="bea-note">Only transitions above this percentile are considered. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm/ListenBrainz evidence is not connected yet; this slice falls back to local Bliss evidence.</p>
+  </fieldset>
+
+  <fieldset class="bea-section" id="exact_count_fields">
+    <legend>Exact additions</legend>
+    <p class="bea-note">Used only by Add exactly N tracks. The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.</p>
+    <div class="bea-row">
+      <label for="additional_track_count">Exact number of additional tracks</label>
+      <input type="number" min="1" max="100" name="additional_track_count" id="additional_track_count" value="[% blissemall_form.additional_track_count %]" required>
+      <span class="bea-disabled" id="exact_count_limit">Choose a playlist to see the current limit.</span>
+    </div>
+    <p class="bea-note">This first connected slice inserts at most one track inside each optimized source-track transition. Opening and closing additions are not enabled.</p>
+    <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
   </fieldset>
 
   <fieldset class="bea-section">
@@ -192,9 +204,15 @@
 <script>
   (function () {
     var ordering = document.getElementById('ordering_policy');
+    var playlist = document.getElementById('playlist_id');
     var extension = document.getElementById('extension_mode');
     var automaticFields = document.getElementById('automatic_extension_fields');
     var automaticInputs = automaticFields.querySelectorAll('input');
+    var exactFields = document.getElementById('exact_count_fields');
+    var exactInputs = exactFields.querySelectorAll('input');
+    var exactCount = document.getElementById('additional_track_count');
+    var exactLimit = document.getElementById('exact_count_limit');
+    var exactWarning = document.getElementById('exact_count_warning');
     var maximumAdditions = document.getElementById('max_added_tracks');
     var restarts = document.getElementById('restart_count');
     var restartHelp = document.getElementById('restart_help');
@@ -206,15 +224,34 @@
       var preserve = ordering.value === 'preserve_order';
       var noAdditions = extension.value === 'none';
       var automatic = extension.value === 'automatic';
+      var exact = extension.value === 'exact_count';
       var noneOption = extension.querySelector('option[value="none"]');
+      var selectedPlaylist = playlist.options[playlist.selectedIndex];
+      var sourceCount = parseInt(
+        selectedPlaylist && selectedPlaylist.getAttribute('data-track-count') || '0',
+        10
+      );
+      var maximumExact = Math.max(0, sourceCount - 1);
+      var requestedExact = parseInt(exactCount.value || '0', 10);
       var zeroAutomaticBudget = automatic
         && parseInt(maximumAdditions.value || '0', 10) === 0;
       var invalidCombination = preserve
         && (noAdditions || zeroAutomaticBudget);
+      var invalidExact = exact && sourceCount > 0
+        && (requestedExact < 1 || requestedExact > maximumExact);
 
       noneOption.disabled = preserve;
       warning.classList.toggle('bea-hidden', !invalidCombination);
-      submit.disabled = !capabilityReady || invalidCombination;
+      exactCount.max = maximumExact || 100;
+      exactLimit.textContent = sourceCount > 0
+        ? 'Current limit: ' + maximumExact + ' (one per transition); final size: '
+          + (sourceCount + (requestedExact > 0 ? requestedExact : 0)) + '.'
+        : 'Choose a playlist to see the current limit.';
+      exactWarning.textContent = invalidExact
+        ? 'This playlist has ' + maximumExact + ' internal transitions, so the current exact-count workflow cannot add ' + requestedExact + ' tracks.'
+        : '';
+      exactWarning.classList.toggle('bea-hidden', !invalidExact);
+      submit.disabled = !capabilityReady || invalidCombination || invalidExact;
 
       restarts.disabled = preserve;
       restartHelp.textContent = preserve
@@ -225,11 +262,17 @@
       for (var index = 0; index < automaticInputs.length; index++) {
         automaticInputs[index].disabled = !automatic;
       }
+      exactFields.classList.toggle('bea-disabled', !exact);
+      for (var exactIndex = 0; exactIndex < exactInputs.length; exactIndex++) {
+        exactInputs[exactIndex].disabled = !exact;
+      }
     }
 
     ordering.addEventListener('change', synchronizeControls);
+    playlist.addEventListener('change', synchronizeControls);
     extension.addEventListener('change', synchronizeControls);
     maximumAdditions.addEventListener('input', synchronizeControls);
+    exactCount.addEventListener('input', synchronizeControls);
     synchronizeControls();
   }());
 </script>
@@ -245,7 +288,10 @@
     [% ELSIF blissemall_job.state == 'failed' %]
       <div class="bea-error"><b>[% blissemall_job.error_code | html %]</b>: [% blissemall_job.error | html %]</div>
     [% ELSE %]
-      [% IF blissemall_job.automatic_extension %]
+      [% IF blissemall_job.exact_count_extension %]
+        <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Added exactly [% blissemall_job.requested_added_tracks %] track[% IF blissemall_job.requested_added_tracks != 1 %]s[% END %]; final size [% blissemall_job.final_track_count %]. Base-route objective [% blissemall_job.base_route_objective %].</div>
+        <p class="bea-note">The bounded search found up to [% blissemall_job.maximum_additions_found %] feasible additions; its structural upper bound was [% blissemall_job.structural_upper_bound %]. Evidence mode: [% blissemall_job.semantic_mode | html %].</p>
+      [% ELSIF blissemall_job.automatic_extension %]
         <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Added [% blissemall_job.added_track_count %] of at most [% blissemall_job.max_added_tracks %] tracks; final size [% blissemall_job.final_track_count %]. Base-route objective [% blissemall_job.base_route_objective %].</div>
         <p class="bea-note">Trigger: above [% blissemall_job.trigger_percent %]th contextual percentile. Evidence mode: [% blissemall_job.semantic_mode | html %].</p>
       [% ELSE %]
@@ -258,7 +304,7 @@
           </li>
         [% END %]
       </ol>
-      [% IF blissemall_job.automatic_extension %]
+      [% IF blissemall_job.bridge_extension %]
         <h4>Additions and reasons</h4>
         [% IF blissemall_job.added_track_count %]
           <ul>
@@ -270,7 +316,7 @@
               </li>
             [% END %]
           </ul>
-        [% ELSE %]
+        [% ELSIF blissemall_job.automatic_extension %]
           <p>No bridge met the trigger, acoustic-improvement, uniqueness, and repeat constraints. The optimized base order is still a valid result.</p>
         [% END %]
         <details>
@@ -313,7 +359,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>Exact-count and other bridge modes, Preserve order and fill gaps, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite.</p>
+  <p>One-per-transition and target-length presets, Preserve order and fill gaps, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

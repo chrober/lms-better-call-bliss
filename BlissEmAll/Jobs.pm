@@ -91,7 +91,7 @@ sub start_reorder_preview {
     my $built = Plugins::BlissEmAll::RequestBuilder::build_reorder_request(
         $playlist_id, $job_id, $semantic_path, $options,
     );
-    my $native_command = $built->{options}->{extension_mode} eq 'automatic'
+    my $native_command = $built->{options}->{extension_mode} ne 'none'
         ? 'bridge' : 'route';
     my $database_identity = _file_identity($built->{capability}->{database});
     die "Could not stat bliss.db" unless $database_identity;
@@ -168,6 +168,11 @@ sub start_reorder_preview {
             : '')
         . " output_mode=$effective->{output_mode}"
     );
+    $log->info(
+        'job=' . $job_id
+        . ' exact_count_requested=' . $effective->{additional_track_count}
+        . ' max_tracks_per_gap=1 endpoints=disabled'
+    ) if $effective->{extension_mode} eq 'exact_count';
     if (main::DEBUGLOG && $log->is_debug) {
         my $capability = $built->{capability};
         $log->debug(
@@ -212,12 +217,12 @@ sub _poll {
     if ($job->{artifact}) {
         my $normalized;
         my $normalize_ok = eval {
-            if ($job->{options}->{extension_mode} eq 'automatic') {
+            if ($job->{options}->{extension_mode} ne 'none') {
                 die "DATABASE_CHANGED: bliss.db changed while the preview was running\n"
                     unless (_file_identity($job->{capability}->{database}) || '')
                         eq $job->{database_identity};
                 $normalized =
-                    Plugins::BlissEmAll::BridgeResolver::resolve_automatic_preview($job);
+                    Plugins::BlissEmAll::BridgeResolver::resolve_bridge_preview($job);
                 for my $key (keys %$normalized) {
                     $job->{$key} = $normalized->{$key};
                 }
@@ -297,7 +302,7 @@ sub _poll {
     } else {
         my $elapsed_ms = int(1000 * ($job->{finished_at} - $job->{started_at}));
         my $selected = $job->{artifact}->{selected_strategy} || 'adaptive';
-        if ($job->{options}->{extension_mode} eq 'automatic') {
+        if ($job->{options}->{extension_mode} ne 'none') {
             $log->info(
                 "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
                 . " source_tracks=$job->{track_count}"

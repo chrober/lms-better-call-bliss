@@ -61,6 +61,15 @@ sub build_reorder_request {
         $track_urls{$id} = $track->url;
     }
 
+    if ($options->{extension_mode} eq 'exact_count') {
+        my $maximum = @tracks - 1;
+        die 'Add exactly N tracks supports at most ' . $maximum
+            . ($maximum == 1 ? ' additional track' : ' additional tracks')
+            . ' for this playlist because the current workflow permits one '
+            . 'addition per internal optimized transition.' . chr(10)
+            if $options->{additional_track_count} > $maximum;
+    }
+
     my $artifacts = {
         database => {
             path => $capability->{database},
@@ -103,12 +112,19 @@ sub build_reorder_request {
             album => $options->{album_window},
             track => $options->{track_window},
         },
-        extension => $options->{extension_mode} eq 'automatic'
-            ? {
+        extension => $options->{extension_mode} eq 'automatic' ? {
                 mode => 'automatic',
                 candidate_limit => 5,
                 max_added_tracks => $options->{max_added_tracks},
                 trigger_percentile => $options->{trigger_percent} / 100,
+            }
+            : $options->{extension_mode} eq 'exact_count' ? {
+                mode => 'exact_count',
+                candidate_limit => 5,
+                max_tracks_per_gap => 1,
+                allow_opening_track => JSON::XS::false,
+                allow_closing_track => JSON::XS::false,
+                additional_track_count => $options->{additional_track_count},
             }
             : {mode => 'none'},
         semantic_evidence => {

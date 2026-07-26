@@ -28,8 +28,8 @@ the feature without affecting BlissMixer.
 
 ## First writable vertical slice
 
-The connected live milestone supports **Reorder only** and **Extend
-automatically** through Preview and explicit **Create optimized copy**.
+The connected milestone supports **Reorder only**, **Extend automatically**,
+and **Add exactly N tracks** through Preview and explicit **Create optimized copy**.
 It resolves saved playlists through LMS objects, initializes Adaptive and repeat
 values from BlissMixer, accepts validated per-job overrides, writes a private
 versioned request in the LMS cache, and runs the bundled ARM64 optimizer with an
@@ -40,18 +40,22 @@ supports hierarchical choices and one search-style text prompt, but does not
 carry a portable set of checkbox, dropdown, and numeric form controls. The
 playlist job editor presents source ordering independently from additions.
 Client-side relevance
-rules disable automatic-addition inputs outside automatic mode and route-search
+rules disable automatic/exact-count inputs outside their modes and route-search
 attempts under preserved order. The Perl validator independently rejects
 preserved-order requests that cannot possibly change the playlist.
 Playlist persistence is a separate post-Preview action. It resolves the result back to
 LMS track objects, uses Lyrion's core M3U formatter, verifies the temporary
 playlist, claims the final path with exclusive creation, copies the verified
 bytes, creates the catalog object, and verifies catalog and final-file order.
-Automatic extension invokes the native `bridge` command with a frozen empty semantic graph until optional providers
+Both addition modes invoke the native `bridge` command with a frozen empty semantic graph until optional providers
 are connected. It validates native membership proofs, resolves opaque
 `bliss-row-N` identities read-only against the unchanged `bliss.db`, maps
 them to local LMS tracks including CUE entries, and freezes the resolved URLs
-in the in-memory job before persistence. Automatic names come from the decoded
+in the in-memory job before persistence. Exact-count uses the native bounded
+search with one bridge per internal transition, rejects counts above `S - 1`,
+and accepts only a feasible artifact containing exactly the requested number;
+native infeasibility is surfaced as a failed Preview without a partial result.
+Automatic names come from the decoded
 local playlist filename rather than the potentially mojibaked catalog title and
 select the next free numbered suffix. Explicit name collisions and publication
 races fail closed; source playlist overwrite is not reachable.

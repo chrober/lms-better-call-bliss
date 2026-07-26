@@ -23,6 +23,7 @@ sub defaults {
         restart_count => int($plugin_prefs->get('restart_count') || 50),
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
+        additional_track_count => 1,
         output_mode => 'create_copy',
         output_name => '',
         output_name_generated => 0,
@@ -50,9 +51,10 @@ sub normalize {
 
     $options->{extension_mode} = $input->{extension_mode}
         if defined $input->{extension_mode};
-    die "Extension mode must be Reorder only or Extend automatically"
+    die "Extension mode must be Reorder only, Extend automatically, or Add exactly N tracks"
         unless $options->{extension_mode} eq 'none'
-            || $options->{extension_mode} eq 'automatic';
+            || $options->{extension_mode} eq 'automatic'
+            || $options->{extension_mode} eq 'exact_count';
 
     $options->{algorithm} = $input->{algorithm}
         if defined $input->{algorithm};
@@ -82,6 +84,10 @@ sub normalize {
     );
     $options->{trigger_percent} = _integer(
         $input, 'trigger_percent', 0, 100, $options->{trigger_percent},
+    );
+    $options->{additional_track_count} = _integer(
+        $input, 'additional_track_count', 1, 100,
+        $options->{additional_track_count},
     );
 
     die "Preserve source order requires an addition mode with a non-zero target"

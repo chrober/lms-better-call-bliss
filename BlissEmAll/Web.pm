@@ -75,7 +75,7 @@ sub _form_from_params {
     for my $name (qw(
         playlist_id ordering_policy extension_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
-        max_added_tracks trigger_percent output_mode output_name
+        max_added_tracks trigger_percent additional_track_count output_mode output_name
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }
@@ -106,15 +106,25 @@ sub _result_view {
         my $artifact = $job->{artifact};
         my $selected = $artifact->{selected_strategy} || 'adaptive';
         $view->{selected_strategy} = $selected;
-        if ($job->{options}->{extension_mode} eq 'automatic') {
+        if ($job->{options}->{extension_mode} ne 'none') {
             my $preview = $artifact->{selection_preview} || {};
-            $view->{automatic_extension} = 1;
+            $view->{bridge_extension} = 1;
+            $view->{automatic_extension} = 1
+                if $job->{options}->{extension_mode} eq 'automatic';
+            $view->{exact_count_extension} = 1
+                if $job->{options}->{extension_mode} eq 'exact_count';
             $view->{base_route_objective} = sprintf(
                 '%.3f', $artifact->{selected_route_objective},
             );
             $view->{added_track_count} = 0 + ($preview->{added_track_count} || 0);
             $view->{final_track_count} = 0 + ($job->{final_track_count} || 0);
             $view->{max_added_tracks} = 0 + ($preview->{max_added_tracks} || 0);
+            $view->{requested_added_tracks} =
+                0 + ($preview->{requested_added_tracks} || 0);
+            $view->{maximum_additions_found} =
+                0 + (($preview->{search} || {})->{maximum_additions_found} || 0);
+            $view->{structural_upper_bound} =
+                0 + (($preview->{search} || {})->{structural_upper_bound} || 0);
             $view->{trigger_percent} = int(
                 100 * ($artifact->{trigger_percentile} || 0) + 0.5
             );
@@ -198,7 +208,7 @@ sub handler {
         && !length($form->{output_name})) {
         for my $playlist (@$playlists) {
             if ($playlist->{id} == $form->{playlist_id}) {
-                my $suffix = $form->{extension_mode} eq 'automatic'
+                my $suffix = $form->{extension_mode} ne 'none'
                     ? ($plugin_prefs->get('extended_suffix') || 'Extended')
                     : ($plugin_prefs->get('output_suffix') || 'Optimized');
                 $form->{output_name} =

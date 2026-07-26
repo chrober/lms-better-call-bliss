@@ -77,8 +77,9 @@ adapter cannot carry the required portable multi-field form. **Optimize order >
 Reorder only > Run read-only preview** remains executable. Adaptive parameters,
 repeat windows, search restarts, and output disposition are now job fields;
 BlissMixer values are defaults only. Version `0.5.0` additionally connects
-automatic Bliss-only bridge discovery. Preserve-order and exact-count
-alternatives, static or forest routing, semantic providers, cancellation,
+automatic Bliss-only bridge discovery, and version `0.6.0` connects exact-count
+Bliss-only bridge discovery. Preserve-order and the remaining extension
+presets, static or forest routing, semantic providers, cancellation,
 durable history, report export, and source overwrite remain visibly marked
 **Not connected yet**.
 
@@ -229,3 +230,39 @@ material_glyph=timeline
 The new icon URL returned HTTP 200 as `image/png`. The generated asset was
 processed with the installed image-skill chroma-removal helper, one-pixel edge
 contraction, high-quality 512x512 resampling, and alpha/fringe validation.
+
+## Exact-count extension verification
+
+Version `0.6.0` was deployed and exercised through the live Extras HTTP
+workflow on 2026-07-26. The status command reported `ready=1`, zero compatibility
+problems, `ux_contract=extras-job-editor-v7`, and exact extension in its working
+mode. The page rendered the enabled **Add exactly N tracks** choice, its
+mode-specific numeric editor, all-or-nothing explanation, selected-playlist
+limit, and calculated final size.
+
+A read-only Preview used an anonymized 13-track single-artist playlist, requested
+one addition, and explicitly disabled artist and album look-back for that job.
+The native `bridge` request captured `mode=exact_count`,
+`additional_track_count=1`, `max_tracks_per_gap=1`, disabled opening/closing
+slots, and the submitted repeat windows. It completed with Adaptive-arc routing,
+one bridge, 14 final tracks, true unique-membership and original-subsequence
+proofs, a maximum of one feasible addition found, and a structural upper bound
+of 12. The result page reported **Added exactly 1 track**, the bounded-search
+capacity, the Bliss-only evidence mode, the final order, and addition reasons.
+
+The Preview did not invoke persistence: querying saved playlists found no entry
+with the submitted output name. A separate two-track boundary request asked for
+two additions and was rejected before native execution with a concise maximum
+of one additional track. The banner contained no internal Perl path. Native
+contract tests independently cover the second failure boundary: a completed
+exact-count analysis that cannot find `N` returns an infeasibility proof with a
+null final sequence, and the plugin converts that proof into a failed Preview
+rather than accepting a partial result.
+
+A final two-track smoke run requested one addition and rendered the corrected
+singular success text with three final tracks. Its explicit Create action
+reported **Created and verified**. An independent LMS query found all two source
+URLs exactly once, one additional URL, three unique URLs, and three total tracks
+in the saved copy. The test then deleted only that newly created playlist by its
+returned LMS ID through the core `playlists delete` command and confirmed that
+no matching saved playlist remained.
