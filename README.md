@@ -50,7 +50,12 @@ icon follows Material's monochrome marker convention and resolves to its
 metadata receives the packaged transparent monochrome route asset.
 
 Requests, native output, and stderr are kept beneath the LMS cache in
-`blissemall/jobs`. Creation uses Lyrion's core M3U formatter, exclusively
+`blissemall/jobs`. Version `0.7.0` also keeps one checksum-protected decoded
+library cache under `blissemall/library-cache`, keyed by the guarded `bliss.db`
+file identity. Cold jobs bulk-load the library with one SQLite query; warm jobs
+reuse the database hash, integrity result, and decoded features. Completion
+logs show wall/native time and cache state, while debug logging adds per-stage
+native milliseconds. Creation uses Lyrion's core M3U formatter, exclusively
 creates a new file, creates the LMS playlist object, and verifies both catalog
 and file order before reporting success. A blank copy name is derived from the
 decoded playlist filename, preserving Unicode such as emoji, and receives the

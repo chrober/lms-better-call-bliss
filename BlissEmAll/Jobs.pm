@@ -15,7 +15,7 @@ use Plugins::BlissEmAll::PlaylistWriter;
 
 my $log = Slim::Utils::Log::logger('plugin.blissemall');
 my $server_prefs = preferences('server');
-my ($optimizer_binary, $job_root);
+my ($optimizer_binary, $job_root, $library_cache_root);
 my %jobs;
 my $serial = 0;
 
@@ -23,7 +23,10 @@ sub init {
     $optimizer_binary = shift;
     $job_root = ($server_prefs->get('cachedir') || Slim::Utils::Prefs::dir())
         . '/blissemall/jobs';
+    $library_cache_root = ($server_prefs->get('cachedir') || Slim::Utils::Prefs::dir())
+        . '/blissemall/library-cache';
     make_path($job_root) unless -d $job_root;
+    make_path($library_cache_root) unless -d $library_cache_root;
 }
 
 sub _json {
@@ -95,6 +98,8 @@ sub start_reorder_preview {
         ? 'bridge' : 'route';
     my $database_identity = _file_identity($built->{capability}->{database});
     die "Could not stat bliss.db" unless $database_identity;
+    $built->{request}->{artifacts}->{database}->{cache_identity}
+        = $database_identity;
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
     my $stderr_path = $dir . '/stderr.log';
@@ -118,6 +123,7 @@ sub start_reorder_preview {
                 stderr => $stderr_fh,
             },
             $optimizer_binary, $native_command, '--request', $request_path,
+            '--timings', '--cache-dir', $library_cache_root,
         );
     };
     $launch_error = $@;
@@ -215,6 +221,21 @@ sub _poll {
         $decode_error = $@;
     }
     if ($job->{artifact}) {
+        my $performance = $job->{artifact}->{performance};
+        if (ref($performance) eq 'HASH') {
+            $job->{native_performance} = $performance;
+            if (main::DEBUGLOG && $log->is_debug) {
+                my $stages = join(',', map {
+                    ($_->{stage} || 'unknown') . ':' . (0 + ($_->{elapsed_ms} || 0))
+                } @{$performance->{stages} || []});
+                $log->debug(
+                    "job=$job_id native_timing"
+                    . " total_ms=" . (0 + ($performance->{total_ms} || 0))
+                    . " database_cache=" . ($performance->{database_cache} || 'unknown')
+                    . " stages=$stages"
+                );
+            }
+        }
         my $normalized;
         my $normalize_ok = eval {
             if ($job->{options}->{extension_mode} ne 'none') {
@@ -302,9 +323,15 @@ sub _poll {
     } else {
         my $elapsed_ms = int(1000 * ($job->{finished_at} - $job->{started_at}));
         my $selected = $job->{artifact}->{selected_strategy} || 'adaptive';
+        my $native = $job->{native_performance};
+        my $native_summary = ref($native) eq 'HASH'
+            ? " native_ms=" . (0 + ($native->{total_ms} || 0))
+                . " database_cache=" . ($native->{database_cache} || 'unknown')
+            : '';
         if ($job->{options}->{extension_mode} ne 'none') {
             $log->info(
                 "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
+                . $native_summary
                 . " source_tracks=$job->{track_count}"
                 . " final_tracks=$job->{final_track_count}"
                 . " added=$job->{added_track_count}"
@@ -321,6 +348,7 @@ sub _poll {
                 : $job->{artifact}->{primary};
             $log->info(
                 "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
+                . $native_summary
                 . " tracks=$job->{track_count} strategy=$selected"
                 . sprintf(
                     ' objective=%.3f worst_transition=%.3f',

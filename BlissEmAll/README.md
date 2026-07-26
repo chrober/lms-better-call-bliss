@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.6.0` per-job UX shell. It contributes
+This directory contains the installable `0.7.0` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as

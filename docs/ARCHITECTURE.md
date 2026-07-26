@@ -26,6 +26,17 @@ The initial release uses one process per job. Compatibility is discovered with
 `bliss-playlist-optimizer version --json`; absence or incompatibility disables
 the feature without affecting BlissMixer.
 
+Version `0.7.0` preserves that process boundary while avoiding repeated database
+preparation. The plugin attaches the same `device:inode:size:mtime` identity it
+already uses for post-job mutation detection and gives the native process a
+plugin-owned `blissemall/library-cache` directory. A matching versioned cache
+reuses the streamed database hash, successful integrity check, and decoded
+usable-track library. A cold job reads all usable features and metadata with one
+ordered SQLite query; a changed identity, checksum failure, incompatible cache,
+or decode error is a safe miss and rebuild. The plugin still compares the live
+database identity before resolving any added tracks, so cache reuse does not
+weaken the existing fail-closed result boundary.
+
 ## First writable vertical slice
 
 The connected milestone supports **Reorder only**, **Extend automatically**,
@@ -68,7 +79,7 @@ unrecognized Extras images to its generic extension glyph; the
 transparent monochrome PNG.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
-currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.5.0`
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.7.0`
 therefore treats the learned matrix as a required core capability and reports
 its absence in System status. Making it optional requires an implemented and
 tested native fallback; the plugin must not claim one based only on the design
@@ -79,3 +90,10 @@ LMS ties `STDERR` to its logging adapter. Native jobs therefore follow LMS's
 scanner pattern: open private output handles, temporarily untie `STDERR`, fork
 with an argument array through `Proc::Background`, restore the tie immediately,
 and poll without blocking the server event loop.
+
+Every route and bridge job requests a structured native `performance` object.
+Completion logs include wall time, native time, and database-cache state at
+INFO. When `plugin.blissemall` debug logging is enabled, one additional line
+reports each sanitized native stage and elapsed milliseconds. Job results and
+stderr remain in the private job directory; no track paths are added to timing
+logs.
