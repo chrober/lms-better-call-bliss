@@ -39,17 +39,30 @@ sub _track_for_database_file {
         next unless -e $absolute;
 
         my $url = Slim::Utils::Misc::fileURLFromPath($absolute);
+        my $track_id;
         if ($cue_track) {
             my $sth = Slim::Schema->dbh->prepare(
-                'SELECT url FROM tracks WHERE url LIKE ? AND tracknum = ? LIMIT 1'
+                'SELECT id, url FROM tracks '
+                . 'WHERE url LIKE ? AND tracknum = ? '
+                . 'AND remote = 0 AND audio = 1 LIMIT 1'
             );
             $sth->execute($url . '#%', $cue_track);
-            my ($cue_url) = $sth->fetchrow_array;
+            my ($cue_id, $cue_url) = $sth->fetchrow_array;
             $sth->finish;
             next unless $cue_url;
+            $track_id = $cue_id;
             $url = $cue_url;
+        } else {
+            my $sth = Slim::Schema->dbh->prepare(
+                'SELECT id FROM tracks '
+                . 'WHERE url = ? AND remote = 0 AND audio = 1 LIMIT 1'
+            );
+            $sth->execute($url);
+            ($track_id) = $sth->fetchrow_array;
+            $sth->finish;
         }
-        my $track = Slim::Schema->objectForUrl($url);
+        next unless $track_id;
+        my $track = Slim::Schema->find('Track', $track_id);
         return $track if blessed($track) && !$track->remote;
     }
     return;
