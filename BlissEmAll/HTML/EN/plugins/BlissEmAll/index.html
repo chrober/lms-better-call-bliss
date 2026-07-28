@@ -8,10 +8,14 @@
   .bea-row { margin: .65em 0; }
   .bea-row label { display: inline-block; min-width: 19em; }
   .bea-note { color: var(--text-color, #444); opacity: .82; margin: .35em 0 .8em 0; }
-  .bea-warning { color: #3d2a00; padding: .7em; border-left: 4px solid #b36b00; background: #fff2c2; }
-  .bea-error { color: #5f0000; padding: .7em; border-left: 4px solid #a40000; background: #ffe7e7; }
-  .bea-ok { color: #0b4a18; padding: .7em; border-left: 4px solid #08752a; background: #e8f7eb; }
-  .bea-info { color: #0b3c5d; padding: .7em; border-left: 4px solid #126b9e; background: #e8f5fd; }
+  .bea-warning { color: #3d2a00 !important; padding: .7em; border-left: 4px solid #b36b00; background: #fff2c2; }
+  .bea-warning * { color: #3d2a00 !important; }
+  .bea-error { color: #5f0000 !important; padding: .7em; border-left: 4px solid #a40000; background: #ffe7e7; }
+  .bea-error * { color: #5f0000 !important; }
+  .bea-ok { color: #0b4a18 !important; padding: .7em; border-left: 4px solid #08752a; background: #e8f7eb; }
+  .bea-ok * { color: #0b4a18 !important; }
+  .bea-info { color: #0b3c5d !important; padding: .7em; border-left: 4px solid #126b9e; background: #e8f5fd; }
+  .bea-info * { color: #0b3c5d !important; }
   .bea-disabled { color: var(--text-color, #555); opacity: .72; }
   .bea-order { margin-top: .8em; }
   .bea-hidden { display: none; }
@@ -61,9 +65,13 @@
 
 [% IF !blissemall_capability.ready %]
   <div class="bea-warning">
-    <b>Preview unavailable.</b>
+    <b>[% IF blissemall_capability.scanning %]Preview temporarily paused.[% ELSE %]Preview unavailable.[% END %]</b>
     <ul>[% FOREACH problem = blissemall_capability.problems %]<li>[% problem | html %]</li>[% END %]</ul>
+    [% IF blissemall_capability.scanning %]<p>This page will check again automatically.</p>[% END %]
   </div>
+  [% IF blissemall_capability.scanning %]
+    <script>window.setTimeout(function () { window.location.reload(); }, 5000);</script>
+  [% END %]
 [% END %]
 
 [% IF blissemall_candidate_inventory.ready %]
@@ -270,18 +278,21 @@
       exactWarning.classList.toggle('bea-hidden', !invalidExact);
       submit.disabled = !capabilityReady || invalidCombination || invalidExact;
 
-      restarts.disabled = preserve;
+      restarts.disabled = false;
+      restarts.readOnly = preserve;
       restartHelp.textContent = preserve
         ? 'Not used when source order is preserved.'
         : 'Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.';
 
       automaticFields.classList.toggle('bea-disabled', !automatic);
       for (var index = 0; index < automaticInputs.length; index++) {
-        automaticInputs[index].disabled = !automatic;
+        automaticInputs[index].disabled = false;
+        automaticInputs[index].readOnly = !automatic;
       }
       exactFields.classList.toggle('bea-disabled', !exact);
       for (var exactIndex = 0; exactIndex < exactInputs.length; exactIndex++) {
-        exactInputs[exactIndex].disabled = !exact;
+        exactInputs[exactIndex].disabled = false;
+        exactInputs[exactIndex].readOnly = !exact;
       }
     }
 

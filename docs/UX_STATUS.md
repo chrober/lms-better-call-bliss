@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.10.0` UX shell. The shell is
+model and the exact boundary of the current `0.10.1` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -44,8 +44,9 @@ fall through to either working mode.
 | Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
-| Relevance-aware controls | Working | Automatic and exact-count inputs are enabled only for their modes; the exact limit and resulting size follow the selected playlist; route attempts are disabled for preserved order; guaranteed no-op preserved combinations disable submission and fail server validation if bypassed. |
-| Accessible status feedback | Working | Warning, error, success, and running/info banners use explicit high-contrast foreground/background pairs; theme text color is retained for secondary notes and disabled hints. |
+| Relevance-aware controls | Working | Automatic, exact-count, and route-attempt inputs become read-only when irrelevant but remain submitted for draft restoration; the exact limit and resulting size follow the selected playlist; guaranteed no-op preserved combinations disable submission and fail server validation if bypassed. |
+| Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
+| LMS scan coordination | Working | Preview pauses while LMS reports an active library scan, explains that the catalog is changing, and retries the page automatically until the scan finishes. |
 | Automatic bridge budget | Working, per job | Validated as 0-100; limits successful additions rather than candidate analysis. |
 | Bridge trigger percentile | Working, per job | Validated as 0-100; only direct gaps strictly above this frozen contextual percentile are eligible. |
 | Internal bridge shortlist | Working, implementation-level | Addition jobs deterministically narrow each large internal-gap pool to 256 high-recall candidates before strict scoring. Endpoint-local semantic evidence is reserved; strict dynamic Adaptive scoring and all safety gates remain authoritative. This is intentionally not a job control in the current UX. |
@@ -73,10 +74,10 @@ evidence from the full source artist pool is only a fallback.
 | Transition summary | Partial | Aggregate reorder diagnostics are real; automatic and exact-count extension show one decision/reason per original gap, while a general per-leg drill-down remains open. |
 | Warnings | Partial | Repeat validation and read-only safety are real; provider warnings await providers. |
 | Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
-| Non-LMS Bliss-row audit | Working | After the first addition job, Extras shows the current excluded-row count and persistent ledger path. The private JSON ledger retains current/resolved state, reason, row identity, metadata, and first/last-seen observations across LMS restarts. |
+| Non-LMS Bliss-row audit | Working | After the first addition job, Extras shows the current excluded-row count and persistent ledger path. The private JSON ledger retains current/resolved state, reason, row identity, metadata, and first/last-seen observations across LMS restarts. Existing case-variant duplicates are identified separately and include the related exact LMS identity. |
 | Create optimized copy | Working | Separate post-Preview action writes and verifies a new LMS playlist. Blank names preserve Unicode from the decoded source filename and choose the next free numbered suffix; explicit collisions fail visibly and safely. |
 | Overwrite source | Not connected yet | Captured for UX continuity but never mutates the source. |
-| Change options and rerun | Not connected yet | Draft restoration is not implemented. |
+| Change options and rerun | Working for in-memory jobs | Polling, success, failure, and copy-action pages restore every normalized job value into the editor; users can adjust those values and start another Preview. Drafts do not survive an LMS restart. |
 | Discard result | Not connected yet | Session results expire naturally on LMS restart. |
 
 ## Settings
@@ -102,7 +103,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.10.0` keeps Preview read-only and permits only an explicit,
+Version `0.10.1` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates

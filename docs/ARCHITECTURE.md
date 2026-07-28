@@ -26,7 +26,7 @@ The initial release uses one process per job. Compatibility is discovered with
 `bliss-playlist-optimizer version --json`; absence or incompatibility disables
 the feature without affecting BlissMixer.
 
-Version `0.10.0` preserves that process boundary while avoiding repeated database
+Version `0.10.1` preserves that process boundary while avoiding repeated database
 preparation. The plugin attaches the same `device:inode:size:mtime` identity it
 already uses for post-job mutation detection and gives the native process a
 plugin-owned `blissemall/library-cache` directory. A matching versioned cache
@@ -39,7 +39,7 @@ weaken the existing fail-closed result boundary.
 
 Addition jobs have a second frozen input: `lms-local-candidate-inventory-v1`. The plugin enumerates current non-remote audio tracks from the LMS catalog, derives the exact Bliss file identities (including CUE suffixes), intersects them with usable `TracksV2` rows, and writes a checksum-protected allowlist bound to both the LMS last-scan timestamp and the guarded `bliss.db` identity. The native process validates the schema, checksum, database binding, unique known row IDs, and source membership, then removes all non-allowlisted rows before semantic candidate construction and shortlisting. Post-result LMS object resolution remains mandatory as a time-of-check/time-of-use guard.
 
-The same inventory pass updates `<LMS cache>/blissemall/non-lms-bliss-rows.json`. This plugin-owned durable audit ledger retains active and historically resolved unmatched identities, first/last-seen timestamps, observation counts, current Bliss row ID and metadata, and a reason distinguishing a missing file from a file/CUE entry that exists but is not indexed by LMS. Full identities stay in that private file; normal LMS logs contain only counts and its location.
+The same inventory pass updates `<LMS cache>/blissemall/non-lms-bliss-rows.json`. This plugin-owned durable audit ledger retains active and historically resolved unmatched identities, first/last-seen timestamps, observation counts, current Bliss row ID and metadata, and a reason distinguishing a missing file, an existing unindexed file/CUE entry, and a filename-case variant of a unique exact LMS identity. Case variants remain excluded rather than producing duplicate candidates; the ledger records the related LMS identity for diagnosis. Full identities stay in that private file; normal LMS logs contain only counts and its location.
 
 The content-addressed allowlist is reused across LMS restarts through a checksum-verified current-state record only while both the `bliss.db` file identity and LMS last-scan timestamp remain unchanged. A library scan, Bliss database replacement, missing artifact, checksum failure, or generator revision change causes a cold rebuild. This keeps repeated jobs and routine LMS restarts fast without weakening membership freshness.
 
@@ -97,7 +97,7 @@ unrecognized Extras images to its generic extension glyph; the
 transparent monochrome PNG.
 
 The product architecture allows a future matrix-free Adaptive fallback, but the
-currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.10.0`
+currently bundled optimizer build returns `MATRIX_REQUIRED`. Version `0.10.1`
 therefore treats the learned matrix as a required core capability and reports
 its absence in System status. Making it optional requires an implemented and
 tested native fallback; the plugin must not claim one based only on the design
@@ -108,6 +108,12 @@ LMS ties `STDERR` to its logging adapter. Native jobs therefore follow LMS's
 scanner pattern: open private output handles, temporarily untie `STDERR`, fork
 with an argument array through `Proc::Background`, restore the tie immediately,
 and poll without blocking the server event loop.
+
+The Extras form is reconstructed from the in-memory job's normalized options on
+every polling, completion, failure, and copy-action request. Controls that are
+irrelevant to the selected mode are read-only rather than omitted from form
+submission. This preserves the user's full draft for adjustment and rerun while
+keeping the job artifact authoritative for the result being reviewed.
 
 Every route and bridge job requests a structured native `performance` object.
 Completion logs include wall time, native time, and database-cache state at

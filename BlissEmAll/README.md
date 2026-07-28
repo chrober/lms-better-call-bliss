@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.10.0` per-job UX shell. It contributes
+This directory contains the installable `0.10.1` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
@@ -34,7 +34,8 @@ generic extension/puzzle icon. `Web.pm` registers the icon explicitly under
 the same key as the Extras link.
 
 Warning, error, success, and information banners use explicit high-contrast
-foreground/background pairs. Notes and disabled hints follow the host
+foreground/background pairs, including nested bold/list text that host themes
+would otherwise recolor. Notes and disabled hints follow the host
 `--text-color` with reduced emphasis rather than using fixed gray text.
 
 Automatic extension adds only candidates that pass the native contextual
@@ -45,7 +46,7 @@ URLs. The result shows every addition and every transition decision. Optional
 semantic providers are not connected in this slice, so it reports the honest
 Bliss-only evidence mode.
 
-Every addition job first snapshots current local LMS track identities and intersects them with usable `TracksV2` rows. The resulting checksum-protected allowlist is bound to the exact `bliss.db` file identity and applied natively before candidate shortlisting or scoring. Unmatched Bliss rows remain excluded even when their acoustic score would otherwise win. A persistent ledger at `<LMS cache>/blissemall/non-lms-bliss-rows.json` records their paths, metadata, reasons, first/last-seen times, observation counts, and resolved/current state for review; the Extras page shows the current count and file location after the first addition job.
+Every addition job first snapshots current local LMS track identities and intersects them with usable `TracksV2` rows. The resulting checksum-protected allowlist is bound to the exact `bliss.db` file identity and applied natively before candidate shortlisting or scoring. Unmatched Bliss rows remain excluded even when their acoustic score would otherwise win. A persistent ledger at `<LMS cache>/blissemall/non-lms-bliss-rows.json` records their paths, metadata, reasons, first/last-seen times, observation counts, and resolved/current state for review; the Extras page shows the current count and file location after the first addition job. Existing files are not automatically eligible: when a Bliss row differs from a unique LMS identity only by filename case, the audit records `filename_case_differs_from_lms_catalog` and the related LMS identity, preserving exact membership and preventing duplicate case-variant candidates.
 
 Exact-count extension accepts a per-job positive integer up to the number of
 internal source transitions. It succeeds only when the native bounded search
@@ -64,7 +65,11 @@ output separates shortlisting from strict candidate scoring.
 
 Running results refresh automatically and completed/failed optimization and
 copy states are displayed in prominent banners with stable error codes. After
-a successful preview, Create optimized copy writes through Lyrion's core M3U
+a job starts, every polling, result, and copy-action page rebuilds the editor
+from that job's normalized options. Inactive numeric controls remain submitted
+as read-only values, so failures and successful review pages retain the exact
+settings for adjustment and rerun. After a successful preview, Create optimized
+copy writes through Lyrion's core M3U
 formatter, exclusively creates a new file, creates the LMS playlist object, and
 verifies both file and catalog order. Blank names are Unicode-safe and select
 the next available numbered copy; explicit collisions fail visibly. The source

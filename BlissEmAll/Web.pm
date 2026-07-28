@@ -83,6 +83,17 @@ sub _form_from_params {
     return $form;
 }
 
+sub _form_from_job {
+    my ($job, $defaults) = @_;
+    my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
+    my $form = _form_from_params(
+        {%$options, playlist_id => $job->{playlist_id}}, $defaults,
+    );
+    $form->{output_name_generated} =
+        $options->{output_name_generated} ? 1 : 0;
+    return $form;
+}
+
 sub _result_view {
     my $job = shift;
     return unless $job;
@@ -251,6 +262,8 @@ sub handler {
         $job = Plugins::BlissEmAll::Jobs::get($params->{job_id});
         $error = 'Preview job is no longer available' unless $job;
     }
+
+    $form = _form_from_job($job, $defaults) if $job;
 
     $params->{blissemall_playlists} = $playlists;
     $params->{blissemall_form} = $form;

@@ -3,7 +3,7 @@ package Plugins::BlissEmAll::CandidateInventory;
 use strict;
 use DBI;
 use Digest::SHA qw(sha256_hex);
-use Encode qw(encode_utf8);
+use Encode qw(decode encode_utf8 FB_CROAK);
 use File::Path qw(make_path);
 use File::Slurp qw(read_file write_file);
 use File::Spec::Functions qw(catfile);
@@ -16,10 +16,21 @@ use Slim::Utils::Unicode;
 use URI::Escape qw(uri_unescape);
 
 my $log = Slim::Utils::Log::logger('plugin.blissemall');
+use constant BUILDER_REVISION => 2;
 my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
 );
+
+sub _database_text {
+    my $value = shift;
+    return unless defined $value;
+    return $value if utf8::is_utf8($value);
+    my $bytes = $value;
+    my $decoded = eval { decode('UTF-8', $bytes, FB_CROAK) };
+    return $decoded unless $@;
+    return Slim::Utils::Unicode::utf8decode_locale($value);
+}
 
 sub init {
     my $cache_root = shift;
@@ -49,7 +60,7 @@ sub _relative_database_file {
         $root =~ s{/+$}{};
         next unless index($path, $root . '/') == 0;
         my $relative = substr($path, length($root) + 1);
-        $relative = Slim::Utils::Unicode::utf8decode_locale($relative);
+        $relative = _database_text($relative);
         $relative .= '.CUE_TRACK.' . $tracknum
             if $url =~ /#/ && $tracknum;
         return $relative;
@@ -74,7 +85,7 @@ sub _database_file_for_url {
         next unless index($file_url, $prefix . '/') == 0;
         my $relative = substr($file_url, length($prefix) + 1);
         $relative = uri_unescape($relative);
-        $relative = Slim::Utils::Unicode::utf8decode_locale($relative);
+        $relative = _database_text($relative);
         $relative .= '.CUE_TRACK.' . $tracknum
             if $url =~ /#/ && $tracknum;
         return $relative;
@@ -130,7 +141,7 @@ sub _load_cached_inventory {
         ? eval { _json()->decode($state_bytes) } : undef;
     return $miss->('state_invalid') unless ref($state) eq 'HASH';
     return $miss->('builder_revision_changed')
-        unless ($state->{builder_revision} || 0) == 1;
+        unless ($state->{builder_revision} || 0) == BUILDER_REVISION;
     return $miss->('library_identity_changed')
         unless ($state->{cache_key} || '') eq $key;
     my $path = $state->{inventory_path} || '';
@@ -196,6 +207,12 @@ sub _update_audit {
         $entry->{artist} = $row->{artist};
         $entry->{album} = $row->{album};
         $entry->{reason} = $row->{reason};
+        if (defined $row->{related_lms_database_file}) {
+            $entry->{related_lms_database_file} =
+                $row->{related_lms_database_file};
+        } else {
+            delete $entry->{related_lms_database_file};
+        }
         $entry->{last_seen} = $now;
         $entry->{observations} = 0 + ($entry->{observations} || 0) + 1;
         $entry->{active} = JSON::XS::true;
@@ -250,7 +267,7 @@ sub prepare {
         return $cached_result;
     }
 
-    my %lms_files;
+    my (%lms_files, %lms_files_folded, %ambiguous_folded);
     my $lms_track_count = 0;
     my $roots = $capability->{music_roots} || [];
     my $root_descriptors = _root_descriptors($roots);
@@ -264,6 +281,13 @@ sub prepare {
         );
         next unless defined $database_file && length $database_file;
         $lms_files{$database_file} = 1;
+        my $folded = lc($database_file);
+        if (exists $lms_files_folded{$folded}
+            && $lms_files_folded{$folded} ne $database_file) {
+            $ambiguous_folded{$folded} = 1;
+        } else {
+            $lms_files_folded{$folded} = $database_file;
+        }
         $lms_track_count++;
     }
     $lms_sth->finish;
@@ -288,19 +312,29 @@ sub prepare {
     my $usable_count = 0;
     while (my ($row_id, $file, $title, $artist, $album) = $sth->fetchrow_array) {
         $usable_count++;
-        if (defined $file && $lms_files{$file}) {
+        my $database_file = _database_text($file);
+        my $folded = defined $database_file ? lc($database_file) : '';
+        if (defined $database_file && $lms_files{$database_file}) {
             push @allowed, 0 + $row_id;
             next;
         }
+        my $case_variant = defined $database_file
+            && !$ambiguous_folded{$folded}
+            && exists $lms_files_folded{$folded}
+            ? $lms_files_folded{$folded} : undef;
         push @unmatched, {
             row_id => 0 + $row_id,
-            database_file => defined $file ? $file : '',
+            database_file => defined $database_file ? $database_file : '',
             title => defined $title ? $title : '',
             artist => defined $artist ? $artist : '',
             album => defined $album ? $album : '',
-            reason => defined $file && length $file
-                ? _unmatched_reason($file, $roots)
-                : 'missing_bliss_file_identity',
+            reason => defined $case_variant
+                ? 'filename_case_differs_from_lms_catalog'
+                : defined $database_file && length $database_file
+                    ? _unmatched_reason($database_file, $roots)
+                    : 'missing_bliss_file_identity',
+            defined $case_variant
+                ? (related_lms_database_file => $case_variant) : (),
         };
     }
     $sth->finish;
@@ -350,7 +384,7 @@ sub prepare {
     };
     _write_atomic($state_path, _json()->encode({
         schema_version => 1,
-        builder_revision => 1,
+        builder_revision => BUILDER_REVISION,
         cache_key => $key,
         inventory_path => $path,
         inventory_sha256 => $sha256,

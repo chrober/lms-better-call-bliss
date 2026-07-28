@@ -29,7 +29,9 @@ sub snapshot {
         unless -r $matrix;
     push @problems, 'bliss-playlist-optimizer is not installed'
         unless $optimizer_binary && -x $optimizer_binary;
-    push @problems, 'the LMS library scan is still running' if $scanning;
+    push @problems,
+        'an LMS library scan is updating the catalog; preview will resume when it finishes'
+        if $scanning;
     push @problems, 'the LMS music folder is not configured' unless $music_root;
 
     return {
