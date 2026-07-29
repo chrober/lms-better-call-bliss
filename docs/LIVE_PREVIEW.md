@@ -446,3 +446,9 @@ The case-only duplicate can originate in analyser bookkeeping: `TracksV2.File` a
 The post-boot resource contention observed separately came from the LMS scanner pipeline. LMS exposes **Settings → Advanced → Performance → Scanner process priority**; positive values such as `10` or `15` lower scanner priority but extend scan duration. No scanner preference was changed during this deployment.
 
 The service restart completed normally, temporary deployment files were removed, and no Preview/Create action changed a saved playlist.
+
+## Material nested-surface contrast hotfix
+
+On 2026-07-29, the live Material skin exposed a second status-banner boundary: the warning foreground was correctly forced to `#3d2a00`, but Material independently painted the nested list item `#212121` while only the outer warning container declared `#fff2c2`. Commit `e960d5c` now applies each warning/error/success/info foreground and background pair, both `!important`, to the container and every descendant. The fix therefore does not rely on nested elements remaining transparent or inheriting the outer surface.
+
+The corrected template was hot-deployed byte-for-byte to `192.168.1.111`; its previous version is retained at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/index.html.pre-e960d5c-20260729`. LMS was still serving its compiled Template Toolkit copy because production uses `STAT_TTL=3600`. The catalog scan then finished, but its follow-on `bliss-analyser` process was still running, so no disruptive LMS restart was performed merely to evict that cache. The newer source will be loaded by the normal template stat interval or the next service restart. No playlist operation was invoked.
