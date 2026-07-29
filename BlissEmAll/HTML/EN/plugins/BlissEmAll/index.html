@@ -270,6 +270,7 @@
       var growth = extension.value === 'seed_growth';
       if (growth && ordering.value !== 'optimize_order') {
         ordering.value = 'optimize_order';
+        preserve = false;
       }
       var noneOption = extension.querySelector('option[value="none"]');
       var selectedPlaylist = playlist.options[playlist.selectedIndex];
@@ -367,7 +368,9 @@
       [% ELSE %]
         <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Objective [% blissemall_job.objective %]; worst transition [% blissemall_job.worst_transition %].</div>
       [% END %]
-      [% IF blissemall_job.preserve_order %]
+      [% IF blissemall_job.seed_growth_extension %]
+        <p class="bea-note">The complete seed-plus-addition membership was optimized together for transition flow.</p>
+      [% ELSIF blissemall_job.preserve_order %]
         <p class="bea-ok"><b>Source order preserved.</b> Every original track remains in its original relative position; only added bridges occupy the gaps.</p>
       [% ELSIF blissemall_job.bridge_extension %]
         <p class="bea-note">Source tracks were optimized before additions were selected.</p>
