@@ -33,9 +33,9 @@ the theme-colored monochrome `timeline` glyph instead of falling back to the
 generic extension/puzzle icon. `Web.pm` registers the icon explicitly under
 the same key as the Extras link.
 
-Warning, error, success, and information banners use explicit high-contrast
-foreground/background pairs, including nested bold/list text that host themes
-would otherwise recolor. Notes and disabled hints follow the host
+Warning, error, success, and information banners force explicit high-contrast
+foreground/background pairs on both their containers and every nested element,
+including bold/list content that host themes would otherwise repaint. Notes and disabled hints follow the host
 `--text-color` with reduced emphasis rather than using fixed gray text.
 
 Automatic extension adds only candidates that pass the native contextual

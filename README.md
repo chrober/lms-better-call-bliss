@@ -44,10 +44,10 @@ route-search attempts are an advanced, deterministic effort control used only
 when source tracks may move; more attempts may improve the route at additional
 CPU cost.
 
-Status banners use explicit foreground/background pairs rather than inheriting
-the surrounding skin's text color; nested labels and bold text are forced to
-the same high-contrast foreground, so warnings, failures, running state, and
-success remain readable in both light and dark hosts. The registered Extras
+Status banners force explicit foreground/background pairs rather than inheriting
+the surrounding skin's colors; every nested element receives the same paired
+surface and foreground, so warnings, failures, running state, and success remain
+readable even when a host theme paints list items independently. The registered Extras
 icon follows Material's monochrome marker convention and resolves to its
 `timeline` glyph instead of the generic extension icon; classic/plugin
 metadata receives the packaged transparent monochrome route asset.
