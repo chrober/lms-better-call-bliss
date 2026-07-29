@@ -432,3 +432,17 @@ The broader exact-eight regression deliberately exercised the candidate that had
 During live hardening, a JSON numeric field initially inherited a string flag after cache-key construction, and persisted JSON was initially read in list context. Both failed safely without playlist writes. Commits `3f0eb2c` and `ed24692` separated numeric serialization and forced scalar reads; the latter is also what preserves historical/resolved audit entries instead of falling back to an empty ledger on rebuild.
 
 The live plugin keeps the pre-deployment rollback at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/BlissEmAll-0.9.0-pre-007fde1`. Temporary upload and diagnostic files were removed. No Create action was invoked; no playlist was created, overwritten, or deleted.
+
+## Version 0.10.1 UX-hardening deployment
+
+Version `0.10.1` from commit `1aa1587` was deployed to the server at `192.168.1.111` on 2026-07-29. The deployment reports `ready=1`, no compatibility problems, `ux_contract=extras-job-editor-v10`, and the expected bundled optimizer SHA-256. The pre-deployment installation remains at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/BlissEmAll-0.10.0-pre-1aa1587-20260729`.
+
+The deployed page forces readable nested content in warning/error/success/info banners and restores submitted job fields after polling, failure, Preview success, and copy creation. The audit classifier distinguishes a missing LMS catalog entry from an exact filename-case variant and includes the related LMS database path only in the private ledger.
+
+The persistent ledger and visible Extras panel have different lifetimes. `CandidateInventory::init` establishes paths but does not load the previous summary. Opening Extras and running reorder-only do not prepare candidate inventory. The first automatic or exact-count addition Preview prepares or cache-loads it; only then is `candidate_inventory_ready=1` and the Extras audit panel is rendered for that LMS process. Immediately after the verification restart the panel was therefore absent even though the prior JSON ledger remained on disk. No bridge Preview was launched merely to populate it.
+
+The case-only duplicate can originate in analyser bookkeeping: `TracksV2.File` and its pre-insert lookup are exact and case-sensitive, while stale-row cleanup uses host-filesystem existence. On a case-insensitive filesystem or share, an older spelling can continue to “exist” after a later scan inserts the current spelling; `--keep-old` also suppresses cleanup. This is not an acoustic-feature mismatch.
+
+The post-boot resource contention observed separately came from the LMS scanner pipeline. LMS exposes **Settings → Advanced → Performance → Scanner process priority**; positive values such as `10` or `15` lower scanner priority but extend scan duration. No scanner preference was changed during this deployment.
+
+The service restart completed normally, temporary deployment files were removed, and no Preview/Create action changed a saved playlist.
