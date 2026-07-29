@@ -1,4 +1,4 @@
-package Plugins::BlissEmAll::Plugin;
+package Plugins::BetterCallBliss::Plugin;
 
 use strict;
 use base qw(Slim::Plugin::Base);
@@ -10,23 +10,23 @@ use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 
-use Plugins::BlissEmAll::BlissCompatibility;
-use Plugins::BlissEmAll::CandidateInventory;
-use Plugins::BlissEmAll::ContextMenu;
-use Plugins::BlissEmAll::Jobs;
-use Plugins::BlissEmAll::Web;
+use Plugins::BetterCallBliss::BlissCompatibility;
+use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::ContextMenu;
+use Plugins::BetterCallBliss::Jobs;
+use Plugins::BetterCallBliss::Web;
 
 my $log = Slim::Utils::Log->addLogCategory({
-    category     => 'plugin.blissemall',
+    category     => 'plugin.bettercallbliss',
     defaultLevel => 'INFO',
-    description  => 'DEBUG_PLUGIN_BLISSEMALL',
+    description  => 'DEBUG_PLUGIN_BETTERCALLBLISS',
     logGroups    => 'SCANNER',
 });
-my $prefs = preferences('plugin.blissemall');
+my $prefs = preferences('plugin.bettercallbliss');
 my $initialized = 0;
 my $optimizer_binary;
 
-sub getDisplayName { return 'PLUGIN_BLISSEMALL_NAME'; }
+sub getDisplayName { return 'PLUGIN_BETTERCALLBLISS_NAME'; }
 
 sub initPlugin {
     my $class = shift;
@@ -54,19 +54,19 @@ sub initPlugin {
         Slim::Utils::Misc::addFindBinPaths(catdir($dir, 'Bin', 'x86_64-linux'));
     }
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
-    Plugins::BlissEmAll::BlissCompatibility::init($optimizer_binary);
-    Plugins::BlissEmAll::Jobs::init($optimizer_binary);
-    Plugins::BlissEmAll::ContextMenu::init();
+    Plugins::BetterCallBliss::BlissCompatibility::init($optimizer_binary);
+    Plugins::BetterCallBliss::Jobs::init($optimizer_binary);
+    Plugins::BetterCallBliss::ContextMenu::init();
 
     if (main::WEBUI) {
-        require Plugins::BlissEmAll::Settings;
-        Plugins::BlissEmAll::Settings->new;
-        Plugins::BlissEmAll::Web::init();
+        require Plugins::BetterCallBliss::Settings;
+        Plugins::BetterCallBliss::Settings->new;
+        Plugins::BetterCallBliss::Web::init();
     }
 
     $class->SUPER::initPlugin();
     Slim::Control::Request::addDispatch(
-        ['blissemall', 'status'],
+        ['bettercallbliss', 'status'],
         [0, 1, 0, \&statusCommand],
     );
 
@@ -76,9 +76,9 @@ sub initPlugin {
 }
 
 sub shutdownPlugin {
-    Plugins::BlissEmAll::Web::shutdown() if main::WEBUI;
-    Plugins::BlissEmAll::ContextMenu::shutdown();
-    Plugins::BlissEmAll::Jobs::shutdown();
+    Plugins::BetterCallBliss::Web::shutdown() if main::WEBUI;
+    Plugins::BetterCallBliss::ContextMenu::shutdown();
+    Plugins::BetterCallBliss::Jobs::shutdown();
     $initialized = 0;
 }
 
@@ -86,17 +86,17 @@ sub optimizerBinary { return $optimizer_binary; }
 
 sub statusCommand {
     my $request = shift;
-    my $status = Plugins::BlissEmAll::BlissCompatibility::snapshot();
+    my $status = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     $request->addResult('ready', 0 + $status->{ready});
     $request->addResult('problem_count', scalar @{$status->{problems}});
-    my $inventory = Plugins::BlissEmAll::CandidateInventory::status();
+    my $inventory = Plugins::BetterCallBliss::CandidateInventory::status();
     $request->addResult('candidate_inventory_ready', 0 + $inventory->{ready});
     $request->addResult(
         'non_lms_bliss_row_count', 0 + $inventory->{unmatched_row_count},
     ) if defined $inventory->{unmatched_row_count};
     $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
         if $inventory->{audit_path};
-    $request->addResult('ux_contract', 'extras-job-editor-v12');
+    $request->addResult('ux_contract', 'extras-job-editor-v13');
     $request->addResult(
         'working_mode',
         'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/create-copy',

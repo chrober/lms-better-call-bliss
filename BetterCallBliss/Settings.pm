@@ -1,18 +1,18 @@
-package Plugins::BlissEmAll::Settings;
+package Plugins::BetterCallBliss::Settings;
 
 use strict;
 use base qw(Slim::Web::Settings);
 use Slim::Utils::Prefs;
 
-my $prefs = preferences('plugin.blissemall');
+my $prefs = preferences('plugin.bettercallbliss');
 
 sub name {
-    return Slim::Web::HTTP::CSRF->protectName('PLUGIN_BLISSEMALL_SETTINGS');
+    return Slim::Web::HTTP::CSRF->protectName('PLUGIN_BETTERCALLBLISS_SETTINGS');
 }
 
 sub page {
     return Slim::Web::HTTP::CSRF->protectURI(
-        'plugins/BlissEmAll/settings/blissemall.html'
+        'plugins/BetterCallBliss/settings/bettercallbliss.html'
     );
 }
 

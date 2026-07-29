@@ -1,16 +1,16 @@
-package Plugins::BlissEmAll::RequestBuilder;
+package Plugins::BetterCallBliss::RequestBuilder;
 
 use strict;
 use JSON::XS ();
 use Slim::Schema;
-use Plugins::BlissEmAll::BlissCompatibility;
-use Plugins::BlissEmAll::CandidateInventory;
-use Plugins::BlissEmAll::JobOptions;
+use Plugins::BetterCallBliss::BlissCompatibility;
+use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::JobOptions;
 
 sub _database_file {
     my ($track, $roots) = @_;
     my $database_file =
-        Plugins::BlissEmAll::CandidateInventory::database_file_for_track(
+        Plugins::BetterCallBliss::CandidateInventory::database_file_for_track(
             $track, $roots,
         );
     die "Track is outside the configured music folders"
@@ -20,9 +20,9 @@ sub _database_file {
 
 sub build_reorder_request {
     my ($playlist_id, $job_id, $semantic_path, $job_input) = @_;
-    my $capability = Plugins::BlissEmAll::BlissCompatibility::snapshot();
+    my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     die join('; ', @{$capability->{problems}}) unless $capability->{ready};
-    my $options = Plugins::BlissEmAll::JobOptions::normalize(
+    my $options = Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, $job_input,
     );
 

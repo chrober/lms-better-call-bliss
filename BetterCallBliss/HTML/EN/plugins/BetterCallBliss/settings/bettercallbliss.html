@@ -9,23 +9,23 @@
     defaults for new jobs.
   </p>
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_RESTART_COUNT" desc="PLUGIN_BLISSEMALL_RESTART_COUNT_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_RESTART_COUNT" desc="PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC" %]
     <input type="number" min="10" max="500" class="stdedit" name="pref_restart_count" id="restart_count" value="[% prefs.restart_count %]" size="6">
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX" desc="PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC" %]
     <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_EXTENDED_SUFFIX" desc="PLUGIN_BLISSEMALL_EXTENDED_SUFFIX_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX_DESC" %]
     <input type="text" class="stdedit" name="pref_extended_suffix" id="extended_suffix" value="[% prefs.extended_suffix %]" size="30">
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET" desc="PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET" desc="PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET_DESC" %]
     <input type="number" min="0" max="100" class="stdedit" name="pref_auto_bridge_budget" id="auto_bridge_budget" value="[% prefs.auto_bridge_budget %]" size="6">
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_AUTO_TRIGGER_PERCENT" desc="PLUGIN_BLISSEMALL_AUTO_TRIGGER_PERCENT_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT" desc="PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC" %]
     <input type="number" min="0" max="100" class="stdedit" name="pref_auto_trigger_percent" id="auto_trigger_percent" value="[% prefs.auto_trigger_percent %]" size="6">
   [% END %]
 [% END %]
@@ -37,23 +37,23 @@
     enable semantic requests or durable reports.
   </p>
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_LASTFM_ENABLED" desc="PLUGIN_BLISSEMALL_LASTFM_ENABLED_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC" %]
     <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %]>
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_LISTENBRAINZ_ENABLED" desc="PLUGIN_BLISSEMALL_LISTENBRAINZ_ENABLED_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED_DESC" %]
     <input type="checkbox" name="pref_listenbrainz_enabled" id="listenbrainz_enabled" value="1" [% IF prefs.listenbrainz_enabled %]checked="checked"[% END %]>
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_SEMANTIC_CACHE_DAYS" desc="PLUGIN_BLISSEMALL_SEMANTIC_CACHE_DAYS_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS" desc="PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS_DESC" %]
     <input type="number" min="1" max="365" class="stdedit" name="pref_semantic_cache_days" id="semantic_cache_days" value="[% prefs.semantic_cache_days %]" size="6">
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_SEMANTIC_STALE_DAYS" desc="PLUGIN_BLISSEMALL_SEMANTIC_STALE_DAYS_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS" desc="PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS_DESC" %]
     <input type="number" min="1" max="3650" class="stdedit" name="pref_semantic_stale_days" id="semantic_stale_days" value="[% prefs.semantic_stale_days %]" size="6">
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BLISSEMALL_REPORT_RETENTION_DAYS" desc="PLUGIN_BLISSEMALL_REPORT_RETENTION_DAYS_DESC" %]
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS" desc="PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC" %]
     <input type="number" min="1" max="3650" class="stdedit" name="pref_report_retention_days" id="report_retention_days" value="[% prefs.report_retention_days %]" size="6">
   [% END %]
 [% END %]

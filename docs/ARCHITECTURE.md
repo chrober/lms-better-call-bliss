@@ -4,12 +4,13 @@ The stable project identities selected at bootstrap are:
 
 | Item | Identity |
 | --- | --- |
-| Display name | `Bliss 'Em All` |
-| Perl namespace | `Plugins::BlissEmAll` |
-| Plugin directory | `BlissEmAll` |
-| LMS command prefix | `blissemall` |
+| Display name | `Better Call Bliss` |
+| Tagline | `Playlist Breaking Bad? Better Call Bliss.` |
+| Perl namespace | `Plugins::BetterCallBliss` |
+| Plugin directory | `BetterCallBliss` |
+| LMS command prefix | `bettercallbliss` |
 | Plugin UUID | `5ff183ce-3d88-4aa1-8fa5-28fed965af76` |
-| Extension icon | `plugins/BlissEmAll/html/images/blissemall_MTL_icon_timeline.png` |
+| Extension icon | `plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_timeline.png` |
 | Native command | `bliss-playlist-optimizer` |
 
 The Perl plugin owns user interaction, LMS object resolution, MusicBrainz IDs,
@@ -29,7 +30,7 @@ the feature without affecting BlissMixer.
 Version `0.10.1` preserves that process boundary while avoiding repeated database
 preparation. The plugin attaches the same `device:inode:size:mtime` identity it
 already uses for post-job mutation detection and gives the native process a
-plugin-owned `blissemall/library-cache` directory. A matching versioned cache
+plugin-owned `bettercallbliss/library-cache` directory. A matching versioned cache
 reuses the streamed database hash, successful integrity check, and decoded
 usable-track library. A cold job reads all usable features and metadata with one
 ordered SQLite query; a changed identity, checksum failure, incompatible cache,
@@ -39,7 +40,7 @@ weaken the existing fail-closed result boundary.
 
 Addition jobs have a second frozen input: `lms-local-candidate-inventory-v1`. The plugin enumerates current non-remote audio tracks from the LMS catalog, derives the exact Bliss file identities (including CUE suffixes), intersects them with usable `TracksV2` rows, and writes a checksum-protected allowlist bound to both the LMS last-scan timestamp and the guarded `bliss.db` identity. The native process validates the schema, checksum, database binding, unique known row IDs, and source membership, then removes all non-allowlisted rows before semantic candidate construction and shortlisting. Post-result LMS object resolution remains mandatory as a time-of-check/time-of-use guard.
 
-The same inventory pass updates `<LMS cache>/blissemall/non-lms-bliss-rows.json`. This plugin-owned durable audit ledger retains active and historically resolved unmatched identities, first/last-seen timestamps, observation counts, current Bliss row ID and metadata, and a reason distinguishing a missing file, an existing unindexed file/CUE entry, and a filename-case variant of a unique exact LMS identity. Case variants remain excluded rather than producing duplicate candidates; the ledger records the related LMS identity for diagnosis. Full identities stay in that private file; normal LMS logs contain only counts and its location.
+The same inventory pass updates `<LMS cache>/bettercallbliss/non-lms-bliss-rows.json`. This plugin-owned durable audit ledger retains active and historically resolved unmatched identities, first/last-seen timestamps, observation counts, current Bliss row ID and metadata, and a reason distinguishing a missing file, an existing unindexed file/CUE entry, and a filename-case variant of a unique exact LMS identity. Case variants remain excluded rather than producing duplicate candidates; the ledger records the related LMS identity for diagnosis. Full identities stay in that private file; normal LMS logs contain only counts and its location.
 
 The content-addressed allowlist is reused across LMS restarts through a checksum-verified current-state record only while both the `bliss.db` file identity and LMS last-scan timestamp remain unchanged. A library scan, Bliss database replacement, missing artifact, checksum failure, or generator revision change causes a cold rebuild. This keeps repeated jobs and routine LMS restarts fast without weakening membership freshness.
 
@@ -117,7 +118,7 @@ keeping the job artifact authoritative for the result being reviewed.
 
 Every route and bridge job requests a structured native `performance` object.
 Completion logs include wall time, native time, and database-cache state at
-INFO. When `plugin.blissemall` debug logging is enabled, one additional line
+INFO. When `plugin.bettercallbliss` debug logging is enabled, one additional line
 reports each sanitized native stage and elapsed milliseconds. Job results and
 stderr remain in the private job directory; no track paths are added to timing
 logs.

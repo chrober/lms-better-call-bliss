@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
-This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.11.1` UX shell. The shell is
+This document describes the complete intended **Better Call Bliss** interaction
+model and the exact boundary of the current `0.12.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -19,10 +19,10 @@ fall through to either working mode.
 
 | Entry point | Status | Current behavior |
 | --- | --- | --- |
-| Extras > Bliss 'Em All | Working | Opens the rich per-job editor and result area. |
+| Extras > Better Call Bliss | Working | Opens the rich per-job editor and result area. The page title uses the full tagline, **Playlist Breaking Bad? Better Call Bliss.** |
 | Extensions contribution icon | Working | Explicitly registers the packaged 512x512 transparent monochrome route icon. Material recognizes its `MTL_icon_timeline` marker and renders the theme-colored `timeline` glyph instead of the generic puzzle piece. |
-| Applications / My Apps > Bliss 'Em All | Removed | The OPML adapter cannot provide the required portable multi-field form. |
-| Saved-playlist context > Bliss 'Em All... | Partial | Visible informational shortcut; directs the user to Extras. |
+| Applications / My Apps > Better Call Bliss | Removed | The OPML adapter cannot provide the required portable multi-field form. |
+| Saved-playlist context > Better Call Bliss... | Partial | Visible informational shortcut; directs the user to Extras. |
 | Track context > Bliss me there... | Not connected yet | Describes the planned route-to-track capability; starts no job. |
 | Full EN/DE menu localization | Not connected yet | The Extras shell is English-first; settings labels have EN/DE strings. |
 
@@ -105,7 +105,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.11.1` keeps Preview read-only and permits only an explicit,
+Version `0.12.0` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates
@@ -134,11 +134,11 @@ For a manually deployed development build, use piCorePlayer's supported manual
 plugin root:
 
 ```text
-<LMS cache>/Plugins/BlissEmAll
+<LMS cache>/Plugins/BetterCallBliss
 ```
 
 On the current server this resolves to
-`/mnt/mmcblk0p2/tce/slimserver/Cache/Plugins/BlissEmAll`. Do not hand-copy a
+`/mnt/mmcblk0p2/tce/slimserver/Cache/Plugins/BetterCallBliss`. Do not hand-copy a
 development build into `Cache/InstalledPlugins/Plugins`: that directory is
 owned by LMS's extension manager, and an unregistered folder can be removed on
 restart. Production installation remains the planned plugin ZIP plus extension

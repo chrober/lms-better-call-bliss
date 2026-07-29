@@ -1,4 +1,4 @@
-package Plugins::BlissEmAll::PlaylistWriter;
+package Plugins::BetterCallBliss::PlaylistWriter;
 
 use strict;
 use Errno qw(EEXIST);
@@ -123,7 +123,7 @@ sub create_copy {
 
     my ($tracks, $urls) = _resolved_tracks($job);
     my $temp_path = catfile(
-        $playlist_dir, '.blissemall-' . $job->{id} . '-' . $$ . '.tmp',
+        $playlist_dir, '.bettercallbliss-' . $job->{id} . '-' . $$ . '.tmp',
     );
     _fail('TEMP_COLLISION', 'The private output temporary file already exists')
         if -e $temp_path;

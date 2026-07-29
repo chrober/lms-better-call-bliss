@@ -1,5 +1,5 @@
-[%- pagetitle = 'PLUGIN_BLISSEMALL_NAME' | string; pageicon = icons.PLUGIN_BLISSEMALL_NAME -%]
-[%- pwd_list = BLOCK -%]/ [% 'PLUGIN_BLISSEMALL_NAME' | string %][% END -%]
+[%- pagetitle = 'PLUGIN_BETTERCALLBLISS_TAGLINE' | string; pageicon = icons.PLUGIN_BETTERCALLBLISS_NAME -%]
+[%- pwd_list = BLOCK -%]/ [% 'PLUGIN_BETTERCALLBLISS_NAME' | string %][% END -%]
 [% PROCESS pageheader.html %]
 
 <style>
@@ -22,40 +22,40 @@
   details.bea-section > summary { cursor: pointer; font-weight: bold; }
 </style>
 
-<h2>Bliss 'Em All</h2>
+<h2>Playlist Breaking Bad? Better Call Bliss.</h2>
 <p>
   Configure one optimization job. Values initially come from BlissMixer, but
   edits apply only to this job and never change BlissMixer's global settings.
 </p>
 
-[% IF blissemall_error %]
-  <div class="bea-error"><b>Operation failed:</b> [% blissemall_error | html %]</div>
+[% IF bettercallbliss_error %]
+  <div class="bea-error"><b>Operation failed:</b> [% bettercallbliss_error | html %]</div>
 [% END %]
 
-[% IF blissemall_job %]
-  [% IF blissemall_job.state == 'running' %]
+[% IF bettercallbliss_job %]
+  [% IF bettercallbliss_job.state == 'running' %]
     <div class="bea-info"><b>Optimization is running.</b> This page refreshes automatically until the result is available.</div>
     <script>
       window.setTimeout(function () {
-        window.location.replace('[% webroot %]plugins/BlissEmAll/index.html?job_id=[% blissemall_job.id %]');
+        window.location.replace('[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]');
       }, 1500);
     </script>
-  [% ELSIF blissemall_job.state == 'failed' %]
+  [% ELSIF bettercallbliss_job.state == 'failed' %]
     <div class="bea-error">
-      <b>Optimization failed - [% blissemall_job.error_code | html %]:</b>
-      [% blissemall_job.error | html %]
+      <b>Optimization failed - [% bettercallbliss_job.error_code | html %]:</b>
+      [% bettercallbliss_job.error | html %]
       No playlist was changed.
     </div>
-  [% ELSIF blissemall_job.write_state == 'completed' %]
+  [% ELSIF bettercallbliss_job.write_state == 'completed' %]
     <div class="bea-ok">
       <b>Success.</b> Created and verified
-      "[% blissemall_job.persistence.title | html %]"
-      with [% blissemall_job.persistence.track_count %] tracks.
+      "[% bettercallbliss_job.persistence.title | html %]"
+      with [% bettercallbliss_job.persistence.track_count %] tracks.
     </div>
-  [% ELSIF blissemall_job.write_state == 'failed' %]
+  [% ELSIF bettercallbliss_job.write_state == 'failed' %]
     <div class="bea-error">
-      <b>Copy not created - [% blissemall_job.write_error_code | html %]:</b>
-      [% blissemall_job.write_error | html %]
+      <b>Copy not created - [% bettercallbliss_job.write_error_code | html %]:</b>
+      [% bettercallbliss_job.write_error | html %]
       The source and any existing copy were left unchanged.
     </div>
   [% ELSE %]
@@ -63,61 +63,61 @@
   [% END %]
 [% END %]
 
-[% IF !blissemall_capability.ready %]
+[% IF !bettercallbliss_capability.ready %]
   <div class="bea-warning">
-    <b>[% IF blissemall_capability.scanning %]Preview temporarily paused.[% ELSE %]Preview unavailable.[% END %]</b>
-    <ul>[% FOREACH problem = blissemall_capability.problems %]<li>[% problem | html %]</li>[% END %]</ul>
-    [% IF blissemall_capability.scanning %]<p>This page will check again automatically.</p>[% END %]
+    <b>[% IF bettercallbliss_capability.scanning %]Preview temporarily paused.[% ELSE %]Preview unavailable.[% END %]</b>
+    <ul>[% FOREACH problem = bettercallbliss_capability.problems %]<li>[% problem | html %]</li>[% END %]</ul>
+    [% IF bettercallbliss_capability.scanning %]<p>This page will check again automatically.</p>[% END %]
   </div>
-  [% IF blissemall_capability.scanning %]
+  [% IF bettercallbliss_capability.scanning %]
     <script>window.setTimeout(function () { window.location.reload(); }, 5000);</script>
   [% END %]
 [% END %]
 
-[% IF blissemall_candidate_inventory.ready %]
+[% IF bettercallbliss_candidate_inventory.ready %]
   <details class="bea-section">
     <summary>Bliss library membership audit</summary>
     <p>
-      [% blissemall_candidate_inventory.allowed_row_count %] usable Bliss rows
+      [% bettercallbliss_candidate_inventory.allowed_row_count %] usable Bliss rows
       match current local LMS tracks.
-      [% blissemall_candidate_inventory.unmatched_row_count %] usable Bliss rows
+      [% bettercallbliss_candidate_inventory.unmatched_row_count %] usable Bliss rows
       are excluded from bridge searches because they do not resolve to the
       current LMS library.
     </p>
     <p class="bea-note">
       Persistent review file:<br>
-      <code>[% blissemall_candidate_inventory.audit_path | html %]</code>
+      <code>[% bettercallbliss_candidate_inventory.audit_path | html %]</code>
     </p>
   </details>
 [% END %]
 
-<form action="[% webroot %]plugins/BlissEmAll/index.html" method="post">
+<form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
     <div class="bea-row">
       <label for="playlist_id">Saved playlist</label>
       <select name="playlist_id" id="playlist_id" required>
         <option value="">Choose a playlist...</option>
-        [% FOREACH playlist = blissemall_playlists %]
-          <option value="[% playlist.id %]" data-track-count="[% playlist.count %]"[% IF blissemall_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
+        [% FOREACH playlist = bettercallbliss_playlists %]
+          <option value="[% playlist.id %]" data-track-count="[% playlist.count %]"[% IF bettercallbliss_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
         [% END %]
       </select>
     </div>
     <div class="bea-row">
       <label for="ordering_policy">Source-track order</label>
       <select name="ordering_policy" id="ordering_policy">
-        <option value="optimize_order"[% IF blissemall_form.ordering_policy == 'optimize_order' %] selected[% END %]>Optimize source order [Working]</option>
-        <option value="preserve_order"[% IF blissemall_form.ordering_policy == 'preserve_order' %] selected[% END %]>Preserve source order and fill gaps [Working]</option>
+        <option value="optimize_order"[% IF bettercallbliss_form.ordering_policy == 'optimize_order' %] selected[% END %]>Optimize source order [Working]</option>
+        <option value="preserve_order"[% IF bettercallbliss_form.ordering_policy == 'preserve_order' %] selected[% END %]>Preserve source order and fill gaps [Working]</option>
       </select>
     </div>
     <p class="bea-note">Optimize may move the existing tracks. Preserve keeps every source track as an immutable anchor in its current order and permits additions only inside the existing gaps.</p>
     <div class="bea-row">
       <label for="extension_mode">Additional tracks</label>
       <select name="extension_mode" id="extension_mode">
-        <option value="none"[% IF blissemall_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
-        <option value="automatic"[% IF blissemall_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
-        <option value="exact_count"[% IF blissemall_form.extension_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks [Working]</option>
-        <option value="seed_growth"[% IF blissemall_form.extension_mode == 'seed_growth' %] selected[% END %]>Grow from these seeds to a target size [Working]</option>
+        <option value="none"[% IF bettercallbliss_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
+        <option value="automatic"[% IF bettercallbliss_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
+        <option value="exact_count"[% IF bettercallbliss_form.extension_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks [Working]</option>
+        <option value="seed_growth"[% IF bettercallbliss_form.extension_mode == 'seed_growth' %] selected[% END %]>Grow from these seeds to a target size [Working]</option>
         <option disabled>One bridge per source-track transition [Not connected yet]</option>
         <option disabled>Reach target length [Not connected yet]</option>
         <option disabled>Double playlist length [Not connected yet]</option>
@@ -131,7 +131,7 @@
     <p class="bea-note">Used only by Grow from these seeds. Every source song is kept exactly once. The complete source playlist remains the fixed musical reference while local analyzed tracks are selected, so newly added songs cannot pull later choices away from the original taste. The complete seed-plus-addition membership is then reordered for transition flow.</p>
     <div class="bea-row">
       <label for="target_track_count">Final playlist size</label>
-      <input type="number" min="3" max="500" name="target_track_count" id="target_track_count" value="[% blissemall_form.target_track_count %]" required>
+      <input type="number" min="3" max="500" name="target_track_count" id="target_track_count" value="[% bettercallbliss_form.target_track_count %]" required>
       <span class="bea-disabled" id="seed_growth_count">Choose a playlist to see the addition count.</span>
     </div>
     <div id="seed_growth_warning" class="bea-warning bea-hidden"></div>
@@ -142,13 +142,13 @@
     <p class="bea-note">Used only by Add automatically. It may legitimately add zero tracks when no transition exceeds the trigger or no candidate improves it.</p>
     <div class="bea-row">
       <label for="max_added_tracks">Maximum additional tracks</label>
-      <input type="number" min="0" max="100" name="max_added_tracks" id="max_added_tracks" value="[% blissemall_form.max_added_tracks %]" required>
-      <span class="bea-disabled">Plugin default: [% blissemall_defaults.max_added_tracks %]</span>
+      <input type="number" min="0" max="100" name="max_added_tracks" id="max_added_tracks" value="[% bettercallbliss_form.max_added_tracks %]" required>
+      <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.max_added_tracks %]</span>
     </div>
     <div class="bea-row">
       <label for="trigger_percent">Bridge trigger percentile (%)</label>
-      <input type="number" min="0" max="100" name="trigger_percent" id="trigger_percent" value="[% blissemall_form.trigger_percent %]" required>
-      <span class="bea-disabled">Plugin default: [% blissemall_defaults.trigger_percent %]</span>
+      <input type="number" min="0" max="100" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
+      <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.trigger_percent %]</span>
     </div>
     <p class="bea-note">Only transitions above this percentile are considered. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm/ListenBrainz evidence is not connected yet; this slice falls back to local Bliss evidence.</p>
   </fieldset>
@@ -158,7 +158,7 @@
     <p class="bea-note">Used only by Add exactly N tracks. The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.</p>
     <div class="bea-row">
       <label for="additional_track_count">Exact number of additional tracks</label>
-      <input type="number" min="1" max="100" name="additional_track_count" id="additional_track_count" value="[% blissemall_form.additional_track_count %]" required>
+      <input type="number" min="1" max="100" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
       <span class="bea-disabled" id="exact_count_limit">Choose a playlist to see the current limit.</span>
     </div>
     <p class="bea-note">This connected slice inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
@@ -177,13 +177,13 @@
     </div>
     <div class="bea-row">
       <label for="seed_limit">Musical context window (previous tracks)</label>
-      <input type="number" min="1" max="50" name="seed_limit" id="seed_limit" value="[% blissemall_form.seed_limit %]" required>
-      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.seed_limit %]</span>
+      <input type="number" min="1" max="50" name="seed_limit" id="seed_limit" value="[% bettercallbliss_form.seed_limit %]" required>
+      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.seed_limit %]</span>
     </div>
     <div class="bea-row">
       <label for="learned_percent">Learned-matrix blend (%)</label>
-      <input type="number" min="0" max="100" name="learned_percent" id="learned_percent" value="[% blissemall_form.learned_percent %]" required>
-      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.learned_percent %]</span>
+      <input type="number" min="0" max="100" name="learned_percent" id="learned_percent" value="[% bettercallbliss_form.learned_percent %]" required>
+      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.learned_percent %]</span>
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
     <p class="bea-note">These values are passed to the optimizer request for this preview.</p>
@@ -194,18 +194,18 @@
     <p class="bea-note">Use 0 to disable a constraint. For a single-artist playlist, set Artist look-back to 0.</p>
     <div class="bea-row">
       <label for="artist_window">Artist look-back (tracks)</label>
-      <input type="number" min="0" max="10000" name="artist_window" id="artist_window" value="[% blissemall_form.artist_window %]" required>
-      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.artist_window %]</span>
+      <input type="number" min="0" max="10000" name="artist_window" id="artist_window" value="[% bettercallbliss_form.artist_window %]" required>
+      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.artist_window %]</span>
     </div>
     <div class="bea-row">
       <label for="album_window">Album look-back (tracks)</label>
-      <input type="number" min="0" max="10000" name="album_window" id="album_window" value="[% blissemall_form.album_window %]" required>
-      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.album_window %]</span>
+      <input type="number" min="0" max="10000" name="album_window" id="album_window" value="[% bettercallbliss_form.album_window %]" required>
+      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.album_window %]</span>
     </div>
     <div class="bea-row">
       <label for="track_window">Track look-back (tracks)</label>
-      <input type="number" min="0" max="10000" name="track_window" id="track_window" value="[% blissemall_form.track_window %]" required>
-      <span class="bea-disabled">BlissMixer default: [% blissemall_defaults.track_window %]</span>
+      <input type="number" min="0" max="10000" name="track_window" id="track_window" value="[% bettercallbliss_form.track_window %]" required>
+      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.track_window %]</span>
     </div>
   </fieldset>
 
@@ -213,7 +213,7 @@
     <summary>Advanced search effort</summary>
     <div class="bea-row">
       <label for="restart_count">Additional route-search attempts</label>
-      <input type="number" min="0" max="500" name="restart_count" id="restart_count" value="[% blissemall_form.restart_count %]" required>
+      <input type="number" min="0" max="500" name="restart_count" id="restart_count" value="[% bettercallbliss_form.restart_count %]" required>
     </div>
     <p class="bea-note" id="restart_help">Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.</p>
   </details>
@@ -222,20 +222,20 @@
     <legend>Output after accepting a preview</legend>
     <p class="bea-note">Create optimized copy is connected after a successful preview. Overwrite source remains unavailable.</p>
     <div class="bea-row">
-      <label><input type="radio" name="output_mode" value="create_copy"[% IF blissemall_form.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
+      <label><input type="radio" name="output_mode" value="create_copy"[% IF bettercallbliss_form.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
     </div>
     <div class="bea-row">
       <label for="output_name">Copy name</label>
-      <input type="text" maxlength="255" name="output_name" id="output_name" value="[% blissemall_form.output_name | html %]" size="45">
+      <input type="text" maxlength="255" name="output_name" id="output_name" value="[% bettercallbliss_form.output_name | html %]" size="45">
     </div>
     <p class="bea-note">Leave blank to generate a name from the playlist filename. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
     <div class="bea-row">
-      <label><input type="radio" name="output_mode" value="overwrite_source"[% IF blissemall_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
+      <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
       <span class="bea-disabled">Will require explicit confirmation once writing is connected.</span>
     </div>
   </fieldset>
 
-  <input class="inputbutton" id="run_preview" type="submit" name="run_preview" value="Run read-only preview"[% IF !blissemall_capability.ready %] disabled[% END %]>
+  <input class="inputbutton" id="run_preview" type="submit" name="run_preview" value="Run read-only preview"[% IF !bettercallbliss_capability.ready %] disabled[% END %]>
 </form>
 
 <script>
@@ -345,22 +345,22 @@
   }());
 </script>
 
-[% IF blissemall_job %]
+[% IF bettercallbliss_job %]
   <fieldset class="bea-section">
     <legend>Preview result</legend>
-    <p><b>[% blissemall_job.playlist_title | html %]</b> - [% blissemall_job.stage | html %]</p>
-    <p>Job ID: [% blissemall_job.id | html %]</p>
-    <p>Requested output: [% IF blissemall_job.output_mode == 'overwrite_source' %]overwrite source <b>[Not connected yet]</b>[% ELSE %]create copy "[% blissemall_job.output_name | html %]"[% END %]</p>
-    [% IF blissemall_job.state == 'running' %]
-      <p><a href="[% webroot %]plugins/BlissEmAll/index.html?job_id=[% blissemall_job.id %]">Refresh result now</a></p>
-    [% ELSIF blissemall_job.state == 'failed' %]
-      <div class="bea-error"><b>[% blissemall_job.error_code | html %]</b>: [% blissemall_job.error | html %]</div>
+    <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - [% bettercallbliss_job.stage | html %]</p>
+    <p>Job ID: [% bettercallbliss_job.id | html %]</p>
+    <p>Requested output: [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source <b>[Not connected yet]</b>[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
+    [% IF bettercallbliss_job.state == 'running' %]
+      <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]">Refresh result now</a></p>
+    [% ELSIF bettercallbliss_job.state == 'failed' %]
+      <div class="bea-error"><b>[% bettercallbliss_job.error_code | html %]</b>: [% bettercallbliss_job.error | html %]</div>
     [% ELSE %]
-      [% IF blissemall_job.seed_growth_extension %]
-        <div class="bea-ok">Grew [% blissemall_job.relevance_reference_track_count %] seeds to exactly [% blissemall_job.target_track_count %] tracks by adding [% blissemall_job.added_track_count %] local songs.</div>
+      [% IF bettercallbliss_job.seed_growth_extension %]
+        <div class="bea-ok">Grew [% bettercallbliss_job.relevance_reference_track_count %] seeds to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
         <p class="bea-note">The original seed set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
-        <p class="bea-note"><b>Fixed-seed relevance:</b> best [% blissemall_job.relevance_minimum %], average [% blissemall_job.relevance_mean %], furthest [% blissemall_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
-        <p class="bea-note"><b>Final route flow:</b> [% blissemall_job.selected_strategy | html %]; transition sum [% blissemall_job.route_transition_sum %], worst transition [% blissemall_job.route_worst_transition %], objective [% blissemall_job.route_objective %], arc error [% blissemall_job.route_arc_error %].</p>
+        <p class="bea-note"><b>Fixed-seed relevance:</b> best [% bettercallbliss_job.relevance_minimum %], average [% bettercallbliss_job.relevance_mean %], furthest [% bettercallbliss_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
+        <p class="bea-note"><b>Final route flow:</b> [% bettercallbliss_job.selected_strategy | html %]; transition sum [% bettercallbliss_job.route_transition_sum %], worst transition [% bettercallbliss_job.route_worst_transition %], objective [% bettercallbliss_job.route_objective %], arc error [% bettercallbliss_job.route_arc_error %].</p>
         <details>
           <summary>Verified acceptance checks</summary>
           <ul>
@@ -371,35 +371,35 @@
             <li>Artist and album repeat windows are satisfied by the final route.</li>
           </ul>
         </details>
-      [% ELSIF blissemall_job.exact_count_extension %]
-        <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Added exactly [% blissemall_job.requested_added_tracks %] track[% IF blissemall_job.requested_added_tracks != 1 %]s[% END %]; final size [% blissemall_job.final_track_count %]. Base-route objective [% blissemall_job.base_route_objective %].</div>
-        <p class="bea-note">The bounded search found up to [% blissemall_job.maximum_additions_found %] feasible additions; its structural upper bound was [% blissemall_job.structural_upper_bound %]. Evidence mode: [% blissemall_job.semantic_mode | html %].</p>
-      [% ELSIF blissemall_job.automatic_extension %]
-        <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Added [% blissemall_job.added_track_count %] of at most [% blissemall_job.max_added_tracks %] tracks; final size [% blissemall_job.final_track_count %]. Base-route objective [% blissemall_job.base_route_objective %].</div>
-        <p class="bea-note">Trigger: above [% blissemall_job.trigger_percent %]th contextual percentile. Evidence mode: [% blissemall_job.semantic_mode | html %].</p>
+      [% ELSIF bettercallbliss_job.exact_count_extension %]
+        <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Added exactly [% bettercallbliss_job.requested_added_tracks %] track[% IF bettercallbliss_job.requested_added_tracks != 1 %]s[% END %]; final size [% bettercallbliss_job.final_track_count %]. Base-route objective [% bettercallbliss_job.base_route_objective %].</div>
+        <p class="bea-note">The bounded search found up to [% bettercallbliss_job.maximum_additions_found %] feasible additions; its structural upper bound was [% bettercallbliss_job.structural_upper_bound %]. Evidence mode: [% bettercallbliss_job.semantic_mode | html %].</p>
+      [% ELSIF bettercallbliss_job.automatic_extension %]
+        <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Added [% bettercallbliss_job.added_track_count %] of at most [% bettercallbliss_job.max_added_tracks %] tracks; final size [% bettercallbliss_job.final_track_count %]. Base-route objective [% bettercallbliss_job.base_route_objective %].</div>
+        <p class="bea-note">Trigger: above [% bettercallbliss_job.trigger_percent %]th contextual percentile. Evidence mode: [% bettercallbliss_job.semantic_mode | html %].</p>
       [% ELSE %]
-        <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Objective [% blissemall_job.objective %]; worst transition [% blissemall_job.worst_transition %].</div>
+        <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Objective [% bettercallbliss_job.objective %]; worst transition [% bettercallbliss_job.worst_transition %].</div>
       [% END %]
-      [% IF blissemall_job.seed_growth_extension %]
+      [% IF bettercallbliss_job.seed_growth_extension %]
         <p class="bea-note">The complete seed-plus-addition membership was optimized together for transition flow.</p>
-      [% ELSIF blissemall_job.preserve_order %]
+      [% ELSIF bettercallbliss_job.preserve_order %]
         <p class="bea-ok"><b>Source order preserved.</b> Every original track remains in its original relative position; only added bridges occupy the gaps.</p>
-      [% ELSIF blissemall_job.bridge_extension %]
+      [% ELSIF bettercallbliss_job.bridge_extension %]
         <p class="bea-note">Source tracks were optimized before additions were selected.</p>
       [% END %]
       <ol class="bea-order">
-        [% FOREACH track = blissemall_job.order %]
+        [% FOREACH track = bettercallbliss_job.order %]
           <li>[% track.artist | html %] - [% track.title | html %]
-            [% IF track.bridge %]<b>[% IF blissemall_job.seed_growth_extension %][Added from seed similarity][% ELSE %][Added bridge][% END %]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
+            [% IF track.bridge %]<b>[% IF bettercallbliss_job.seed_growth_extension %][Added from seed similarity][% ELSE %][Added bridge][% END %]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
           </li>
         [% END %]
       </ol>
-      [% IF blissemall_job.bridge_extension %]
-        <h4>[% IF blissemall_job.seed_growth_extension %]Selected additions[% ELSE %]Additions and reasons[% END %]</h4>
-        [% IF blissemall_job.added_track_count %]
+      [% IF bettercallbliss_job.bridge_extension %]
+        <h4>[% IF bettercallbliss_job.seed_growth_extension %]Selected additions[% ELSE %]Additions and reasons[% END %]</h4>
+        [% IF bettercallbliss_job.added_track_count %]
           <ul>
-            [% FOREACH addition = blissemall_job.additions %]
-              [% IF blissemall_job.seed_growth_extension %]
+            [% FOREACH addition = bettercallbliss_job.additions %]
+              [% IF bettercallbliss_job.seed_growth_extension %]
                 <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-seed Adaptive distance [% addition.relevance_distance %].</li>
               [% ELSE %]
                 <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
@@ -410,13 +410,13 @@
               [% END %]
             [% END %]
           </ul>
-        [% ELSIF blissemall_job.automatic_extension %]
+        [% ELSIF bettercallbliss_job.automatic_extension %]
           <p>No bridge met the trigger, acoustic-improvement, uniqueness, and repeat constraints. The optimized base order is still a valid result.</p>
         [% END %]
-        [% IF !blissemall_job.seed_growth_extension %]<details>
+        [% IF !bettercallbliss_job.seed_growth_extension %]<details>
           <summary>Transition decisions</summary>
           <ul>
-            [% FOREACH decision = blissemall_job.gap_decisions %]
+            [% FOREACH decision = bettercallbliss_job.gap_decisions %]
               <li>"[% decision.left | html %]" to "[% decision.right | html %]":
                 [% decision.reason | html %] at [% decision.direct_percent %]th percentile
                 ([% decision.semantic_pool | html %]).
@@ -425,22 +425,22 @@
           </ul>
         </details>[% END %]
       [% END %]
-      [% IF blissemall_job.write_state == 'completed' %]
+      [% IF bettercallbliss_job.write_state == 'completed' %]
         <div class="bea-ok">
           Created and verified saved playlist
-          <b>[% blissemall_job.persistence.title | html %]</b>
-          ([% blissemall_job.persistence.track_count %] tracks,
-          LMS ID [% blissemall_job.persistence.playlist_id %]).
+          <b>[% bettercallbliss_job.persistence.title | html %]</b>
+          ([% bettercallbliss_job.persistence.track_count %] tracks,
+          LMS ID [% bettercallbliss_job.persistence.playlist_id %]).
         </div>
-      [% ELSIF blissemall_job.write_state == 'failed' %]
+      [% ELSIF bettercallbliss_job.write_state == 'failed' %]
         <div class="bea-error">
-          <b>[% blissemall_job.write_error_code | html %]</b>:
-          [% blissemall_job.write_error | html %]
+          <b>[% bettercallbliss_job.write_error_code | html %]</b>:
+          [% bettercallbliss_job.write_error | html %]
           No incomplete copy remains.
         </div>
-      [% ELSIF blissemall_job.output_mode == 'create_copy' %]
-        <form action="[% webroot %]plugins/BlissEmAll/index.html" method="post">
-          <input type="hidden" name="job_id" value="[% blissemall_job.id | html %]">
+      [% ELSIF bettercallbliss_job.output_mode == 'create_copy' %]
+        <form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
+          <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
           <input class="inputbutton" type="submit" name="create_copy" value="Create optimized copy">
         </form>
         <p class="bea-note">Creates a new playlist; the source remains unchanged. Name collisions fail safely.</p>

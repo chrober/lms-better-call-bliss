@@ -1,4 +1,4 @@
-package Plugins::BlissEmAll::BridgeResolver;
+package Plugins::BetterCallBliss::BridgeResolver;
 
 use strict;
 use DBI;

@@ -1,4 +1,4 @@
-package Plugins::BlissEmAll::CandidateInventory;
+package Plugins::BetterCallBliss::CandidateInventory;
 
 use strict;
 use DBI;
@@ -15,7 +15,7 @@ use Slim::Utils::Misc;
 use Slim::Utils::Unicode;
 use URI::Escape qw(uri_unescape);
 
-my $log = Slim::Utils::Log::logger('plugin.blissemall');
+my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 use constant BUILDER_REVISION => 2;
 my (
     $inventory_root, $audit_path, $state_path,

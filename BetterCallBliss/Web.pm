@@ -1,4 +1,4 @@
-package Plugins::BlissEmAll::Web;
+package Plugins::BetterCallBliss::Web;
 
 use strict;
 use File::Basename qw(basename);
@@ -9,34 +9,34 @@ use Slim::Utils::Misc;
 use Slim::Utils::Unicode;
 use Slim::Web::HTTP;
 use Slim::Web::Pages;
-use Plugins::BlissEmAll::BlissCompatibility;
-use Plugins::BlissEmAll::CandidateInventory;
-use Plugins::BlissEmAll::JobOptions;
-use Plugins::BlissEmAll::Jobs;
-use Plugins::BlissEmAll::PlaylistWriter;
+use Plugins::BetterCallBliss::BlissCompatibility;
+use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::JobOptions;
+use Plugins::BetterCallBliss::Jobs;
+use Plugins::BetterCallBliss::PlaylistWriter;
 
-my $log = Slim::Utils::Log::logger('plugin.blissemall');
-my $plugin_prefs = preferences('plugin.blissemall');
-my $page = 'plugins/BlissEmAll/index.html';
+my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
+my $plugin_prefs = preferences('plugin.bettercallbliss');
+my $page = 'plugins/BetterCallBliss/index.html';
 my $icon =
-    'plugins/BlissEmAll/html/images/blissemall_MTL_icon_timeline.png';
+    'plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_timeline.png';
 
 sub init {
     Slim::Web::Pages->addPageFunction($page, \&handler);
     Slim::Web::Pages->addPageLinks(
-        'plugins', {'PLUGIN_BLISSEMALL_NAME' => $page},
+        'plugins', {'PLUGIN_BETTERCALLBLISS_NAME' => $page},
     );
     Slim::Web::Pages->addPageLinks(
-        'icons', {'PLUGIN_BLISSEMALL_NAME' => $icon},
+        'icons', {'PLUGIN_BETTERCALLBLISS_NAME' => $icon},
     );
 }
 
 sub shutdown {
     Slim::Web::Pages->addPageLinks(
-        'plugins', {'PLUGIN_BLISSEMALL_NAME' => undef},
+        'plugins', {'PLUGIN_BETTERCALLBLISS_NAME' => undef},
     );
     Slim::Web::Pages->addPageLinks(
-        'icons', {'PLUGIN_BLISSEMALL_NAME' => undef},
+        'icons', {'PLUGIN_BETTERCALLBLISS_NAME' => undef},
     );
 }
 
@@ -249,8 +249,8 @@ sub _result_view {
 sub handler {
     my ($client, $params) = @_;
     $params ||= {};
-    my $capability = Plugins::BlissEmAll::BlissCompatibility::snapshot();
-    my $defaults = Plugins::BlissEmAll::JobOptions::defaults($capability);
+    my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+    my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
     my $form = _form_from_params($params, $defaults);
     my $playlists = _playlists();
 
@@ -267,7 +267,7 @@ sub handler {
                     ? ($plugin_prefs->get('extended_suffix') || 'Extended')
                     : ($plugin_prefs->get('output_suffix') || 'Optimized');
                 $form->{output_name} =
-                    Plugins::BlissEmAll::PlaylistWriter::available_copy_name(
+                    Plugins::BetterCallBliss::PlaylistWriter::available_copy_name(
                         $playlist->{title} . ' ' . $suffix,
                     );
                 $form->{output_name_generated} = 1;
@@ -281,9 +281,9 @@ sub handler {
         eval {
             die "Preview job is no longer available"
                 unless $params->{job_id};
-            $job = Plugins::BlissEmAll::Jobs::get($params->{job_id});
+            $job = Plugins::BetterCallBliss::Jobs::get($params->{job_id});
             die "Preview job is no longer available" unless $job;
-            Plugins::BlissEmAll::Jobs::create_copy($params->{job_id});
+            Plugins::BetterCallBliss::Jobs::create_copy($params->{job_id});
         };
         $error = $@;
         $error =~ s/\s+/ /g if $error;
@@ -292,7 +292,7 @@ sub handler {
         eval {
             die "Choose a saved playlist"
                 unless defined $form->{playlist_id} && "$form->{playlist_id}" =~ /^\d+$/;
-            $job = Plugins::BlissEmAll::Jobs::start_reorder_preview(
+            $job = Plugins::BetterCallBliss::Jobs::start_reorder_preview(
                 int($form->{playlist_id}), $form,
             );
         };
@@ -300,20 +300,20 @@ sub handler {
         $error =~ s/\s+/ /g if $error;
         $log->warn("Could not start web preview: $error") if $error;
     } elsif ($params->{job_id}) {
-        $job = Plugins::BlissEmAll::Jobs::get($params->{job_id});
+        $job = Plugins::BetterCallBliss::Jobs::get($params->{job_id});
         $error = 'Preview job is no longer available' unless $job;
     }
 
     $form = _form_from_job($job, $defaults) if $job;
 
-    $params->{blissemall_playlists} = $playlists;
-    $params->{blissemall_form} = $form;
-    $params->{blissemall_defaults} = $defaults;
-    $params->{blissemall_capability} = $capability;
-    $params->{blissemall_candidate_inventory}
-        = Plugins::BlissEmAll::CandidateInventory::status();
-    $params->{blissemall_job} = _result_view($job) if $job;
-    $params->{blissemall_error} = $error if $error;
+    $params->{bettercallbliss_playlists} = $playlists;
+    $params->{bettercallbliss_form} = $form;
+    $params->{bettercallbliss_defaults} = $defaults;
+    $params->{bettercallbliss_capability} = $capability;
+    $params->{bettercallbliss_candidate_inventory}
+        = Plugins::BetterCallBliss::CandidateInventory::status();
+    $params->{bettercallbliss_job} = _result_view($job) if $job;
+    $params->{bettercallbliss_error} = $error if $error;
     return Slim::Web::HTTP::filltemplatefile($page, $params);
 }
 

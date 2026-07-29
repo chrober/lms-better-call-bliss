@@ -1,95 +1,99 @@
-PLUGIN_BLISSEMALL_NAME
-	EN	Bliss 'Em All
-	DE	Bliss 'Em All
+PLUGIN_BETTERCALLBLISS_NAME
+	EN	Better Call Bliss
+	DE	Better Call Bliss
 
-PLUGIN_BLISSEMALL_DESC
-	EN	Preview auditable, Bliss-powered playlist optimization.
-	DE	Vorschau fuer nachvollziehbare, Bliss-basierte Playlist-Optimierung.
+PLUGIN_BETTERCALLBLISS_TAGLINE
+	EN	Playlist Breaking Bad? Better Call Bliss.
+	DE	Playlist Breaking Bad? Better Call Bliss.
 
-DEBUG_PLUGIN_BLISSEMALL
-	EN	Bliss 'Em All
-	DE	Bliss 'Em All
+PLUGIN_BETTERCALLBLISS_DESC
+	EN	Playlist Breaking Bad? Better Call Bliss. Preview auditable, Bliss-powered playlist optimization.
+	DE	Playlist Breaking Bad? Better Call Bliss. Vorschau fuer nachvollziehbare, Bliss-basierte Playlist-Optimierung.
 
-PLUGIN_BLISSEMALL_SETTINGS
-	EN	Bliss 'Em All
-	DE	Bliss 'Em All
+DEBUG_PLUGIN_BETTERCALLBLISS
+	EN	Better Call Bliss
+	DE	Better Call Bliss
 
-PLUGIN_BLISSEMALL_OUTPUT_SUFFIX
+PLUGIN_BETTERCALLBLISS_SETTINGS
+	EN	Better Call Bliss
+	DE	Better Call Bliss
+
+PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX
 	EN	Default optimized-copy suffix
 	DE	Standard-Suffix fuer optimierte Kopien
 
-PLUGIN_BLISSEMALL_OUTPUT_SUFFIX_DESC
+PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC
 	EN	Initial suffix used when a reviewed preview is saved as a new playlist.
 	DE	Anfaenglicher Suffix beim Speichern einer geprueften Vorschau als neue Playlist.
 
-PLUGIN_BLISSEMALL_RESTART_COUNT
+PLUGIN_BETTERCALLBLISS_RESTART_COUNT
 	EN	Route search restarts
 	DE	Neustarts der Routensuche
 
-PLUGIN_BLISSEMALL_RESTART_COUNT_DESC
+PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC
 	EN	Deterministic base-route search effort used by new previews; each job can override it.
 	DE	Deterministischer Suchaufwand fuer die Basisroute neuer Vorschauen; pro Auftrag aenderbar.
 
-PLUGIN_BLISSEMALL_EXTENDED_SUFFIX
+PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX
 	EN	Default extended-copy suffix
 	DE	Standard-Suffix fuer erweiterte Kopien
 
-PLUGIN_BLISSEMALL_EXTENDED_SUFFIX_DESC
+PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX_DESC
 	EN	Initial suffix used when an automatic extension preview is saved.
 	DE	Anfaenglicher Suffix beim Speichern einer automatisch erweiterten Vorschau.
 
-PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET
+PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET
 	EN	Default automatic bridge budget
 	DE	Standardbudget fuer automatische Bruecken
 
-PLUGIN_BLISSEMALL_AUTO_BRIDGE_BUDGET_DESC
+PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET_DESC
 	EN	Maximum additions proposed by Extend automatically; each job can override it.
 	DE	Maximale Zahl zusaetzlicher Titel fuer automatische Erweiterung; pro Auftrag aenderbar.
 
-PLUGIN_BLISSEMALL_AUTO_TRIGGER_PERCENT
+PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT
 	EN	Default bridge trigger percentile (%)
 	DE	Standard-Perzentil fuer Bruecken (%)
 
-PLUGIN_BLISSEMALL_AUTO_TRIGGER_PERCENT_DESC
+PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC
 	EN	Only transitions above this frozen contextual percentile are considered; each job can override it.
 	DE	Nur Uebergaenge oberhalb dieses eingefrorenen Kontext-Perzentils werden beruecksichtigt; pro Auftrag aenderbar.
 
-PLUGIN_BLISSEMALL_LASTFM_ENABLED
+PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED
 	EN	Use Last.fm evidence [not connected yet]
 	DE	Last.fm-Hinweise verwenden [noch nicht angebunden]
 
-PLUGIN_BLISSEMALL_LASTFM_ENABLED_DESC
+PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC
 	EN	Optional anonymous similarity evidence. Future request failures will degrade to local Bliss evidence.
 	DE	Optionale anonyme Aehnlichkeitshinweise. Kuenftige Fehler fallen auf lokale Bliss-Daten zurueck.
 
-PLUGIN_BLISSEMALL_LISTENBRAINZ_ENABLED
+PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED
 	EN	Use ListenBrainz evidence [not connected yet]
 	DE	ListenBrainz-Hinweise verwenden [noch nicht angebunden]
 
-PLUGIN_BLISSEMALL_LISTENBRAINZ_ENABLED_DESC
+PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED_DESC
 	EN	Optional MBID-aware evidence. Future request failures will not fail optimization.
 	DE	Optionale MBID-basierte Hinweise. Kuenftige Fehler lassen die Optimierung nicht fehlschlagen.
 
-PLUGIN_BLISSEMALL_SEMANTIC_CACHE_DAYS
+PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS
 	EN	Semantic cache freshness, days [not connected yet]
 	DE	Aktualitaet des semantischen Cache in Tagen [noch nicht angebunden]
 
-PLUGIN_BLISSEMALL_SEMANTIC_CACHE_DAYS_DESC
+PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS_DESC
 	EN	Future provider results remain fresh for this many days.
 	DE	Kuenftige Provider-Ergebnisse gelten so viele Tage als aktuell.
 
-PLUGIN_BLISSEMALL_SEMANTIC_STALE_DAYS
+PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS
 	EN	Maximum stale evidence, days [not connected yet]
 	DE	Maximales Alter von Hinweisen in Tagen [noch nicht angebunden]
 
-PLUGIN_BLISSEMALL_SEMANTIC_STALE_DAYS_DESC
+PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS_DESC
 	EN	Future offline fallback may reuse cached evidence up to this age.
 	DE	Der kuenftige Offline-Rueckfall darf Cache-Daten bis zu diesem Alter verwenden.
 
-PLUGIN_BLISSEMALL_REPORT_RETENTION_DAYS
+PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS
 	EN	Report retention, days [not connected yet]
 	DE	Aufbewahrung von Berichten in Tagen [noch nicht angebunden]
 
-PLUGIN_BLISSEMALL_REPORT_RETENTION_DAYS_DESC
+PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC
 	EN	Stored for future persistent reports; results are currently session-only.
 	DE	Fuer kuenftige dauerhafte Berichte gespeichert; Ergebnisse existieren derzeit nur pro Sitzung.

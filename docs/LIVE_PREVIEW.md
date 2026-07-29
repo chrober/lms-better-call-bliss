@@ -5,7 +5,7 @@ The read-only vertical slice was exercised end to end on 2026-07-21 with LMS
 
 Verified path:
 
-1. LMS discovered the plugin and registered **Bliss 'Em All** under
+1. LMS discovered the plugin and registered **Better Call Bliss** under
    Applications / My Apps.
 2. System status reported BlissMixer, `bliss.db`, the learned matrix required
    by the current optimizer build,
@@ -47,7 +47,7 @@ weakens inherited repeat windows.
 
 Version `0.3.0` was deployed and exercised on the same ARM64 server on
 2026-07-22. LMS registered the rich editor under Extras and no longer returned
-Bliss 'Em All in the Applications query.
+Better Call Bliss in the Applications query.
 
 An anonymized 13-track, single-artist playlist completed successfully after the
 job set artist and album look-back windows to zero. The same submitted job also
@@ -101,7 +101,7 @@ before and after creation.
 
 A second completed Preview intentionally reused the same output name. Creation
 failed with stable code `OUTPUT_EXISTS`; the existing output and source were
-unchanged and no `.blissemall-*` temporary file remained. The server log
+unchanged and no `.bettercallbliss-*` temporary file remained. The server log
 correlated the Creating and CreatedAndVerified stages with the preview job ID.
 The persistence path does not launch a scanner: like Lyrion's own playlist-save
 command it updates the playlist object directly, then additionally verifies
@@ -135,7 +135,7 @@ Creating, and CreatedAndVerified stages under one job ID.
 The deployment also exposed an important development rule: a rollback copy
 must not remain beneath `Cache/Plugins`, because Lyrion scans it as another
 plugin source and can compile its older templates under the live namespace.
-Rollback copies now live beneath `Cache/BlissEmAll-backups`, outside the
+Rollback copies now live beneath `Cache/BetterCallBliss-backups`, outside the
 scanned plugin root.
 
 A submitted preview polls automatically and retains a manual refresh link using
@@ -169,7 +169,7 @@ The full-shell deployment also established the piCorePlayer development path:
 manual plugins belong beneath `<LMS cache>/Plugins`, while
 `<LMS cache>/InstalledPlugins/Plugins` is extension-manager-owned and may purge
 hand-copied folders during restart. The development shell is therefore staged
-at `Cache/Plugins/BlissEmAll` until the plugin ZIP and extension repository are
+at `Cache/Plugins/BetterCallBliss` until the plugin ZIP and extension repository are
 published.
 
 ## Clarified controls and extension icon verification
@@ -189,7 +189,7 @@ then completed successfully while the irrelevant automatic-addition inputs were
 omitted, proving default handling remained intact.
 
 The extension metadata now declares
-`plugins/BlissEmAll/html/images/blissemall.png`. HTTP verification returned
+`plugins/BetterCallBliss/html/images/bettercallbliss.png`. HTTP verification returned
 `image/png` at 512x512. The transparent ARGB asset remains legible at 32x32
 and depicts four charcoal source-track nodes, an amber bridge node inserted into
 the route, and a forward arrow. It was generated with the built-in image tool
@@ -214,7 +214,7 @@ The earlier PNG was correctly present in the server's Extras payload, but
 Material's client deliberately maps any unrecognized Extras image to its
 generic `extension` glyph. The replacement is a transparent monochrome
 512x512 route asset named
-`blissemall_MTL_icon_timeline.png`. Both `install.xml` and `Web.pm`
+`bettercallbliss_MTL_icon_timeline.png`. Both `install.xml` and `Web.pm`
 register that path. Material's supported marker parser resolves it to the
 theme-colored monochrome `timeline` glyph, while other consumers can load the
 actual PNG.
@@ -222,8 +222,8 @@ actual PNG.
 Live `material-skin extras` verification returned:
 
 ```text
-id=PLUGIN_BLISSEMALL_NAME
-icon=plugins/BlissEmAll/html/images/blissemall_MTL_icon_timeline.png
+id=PLUGIN_BETTERCALLBLISS_NAME
+icon=plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_timeline.png
 material_glyph=timeline
 ```
 
@@ -272,7 +272,7 @@ no matching saved playlist remained.
 Version `0.7.0` was deployed on 2026-07-26 from plugin commit `12f00e4` with
 optimizer commit `ec8b6a5`. The ARM64 binary SHA-256 is
 `fde138541697ca21cf32a64f132a8ed0adbc882c78d94feae6cef9052166f64d`.
-After restart, `blissemall status` returned `ready=1`, zero compatibility
+After restart, `bettercallbliss status` returned `ready=1`, zero compatibility
 problems, and the unchanged `extras-job-editor-v7` UX contract.
 
 The cold path now streams the database hash, runs `quick_check`, and obtains all
@@ -369,7 +369,7 @@ before enabling the larger extension presets.
 Version `0.9.0` was deployed on 2026-07-26 from plugin commits `c562fa2` and
 `da4e99f`. The native optimizer remains commit `b6d3d10` with ARM64 SHA-256
 `f2c3f8a743072625820ad8f3208f6595d5ee529cdb0232a50819af6c284252a6`.
-After the final restart, `blissemall status` reported `ready=1`, no compatibility
+After the final restart, `bettercallbliss status` reported `ready=1`, no compatibility
 problems, `ux_contract=extras-job-editor-v8`, and working mode
 `per-job-adaptive/optimize-or-preserve/none-auto-exact/create-copy`.
 
@@ -416,7 +416,7 @@ Version `0.10.0` was deployed on 2026-07-26 from the feature series ending at pl
 
 The plugin intersected 63,822 usable Bliss rows with current non-remote LMS audio tracks and froze 63,819 allowed row IDs in the checksum-protected `lms-local-candidate-inventory-v1` artifact. The native result reported `local_candidate_track_count=63819` and `non_local_candidate_excluded_count=3`; those three rows never entered semantic ranking, shortlisting, or bridge scoring. Their private paths and metadata are intentionally omitted here.
 
-The excluded rows are retained in `/usr/local/slimserver/Cache/blissemall/non-lms-bliss-rows.json`. The live ledger contained three active entries with stable identity hashes, row IDs, metadata, `file_not_indexed_in_lms` reasons, and first/last-seen observation fields. Its SHA-256 and modification time remained unchanged across multiple LMS restarts and cache-hit jobs, proving that routine restarts neither erase nor rewrite the audit. The Extras page rendered the allowed/excluded counts and path; `blissemall status` returned the same path and count.
+The excluded rows are retained in `/usr/local/slimserver/Cache/bettercallbliss/non-lms-bliss-rows.json`. The live ledger contained three active entries with stable identity hashes, row IDs, metadata, `file_not_indexed_in_lms` reasons, and first/last-seen observation fields. Its SHA-256 and modification time remained unchanged across multiple LMS restarts and cache-hit jobs, proving that routine restarts neither erase nor rewrite the audit. The Extras page rendered the allowed/excluded counts and path; `bettercallbliss status` returned the same path and count.
 
 The first cold intersection took approximately 14-18 seconds over the 64k-track library. Its content-addressed artifact and current-state record are reused only while the LMS last-scan timestamp and exact `bliss.db` identity remain unchanged. Same-process Preview startup measured 515-668 ms. After an LMS restart, checksum validation produced `candidate_inventory stage=CacheHit`; the first Preview reached its running page in 3,099 ms including other cold page/server work. Native allowlist load and validation took 190 ms in the captured result.
 
@@ -431,11 +431,11 @@ The broader exact-eight regression deliberately exercised the candidate that had
 
 During live hardening, a JSON numeric field initially inherited a string flag after cache-key construction, and persisted JSON was initially read in list context. Both failed safely without playlist writes. Commits `3f0eb2c` and `ed24692` separated numeric serialization and forced scalar reads; the latter is also what preserves historical/resolved audit entries instead of falling back to an empty ledger on rebuild.
 
-The live plugin keeps the pre-deployment rollback at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/BlissEmAll-0.9.0-pre-007fde1`. Temporary upload and diagnostic files were removed. No Create action was invoked; no playlist was created, overwritten, or deleted.
+The live plugin keeps the pre-deployment rollback at `/mnt/mmcblk0p2/tce/slimserver/Cache/BetterCallBliss-backups/BetterCallBliss-0.9.0-pre-007fde1`. Temporary upload and diagnostic files were removed. No Create action was invoked; no playlist was created, overwritten, or deleted.
 
 ## Version 0.10.1 UX-hardening deployment
 
-Version `0.10.1` from commit `1aa1587` was deployed to the server at `192.168.1.111` on 2026-07-29. The deployment reports `ready=1`, no compatibility problems, `ux_contract=extras-job-editor-v10`, and the expected bundled optimizer SHA-256. The pre-deployment installation remains at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/BlissEmAll-0.10.0-pre-1aa1587-20260729`.
+Version `0.10.1` from commit `1aa1587` was deployed to the server at `192.168.1.111` on 2026-07-29. The deployment reports `ready=1`, no compatibility problems, `ux_contract=extras-job-editor-v10`, and the expected bundled optimizer SHA-256. The pre-deployment installation remains at `/mnt/mmcblk0p2/tce/slimserver/Cache/BetterCallBliss-backups/BetterCallBliss-0.10.0-pre-1aa1587-20260729`.
 
 The deployed page forces readable nested content in warning/error/success/info banners and restores submitted job fields after polling, failure, Preview success, and copy creation. The audit classifier distinguishes a missing LMS catalog entry from an exact filename-case variant and includes the related LMS database path only in the private ledger.
 
@@ -451,11 +451,11 @@ The service restart completed normally, temporary deployment files were removed,
 
 On 2026-07-29, the live Material skin exposed a second status-banner boundary: the warning foreground was correctly forced to `#3d2a00`, but Material independently painted the nested list item `#212121` while only the outer warning container declared `#fff2c2`. Commit `e960d5c` now applies each warning/error/success/info foreground and background pair, both `!important`, to the container and every descendant. The fix therefore does not rely on nested elements remaining transparent or inheriting the outer surface.
 
-The corrected template was hot-deployed byte-for-byte to `192.168.1.111`; its previous version is retained at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/index.html.pre-e960d5c-20260729`. LMS was still serving its compiled Template Toolkit copy because production uses `STAT_TTL=3600`. The catalog scan then finished, but its follow-on `bliss-analyser` process was still running, so no disruptive LMS restart was performed merely to evict that cache. The newer source will be loaded by the normal template stat interval or the next service restart. No playlist operation was invoked.
+The corrected template was hot-deployed byte-for-byte to `192.168.1.111`; its previous version is retained at `/mnt/mmcblk0p2/tce/slimserver/Cache/BetterCallBliss-backups/index.html.pre-e960d5c-20260729`. LMS was still serving its compiled Template Toolkit copy because production uses `STAT_TTL=3600`. The catalog scan then finished, but its follow-on `bliss-analyser` process was still running, so no disruptive LMS restart was performed merely to evict that cache. The newer source will be loaded by the normal template stat interval or the next service restart. No playlist operation was invoked.
 
 ## Version 0.11.0 seed-growth deployment
 
-Version `0.11.0` from plugin commits `f1c3831` and `9d87249` was copied to the supported development root on `192.168.1.111` on 2026-07-29. The bundled ARM64 optimizer is the successful GitHub Actions build of native commit `e5021e0` from run `30457380400`; its deployed SHA-256 is `d7ad0dc80898d9ce4089037e5d20f6b9521e34fa08646acbb5a26ff9650b236b`. The previous live tree is retained at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/BlissEmAll-0.10.1-pre-f1c3831-20260729`.
+Version `0.11.0` from plugin commits `f1c3831` and `9d87249` was copied to the supported development root on `192.168.1.111` on 2026-07-29. The bundled ARM64 optimizer is the successful GitHub Actions build of native commit `e5021e0` from run `30457380400`; its deployed SHA-256 is `d7ad0dc80898d9ce4089037e5d20f6b9521e34fa08646acbb5a26ff9650b236b`. The previous live tree is retained at `/mnt/mmcblk0p2/tce/slimserver/Cache/BetterCallBliss-backups/BetterCallBliss-0.10.1-pre-f1c3831-20260729`.
 
 The two-track saved playlist `Test` contains two Falconer tracks from the same album. A read-only request using the live `bliss.db`, learned matrix, and 64,061-row LMS-local candidate inventory validated successfully. The deployed binary then produced exactly 25 unique tracks: both seeds once plus 23 additions. It retained both source tracks despite their shared artist/album, used both as the fixed relevance reference, reported `adaptive-arc` for the complete-membership route, and satisfied the configured artist/album repeat windows of 5/10. The warm-cache native run took 4,588 ms, including 1,910 ms for parallel relevance selection and complete-membership routing.
 
@@ -467,7 +467,7 @@ The deployment validation deliberately stopped before **Create optimized copy**.
 
 ## Version 0.11.1 finalized seed-growth diagnostics
 
-Version `0.11.1` from plugin commits `22ab304` and `7b16ec5` was deployed to `192.168.1.111` on 2026-07-29. The bundled binary comes from optimizer commit `0c4f119`, successful ARM64 workflow `30464031228`, and has SHA-256 `6299aa46c5e1b9411e31ea77d8d41be6a49033d3d053157cd4aeff9ab64be77b`. Full optimizer CI run `30464031982` also passed. The previous plugin is retained at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/BlissEmAll-0.11.0-pre-7b16ec5-20260729`.
+Version `0.11.1` from plugin commits `22ab304` and `7b16ec5` was deployed to `192.168.1.111` on 2026-07-29. The bundled binary comes from optimizer commit `0c4f119`, successful ARM64 workflow `30464031228`, and has SHA-256 `6299aa46c5e1b9411e31ea77d8d41be6a49033d3d053157cd4aeff9ab64be77b`. Full optimizer CI run `30464031982` also passed. The previous plugin is retained at `/mnt/mmcblk0p2/tce/slimserver/Cache/BetterCallBliss-backups/BetterCallBliss-0.11.0-pre-7b16ec5-20260729`.
 
 Activation waited until every player was idle. Live status then reported `ready=1`, `problem_count=0`, and `ux_contract=extras-job-editor-v12`.
 

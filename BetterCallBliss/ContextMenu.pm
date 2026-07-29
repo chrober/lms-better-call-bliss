@@ -1,4 +1,4 @@
-package Plugins::BlissEmAll::ContextMenu;
+package Plugins::BetterCallBliss::ContextMenu;
 
 use strict;
 use Slim::Menu::PlaylistInfo;
@@ -9,13 +9,13 @@ my $registered = 0;
 sub init {
     return if $registered;
     Slim::Menu::PlaylistInfo->registerInfoProvider(
-        blissemall_playlist => (
+        bettercallbliss_playlist => (
             before => 'favorites',
             func => \&playlistInfoHandler,
         ),
     );
     Slim::Menu::TrackInfo->registerInfoProvider(
-        blissemall_route_to => (
+        bettercallbliss_route_to => (
             before => 'favorites',
             func => \&trackInfoHandler,
         ),
@@ -25,8 +25,8 @@ sub init {
 
 sub shutdown {
     return unless $registered;
-    Slim::Menu::PlaylistInfo->deregisterInfoProvider('blissemall_playlist');
-    Slim::Menu::TrackInfo->deregisterInfoProvider('blissemall_route_to');
+    Slim::Menu::PlaylistInfo->deregisterInfoProvider('bettercallbliss_playlist');
+    Slim::Menu::TrackInfo->deregisterInfoProvider('bettercallbliss_route_to');
     $registered = 0;
 }
 
@@ -34,8 +34,8 @@ sub playlistInfoHandler {
     my ($client, $url, $playlist) = @_;
     return unless $playlist && $playlist->can('tracks');
     return {
-        name => "Bliss 'Em All... [shortcut not connected yet]",
-        description => "Use Extras > Bliss 'Em All to select this playlist manually.",
+        name => "Better Call Bliss... [shortcut not connected yet]",
+        description => "Use Extras > Better Call Bliss to select this playlist manually.",
         type => 'text',
         favorites => 0,
     };

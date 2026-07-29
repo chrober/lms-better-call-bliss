@@ -1,4 +1,4 @@
-package Plugins::BlissEmAll::BlissCompatibility;
+package Plugins::BetterCallBliss::BlissCompatibility;
 
 use strict;
 use Slim::Music::Import;

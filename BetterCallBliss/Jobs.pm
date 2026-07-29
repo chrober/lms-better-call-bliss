@@ -1,4 +1,4 @@
-package Plugins::BlissEmAll::Jobs;
+package Plugins::BetterCallBliss::Jobs;
 
 use strict;
 use File::Path qw(make_path);
@@ -9,12 +9,12 @@ use Time::HiRes qw(time);
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Timers;
-use Plugins::BlissEmAll::BridgeResolver;
-use Plugins::BlissEmAll::CandidateInventory;
-use Plugins::BlissEmAll::RequestBuilder;
-use Plugins::BlissEmAll::PlaylistWriter;
+use Plugins::BetterCallBliss::BridgeResolver;
+use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::RequestBuilder;
+use Plugins::BetterCallBliss::PlaylistWriter;
 
-my $log = Slim::Utils::Log::logger('plugin.blissemall');
+my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $server_prefs = preferences('server');
 my ($optimizer_binary, $job_root, $library_cache_root);
 my %jobs;
@@ -23,12 +23,12 @@ my $serial = 0;
 sub init {
     $optimizer_binary = shift;
     my $cache_root = ($server_prefs->get('cachedir') || Slim::Utils::Prefs::dir())
-        . '/blissemall';
+        . '/bettercallbliss';
     $job_root = $cache_root . '/jobs';
     $library_cache_root = $cache_root . '/library-cache';
     make_path($job_root) unless -d $job_root;
     make_path($library_cache_root) unless -d $library_cache_root;
-    Plugins::BlissEmAll::CandidateInventory::init($cache_root);
+    Plugins::BetterCallBliss::CandidateInventory::init($cache_root);
 }
 
 sub _json {
@@ -93,7 +93,7 @@ sub start_reorder_preview {
         edges => [],
     });
 
-    my $built = Plugins::BlissEmAll::RequestBuilder::build_reorder_request(
+    my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
         $playlist_id, $job_id, $semantic_path, $options,
     );
     my $native_command = $built->{options}->{extension_mode} ne 'none'
@@ -104,7 +104,7 @@ sub start_reorder_preview {
         = $database_identity;
     my $candidate_inventory;
     if ($native_command eq 'bridge') {
-        $candidate_inventory = Plugins::BlissEmAll::CandidateInventory::prepare(
+        $candidate_inventory = Plugins::BetterCallBliss::CandidateInventory::prepare(
             $built->{capability}, $database_identity,
         );
         $built->{request}->{artifacts}->{local_candidate_inventory}
@@ -270,7 +270,7 @@ sub _poll {
                     unless (_file_identity($job->{capability}->{database}) || '')
                         eq $job->{database_identity};
                 $normalized =
-                    Plugins::BlissEmAll::BridgeResolver::resolve_bridge_preview($job);
+                    Plugins::BetterCallBliss::BridgeResolver::resolve_bridge_preview($job);
                 for my $key (keys %$normalized) {
                     $job->{$key} = $normalized->{$key};
                 }
@@ -434,7 +434,7 @@ sub create_copy {
     );
     my $result;
     eval {
-        $result = Plugins::BlissEmAll::PlaylistWriter::create_copy(
+        $result = Plugins::BetterCallBliss::PlaylistWriter::create_copy(
             $job, $job->{options}->{output_name},
             $job->{options}->{output_name_generated},
         );

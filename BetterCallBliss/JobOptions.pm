@@ -1,9 +1,9 @@
-package Plugins::BlissEmAll::JobOptions;
+package Plugins::BetterCallBliss::JobOptions;
 
 use strict;
 use Slim::Utils::Prefs;
 
-my $plugin_prefs = preferences('plugin.blissemall');
+my $plugin_prefs = preferences('plugin.bettercallbliss');
 
 sub defaults {
     my $capability = shift;
