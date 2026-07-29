@@ -141,6 +141,31 @@ sub _result_view {
                 0 + ($preview->{target_track_count} || 0);
             $view->{relevance_reference_track_count} =
                 0 + ($preview->{relevance_reference_track_count} || 0);
+            if ($job->{options}->{extension_mode} eq 'seed_growth') {
+                my $relevance = $preview->{relevance_summary} || {};
+                my $route = $preview->{route_summary} || {};
+                $view->{relevance_minimum} = sprintf(
+                    '%.4f', 0 + ($relevance->{minimum_distance} || 0),
+                );
+                $view->{relevance_mean} = sprintf(
+                    '%.4f', 0 + ($relevance->{mean_distance} || 0),
+                );
+                $view->{relevance_maximum} = sprintf(
+                    '%.4f', 0 + ($relevance->{maximum_distance} || 0),
+                );
+                $view->{route_transition_sum} = sprintf(
+                    '%.3f', 0 + ($route->{transition_sum} || 0),
+                );
+                $view->{route_worst_transition} = sprintf(
+                    '%.3f', 0 + ($route->{worst_transition} || 0),
+                );
+                $view->{route_objective} = sprintf(
+                    '%.3f', 0 + ($route->{objective} || 0),
+                );
+                $view->{route_arc_error} = sprintf(
+                    '%.3f', 0 + ($route->{arc_error} || 0),
+                );
+            }
             $view->{maximum_additions_found} =
                 0 + (($preview->{search} || {})->{maximum_additions_found} || 0);
             $view->{structural_upper_bound} =

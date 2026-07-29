@@ -113,6 +113,19 @@ sub resolve_bridge_preview {
         if $mode eq 'seed_growth' && !exists $preview->{feasible};
     _fail('SEED_GROWTH_INFEASIBLE', 'The optimizer could not reach the requested target')
         if $mode eq 'seed_growth' && !$preview->{feasible};
+    if ($mode eq 'seed_growth') {
+        my $proofs = $preview->{acceptance_proofs} || {};
+        my @required = qw(
+            exact_target_satisfied all_source_tracks_retained_once
+            all_additions_from_local_inventory unique_membership
+            artist_repeat_window_satisfied album_repeat_window_satisfied
+            track_repeat_window_satisfied_by_unique_membership
+        );
+        _fail(
+            'BRIDGE_ARTIFACT_INVALID',
+            'The seed-growth preview did not pass every acceptance proof',
+        ) if grep { !$proofs->{$_} } @required;
+    }
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer did not return a final addition sequence')
         unless ref($preview->{final_sequence}) eq 'ARRAY';
     _fail('BRIDGE_ARTIFACT_INVALID', 'The addition preview failed its uniqueness proof')

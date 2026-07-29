@@ -356,6 +356,21 @@ sub _poll {
                 . " database_cache=" . ($native->{database_cache} || 'unknown')
             : '';
         if ($job->{options}->{extension_mode} ne 'none') {
+            my $seed_growth_summary = '';
+            if ($job->{options}->{extension_mode} eq 'seed_growth') {
+                my $preview = $job->{artifact}->{selection_preview} || {};
+                my $relevance = $preview->{relevance_summary} || {};
+                my $route = $preview->{route_summary} || {};
+                $seed_growth_summary = sprintf(
+                    ' relevance_min=%.4f relevance_mean=%.4f relevance_max=%.4f'
+                        . ' route_worst=%.3f route_objective=%.3f proofs=passed',
+                    0 + ($relevance->{minimum_distance} || 0),
+                    0 + ($relevance->{mean_distance} || 0),
+                    0 + ($relevance->{maximum_distance} || 0),
+                    0 + ($route->{worst_transition} || 0),
+                    0 + ($route->{objective} || 0),
+                );
+            }
             $log->info(
                 "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
                 . $native_summary
@@ -368,6 +383,7 @@ sub _poll {
                     ' base_route_objective=%.3f',
                     $job->{artifact}->{selected_route_objective},
                 )
+                . $seed_growth_summary
             );
         } else {
             my $candidate = $selected eq 'adaptive-arc'

@@ -359,6 +359,18 @@
       [% IF blissemall_job.seed_growth_extension %]
         <div class="bea-ok">Grew [% blissemall_job.relevance_reference_track_count %] seeds to exactly [% blissemall_job.target_track_count %] tracks by adding [% blissemall_job.added_track_count %] local songs.</div>
         <p class="bea-note">The original seed set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
+        <p class="bea-note"><b>Fixed-seed relevance:</b> best [% blissemall_job.relevance_minimum %], average [% blissemall_job.relevance_mean %], furthest [% blissemall_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
+        <p class="bea-note"><b>Final route flow:</b> [% blissemall_job.selected_strategy | html %]; transition sum [% blissemall_job.route_transition_sum %], worst transition [% blissemall_job.route_worst_transition %], objective [% blissemall_job.route_objective %], arc error [% blissemall_job.route_arc_error %].</p>
+        <details>
+          <summary>Verified acceptance checks</summary>
+          <ul>
+            <li>Exact target size reached.</li>
+            <li>Every original seed retained exactly once.</li>
+            <li>Every addition resolved from the current local LMS candidate inventory.</li>
+            <li>Membership is unique, satisfying the track-repeat rule.</li>
+            <li>Artist and album repeat windows are satisfied by the final route.</li>
+          </ul>
+        </details>
       [% ELSIF blissemall_job.exact_count_extension %]
         <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Added exactly [% blissemall_job.requested_added_tracks %] track[% IF blissemall_job.requested_added_tracks != 1 %]s[% END %]; final size [% blissemall_job.final_track_count %]. Base-route objective [% blissemall_job.base_route_objective %].</div>
         <p class="bea-note">The bounded search found up to [% blissemall_job.maximum_additions_found %] feasible additions; its structural upper bound was [% blissemall_job.structural_upper_bound %]. Evidence mode: [% blissemall_job.semantic_mode | html %].</p>
