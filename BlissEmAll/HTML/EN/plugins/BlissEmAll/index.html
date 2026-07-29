@@ -117,12 +117,24 @@
         <option value="none"[% IF blissemall_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
         <option value="automatic"[% IF blissemall_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
         <option value="exact_count"[% IF blissemall_form.extension_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks [Working]</option>
+        <option value="seed_growth"[% IF blissemall_form.extension_mode == 'seed_growth' %] selected[% END %]>Grow from these seeds to a target size [Working]</option>
         <option disabled>One bridge per source-track transition [Not connected yet]</option>
         <option disabled>Reach target length [Not connected yet]</option>
         <option disabled>Double playlist length [Not connected yet]</option>
       </select>
     </div>
     <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without requesting any possible additions would leave the playlist unchanged. Choose an addition mode with a non-zero target.</div>
+  </fieldset>
+
+  <fieldset class="bea-section" id="seed_growth_fields">
+    <legend>Grow from these seeds</legend>
+    <p class="bea-note">Used only by Grow from these seeds. Every source song is kept exactly once. The complete source playlist remains the fixed musical reference while local analyzed tracks are selected, so newly added songs cannot pull later choices away from the original taste. The complete seed-plus-addition membership is then reordered for transition flow.</p>
+    <div class="bea-row">
+      <label for="target_track_count">Final playlist size</label>
+      <input type="number" min="3" max="500" name="target_track_count" id="target_track_count" value="[% blissemall_form.target_track_count %]" required>
+      <span class="bea-disabled" id="seed_growth_count">Choose a playlist to see the addition count.</span>
+    </div>
+    <div id="seed_growth_warning" class="bea-warning bea-hidden"></div>
   </fieldset>
 
   <fieldset class="bea-section" id="automatic_extension_fields">
@@ -238,6 +250,11 @@
     var exactCount = document.getElementById('additional_track_count');
     var exactLimit = document.getElementById('exact_count_limit');
     var exactWarning = document.getElementById('exact_count_warning');
+    var growthFields = document.getElementById('seed_growth_fields');
+    var growthInputs = growthFields.querySelectorAll('input');
+    var growthTarget = document.getElementById('target_track_count');
+    var growthCount = document.getElementById('seed_growth_count');
+    var growthWarning = document.getElementById('seed_growth_warning');
     var maximumAdditions = document.getElementById('max_added_tracks');
     var restarts = document.getElementById('restart_count');
     var restartHelp = document.getElementById('restart_help');
@@ -250,6 +267,10 @@
       var noAdditions = extension.value === 'none';
       var automatic = extension.value === 'automatic';
       var exact = extension.value === 'exact_count';
+      var growth = extension.value === 'seed_growth';
+      if (growth && ordering.value !== 'optimize_order') {
+        ordering.value = 'optimize_order';
+      }
       var noneOption = extension.querySelector('option[value="none"]');
       var selectedPlaylist = playlist.options[playlist.selectedIndex];
       var sourceCount = parseInt(
@@ -258,14 +279,18 @@
       );
       var maximumExact = Math.max(0, sourceCount - 1);
       var requestedExact = parseInt(exactCount.value || '0', 10);
+      var requestedTarget = parseInt(growthTarget.value || '0', 10);
       var zeroAutomaticBudget = automatic
         && parseInt(maximumAdditions.value || '0', 10) === 0;
       var invalidCombination = preserve
         && (noAdditions || zeroAutomaticBudget);
       var invalidExact = exact && sourceCount > 0
         && (requestedExact < 1 || requestedExact > maximumExact);
+      var invalidGrowth = growth && sourceCount > 0
+        && requestedTarget <= sourceCount;
 
       noneOption.disabled = preserve;
+      ordering.disabled = growth;
       warning.classList.toggle('bea-hidden', !invalidCombination);
       exactCount.max = maximumExact || 100;
       exactLimit.textContent = sourceCount > 0
@@ -276,7 +301,15 @@
         ? 'This playlist has ' + maximumExact + ' internal transitions, so the current exact-count workflow cannot add ' + requestedExact + ' tracks.'
         : '';
       exactWarning.classList.toggle('bea-hidden', !invalidExact);
-      submit.disabled = !capabilityReady || invalidCombination || invalidExact;
+      growthCount.textContent = sourceCount > 0 && requestedTarget > sourceCount
+        ? sourceCount + ' seeds + ' + (requestedTarget - sourceCount)
+          + ' additions = ' + requestedTarget + ' tracks.'
+        : 'The target must be larger than the source playlist.';
+      growthWarning.textContent = invalidGrowth
+        ? 'Choose a final size greater than the ' + sourceCount + ' source tracks.'
+        : '';
+      growthWarning.classList.toggle('bea-hidden', !invalidGrowth);
+      submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidGrowth;
 
       restarts.disabled = false;
       restarts.readOnly = preserve;
@@ -294,6 +327,11 @@
         exactInputs[exactIndex].disabled = false;
         exactInputs[exactIndex].readOnly = !exact;
       }
+      growthFields.classList.toggle('bea-disabled', !growth);
+      for (var growthIndex = 0; growthIndex < growthInputs.length; growthIndex++) {
+        growthInputs[growthIndex].disabled = false;
+        growthInputs[growthIndex].readOnly = !growth;
+      }
     }
 
     ordering.addEventListener('change', synchronizeControls);
@@ -301,6 +339,7 @@
     extension.addEventListener('change', synchronizeControls);
     maximumAdditions.addEventListener('input', synchronizeControls);
     exactCount.addEventListener('input', synchronizeControls);
+    growthTarget.addEventListener('input', synchronizeControls);
     synchronizeControls();
   }());
 </script>
@@ -316,7 +355,10 @@
     [% ELSIF blissemall_job.state == 'failed' %]
       <div class="bea-error"><b>[% blissemall_job.error_code | html %]</b>: [% blissemall_job.error | html %]</div>
     [% ELSE %]
-      [% IF blissemall_job.exact_count_extension %]
+      [% IF blissemall_job.seed_growth_extension %]
+        <div class="bea-ok">Grew [% blissemall_job.relevance_reference_track_count %] seeds to exactly [% blissemall_job.target_track_count %] tracks by adding [% blissemall_job.added_track_count %] local songs.</div>
+        <p class="bea-note">The original seed set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
+      [% ELSIF blissemall_job.exact_count_extension %]
         <div class="bea-ok">Completed using [% blissemall_job.selected_strategy | html %]. Added exactly [% blissemall_job.requested_added_tracks %] track[% IF blissemall_job.requested_added_tracks != 1 %]s[% END %]; final size [% blissemall_job.final_track_count %]. Base-route objective [% blissemall_job.base_route_objective %].</div>
         <p class="bea-note">The bounded search found up to [% blissemall_job.maximum_additions_found %] feasible additions; its structural upper bound was [% blissemall_job.structural_upper_bound %]. Evidence mode: [% blissemall_job.semantic_mode | html %].</p>
       [% ELSIF blissemall_job.automatic_extension %]
@@ -333,26 +375,30 @@
       <ol class="bea-order">
         [% FOREACH track = blissemall_job.order %]
           <li>[% track.artist | html %] - [% track.title | html %]
-            [% IF track.bridge %]<b>[Added bridge]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
+            [% IF track.bridge %]<b>[% IF blissemall_job.seed_growth_extension %][Added from seed similarity][% ELSE %][Added bridge][% END %]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
           </li>
         [% END %]
       </ol>
       [% IF blissemall_job.bridge_extension %]
-        <h4>Additions and reasons</h4>
+        <h4>[% IF blissemall_job.seed_growth_extension %]Selected additions[% ELSE %]Additions and reasons[% END %]</h4>
         [% IF blissemall_job.added_track_count %]
           <ul>
             [% FOREACH addition = blissemall_job.additions %]
-              <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
+              [% IF blissemall_job.seed_growth_extension %]
+                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-seed Adaptive distance [% addition.relevance_distance %].</li>
+              [% ELSE %]
+                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
                 "[% addition.left | html %]" and "[% addition.right | html %]";
                 direct gap [% addition.direct_percent %]th percentile;
                 evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]).
               </li>
+              [% END %]
             [% END %]
           </ul>
         [% ELSIF blissemall_job.automatic_extension %]
           <p>No bridge met the trigger, acoustic-improvement, uniqueness, and repeat constraints. The optimized base order is still a valid result.</p>
         [% END %]
-        <details>
+        [% IF !blissemall_job.seed_growth_extension %]<details>
           <summary>Transition decisions</summary>
           <ul>
             [% FOREACH decision = blissemall_job.gap_decisions %]
@@ -362,7 +408,7 @@
               </li>
             [% END %]
           </ul>
-        </details>
+        </details>[% END %]
       [% END %]
       [% IF blissemall_job.write_state == 'completed' %]
         <div class="bea-ok">
@@ -392,7 +438,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite.</p>
+  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite. Grow from these seeds is connected with local Bliss evidence; optional semantic-provider enrichment remains planned.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

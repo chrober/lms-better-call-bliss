@@ -23,8 +23,13 @@ cannot start a job. See
 After installing the `BlissEmAll` directory and restarting LMS, open
 **Extras > Bliss 'Em All**. Select a saved playlist, adjust its per-job Adaptive
 parameters and repeat windows, choose whether to optimize or preserve the source-track order,
-then choose no additions, automatic additions, or an exact number of additions,
-choose **Create optimized copy**, enter its new name, and select **Run read-only
+then choose no additions, automatic additions, an exact number of additions,
+or **Grow from these seeds** with an exact final size. Seed growth keeps every
+source track exactly once, uses the complete immutable source set as its
+Adaptive relevance reference, selects only LMS-local analyzed candidates under
+the job's repeat-window capacity, and routes the complete membership for
+transition flow. Choose **Create optimized copy**, enter its new name, and
+select **Run read-only
 preview**. Use a zero artist or album look-back to disable that constraint for a
 single-artist or single-album collection. Automatic extension may add zero up
 to the configured bridge budget and reports every transition decision. The

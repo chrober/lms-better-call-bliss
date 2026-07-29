@@ -76,7 +76,7 @@ sub _form_from_params {
     for my $name (qw(
         playlist_id ordering_policy extension_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
-        max_added_tracks trigger_percent additional_track_count output_mode output_name
+        max_added_tracks trigger_percent additional_track_count target_track_count output_mode output_name
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }
@@ -127,6 +127,8 @@ sub _result_view {
                 if $job->{options}->{extension_mode} eq 'automatic';
             $view->{exact_count_extension} = 1
                 if $job->{options}->{extension_mode} eq 'exact_count';
+            $view->{seed_growth_extension} = 1
+                if $job->{options}->{extension_mode} eq 'seed_growth';
             $view->{base_route_objective} = sprintf(
                 '%.3f', $artifact->{selected_route_objective},
             );
@@ -135,6 +137,10 @@ sub _result_view {
             $view->{max_added_tracks} = 0 + ($preview->{max_added_tracks} || 0);
             $view->{requested_added_tracks} =
                 0 + ($preview->{requested_added_tracks} || 0);
+            $view->{target_track_count} =
+                0 + ($preview->{target_track_count} || 0);
+            $view->{relevance_reference_track_count} =
+                0 + ($preview->{relevance_reference_track_count} || 0);
             $view->{maximum_additions_found} =
                 0 + (($preview->{search} || {})->{maximum_additions_found} || 0);
             $view->{structural_upper_bound} =
@@ -146,6 +152,16 @@ sub _result_view {
             my @additions;
             for my $addition (@{$job->{additions} || []}) {
                 my $label = $job->{labels}->{$addition->{track_id}} || {};
+                if ($job->{options}->{extension_mode} eq 'seed_growth') {
+                    push @additions, {
+                        artist => $label->{artist} || 'Unknown Artist',
+                        title => $label->{title} || $addition->{track_id},
+                        relevance_distance => sprintf(
+                            '%.4f', 0 + ($addition->{relevance_distance} || 0),
+                        ),
+                    };
+                    next;
+                }
                 my $left = $job->{labels}->{$addition->{left_track_id}} || {};
                 my $right = $job->{labels}->{$addition->{right_track_id}} || {};
                 push @additions, {

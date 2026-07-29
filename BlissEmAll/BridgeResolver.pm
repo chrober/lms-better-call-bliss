@@ -80,7 +80,7 @@ sub resolve_bridge_preview {
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong source-order policy')
         unless ($artifact->{ordering_policy} || '') eq $ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong addition mode')
-        unless (($mode eq 'automatic' || $mode eq 'exact_count')
+        unless (($mode eq 'automatic' || $mode eq 'exact_count' || $mode eq 'seed_growth')
             && ($preview->{mode} || '') eq $mode);
     _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
         if $mode eq 'exact_count'
@@ -104,11 +104,21 @@ sub resolve_bridge_preview {
                 . $upper . '. No partial result was accepted.',
         );
     }
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The seed-growth preview changed the requested target')
+        if $mode eq 'seed_growth'
+            && (!exists $preview->{target_track_count}
+                || $preview->{target_track_count}
+                    != $job->{options}->{target_track_count});
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The seed-growth preview omitted its feasibility state')
+        if $mode eq 'seed_growth' && !exists $preview->{feasible};
+    _fail('SEED_GROWTH_INFEASIBLE', 'The optimizer could not reach the requested target')
+        if $mode eq 'seed_growth' && !$preview->{feasible};
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer did not return a final addition sequence')
         unless ref($preview->{final_sequence}) eq 'ARRAY';
-    _fail('BRIDGE_ARTIFACT_INVALID', 'The addition preview failed its membership proofs')
-        unless $preview->{original_subsequence_preserved}
-            && $preview->{unique_membership};
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The addition preview failed its uniqueness proof')
+        unless $preview->{unique_membership};
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The bridge preview failed its source-order proof')
+        if $mode ne 'seed_growth' && !$preview->{original_subsequence_preserved};
 
     my @source = @{$job->{source_track_ids} || []};
     my @selected = @{$artifact->{selected_track_ids} || []};
@@ -146,21 +156,34 @@ sub resolve_bridge_preview {
         }
         push @final, $id;
     }
-    _fail('BRIDGE_ARTIFACT_INVALID', 'The final sequence changed the optimized base order')
-        unless _same_values(\@originals, \@selected);
+    if ($mode eq 'seed_growth') {
+        my %original = map { $_ => 1 } @originals;
+        _fail('BRIDGE_ARTIFACT_INVALID', 'Seed growth changed source membership')
+            unless @originals == @source
+                && scalar(keys %original) == @source
+                && !scalar(grep { !$original{$_} } @source);
+    } else {
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The final sequence changed the optimized base order')
+            unless _same_values(\@originals, \@selected);
+    }
     _fail('BRIDGE_ARTIFACT_INVALID', 'The reported added-track count does not match the sequence')
         unless defined $preview->{added_track_count}
             && $preview->{added_track_count} == @bridges;
     if ($mode eq 'automatic') {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The automatic preview exceeded its bridge budget')
             if @bridges > ($preview->{max_added_tracks} || 0);
-    } else {
+    } elsif ($mode eq 'exact_count') {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
             unless defined $preview->{requested_added_tracks}
                 && $preview->{requested_added_tracks}
                     == $job->{options}->{additional_track_count};
         _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview returned a partial result')
             unless @bridges == $job->{options}->{additional_track_count};
+    } else {
+        my $expected = $job->{options}->{target_track_count} - @source;
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The seed-growth preview returned the wrong number of additions')
+            unless @bridges == $expected
+                && @final == $job->{options}->{target_track_count};
     }
 
     my %decision_for;
@@ -174,10 +197,19 @@ sub resolve_bridge_preview {
             if $decision_for{$id};
         $decision_for{$id} = $decision;
     }
-    _fail('BRIDGE_ARTIFACT_INVALID', 'A final bridge has no selected-transition decision')
-        if scalar(grep { !$decision_for{$_->[0]} } @bridges);
-    _fail('BRIDGE_ARTIFACT_INVALID', 'Selected-transition decisions do not match final bridges')
-        unless scalar(keys %decision_for) == @bridges;
+    if ($mode ne 'seed_growth') {
+        _fail('BRIDGE_ARTIFACT_INVALID', 'A final bridge has no selected-transition decision')
+            if scalar(grep { !$decision_for{$_->[0]} } @bridges);
+        _fail('BRIDGE_ARTIFACT_INVALID', 'Selected-transition decisions do not match final bridges')
+            unless scalar(keys %decision_for) == @bridges;
+    }
+    my %growth_for = map {
+        (($_->{candidate_id} || '') => $_)
+    } @{$preview->{selected_additions} || []};
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Seed-growth selection details do not match final additions')
+        if $mode eq 'seed_growth'
+            && (scalar(keys %growth_for) != @bridges
+                || scalar(grep { !$growth_for{$_->[0]} } @bridges));
 
     my $database = $job->{capability}->{database};
     my $dbh = DBI->connect(
@@ -225,16 +257,23 @@ sub resolve_bridge_preview {
                 album => $track->albumname || $album || '',
             };
             $positions{$id} = 0;
-            my $decision = $decision_for{$id};
-            my $selected_bridge = $decision->{selected_bridge} || {};
-            push @additions, {
-                track_id => $id,
-                left_track_id => $decision->{left_track_id},
-                right_track_id => $decision->{right_track_id},
-                direct_percentile => $decision->{direct_percentile},
-                semantic_pool => $decision->{semantic_pool} || 'bliss_only',
-                semantic_tier => $selected_bridge->{semantic_tier} || 'bliss_only',
-            };
+            if ($mode eq 'seed_growth') {
+                push @additions, {
+                    track_id => $id,
+                    relevance_distance => $growth_for{$id}->{relevance_distance},
+                };
+            } else {
+                my $decision = $decision_for{$id};
+                my $selected_bridge = $decision->{selected_bridge} || {};
+                push @additions, {
+                    track_id => $id,
+                    left_track_id => $decision->{left_track_id},
+                    right_track_id => $decision->{right_track_id},
+                    direct_percentile => $decision->{direct_percentile},
+                    semantic_pool => $decision->{semantic_pool} || 'bliss_only',
+                    semantic_tier => $selected_bridge->{semantic_tier} || 'bliss_only',
+                };
+            }
         }
         1;
     };

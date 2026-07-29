@@ -60,6 +60,10 @@ sub build_reorder_request {
             . 'addition per internal source-track transition.' . chr(10)
             if $options->{additional_track_count} > $maximum;
     }
+    if ($options->{extension_mode} eq 'seed_growth') {
+        die 'Grow from these seeds target must exceed the source playlist size'
+            if $options->{target_track_count} <= @tracks;
+    }
 
     my $artifacts = {
         database => {
@@ -118,6 +122,11 @@ sub build_reorder_request {
                 allow_opening_track => JSON::XS::false,
                 allow_closing_track => JSON::XS::false,
                 additional_track_count => $options->{additional_track_count},
+            }
+            : $options->{extension_mode} eq 'seed_growth' ? {
+                mode => 'seed_growth',
+                shortlist_limit => 256,
+                target_track_count => $options->{target_track_count},
             }
             : {mode => 'none'},
         semantic_evidence => {

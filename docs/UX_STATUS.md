@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.10.1` UX shell. The shell is
+model and the exact boundary of the current `0.11.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -31,20 +31,21 @@ fall through to either working mode.
 | Step or option | Status | Contract |
 | --- | --- | --- |
 | Select saved playlist | Working | Lists LMS saved playlists with at least two tracks. |
-| Optimize source order | Working for no additions, automatic additions, and exact-count additions | Original tracks may move. |
+| Optimize source order | Working for no additions, automatic additions, exact-count additions, and seed growth | Original tracks may move. Seed growth always routes the complete final membership. |
 | Preserve source order | Working for automatic and exact-count additions | Every original track remains an immutable anchor in its input order. This UI slice fills internal gaps only, with at most one added track per gap; endpoint controls remain unavailable. |
 | No additional tracks | Working | Uses every original track exactly once and inserts none; unavailable with preserved order because that combination is a no-op. |
 | Add automatically | Working | With optimized order, reorders the source before examining gaps; with preserved order, examines only the original gaps. It adds up to the per-job budget where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass, and may add zero. |
 | Add exactly N tracks | Working | Adds exactly the validated user-entered number of unique eligible tracks or fails without returning a partial playlist. Both ordering policies permit one addition per internal source-track transition and no endpoint additions, so `1 <= N <= S - 1`. |
+| Grow from these seeds | Working | Keeps all `S` source tracks exactly once, uses their complete immutable set as the Adaptive relevance reference, selects exactly `T - S` LMS-local analyzed additions under repeat-window capacity, and routes the complete `T`-track membership. The default target is 25. |
 | One bridge per source-track transition | Not connected yet | Adds one track in each of the `S - 1` original transitions, yielding `2S - 1` tracks. |
 | Target length | Not connected yet | Adds tracks until the exact total `T >= S` is reached. |
 | Double length | Not connected yet | Adds exactly `S` tracks, yielding `2S` tracks. |
-| Numeric editor for N/T | Working for N | Exact-count input is validated as 1-100 server-side and constrained to `S - 1` for the selected playlist in both the UI and request builder. Target-length input remains future work. |
+| Numeric editor for N/T | Working for exact additions and seed-growth target | Exact-count input is validated as 1-100 and constrained to `S - 1`. Seed-growth target is validated as 3-500 and must exceed `S`; the UI reports `S` seeds plus `T - S` additions. The generic bridge target-length preset remains future work. |
 | Musical context window (previous tracks) | Working, per job | Rolling preceding-track count used for every directional Adaptive leg. A bridge C between A and B is scored as history-to-C and updated-history-with-C-to-B; variance-based weighting begins with two available context tracks. |
 | Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
-| Relevance-aware controls | Working | Automatic, exact-count, and route-attempt inputs become read-only when irrelevant but remain submitted for draft restoration; the exact limit and resulting size follow the selected playlist; guaranteed no-op preserved combinations disable submission and fail server validation if bypassed. |
+| Relevance-aware controls | Working | Automatic, exact-count, seed-growth, and route-attempt inputs become read-only when irrelevant but remain submitted for draft restoration; exact and target counts follow the selected playlist; seed growth forces complete-membership order optimization; guaranteed no-op combinations disable submission and fail server validation if bypassed. |
 | Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
 | LMS scan coordination | Working | Preview pauses while LMS reports an active library scan, explains that the catalog is changing, and retries the page automatically until the scan finishes. |
 | Automatic bridge budget | Working, per job | Validated as 0-100; limits successful additions rather than candidate analysis. |
@@ -70,7 +71,7 @@ evidence from the full source artist pool is only a fallback.
 | Cancel preview | Not connected yet | No cancellable native-process handle is exposed. |
 | Result summary | Working | Prominently reports running, Preview success/failure, and copy success/failure, then shows selected strategy, objective, worst transition, and constraint validation. |
 | Proposed order | Working | Shows every original track and its original position. |
-| Additions and reasons | Working for automatic and exact-count extension | Labels every added local track, its original endpoints, direct-gap percentile, and evidence tier/pool; automatic zero-addition results are explicit. Exact-count also reports requested/final counts and bounded-search capacity. |
+| Additions and reasons | Working for automatic, exact-count, and seed-growth extension | Bridge modes label every added local track, original endpoints, direct-gap percentile, and evidence tier/pool. Seed growth labels each addition with its distance from the fixed full-seed Adaptive reference and reports seed/addition/final counts. |
 | Transition summary | Partial | Aggregate reorder diagnostics are real; automatic and exact-count extension show one decision/reason per original gap, while a general per-leg drill-down remains open. |
 | Warnings | Partial | Repeat validation and read-only safety are real; provider warnings await providers. |
 | Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
@@ -103,7 +104,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.10.1` keeps Preview read-only and permits only an explicit,
+Version `0.11.0` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates
@@ -124,6 +125,7 @@ Exact-count additionally requires the artifact's requested count to match the
 job, an explicit feasible state, and exactly `N` resolved bridges. A native
 infeasibility proof becomes a visible failed Preview and is never normalized
 or persisted as a partial sequence.
+Seed growth additionally requires an exact target match, unique final membership, every source ID exactly once, exactly `T - S` resolved additions, and selection details for every added Bliss row. Added tracks never enter the relevance anchor; they affect only complete-membership routing.
 
 ## piCorePlayer development deployment
 

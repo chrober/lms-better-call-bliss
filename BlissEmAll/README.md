@@ -1,15 +1,17 @@
 # Plugin package
 
-This directory contains the installable `0.10.1` per-job UX shell. It contributes
+This directory contains the installable `0.11.0` per-job UX shell. It contributes
 **Bliss 'Em All** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
 Virtual Library Creator.
 
 The connected paths select a real saved playlist and start a native
-reorder-only, automatic-extension, or exact-count Preview. BlissMixer supplies defaults, but every job may override
-the artist, album, and track repeat windows, Adaptive seed count, learned blend,
-and route-search restart count. Setting an artist or album window to zero
+reorder-only, automatic-extension, exact-count, or exact-target **Grow from
+these seeds** Preview. Seed growth keeps the full source playlist as its
+immutable relevance anchor. BlissMixer supplies defaults, but every job may
+override the artist, album, and track repeat windows, Adaptive seed count,
+learned blend, and route-search restart count. Setting an artist or album window to zero
 disables that constraint, allowing single-artist or single-album collections to
 be optimized.
 

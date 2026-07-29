@@ -195,6 +195,9 @@ sub start_reorder_preview {
             ? " max_added=$effective->{max_added_tracks}"
                 . " trigger_percent=$effective->{trigger_percent}"
             : '')
+        . ($effective->{extension_mode} eq 'seed_growth'
+            ? " target_tracks=$effective->{target_track_count}"
+            : '')
         . " output_mode=$effective->{output_mode}"
     );
     $log->info(
