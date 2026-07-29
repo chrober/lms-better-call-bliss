@@ -463,4 +463,16 @@ The initial activation restart was deferred while the Wohnzimmer player was acti
 
 A real Extras POST started job `preview-1785333670-0001` for `Test` with target 25, Adaptive context 3, learned blend 20%, artist/album windows 5/10, and 10 route restarts. The plugin rebuilt the current 64,061-row LMS-local inventory, launched the bundled optimizer, resolved every added row back to LMS, and completed with 2 seeds, 23 additions, 25 final tracks, unique membership, and `adaptive-arc`. Total job time was 10,138 ms; native cold-cache time was 9,607 ms. The success page showed the exact counts, selected additions, proposed order, and **Create optimized copy** action. Final status reported zero non-LMS Bliss rows.
 
-The validation deliberately stopped before **Create optimized copy**. No playlist named `Test Seed Growth Validation` exists, so the source and saved-playlist catalog were unchanged.
+The deployment validation deliberately stopped before **Create optimized copy**. The user subsequently invoked that explicit action. `Test Seed Growth Validation` was created and verified as LMS playlist ID `2515545` with 25 unique tracks. Its extended M3U contained 25 complete `#EXTURL`/`#EXTINF`/path triplets, and both original seed IDs occurred exactly once. The source playlist remained unchanged.
+
+## Version 0.11.1 finalized seed-growth diagnostics
+
+Version `0.11.1` from plugin commits `22ab304` and `7b16ec5` was deployed to `192.168.1.111` on 2026-07-29. The bundled binary comes from optimizer commit `0c4f119`, successful ARM64 workflow `30464031228`, and has SHA-256 `6299aa46c5e1b9411e31ea77d8d41be6a49033d3d053157cd4aeff9ab64be77b`. Full optimizer CI run `30464031982` also passed. The previous plugin is retained at `/mnt/mmcblk0p2/tce/slimserver/Cache/BlissEmAll-backups/BlissEmAll-0.11.0-pre-7b16ec5-20260729`.
+
+Activation waited until every player was idle. Live status then reported `ready=1`, `problem_count=0`, and `ux_contract=extras-job-editor-v12`.
+
+Read-only Extras job `preview-1785338076-0001` grew `Test` from two seeds to exactly 25 tracks with 23 additions. It completed in 4,869 ms total and 4,690 ms native with a warm decoded-library cache. Fixed-seed Adaptive relevance was 0.1190 best, 0.1633 mean, and 0.1835 furthest. The selected `adaptive-arc` route reported transition sum 3.4328, worst transition 0.3537, objective 4.1402, and arc error 3.1451.
+
+The page visibly contained the relevance summary, route-flow summary, verified-acceptance section, and explicit copy action. The persisted native artifact affirmed exact target, every source track exactly once, all additions from the LMS-local inventory, unique membership, artist-window compliance, album-window compliance, and track-repeat compliance. The plugin logged the same sanitized summary with `proofs=passed`.
+
+This final validation was Preview-only. It did not create, overwrite, or delete a playlist.

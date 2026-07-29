@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Bliss 'Em All** interaction
-model and the exact boundary of the current `0.11.0` UX shell. The shell is
+model and the exact boundary of the current `0.11.1` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -72,6 +72,7 @@ evidence from the full source artist pool is only a fallback.
 | Result summary | Working | Prominently reports running, Preview success/failure, and copy success/failure, then shows selected strategy, objective, worst transition, and constraint validation. |
 | Proposed order | Working | Shows every original track and its original position. |
 | Additions and reasons | Working for automatic, exact-count, and seed-growth extension | Bridge modes label every added local track, original endpoints, direct-gap percentile, and evidence tier/pool. Seed growth labels each addition with its distance from the fixed full-seed Adaptive reference and reports seed/addition/final counts. |
+| Seed-growth selection and route diagnostics | Working | Reports best/mean/furthest fixed-seed Adaptive relevance separately from final-route strategy, transition sum, worst transition, objective, and arc error. A collapsible acceptance section confirms exact target, every seed once, local additions, unique membership, and repeat-window compliance. |
 | Transition summary | Partial | Aggregate reorder diagnostics are real; automatic and exact-count extension show one decision/reason per original gap, while a general per-leg drill-down remains open. |
 | Warnings | Partial | Repeat validation and read-only safety are real; provider warnings await providers. |
 | Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
@@ -104,7 +105,7 @@ degrade to cached or local Bliss evidence rather than fail optimization.
 
 ## Safety boundary
 
-Version `0.11.0` keeps Preview read-only and permits only an explicit,
+Version `0.11.1` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates
@@ -125,7 +126,7 @@ Exact-count additionally requires the artifact's requested count to match the
 job, an explicit feasible state, and exactly `N` resolved bridges. A native
 infeasibility proof becomes a visible failed Preview and is never normalized
 or persisted as a partial sequence.
-Seed growth additionally requires an exact target match, unique final membership, every source ID exactly once, exactly `T - S` resolved additions, and selection details for every added Bliss row. Added tracks never enter the relevance anchor; they affect only complete-membership routing.
+Seed growth additionally requires an exact target match, unique final membership, every source ID exactly once, exactly `T - S` resolved additions, and selection details for every added Bliss row. Its native proof block must also affirm local-inventory membership and artist/album/track repeat compliance before the plugin accepts the result. Added tracks never enter the relevance anchor; they affect only complete-membership routing.
 
 ## piCorePlayer development deployment
 
