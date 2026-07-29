@@ -96,10 +96,10 @@ sub statusCommand {
     ) if defined $inventory->{unmatched_row_count};
     $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
         if $inventory->{audit_path};
-    $request->addResult('ux_contract', 'extras-job-editor-v10');
+    $request->addResult('ux_contract', 'extras-job-editor-v11');
     $request->addResult(
         'working_mode',
-        'per-job-adaptive/optimize-or-preserve/none-auto-exact/create-copy',
+        'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/create-copy',
     );
     $request->setStatusDone();
 }
