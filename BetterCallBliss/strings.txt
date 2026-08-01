@@ -59,12 +59,24 @@ PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC
 	DE	Nur Uebergaenge oberhalb dieses eingefrorenen Kontext-Perzentils werden beruecksichtigt; pro Auftrag aenderbar.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED
-	EN	Use Last.fm evidence [not connected yet]
-	DE	Last.fm-Hinweise verwenden [noch nicht angebunden]
+	EN	Last.fm artist weighting
+	DE	Last.fm-Interpretengewichtung
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC
-	EN	Optional anonymous similarity evidence. Future request failures will degrade to local Bliss evidence.
-	DE	Optionale anonyme Aehnlichkeitshinweise. Kuenftige Fehler fallen auf lokale Bliss-Daten zurueck.
+	EN	Uses LastMix to give artists similar to the original playlist a higher selection probability. Each job can override this default. Failures fall back to Bliss.
+	DE	Verwendet LastMix, um aehnlichen Interpreten eine hoehere Auswahlwahrscheinlichkeit zu geben. Pro Auftrag aenderbar; Fehler fallen auf Bliss zurueck.
+
+PLUGIN_BETTERCALLBLISS_LASTFM_WEIGHT
+	EN	Last.fm artist probability
+	DE	Last.fm-Interpretenwahrscheinlichkeit
+
+PLUGIN_BETTERCALLBLISS_LASTFM_WEIGHT_DESC
+	EN	Target percentage of chosen additions from Last.fm-endorsed artists when both candidate groups are available. Default: 25.
+	DE	Zielanteil ausgewaehlter Ergaenzungen von Last.fm-empfohlenen Interpreten, wenn beide Gruppen verfuegbar sind. Standard: 25.
+
+PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE
+	EN	Requires the LastMix plugin to be installed and enabled.
+	DE	Das LastMix-Plugin muss installiert und aktiviert sein.
 
 PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED
 	EN	Use ListenBrainz evidence [not connected yet]

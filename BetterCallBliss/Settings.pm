@@ -3,6 +3,7 @@ package Plugins::BetterCallBliss::Settings;
 use strict;
 use base qw(Slim::Web::Settings);
 use Slim::Utils::Prefs;
+use Slim::Utils::PluginManager;
 
 my $prefs = preferences('plugin.bettercallbliss');
 
@@ -27,8 +28,16 @@ sub prefs {
         semantic_cache_days
         semantic_stale_days
         lastfm_enabled
+        lastfm_weighting_weight
         listenbrainz_enabled
     ));
+}
+
+sub beforeRender {
+    my ($class, $params) = @_;
+    $params->{lastmix_available} = Slim::Utils::PluginManager->isEnabled(
+        'Plugins::LastMix::Plugin'
+    ) ? 1 : 0;
 }
 
 sub _clamp {
@@ -48,6 +57,7 @@ sub handler {
     _clamp($params, 'pref_report_retention_days', 1, 3650);
     _clamp($params, 'pref_semantic_cache_days', 1, 365);
     _clamp($params, 'pref_semantic_stale_days', 1, 3650);
+    _clamp($params, 'pref_lastfm_weighting_weight', 1, 100);
     if (defined $params->{pref_semantic_cache_days}
         && defined $params->{pref_semantic_stale_days}
         && $params->{pref_semantic_stale_days} < $params->{pref_semantic_cache_days}) {

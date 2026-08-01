@@ -42,6 +42,7 @@ sub initPlugin {
         semantic_cache_days => 30,
         semantic_stale_days => 90,
         lastfm_enabled => 0,
+        lastfm_weighting_weight => 25,
         listenbrainz_enabled => 0,
     });
     my $dir = dirname(__FILE__);
@@ -96,7 +97,7 @@ sub statusCommand {
     ) if defined $inventory->{unmatched_row_count};
     $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
         if $inventory->{audit_path};
-    $request->addResult('ux_contract', 'extras-job-editor-v13');
+    $request->addResult('ux_contract', 'extras-job-editor-v14');
     $request->addResult(
         'working_mode',
         'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/create-copy',

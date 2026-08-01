@@ -13,6 +13,7 @@ use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::Jobs;
+use Plugins::BetterCallBliss::LastFmEvidence;
 use Plugins::BetterCallBliss::PlaylistWriter;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
@@ -76,6 +77,7 @@ sub _form_from_params {
     for my $name (qw(
         playlist_id ordering_policy extension_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
+        variation_percent generation_seed lastfm_enabled lastfm_weighting_weight
         max_added_tracks trigger_percent additional_track_count target_track_count output_mode output_name
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
@@ -91,6 +93,8 @@ sub _form_from_job {
     );
     $form->{output_name_generated} =
         $options->{output_name_generated} ? 1 : 0;
+    $form->{generation_seed} = ''
+        unless $options->{generation_seed_supplied};
     return $form;
 }
 
@@ -107,6 +111,11 @@ sub _result_view {
         ordering_policy => $job->{options}->{ordering_policy},
         preserve_order => $job->{options}->{ordering_policy} eq 'preserve_order' ? 1 : 0,
         extension_mode => $job->{options}->{extension_mode},
+        variation_percent => $job->{options}->{variation_percent},
+        generation_seed => $job->{options}->{generation_seed},
+        lastfm_enabled => $job->{options}->{lastfm_enabled},
+        lastfm_weighting_weight => $job->{options}->{lastfm_weighting_weight},
+        lastfm_state => $job->{lastfm_state},
         write_state => $job->{write_state},
         write_stage => $job->{write_stage},
         write_error_code => $job->{write_error_code},
@@ -252,6 +261,9 @@ sub handler {
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
     my $form = _form_from_params($params, $defaults);
+    if ($params->{run_preview} && $params->{lastfm_present}) {
+        $form->{lastfm_enabled} = $params->{lastfm_enabled} ? 1 : 0;
+    }
     my $playlists = _playlists();
 
     my $trimmed_output_name = $form->{output_name} || '';
@@ -310,6 +322,8 @@ sub handler {
     $params->{bettercallbliss_form} = $form;
     $params->{bettercallbliss_defaults} = $defaults;
     $params->{bettercallbliss_capability} = $capability;
+    $params->{bettercallbliss_lastmix_available}
+        = Plugins::BetterCallBliss::LastFmEvidence::available();
     $params->{bettercallbliss_candidate_inventory}
         = Plugins::BetterCallBliss::CandidateInventory::status();
     $params->{bettercallbliss_job} = _result_view($job) if $job;

@@ -11,6 +11,7 @@ use Slim::Utils::Prefs;
 use Slim::Utils::Timers;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::LastFmEvidence;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
 
@@ -77,6 +78,49 @@ sub _repeat_capacity_hint {
     return;
 }
 
+sub _launch_optimizer {
+    my ($job, $built, $semantic_bundle) = @_;
+    _write_json($job->{semantic_path}, $semantic_bundle);
+    Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(
+        $built->{request},
+    );
+    _write_json($job->{request_path}, $built->{request});
+
+    open my $result_fh, '>', $job->{result_path}
+        or die "Could not open optimizer result: $!";
+    open my $stderr_fh, '>', $job->{stderr_path}
+        or die "Could not open optimizer log: $!";
+
+    my $retie_stderr = !main::ISWINDOWS && tied(*STDERR) ? 1 : 0;
+    untie *STDERR if $retie_stderr;
+    my ($process, $launch_error);
+    eval {
+        $process = Proc::Background->new(
+            {
+                die_upon_destroy => 1,
+                stdout => $result_fh,
+                stderr => $stderr_fh,
+            },
+            $optimizer_binary, $job->{native_command}, '--request',
+            $job->{request_path}, '--timings', '--cache-dir',
+            $library_cache_root,
+        );
+    };
+    $launch_error = $@;
+    tie *STDERR, 'Slim::Utils::Log::Trapper' if $retie_stderr;
+    close $result_fh;
+    close $stderr_fh;
+    die "Could not start optimizer: $launch_error" if $launch_error;
+    die "Could not start optimizer" unless $process;
+
+    $job->{process} = $process;
+    $job->{stage} = $job->{native_command} eq 'bridge'
+        ? 'Optimizing and selecting additions' : 'Optimizing';
+    Slim::Utils::Timers::setTimer(
+        undef, time() + 0.5, sub { _poll($job->{id}) },
+    );
+}
+
 sub start_reorder_preview {
     my ($playlist_id, $options) = @_;
     die "Optimizer binary is unavailable"
@@ -86,12 +130,6 @@ sub start_reorder_preview {
     my $dir = $job_root . '/' . $job_id;
     make_path($dir);
     my $semantic_path = $dir . '/semantic-evidence.json';
-    _write_json($semantic_path, {
-        schema_version => 1,
-        frozen_at => '1970-01-01T00:00:00Z',
-        providers => [],
-        edges => [],
-    });
 
     my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
         $playlist_id, $job_id, $semantic_path, $options,
@@ -113,41 +151,14 @@ sub start_reorder_preview {
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
     my $stderr_path = $dir . '/stderr.log';
-    _write_json($request_path, $built->{request});
-
-    open my $result_fh, '>', $result_path
-        or die "Could not open optimizer result: $!";
-    open my $stderr_fh, '>', $stderr_path
-        or die "Could not open optimizer log: $!";
-
-    # LMS ties STDERR to its logger. Proc::Background cannot clone a tied
-    # handle while redirecting a child, so follow the scanner's launch pattern.
-    my $retie_stderr = !main::ISWINDOWS && tied(*STDERR) ? 1 : 0;
-    untie *STDERR if $retie_stderr;
-    my ($process, $launch_error);
-    eval {
-        $process = Proc::Background->new(
-            {
-                die_upon_destroy => 1,
-                stdout => $result_fh,
-                stderr => $stderr_fh,
-            },
-            $optimizer_binary, $native_command, '--request', $request_path,
-            '--timings', '--cache-dir', $library_cache_root,
-        );
-    };
-    $launch_error = $@;
-    tie *STDERR, 'Slim::Utils::Log::Trapper' if $retie_stderr;
-    close $result_fh;
-    close $stderr_fh;
-    die "Could not start optimizer: $launch_error" if $launch_error;
-    die "Could not start optimizer" unless $process;
+    my $lastfm_applies = $built->{options}->{lastfm_enabled}
+        && $built->{options}->{extension_mode} ne 'none';
 
     $jobs{$job_id} = {
         id => $job_id,
         state => 'running',
-        stage => $native_command eq 'bridge'
-            ? 'Optimizing and selecting additions' : 'Optimizing',
+        stage => $lastfm_applies
+            ? 'Preparing Last.fm artist evidence' : 'Preparing request',
         started_at => time(),
         playlist_id => 0 + $playlist_id,
         playlist_title => $built->{playlist}->title || $built->{playlist}->name,
@@ -160,18 +171,22 @@ sub start_reorder_preview {
         track_urls => $built->{track_urls},
         capability => $built->{capability},
         options => $built->{options},
+        lastfm_state => $lastfm_applies ? 'preparing'
+            : ($built->{options}->{lastfm_enabled} ? 'not_applicable' : 'disabled'),
         restart_count => $built->{request}->{route}->{search}->{restart_count},
         native_command => $native_command,
         database_identity => $database_identity,
         candidate_inventory => $candidate_inventory
             ? $candidate_inventory->{status} : undef,
-        process => $process,
+        semantic_path => $semantic_path,
+        request_path => $request_path,
         result_path => $result_path,
         stderr_path => $stderr_path,
     };
     my $effective = $built->{options};
+    my $initial_stage = $jobs{$job_id}->{stage};
     $log->info(
-        "job=$job_id stage=Optimizing playlist_id=$playlist_id"
+        "job=$job_id stage=$initial_stage playlist_id=$playlist_id"
         . " ordering=$effective->{ordering_policy}"
         . " extension=$effective->{extension_mode}"
         . " algorithm=$effective->{algorithm}"
@@ -181,6 +196,10 @@ sub start_reorder_preview {
         . " repeat_album=$effective->{album_window}"
         . " repeat_track=$effective->{track_window}"
         . " restarts=$effective->{restart_count}"
+        . " variation=$effective->{variation_percent}"
+        . " generation_seed=$effective->{generation_seed}"
+        . " lastfm=" . ($effective->{lastfm_enabled} ? 'enabled' : 'disabled')
+        . " lastfm_probability=$effective->{lastfm_weighting_weight}"
         . ($effective->{extension_mode} ne 'none'
             ? ' shortlist_limit='
                 . $built->{request}->{extension}->{shortlist_limit}
@@ -222,7 +241,74 @@ sub start_reorder_preview {
             . " output_mode=$effective->{output_mode}"
         );
     }
-    Slim::Utils::Timers::setTimer(undef, time() + 0.5, sub { _poll($job_id) });
+    my $prepare_ok = eval {
+        Plugins::BetterCallBliss::LastFmEvidence::prepare(
+            $lastfm_applies, $built->{request}->{source_tracks}, sub {
+                my $bundle = shift;
+                my $job = $jobs{$job_id} || return;
+                my $provider = ref($bundle->{providers}) eq 'ARRAY'
+                    ? $bundle->{providers}->[0] : undef;
+                $job->{lastfm_state} = $provider
+                    ? $provider->{state} : 'disabled'
+                    if $lastfm_applies;
+                my $launch_ok = eval {
+                    _launch_optimizer($job, $built, $bundle);
+                    1;
+                };
+                unless ($launch_ok) {
+                    my $message = $@ || 'Could not prepare optimizer request';
+                    $message =~ s/\s+/ /g;
+                    $job->{state} = 'failed';
+                    $job->{stage} = 'Failed';
+                    $job->{finished_at} = time();
+                    $job->{error_code} = 'OPTIMIZER_LAUNCH_FAILED';
+                    $job->{error} = substr($message, 0, 400);
+                    $job->{native_message} = $job->{error};
+                    $log->error(
+                        "job=$job_id stage=Failed code=OPTIMIZER_LAUNCH_FAILED"
+                        . " message=$job->{error}"
+                    );
+                }
+            },
+        );
+        1;
+    };
+    unless ($prepare_ok) {
+        my $message = $@ || 'Could not start Last.fm evidence preparation';
+        $message =~ s/\s+/ /g;
+        my $job = $jobs{$job_id};
+        $job->{lastfm_state} = 'failed';
+        $log->warn(
+            "job=$job_id Last.fm preparation failed; falling back to Bliss: "
+            . substr($message, 0, 400)
+        );
+        my $fallback = {
+            schema_version => 1,
+            frozen_at => '1970-01-01T00:00:00Z',
+            providers => [{
+                provider => 'last.fm',
+                dataset_or_algorithm => 'LastMix artist.getSimilar',
+                state => 'failed',
+                request_count => 0,
+                failure_count => 1,
+                error_codes => ['EVIDENCE_PREPARATION_FAILED'],
+            }],
+            edges => [],
+        };
+        my $launch_ok = eval {
+            _launch_optimizer($job, $built, $fallback);
+            1;
+        };
+        unless ($launch_ok) {
+            my $launch_message = $@ || 'Could not prepare optimizer request';
+            $launch_message =~ s/\s+/ /g;
+            $job->{state} = 'failed';
+            $job->{stage} = 'Failed';
+            $job->{finished_at} = time();
+            $job->{error_code} = 'OPTIMIZER_LAUNCH_FAILED';
+            $job->{error} = substr($launch_message, 0, 400);
+        }
+    }
     return $jobs{$job_id};
 }
 
@@ -230,6 +316,7 @@ sub _poll {
     my $job_id = shift;
     my $job = $jobs{$job_id} || return;
     return unless $job->{state} eq 'running';
+    return unless $job->{process};
 
     if ($job->{process}->alive) {
         Slim::Utils::Timers::setTimer(
@@ -379,6 +466,7 @@ sub _poll {
                 . " added=$job->{added_track_count}"
                 . " strategy=$selected"
                 . " semantic_mode=$job->{artifact}->{semantic_mode}"
+                . " lastfm_state=$job->{lastfm_state}"
                 . sprintf(
                     ' base_route_objective=%.3f',
                     $job->{artifact}->{selected_route_objective},
@@ -393,6 +481,7 @@ sub _poll {
                 "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"
                 . $native_summary
                 . " tracks=$job->{track_count} strategy=$selected"
+                . " lastfm_state=$job->{lastfm_state}"
                 . sprintf(
                     ' objective=%.3f worst_transition=%.3f',
                     $candidate->{objective},

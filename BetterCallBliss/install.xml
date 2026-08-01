@@ -4,7 +4,7 @@
   <icon>plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_timeline.png</icon>
   <name>PLUGIN_BETTERCALLBLISS_NAME</name>
   <module>Plugins::BetterCallBliss::Plugin</module>
-  <version>0.12.0</version>
+  <version>0.13.0</version>
   <description>PLUGIN_BETTERCALLBLISS_DESC</description>
   <creator>Christoph O'Bermair</creator>
   <defaultState>

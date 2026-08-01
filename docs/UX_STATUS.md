@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.12.0` UX shell. The shell is
+model and the exact boundary of the current `0.13.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -45,6 +45,8 @@ fall through to either working mode.
 | Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
+| Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
+| Last.fm artist weighting | Working, optional and per job | Mirrors BlissMixer's enable switch and 1-100 target artist probability. Requires enabled LastMix, queries the complete distinct source-artist set, prefers endpoint-local evidence over collection fallback, and degrades to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
 | Relevance-aware controls | Working | Automatic, exact-count, seed-growth, and route-attempt inputs become read-only when irrelevant but remain submitted for draft restoration; exact and target counts follow the selected playlist; seed growth forces complete-membership order optimization; guaranteed no-op combinations disable submission and fail server validation if bypassed. |
 | Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
 | LMS scan coordination | Working | Preview pauses while LMS reports an active library scan, explains that the catalog is changing, and retries the page automatically until the scan finishes. |
@@ -56,10 +58,9 @@ fall through to either working mode.
 | Review | Working for all connected combinations | The submitted form and result retain the job-specific values and explicitly state whether source order was optimized or preserved. |
 | Run preview | Working for all connected combinations | Launches the native optimizer asynchronously and never writes a playlist. |
 
-`S` is the original source-track count. Current automatic bridge discovery uses
-local Bliss evidence. Once optional semantic providers are connected,
-similar-artist evidence local to transition `A -> B` will be preferred;
-evidence from the full source artist pool is only a fallback.
+`S` is the original source-track count. Last.fm artist evidence local to a
+transition `A -> B` is preferred; evidence from the complete original source
+artist pool is only a fallback. ListenBrainz remains later.
 
 ## Result and job UX
 
@@ -74,7 +75,7 @@ evidence from the full source artist pool is only a fallback.
 | Additions and reasons | Working for automatic, exact-count, and seed-growth extension | Bridge modes label every added local track, original endpoints, direct-gap percentile, and evidence tier/pool. Seed growth labels each addition with its distance from the fixed full-seed Adaptive reference and reports seed/addition/final counts. |
 | Seed-growth selection and route diagnostics | Working | Reports best/mean/furthest fixed-seed Adaptive relevance separately from final-route strategy, transition sum, worst transition, objective, and arc error. A collapsible acceptance section confirms exact target, every seed once, local additions, unique membership, and repeat-window compliance. |
 | Transition summary | Partial | Aggregate reorder diagnostics are real; automatic and exact-count extension show one decision/reason per original gap, while a general per-leg drill-down remains open. |
-| Warnings | Partial | Repeat validation and read-only safety are real; provider warnings await providers. |
+| Warnings | Partial | Repeat validation, read-only safety, Last.fm provider fallback states, and a service-wide-error circuit breaker are real; a complete provider/cache dashboard remains open. |
 | Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
 | Non-LMS Bliss-row audit | Working | After the first addition job, Extras shows the current excluded-row count and persistent ledger path. The private JSON ledger retains current/resolved state, reason, row identity, metadata, and first/last-seen observations across LMS restarts. Existing case-variant duplicates are identified separately and include the related exact LMS identity. |
 | Create optimized copy | Working | Separate post-Preview action writes and verifies a new LMS playlist. Blank names preserve Unicode from the decoded source filename and choose the next free numbered suffix; explicit collisions fail visibly and safely. |
@@ -95,17 +96,19 @@ affects optimization is copied into and may be overridden by the job. The
 following settings are persisted to establish their future contract but are labeled
 **not connected yet** on the settings page:
 
-- Last.fm and ListenBrainz enablement;
+- ListenBrainz enablement;
 - semantic cache freshness and stale-offline lifetime; and
 - persistent report retention.
 
-Last.fm and ListenBrainz remain optional. Once connected, timeouts, provider
-errors, malformed responses, rate limits, and missing Internet access must
-degrade to cached or local Bliss evidence rather than fail optimization.
+Last.fm is optional and uses LastMix's anonymous access. Its plugin-wide enable
+switch and artist probability mirror BlissMixer and become per-job defaults.
+Timeouts, provider errors, malformed responses, rate limits, and missing
+Internet access degrade to local Bliss evidence rather than fail optimization.
+ListenBrainz remains optional and is deliberately deferred.
 
 ## Safety boundary
 
-Version `0.12.0` keeps Preview read-only and permits only an explicit,
+Version `0.13.0` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates

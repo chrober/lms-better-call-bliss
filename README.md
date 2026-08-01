@@ -16,6 +16,9 @@ Reorder only** plus automatic and exact-count additions with either optimized
 or preserved source order. All use
 per-job Adaptive and repeat settings initialized from BlissMixer defaults,
 background native Preview, result review, and explicit creation of a new copy.
+Every job also has strategy-neutral Variation with an optional reproducible
+generation seed. Optional Last.fm artist weighting mirrors BlissMixer's LastMix
+enable switch and target artist probability; ListenBrainz remains later.
 Automatic extension exposes a per-job bridge budget and trigger percentile;
 exact-count extension exposes a validated per-job count and never accepts a
 partial result. Every future-only item is visibly marked **Not connected yet** and
@@ -53,6 +56,11 @@ route-search attempts are an advanced, deterministic effort control used only
 when source tracks may move; more attempts may improve the route at additional
 CPU cost.
 
+**Variation** controls how widely membership/route selection explores within a
+Bliss-safe top-quality pool after the chosen similarity strategy has scored the
+candidates. Zero is strict best match. Leave the generation seed blank to get a
+new seed for each run, or reuse a reported seed to reproduce a result.
+
 Status banners force explicit foreground/background pairs rather than inheriting
 the surrounding skin's colors; every nested element receives the same paired
 surface and foreground, so warnings, failures, running state, and success remain
@@ -82,9 +90,16 @@ come from dynamic two-leg Adaptive scoring and the normal semantic, repeat,
 membership, and acoustic gates; the shortlist is a performance bound, not a
 separate mixing strategy.
 
-Automatic and exact-count bridge discovery currently use the local Bliss-only fallback. The
-optional Last.fm and ListenBrainz evidence adapters remain visibly unconnected;
-their absence never blocks acoustic extension.
+Last.fm artist evidence is collected asynchronously through the optional
+LastMix plugin. Better Call Bliss uses recording and artist MBIDs supplied by
+Lyrion where available, queries every distinct artist in the complete original
+playlist, and records provider state in the frozen native evidence artifact.
+Endpoint-local artist evidence is preferred; the full source artist set is the
+fallback. The per-job target probability matches BlissMixer's Last.fm control.
+Missing LastMix, offline/API failures, and partial responses never fail the job;
+selection falls back to Bliss. Service-wide Last.fm errors open a per-job
+circuit breaker so large source playlists do not repeat calls during an outage
+or rate limit. ListenBrainz remains visibly unconnected.
 
 Before any addition search, version `0.10.1` freezes the current local LMS library as a checksum-protected, `bliss.db`-identity-bound row allowlist. The native optimizer applies this allowlist before semantic ranking, acoustic shortlisting, or contextual bridge scoring, while the existing post-result LMS resolution remains as a second mutation/race guard. Usable Bliss rows that cannot be matched to current local LMS tracks are excluded and retained in the persistent review ledger `<LMS cache>/bettercallbliss/non-lms-bliss-rows.json`; the ledger records current and resolved entries with reason, metadata, row identity, and first/last-seen observations. A file may exist while its Bliss identity is still excluded: for example, a second Bliss row whose filename capitalization differs from the exact LMS catalog identity is recorded as `filename_case_differs_from_lms_catalog` together with the related LMS identity. The Extras page, `bettercallbliss status`, and one concise server-log summary expose its current count and location.
 

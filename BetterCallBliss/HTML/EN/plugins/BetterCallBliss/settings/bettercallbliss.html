@@ -31,15 +31,22 @@
 [% END %]
 
 [% WRAPPER settingSection %]
-  <h3>Stored for features that are not connected yet</h3>
-  <p>
-    The values below define the intended UX contract, but changing them does not
-    enable semantic requests or durable reports.
-  </p>
+  <h3>Last.fm artist weighting</h3>
+  <p>These defaults mirror BlissMixer's Last.fm settings. Every job can override them. LastMix uses anonymous Last.fm access; request failures fall back to Bliss.</p>
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC" %]
-    <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %]>
+    <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %] [% UNLESS lastmix_available %]disabled[% END %]>
+    [% UNLESS lastmix_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE" | string %]</div>[% END %]
   [% END %]
+
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_WEIGHT" desc="PLUGIN_BETTERCALLBLISS_LASTFM_WEIGHT_DESC" %]
+    <input type="number" min="1" max="100" class="stdedit" name="pref_lastfm_weighting_weight" id="lastfm_weighting_weight" value="[% prefs.lastfm_weighting_weight %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
+  [% END %]
+[% END %]
+
+[% WRAPPER settingSection %]
+  <h3>Stored for features that are not connected yet</h3>
+  <p>ListenBrainz, semantic cache retention, and durable reports remain roadmap settings.</p>
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED_DESC" %]
     <input type="checkbox" name="pref_listenbrainz_enabled" id="listenbrainz_enabled" value="1" [% IF prefs.listenbrainz_enabled %]checked="checked"[% END %]>

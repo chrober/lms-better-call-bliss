@@ -150,7 +150,33 @@
       <input type="number" min="0" max="100" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.trigger_percent %]</span>
     </div>
-    <p class="bea-note">Only transitions above this percentile are considered. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm/ListenBrainz evidence is not connected yet; this slice falls back to local Bliss evidence.</p>
+    <p class="bea-note">Only transitions above this percentile are considered. Acoustic improvement and repeat constraints still have to pass. Last.fm artist evidence can bias eligible choices; ListenBrainz comes later.</p>
+  </fieldset>
+
+  <fieldset class="bea-section">
+    <legend>Variation and artist guidance</legend>
+    <div class="bea-row">
+      <label for="variation_percent">Variation (%)</label>
+      <input type="number" min="0" max="100" name="variation_percent" id="variation_percent" value="[% bettercallbliss_form.variation_percent %]" required>
+      <span class="bea-disabled">0 = strict best match; higher values explore a wider top-quality pool.</span>
+    </div>
+    <div class="bea-row">
+      <label for="generation_seed">Repeatable generation seed</label>
+      <input type="number" min="0" max="4294967295" name="generation_seed" id="generation_seed" value="[% bettercallbliss_form.generation_seed %]" placeholder="new seed each run">
+    </div>
+    <p class="bea-note">Variation is applied after the selected similarity strategy, so it also applies to future Static and Forest strategies. Leave the seed blank for a new result on each run; enter a previous result seed to reproduce it.</p>
+    <input type="hidden" name="lastfm_present" value="1">
+    <div class="bea-row">
+      <label for="lastfm_enabled">Last.fm artist weighting</label>
+      <input type="checkbox" name="lastfm_enabled" id="lastfm_enabled" value="1"[% IF bettercallbliss_form.lastfm_enabled %] checked[% END %][% UNLESS bettercallbliss_lastmix_available %] disabled[% END %]>
+      [% UNLESS bettercallbliss_lastmix_available %]<span class="bea-disabled">Requires the LastMix plugin to be installed and enabled.</span>[% END %]
+    </div>
+    <div class="bea-row">
+      <label for="lastfm_weighting_weight">Last.fm artist probability (%)</label>
+      <input type="number" min="1" max="100" name="lastfm_weighting_weight" id="lastfm_weighting_weight" value="[% bettercallbliss_form.lastfm_weighting_weight %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
+      <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.lastfm_weighting_weight %]</span>
+    </div>
+    <p class="bea-note">Like BlissMixer, Better Call Bliss asks LastMix for artists similar to the complete original artist set when tracks may be added. Local transition evidence is preferred; the complete set is the fallback. The percentage is the target share of Last.fm-endorsed additions when both endorsed and Bliss-only candidates are available. It is not applicable to fixed-membership Reorder only jobs. Network/API failures fall back to Bliss without failing the job.</p>
   </fieldset>
 
   <fieldset class="bea-section" id="exact_count_fields">
@@ -259,6 +285,8 @@
     var restarts = document.getElementById('restart_count');
     var restartHelp = document.getElementById('restart_help');
     var warning = document.getElementById('mode_combination_warning');
+    var lastFmEnabled = document.getElementById('lastfm_enabled');
+    var lastFmWeight = document.getElementById('lastfm_weighting_weight');
     var submit = document.getElementById('run_preview');
     var capabilityReady = !submit.disabled;
 
@@ -311,6 +339,9 @@
         : '';
       growthWarning.classList.toggle('bea-hidden', !invalidGrowth);
       submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidGrowth;
+      if (lastFmWeight) {
+        lastFmWeight.readOnly = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
+      }
 
       restarts.disabled = false;
       restarts.readOnly = preserve;
@@ -341,6 +372,7 @@
     maximumAdditions.addEventListener('input', synchronizeControls);
     exactCount.addEventListener('input', synchronizeControls);
     growthTarget.addEventListener('input', synchronizeControls);
+    if (lastFmEnabled) lastFmEnabled.addEventListener('change', synchronizeControls);
     synchronizeControls();
   }());
 </script>
@@ -351,6 +383,7 @@
     <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - [% bettercallbliss_job.stage | html %]</p>
     <p>Job ID: [% bettercallbliss_job.id | html %]</p>
     <p>Requested output: [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source <b>[Not connected yet]</b>[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
+    <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (target [% bettercallbliss_job.lastfm_weighting_weight %]%).</p>
     [% IF bettercallbliss_job.state == 'running' %]
       <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]">Refresh result now</a></p>
     [% ELSIF bettercallbliss_job.state == 'failed' %]
@@ -453,7 +486,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional Last.fm/ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite. Grow from these seeds is connected with local Bliss evidence; optional semantic-provider enrichment remains planned.</p>
+  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite. Last.fm artist evidence through LastMix is connected and failure-tolerant.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

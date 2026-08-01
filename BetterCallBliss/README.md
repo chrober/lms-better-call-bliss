@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.12.0` per-job UX shell. It contributes
+This directory contains the installable `0.13.0` per-job UX shell. It contributes
 **Better Call Bliss** under Extras and retains informational playlist/track context
 entries. Lyrion's Applications/OPML adapter cannot expose a portable rich
 multi-field form, so the job editor uses the same classic-web mechanism as
@@ -11,7 +11,8 @@ reorder-only, automatic-extension, exact-count, or exact-target **Grow from
 these seeds** Preview. Seed growth keeps the full source playlist as its
 immutable relevance anchor. BlissMixer supplies defaults, but every job may
 override the artist, album, and track repeat windows, Adaptive seed count,
-learned blend, and route-search restart count. Setting an artist or album window to zero
+learned blend, route-search restart count, strategy-neutral Variation, and
+optional Last.fm artist weighting. Setting an artist or album window to zero
 disables that constraint, allowing single-artist or single-album collections to
 be optimized.
 
@@ -44,9 +45,19 @@ Automatic extension adds only candidates that pass the native contextual
 trigger, acoustic-improvement, uniqueness, and repeat gates, up to the per-job
 budget. Opaque Bliss row identities are validated, resolved read-only through
 `bliss.db` to local LMS tracks immediately after Preview, and frozen as LMS
-URLs. The result shows every addition and every transition decision. Optional
-semantic providers are not connected in this slice, so it reports the honest
-Bliss-only evidence mode.
+URLs. The result shows every addition and every transition decision. LastMix
+artist evidence is optional and failure-tolerant; ListenBrainz remains later.
+
+Variation is a per-job percentage downstream of the scoring strategy. Zero
+keeps strict best-match membership, while higher values use reproducible
+weighted sampling inside a bounded top acoustic pool. A blank seed generates a
+new result on every run; an explicit generation seed reproduces the selection.
+The Last.fm defaults mirror BlissMixer's enable switch and 1-100 artist
+probability. Better Call Bliss queries every distinct artist from the complete
+original playlist, prefers endpoint-local evidence, uses the complete set only
+as fallback, and continues with Bliss when LastMix or Last.fm is unavailable.
+Service-offline, temporarily-unavailable, and rate-limit errors stop the
+remaining provider calls for that job instead of repeatedly hitting Last.fm.
 
 Every addition job first snapshots current local LMS track identities and intersects them with usable `TracksV2` rows. The resulting checksum-protected allowlist is bound to the exact `bliss.db` file identity and applied natively before candidate shortlisting or scoring. Unmatched Bliss rows remain excluded even when their acoustic score would otherwise win. A persistent ledger at `<LMS cache>/bettercallbliss/non-lms-bliss-rows.json` records their paths, metadata, reasons, first/last-seen times, observation counts, and resolved/current state for review; the Extras page shows the current count and file location after the first addition job. Existing files are not automatically eligible: when a Bliss row differs from a unique LMS identity only by filename case, the audit records `filename_case_differs_from_lms_catalog` and the related LMS identity, preserving exact membership and preventing duplicate case-variant candidates.
 
