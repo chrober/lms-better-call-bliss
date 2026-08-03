@@ -61,21 +61,6 @@ flowchart TD
     Q -->|"user accepts"| W["Lyrion playlist writer"]
 ~~~
 
-## Which songs influence each decision?
-
-A song is not compared with the same reference everywhere. The relevant tracks depend on the decision Better Call Bliss is making:
-
-| Decision | Songs that define the reference | Song being judged |
-| --- | --- | --- |
-| Choose the next song while reordering | Up to N immediately preceding songs in that proposed order | Each unused source song |
-| Measure an existing transition A → B | Up to N preceding songs, ending with A | B |
-| Test the A → C half of a bridge | Up to N preceding songs, ending with A | Candidate C |
-| Test the C → B half of a bridge | Up to N preceding songs after inserting C, ending with C | Original B |
-| Choose members for Grow from these seeds | Every original source song, regardless of order | Every eligible local candidate |
-| Arrange a completed grown playlist | Up to N immediately preceding songs in each proposed order | Each possible next song |
-
-N is **Musical context window**. Each workflow below explains why it uses that reference.
-
 ## Playlist workflows
 
 ### Reorder existing tracks only
@@ -160,7 +145,7 @@ Suppose the playlist contains A followed by B. A candidate C is used only if A �
 
 #### How difficult gaps are recognized
 
-Raw similarity distances from different parts of a playlist are not directly comparable because their preceding contexts differ. Better Call Bliss therefore builds one frozen reference distribution before adding anything.
+Raw similarity distances from different parts of a playlist are not directly comparable because their preceding contexts differ. For a direct transition A → B, B is compared with up to **Musical context window** preceding songs ending in A. Better Call Bliss therefore builds one frozen reference distribution before adding anything.
 
 At every position in the selected source route, it scores original source songs that are not in that position’s context against that context. The sorted source-to-context distances become the job’s scale. A percentile means “how this distance compares with many alternatives drawn from the original playlist.” It is not percentage similarity, and the reference is not built from the complete music library.
 
