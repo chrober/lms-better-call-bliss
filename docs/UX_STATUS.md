@@ -42,7 +42,7 @@ fall through to either working mode.
 | Double length | Not connected yet | Adds exactly `S` tracks, yielding `2S` tracks. |
 | Numeric editor for N/T | Working for exact additions and seed-growth target | Exact-count input is validated as 1-100 and constrained to `S - 1`. Seed-growth target is validated as 3-500 and must exceed `S`; the UI reports `S` seeds plus `T - S` additions. The generic bridge target-length preset remains future work. |
 | Musical context window (previous tracks) | Working, per job | Rolling preceding-track count used for every directional Adaptive leg. A bridge C between A and B is scored as history-to-C and updated-history-with-C-to-B; variance-based weighting begins with two available context tracks. |
-| Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. |
+| Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. With two or more context tracks, 0 means pure variance weighting. The current optimizer still requires and uses the learned matrix for one-track contexts because its BlissMixer-style fallback is not implemented yet. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
@@ -88,7 +88,10 @@ artist pool is only a fallback. ListenBrainz remains later.
 The Extras editor initializes scoring and repeat fields from BlissMixer. The
 submitted values belong to that job only and never update BlissMixer's global
 preferences. The current bundled optimizer supports only Adaptive routing and
-requires a learned matrix; unsupported strategies are disabled and labeled.
+requires a learned matrix for its one-track contexts. This is a Better Call
+Bliss implementation limitation: BlissMixer itself can run without a learned
+matrix by using variance weighting for multi-track contexts and its standard
+fallback for a single seed. Unsupported strategies are disabled and labeled.
 
 **Additional route-search attempts**, both output suffixes, automatic bridge budget, and
 automatic trigger percentile supply defaults for new jobs. Every value that

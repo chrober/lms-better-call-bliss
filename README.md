@@ -28,7 +28,7 @@ which is bundled with supported plugin packages.
 - Shows a read-only preview and diagnostics before creating a verified copy.
 - Never modifies bliss.db, the source audio files, or the source playlist.
 
-See [Mixing strategies and options](ALGORITHMS.md) for plain-English
+See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 explanations, technical flowcharts, option ranges, and the exact boundary
 between working and planned modes. See [UX status](docs/UX_STATUS.md) for the
 complete feature matrix.
@@ -38,13 +38,18 @@ complete feature matrix.
 - Lyrion Music Server 8.5 or newer.
 - A compatible
   [lms-blissmixer](https://github.com/chrober/lms-blissmixer) installation,
-  currently the learned-matrix-enabled fork used by this project. Better Call
-  Bliss deliberately reuses its analyzed library and configured defaults
-  without modifying the plugin.
+  currently the fork paired with this project. Better Call Bliss deliberately
+  reuses its analyzed library, shared scoring behavior, and configured defaults
+  without modifying the plugin. Training a learned matrix is optional for
+  BlissMixer itself.
 - A completed Bliss analysis that produced a readable bliss.db in the Lyrion
   preferences directory.
-- A readable learned_matrix.json. The current bundled optimizer requires it,
-  even though the per-job blend can reduce its influence to zero.
+- A readable learned_matrix.json for the current bundled optimizer. The matrix
+  is optional in BlissMixer itself, but Better Call Bliss does not yet implement
+  BlissMixer's fallback for the first transition, where only one context track
+  exists. A zero blend removes learned influence from multi-track contexts but
+  still uses the matrix for one-track contexts. See
+  [Is a learned matrix optional?](ALGORITHMS.md#is-a-learned-matrix-optional).
 - A configured local Lyrion music folder whose tracks correspond to bliss.db.
 - A bliss-playlist-optimizer binary for the server platform. Development
   packages currently bundle the tested ARM64 Linux build.
@@ -71,7 +76,7 @@ features are visibly marked as unavailable.
 ~~~mermaid
 flowchart LR
     LMS["Lyrion saved playlist"] --> P["Better Call Bliss plugin"]
-    BM["lms-blissmixer settings<br/>bliss.db and learned matrix"] --> P
+    BM["lms-blissmixer settings<br/>bliss.db and currently required<br/>learned matrix"] --> P
     LM["Optional LastMix<br/>Last.fm artist evidence"] --> P
     P --> O["bliss-playlist-optimizer"]
     O --> C["bliss-mixer-core<br/>shared Bliss scoring"]

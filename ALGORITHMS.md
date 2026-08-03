@@ -45,7 +45,7 @@ The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, free
 flowchart TD
     P["Saved Lyrion playlist<br/>original source tracks"] --> O["Per-job ordering,<br/>extension, scoring,<br/>repeat and variation options"]
     DB[("bliss.db<br/>23 features per analyzed track")] --> I["Intersect Bliss rows with<br/>current local LMS library"]
-    M["learned_matrix.json"] --> N
+    M["learned_matrix.json<br/>optional to BlissMixer;<br/>currently required here"] --> N
     O --> N["Native optimizer request"]
     I --> N
     L["Optional LastMix<br/>artist relationships"] --> N
@@ -312,18 +312,32 @@ For a non-empty context:
 3. It blends that matrix with the learned Mahalanobis matrix using **Learned-matrix blend**.
 4. It calculates the Mahalanobis distance from the candidate vector to the context mean. Smaller means a closer fit.
 
-With one context track, variance cannot be derived from the context, so the learned matrix is used directly. The current plugin requires the learned-matrix file even when the multi-track blend is set to zero.
+With one context track, variance cannot be derived from the context. BlissMixer can fall back to its standard selection algorithm when no learned matrix is available. Better Call Bliss does not yet implement that fallback, so its native optimizer currently uses the learned matrix directly for a one-track context.
 
 Distance is directional because the context comes from the proposed route prefix. A → B and B → A need not receive the same score.
+
+#### Is a learned matrix optional?
+
+For BlissMixer and the shared Adaptive algorithm, **yes**. A learned matrix is optional personalization produced by the similarity survey and training process:
+
+- with two or more context tracks and no learned matrix, Adaptive can use the variance-based matrix by itself;
+- with two or more context tracks and a learned matrix, **Learned-matrix blend** combines the learned and variance-based matrices;
+- with one context track, no variance matrix can be calculated; BlissMixer can fall back to its standard algorithm when the learned matrix is absent.
+
+For the **current Better Call Bliss build**, the file is nevertheless a runtime requirement. Every route begins with a first scored transition that has exactly one preceding track. The optimizer currently has no standard/static fallback for that one-track context, rejects an Adaptive request without the matrix, and loads and uses the matrix itself. It does not delegate playlist scoring to the running bliss-mixer service.
+
+This also explains the perhaps surprising behavior of **Learned-matrix blend = 0**: multi-track contexts use pure variance weighting, but one-track contexts still use the learned matrix. The file can therefore still affect the result and must currently be present.
+
+Making the file genuinely optional in Better Call Bliss requires a defined and tested one-track fallback—preferably matching BlissMixer’s standard/static behavior—plus optional matrix fields in the optimizer’s request and result artifacts. This is an implementation limitation, not a claim that users inherently need to train a personal matrix.
 
 ~~~mermaid
 flowchart TD
     A["Take the applicable context tracks"] --> B["Read their 23-feature vectors"]
     B --> C["Calculate context mean"]
     B --> D{"How many context tracks?"}
-    D -- One --> E["Use learned matrix"]
+    D -- One --> E["Use learned matrix<br/>(current Better Call Bliss requirement)"]
     D -- Two or more --> F["Calculate variance-based matrix"]
-    F --> G["Blend variance and learned matrices"]
+    F --> G["Blend learned matrix when supplied;<br/>otherwise use variance alone"]
     E --> H["Mahalanobis distance:<br/>candidate to context mean"]
     G --> H
     H --> I["Smaller contextual distance<br/>means a smoother fit"]
@@ -376,7 +390,7 @@ Defaults are copied from BlissMixer or Better Call Bliss settings when the edito
 | Source-track order | Optimize by default | Optimize searches movable source routes. Preserve fixes originals as anchors. Seed growth always optimizes. |
 | Additional tracks | None by default | Selects reorder-only, automatic bridges, exact-count bridges, or seed growth. |
 | Musical context window | 1–50; inherited from BlissMixer | Maximum preceding tracks per route or bridge leg. Seed-growth membership is the exception: it always uses all originals. |
-| Learned-matrix blend | 0–100%; inherited | Learned share of the matrix for contexts of at least two tracks. A one-track context uses the learned matrix directly. |
+| Learned-matrix blend | 0–100%; inherited | Learned share for contexts of at least two tracks. At 0%, those contexts use pure variance weighting. A one-track context still uses the learned matrix in the current build because the optimizer has no fallback yet. |
 | Artist look-back | 0–10,000; inherited | Forbids the same non-empty normalized artist key within that many preceding positions. Zero disables it. |
 | Album look-back | 0–10,000; inherited | Forbids the same non-empty normalized album key within that many preceding positions. Zero disables it. |
 | Track look-back | 0–10,000; inherited | Retained in the request and proofs. Current routes already require unique membership. |
