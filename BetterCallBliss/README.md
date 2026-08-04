@@ -2,7 +2,7 @@
 
 This directory contains the installable `0.13.0` Better Call Bliss plugin package. It contributes **Better Call Bliss** under Extras and retains informational playlist/track context entries. Lyrion's Applications/OPML adapter cannot expose a portable rich multi-field form, so the job editor uses the same classic-web mechanism as Virtual Library Creator.
 
-The repository-level overview lives in [`../README.md`](../README.md). User-facing playlist modes and per-job options are described in [`../ALGORITHMS.md`](../ALGORITHMS.md), and the current working/partial/planned UX boundary is tracked in [`../docs/UX_STATUS.md`](../docs/UX_STATUS.md).
+The repository-level overview lives at [chrober/lms-better-call-bliss](https://github.com/chrober/lms-better-call-bliss/). User-facing playlist modes and per-job options are described in the [strategy guide](https://github.com/chrober/lms-better-call-bliss/blob/main/ALGORITHMS.md), and the current working/partial/planned UX boundary is tracked in [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md).
 
 The connected paths select a real saved playlist and start a native reorder-only, automatic-extension, exact-count, or exact-target **Grow from these seeds** Preview. Seed growth keeps the full source playlist as its immutable relevance anchor. BlissMixer supplies defaults, but every job may override the artist, album, and track repeat windows, Adaptive seed count, learned blend, route-search restart count, strategy-neutral Variation, and optional Last.fm artist weighting. Setting an artist or album window to zero disables that constraint, allowing single-artist or single-album collections to be optimized.
 
@@ -80,4 +80,4 @@ verifies both file and catalog order. Blank names are Unicode-safe and select
 the next available numbered copy; explicit collisions fail visibly. The source
 is never changed. Overwrite source remains visibly unavailable.
 
-The still-unconnected controls are explicitly marked **Not connected yet**: one bridge per source-track transition, generic target-length and double-length presets, multi-track preserved gaps beyond the current UI slice, opening/closing additions, source overwrite, cancellation, persistent reports, ListenBrainz evidence, and static/forest routing. See [`../docs/UX_STATUS.md`](../docs/UX_STATUS.md) for the exact working/partial/future feature matrix.
+The still-unconnected controls are explicitly marked **Not connected yet**: one bridge per source-track transition, generic target-length and double-length presets, multi-track preserved gaps beyond the current UI slice, opening/closing additions, source overwrite, cancellation, persistent reports, ListenBrainz evidence, and static/forest routing. See [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md) for the exact working/partial/future feature matrix.
