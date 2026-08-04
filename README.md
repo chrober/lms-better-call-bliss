@@ -55,7 +55,7 @@ complete feature matrix.
   packages currently bundle the tested ARM64 Linux build.
 
 [LastMix](https://github.com/AF-1/lms-lastmix) is optional. When installed and
-enabled, it supplies anonymous Last.fm similar-artist evidence. Missing
+enabled, it supplies anonymous Last.fm similar-track and similar-artist evidence. Missing
 Internet access, provider failures, and rate limits fall back to local Bliss
 scoring and do not fail the optimization job.
 
@@ -77,7 +77,7 @@ features are visibly marked as unavailable.
 flowchart LR
     LMS["Lyrion saved playlist"] --> P["Better Call Bliss plugin"]
     BM["lms-blissmixer settings<br/>bliss.db and currently required<br/>learned matrix"] --> P
-    LM["Optional LastMix<br/>Last.fm artist evidence"] --> P
+    LM["Optional LastMix<br/>Last.fm track and artist evidence"] --> P
     P --> O["bliss-playlist-optimizer"]
     O --> C["bliss-mixer-core<br/>shared Bliss scoring"]
     O --> P

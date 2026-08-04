@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.13.0` UX shell. The shell is
+model and the exact boundary of the current `0.14.0` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -46,7 +46,7 @@ fall through to either working mode.
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
-| Last.fm artist weighting | Working, optional and per job | Mirrors BlissMixer's enable switch and 1-100 target artist probability. Requires enabled LastMix, queries the complete distinct source-artist set, prefers endpoint-local evidence over collection fallback, and degrades to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
+| Last.fm guidance | Working, optional and per job | Requires enabled LastMix and queries similar tracks and artists for the complete distinct source set. Similar-track and similar-artist guidance are separate 0-100 bounded influences, both defaulting to 75. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
 | Relevance-aware controls | Working | Automatic, exact-count, seed-growth, and route-attempt inputs become read-only when irrelevant but remain submitted for draft restoration; exact and target counts follow the selected playlist; seed growth forces complete-membership order optimization; guaranteed no-op combinations disable submission and fail server validation if bypassed. |
 | Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
 | LMS scan coordination | Working | Preview pauses while LMS reports an active library scan, explains that the catalog is changing, and retries the page automatically until the scan finishes. |
@@ -58,9 +58,7 @@ fall through to either working mode.
 | Review | Working for all connected combinations | The submitted form and result retain the job-specific values and explicitly state whether source order was optimized or preserved. |
 | Run preview | Working for all connected combinations | Launches the native optimizer asynchronously and never writes a playlist. |
 
-`S` is the original source-track count. Last.fm artist evidence local to a
-transition `A -> B` is preferred; evidence from the complete original source
-artist pool is only a fallback. ListenBrainz remains later.
+`S` is the original source-track count. Last.fm track or artist evidence local to a transition `A -> B` is preferred; evidence from the complete original source artist pool is only a fallback. ListenBrainz remains later.
 
 ## Result and job UX
 
@@ -104,14 +102,14 @@ following settings are persisted to establish their future contract but are labe
 - persistent report retention.
 
 Last.fm is optional and uses LastMix's anonymous access. Its plugin-wide enable
-switch and artist probability mirror BlissMixer and become per-job defaults.
+enable switch is complemented by separate per-job track and artist guidance defaults.
 Timeouts, provider errors, malformed responses, rate limits, and missing
 Internet access degrade to local Bliss evidence rather than fail optimization.
 ListenBrainz remains optional and is deliberately deferred.
 
 ## Safety boundary
 
-Version `0.13.0` keeps Preview read-only and permits only an explicit,
+Version `0.14.0` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates

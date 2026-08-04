@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 10;
+use Test::More tests => 16;
 
 BEGIN {
     package main;
@@ -23,6 +23,19 @@ BEGIN {
 
     package Plugins::LastMix::LFM;
     our ($mode, $calls);
+    sub getSimilarTracks {
+        my ($class, $callback, $args) = @_;
+        $calls++;
+        return $callback->({
+            similartracks => {
+                track => [{
+                    name => 'Similar ' . $args->{title},
+                    match => '0.90',
+                    artist => {name => 'Similar ' . $args->{artist}},
+                }],
+            },
+        });
+    }
     sub getSimilarArtists {
         my ($class, $callback, $args) = @_;
         $calls++;
@@ -68,6 +81,34 @@ is_deeply(
     [qw(collection_fallback collection_fallback endpoint_local endpoint_local)],
     'both evidence scopes are emitted',
 );
+
+$Plugins::LastMix::LFM::mode = 'fresh';
+$Plugins::LastMix::LFM::calls = 0;
+my $track_evidence;
+Plugins::BetterCallBliss::LastFmEvidence::prepare(
+    1,
+    [{
+        id => 'lms-track-7',
+        title => 'Source Song',
+        artist => 'Source Artist',
+        artist_mbids => [],
+    }],
+    sub { $track_evidence = shift },
+);
+is($track_evidence->{providers}->[0]->{request_count}, 2,
+    'one source track produces one track and one artist request');
+is(scalar @{$track_evidence->{edges}}, 3,
+    'track result and both artist scopes are frozen');
+my ($recording_edge) = grep {
+    $_->{source}->{kind} eq 'recording'
+} @{$track_evidence->{edges}};
+ok($recording_edge, 'recording-level evidence is emitted');
+is($recording_edge->{source}->{id}, 'lms-track-7',
+    'recording evidence binds to the optimizer source identity');
+is($recording_edge->{candidate}->{title}, 'Similar Source Song',
+    'similar track title is retained for local candidate matching');
+is($recording_edge->{raw_score}, 0.90,
+    'Last.fm track match score is retained');
 
 my @three_artists = (
     @two_artists,

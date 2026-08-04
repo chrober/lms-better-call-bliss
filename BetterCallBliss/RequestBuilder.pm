@@ -91,7 +91,7 @@ sub normalize_request_types {
         $request->{selection},
         qw(
             variation_percent generation_seed
-            lastfm_artist_probability
+            lastfm_track_guidance_percent lastfm_artist_guidance_percent
         ),
     );
     _normalize_integers(
@@ -226,9 +226,12 @@ sub build_reorder_request {
             generation_seed => _json_integer(
                 $options->{generation_seed}, 'generation_seed',
             ),
-            lastfm_artist_probability => $options->{lastfm_enabled}
+            lastfm_track_guidance_percent => $options->{lastfm_enabled}
                 && $options->{extension_mode} ne 'none'
-                ? _json_integer($options->{lastfm_weighting_weight}) : 0,
+                ? _json_integer($options->{lastfm_track_guidance_percent}) : 0,
+            lastfm_artist_guidance_percent => $options->{lastfm_enabled}
+                && $options->{extension_mode} ne 'none'
+                ? _json_integer($options->{lastfm_artist_guidance_percent}) : 0,
         },
         route => {
             ordering_policy => $options->{ordering_policy},

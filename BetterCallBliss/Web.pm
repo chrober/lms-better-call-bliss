@@ -77,7 +77,8 @@ sub _form_from_params {
     for my $name (qw(
         playlist_id ordering_policy extension_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
-        variation_percent generation_seed lastfm_enabled lastfm_weighting_weight
+        variation_percent generation_seed lastfm_enabled
+        lastfm_track_guidance_percent lastfm_artist_guidance_percent
         max_added_tracks trigger_percent additional_track_count target_track_count output_mode output_name
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
@@ -114,7 +115,10 @@ sub _result_view {
         variation_percent => $job->{options}->{variation_percent},
         generation_seed => $job->{options}->{generation_seed},
         lastfm_enabled => $job->{options}->{lastfm_enabled},
-        lastfm_weighting_weight => $job->{options}->{lastfm_weighting_weight},
+        lastfm_track_guidance_percent =>
+            $job->{options}->{lastfm_track_guidance_percent},
+        lastfm_artist_guidance_percent =>
+            $job->{options}->{lastfm_artist_guidance_percent},
         lastfm_state => $job->{lastfm_state},
         write_state => $job->{write_state},
         write_stage => $job->{write_stage},

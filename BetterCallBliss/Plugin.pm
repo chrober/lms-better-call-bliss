@@ -42,7 +42,8 @@ sub initPlugin {
         semantic_cache_days => 30,
         semantic_stale_days => 90,
         lastfm_enabled => 0,
-        lastfm_weighting_weight => 25,
+        lastfm_track_guidance_percent => 75,
+        lastfm_artist_guidance_percent => 75,
         listenbrainz_enabled => 0,
     });
     my $dir = dirname(__FILE__);

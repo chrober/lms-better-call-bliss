@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 9;
+use Test::More tests => 11;
 use JSON::XS ();
 
 BEGIN {
@@ -47,7 +47,8 @@ BEGIN {
             generation_seed => '123456',
             generation_seed_supplied => 1,
             lastfm_enabled => 1,
-            lastfm_weighting_weight => '25',
+            lastfm_track_guidance_percent => '75',
+            lastfm_artist_guidance_percent => '75',
             max_added_tracks => '8',
             trigger_percent => '70',
             additional_track_count => '1',
@@ -113,6 +114,10 @@ unlike(
     qr/"shortlist_limit"\s*:\s*"256"/,
     'shortlist is never serialized as a JSON string',
 );
+is($request->{selection}->{lastfm_track_guidance_percent}, 75,
+    'track guidance is a JSON integer');
+is($request->{selection}->{lastfm_artist_guidance_percent}, 75,
+    'artist guidance is a JSON integer');
 ok(
     JSON::XS::is_bool($request->{extension}->{allow_opening_track}),
     'opening flag remains a JSON boolean',

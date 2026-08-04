@@ -28,7 +28,8 @@ sub prefs {
         semantic_cache_days
         semantic_stale_days
         lastfm_enabled
-        lastfm_weighting_weight
+        lastfm_track_guidance_percent
+        lastfm_artist_guidance_percent
         listenbrainz_enabled
     ));
 }
@@ -57,7 +58,8 @@ sub handler {
     _clamp($params, 'pref_report_retention_days', 1, 3650);
     _clamp($params, 'pref_semantic_cache_days', 1, 365);
     _clamp($params, 'pref_semantic_stale_days', 1, 3650);
-    _clamp($params, 'pref_lastfm_weighting_weight', 1, 100);
+    _clamp($params, 'pref_lastfm_track_guidance_percent', 0, 100);
+    _clamp($params, 'pref_lastfm_artist_guidance_percent', 0, 100);
     if (defined $params->{pref_semantic_cache_days}
         && defined $params->{pref_semantic_stale_days}
         && $params->{pref_semantic_stale_days} < $params->{pref_semantic_cache_days}) {

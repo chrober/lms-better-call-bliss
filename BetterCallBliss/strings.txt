@@ -59,20 +59,28 @@ PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC
 	DE	Nur Uebergaenge oberhalb dieses eingefrorenen Kontext-Perzentils werden beruecksichtigt; pro Auftrag aenderbar.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED
-	EN	Last.fm artist weighting
-	DE	Last.fm-Interpretengewichtung
+	EN	Use Last.fm guidance
+	DE	Last.fm-Hinweise verwenden
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC
-	EN	Uses LastMix to give artists similar to the original playlist a higher selection probability. Each job can override this default. Failures fall back to Bliss.
-	DE	Verwendet LastMix, um aehnlichen Interpreten eine hoehere Auswahlwahrscheinlichkeit zu geben. Pro Auftrag aenderbar; Fehler fallen auf Bliss zurueck.
+	EN	Uses LastMix track and artist similarity as bounded supporting evidence after Bliss qualification. Each job can override this default. Failures fall back to Bliss.
+	DE	Verwendet Titel- und Interpretenaehnlichkeit von LastMix als begrenzten Zusatzhinweis nach der Bliss-Pruefung. Pro Auftrag aenderbar; Fehler fallen auf Bliss zurueck.
 
-PLUGIN_BETTERCALLBLISS_LASTFM_WEIGHT
-	EN	Last.fm artist probability
-	DE	Last.fm-Interpretenwahrscheinlichkeit
+PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE
+	EN	Similar-track guidance (%)
+	DE	Hinweisstaerke aehnlicher Titel (%)
 
-PLUGIN_BETTERCALLBLISS_LASTFM_WEIGHT_DESC
-	EN	Target percentage of chosen additions from Last.fm-endorsed artists when both candidate groups are available. Default: 25.
-	DE	Zielanteil ausgewaehlter Ergaenzungen von Last.fm-empfohlenen Interpreten, wenn beide Gruppen verfuegbar sind. Standard: 25.
+PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC
+	EN	Bounded influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores track evidence. Default: 75.
+	DE	Begrenzter Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Pruefung bestehen. Null ignoriert Titelhinweise. Standard: 75.
+
+PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE
+	EN	Similar-artist guidance (%)
+	DE	Hinweisstaerke aehnlicher Interpreten (%)
+
+PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC
+	EN	Bounded influence of Last.fm artist.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores artist evidence. Default: 75.
+	DE	Begrenzter Einfluss von Last.fm-artist.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Pruefung bestehen. Null ignoriert Interpretenhinweise. Standard: 75.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE
 	EN	Requires the LastMix plugin to be installed and enabled.

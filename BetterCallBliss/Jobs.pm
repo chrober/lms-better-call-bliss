@@ -158,7 +158,7 @@ sub start_reorder_preview {
         id => $job_id,
         state => 'running',
         stage => $lastfm_applies
-            ? 'Preparing Last.fm artist evidence' : 'Preparing request',
+            ? 'Preparing Last.fm track and artist evidence' : 'Preparing request',
         started_at => time(),
         playlist_id => 0 + $playlist_id,
         playlist_title => $built->{playlist}->title || $built->{playlist}->name,
@@ -199,7 +199,8 @@ sub start_reorder_preview {
         . " variation=$effective->{variation_percent}"
         . " generation_seed=$effective->{generation_seed}"
         . " lastfm=" . ($effective->{lastfm_enabled} ? 'enabled' : 'disabled')
-        . " lastfm_probability=$effective->{lastfm_weighting_weight}"
+        . " lastfm_track_guidance=$effective->{lastfm_track_guidance_percent}"
+        . " lastfm_artist_guidance=$effective->{lastfm_artist_guidance_percent}"
         . ($effective->{extension_mode} ne 'none'
             ? ' shortlist_limit='
                 . $built->{request}->{extension}->{shortlist_limit}
@@ -287,7 +288,8 @@ sub start_reorder_preview {
             frozen_at => '1970-01-01T00:00:00Z',
             providers => [{
                 provider => 'last.fm',
-                dataset_or_algorithm => 'LastMix artist.getSimilar',
+                dataset_or_algorithm =>
+                    'LastMix track.getSimilar + artist.getSimilar',
                 state => 'failed',
                 request_count => 0,
                 failure_count => 1,

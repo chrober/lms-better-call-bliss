@@ -31,16 +31,20 @@
 [% END %]
 
 [% WRAPPER settingSection %]
-  <h3>Last.fm artist weighting</h3>
-  <p>These defaults mirror BlissMixer's Last.fm settings. Every job can override them. LastMix uses anonymous Last.fm access; request failures fall back to Bliss.</p>
+  <h3>Last.fm guidance</h3>
+  <p>Every job can override these defaults. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. The guidance values only influence candidates that have already passed the local-library, repeat, and Bliss acoustic checks.</p>
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC" %]
     <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %] [% UNLESS lastmix_available %]disabled[% END %]>
     [% UNLESS lastmix_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE" | string %]</div>[% END %]
   [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_WEIGHT" desc="PLUGIN_BETTERCALLBLISS_LASTFM_WEIGHT_DESC" %]
-    <input type="number" min="1" max="100" class="stdedit" name="pref_lastfm_weighting_weight" id="lastfm_weighting_weight" value="[% prefs.lastfm_weighting_weight %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC" %]
+    <input type="number" min="0" max="100" class="stdedit" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
+  [% END %]
+
+  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC" %]
+    <input type="number" min="0" max="100" class="stdedit" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
   [% END %]
 [% END %]
 

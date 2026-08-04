@@ -11,8 +11,12 @@ sub defaults {
     $bridge_budget = 8 unless defined $bridge_budget;
     my $trigger_percent = $plugin_prefs->get('auto_trigger_percent');
     $trigger_percent = 70 unless defined $trigger_percent;
-    my $lastfm_weight = $plugin_prefs->get('lastfm_weighting_weight');
-    $lastfm_weight = 25 unless defined $lastfm_weight;
+    my $lastfm_track_guidance =
+        $plugin_prefs->get('lastfm_track_guidance_percent');
+    $lastfm_track_guidance = 75 unless defined $lastfm_track_guidance;
+    my $lastfm_artist_guidance =
+        $plugin_prefs->get('lastfm_artist_guidance_percent');
+    $lastfm_artist_guidance = 75 unless defined $lastfm_artist_guidance;
     return {
         ordering_policy => 'optimize_order',
         extension_mode => 'none',
@@ -27,7 +31,8 @@ sub defaults {
         generation_seed => '',
         generation_seed_supplied => 0,
         lastfm_enabled => $plugin_prefs->get('lastfm_enabled') ? 1 : 0,
-        lastfm_weighting_weight => int($lastfm_weight),
+        lastfm_track_guidance_percent => int($lastfm_track_guidance),
+        lastfm_artist_guidance_percent => int($lastfm_artist_guidance),
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
         additional_track_count => 1,
@@ -107,9 +112,13 @@ sub normalize {
     }
     $options->{lastfm_enabled} = $input->{lastfm_enabled} ? 1 : 0
         if exists $input->{lastfm_enabled};
-    $options->{lastfm_weighting_weight} = _integer(
-        $input, 'lastfm_weighting_weight', 1, 100,
-        $options->{lastfm_weighting_weight},
+    $options->{lastfm_track_guidance_percent} = _integer(
+        $input, 'lastfm_track_guidance_percent', 0, 100,
+        $options->{lastfm_track_guidance_percent},
+    );
+    $options->{lastfm_artist_guidance_percent} = _integer(
+        $input, 'lastfm_artist_guidance_percent', 0, 100,
+        $options->{lastfm_artist_guidance_percent},
     );
     $options->{max_added_tracks} = _integer(
         $input, 'max_added_tracks', 0, 100, $options->{max_added_tracks},
