@@ -25,17 +25,17 @@ Three job choices work together:
 
 | Choice | Status | Listener-facing result |
 | --- | --- | --- |
-| Optimize source order | Working | Rearrange the original songs into a smoother sequence. |
-| Preserve source order and fill gaps | Working | Keep the originals in their chosen order and insert help between them. |
-| Reorder existing tracks only | Working | Change the order, not the contents. |
-| Add automatically | Working | Repair only transitions that need it, up to a limit. |
-| Add exactly N tracks | Working | Add the requested number or return no partial result. |
-| Grow from these seeds | Working | Use all originals as a musical mood board and build a larger playlist around them. |
-| One bridge per transition | Planned | Put one additional song in every gap. |
-| Reach target length / double length | Planned | Convenience presets that calculate how many songs to add. |
-| Adaptive dynamic weighting | Working | Use BlissMixer’s adaptive similarity measurement for each decision. |
-| Static weighted distance | Planned | Reuse BlissMixer’s fixed user priorities. |
-| Random forest | Planned | Reuse BlissMixer’s model of the sound shared by several example songs. |
+| [Optimize source order](#reorder-existing-tracks-only) | Working | Rearrange the original songs into a smoother sequence. |
+| [Preserve source order and fill gaps](#preserve-source-order-and-fill-gaps) | Working | Keep the originals in their chosen order and insert help between them. |
+| [Reorder existing tracks only](#reorder-existing-tracks-only) | Working | Change the order, not the contents. |
+| [Add automatically](#add-automatically) | Working | Repair only transitions that need it, up to a limit. |
+| [Add exactly N tracks](#add-exactly-n-tracks) | Working | Add the requested number or return no partial result. |
+| [Grow from these seeds](#grow-from-these-seeds) | Working | Use all originals as a musical mood board and build a larger playlist around them. |
+| [One bridge per transition](#add-exactly-n-tracks) | Planned | Put one additional song in every gap. |
+| [Reach target length / double length](#add-exactly-n-tracks) | Planned | Convenience presets that calculate how many songs to add. |
+| [Adaptive dynamic weighting](#adaptive-dynamic-weighting--working) | Working | Use BlissMixer’s adaptive similarity measurement for each decision. |
+| [Static weighted distance](#static-weighted-distance--planned-for-better-call-bliss) | Planned | Reuse BlissMixer’s fixed user priorities. |
+| [Random forest](#extended-isolation-forest--planned-for-better-call-bliss) | Planned | Reuse BlissMixer’s model of the sound shared by several example songs. |
 
 ## How the pieces fit together
 
