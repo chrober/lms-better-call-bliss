@@ -8,12 +8,12 @@ This document describes the current 0.13.0 implementation. **Working** means the
 
 | If you want to… | Choose… | What happens |
 | --- | --- | --- |
-| Smooth out a shuffled collection without adding songs | Optimize source order + Reorder only | The same songs are rearranged. |
-| Keep a carefully chosen order but soften awkward changes | Preserve source order + Add automatically | Original songs stay put; helpful songs may be inserted between them. |
-| Make a playlist exactly N songs longer | Optimize or Preserve + Add exactly N tracks | Exactly N suitable local songs are inserted, or the job explains why it cannot do so. |
-| Turn a tiny playlist into a full mix with the same general character | Grow from these seeds | Every original song stays; similar local songs are selected until the target size is reached; then the complete set is arranged. |
-| Get a different but still sensible result | Increase Variation | Search explores different good alternatives without relaxing its quality and repeat rules. |
-| Favor artists related to the original artists | Enable Last.fm artist weighting | Last.fm guides song selection; Bliss remains the acoustic quality check. |
+| Smooth out a shuffled collection without adding songs | [Optimize source order + Reorder only](#reorder-existing-tracks-only) | The same songs are rearranged. |
+| Keep a carefully chosen order but soften awkward changes | [Preserve source order](#preserve-source-order-and-fill-gaps) + [Add automatically](#add-automatically) | Original songs stay put; helpful songs may be inserted between them. |
+| Make a playlist exactly N songs longer | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + [Add exactly N tracks](#add-exactly-n-tracks) | Exactly N suitable local songs are inserted, or the job explains why it cannot do so. |
+| Turn a tiny playlist into a full mix with the same general character | [Grow from these seeds](#grow-from-these-seeds) | Every original song stays; similar local songs are selected until the target size is reached; then the complete set is arranged. |
+| Get a different but still sensible result | [Increase Variation](#variation-and-reproducibility) | Search explores different good alternatives without relaxing its quality and repeat rules. |
+| Favor artists related to the original artists | [Enable Last.fm artist weighting](#lastfm-artist-guidance) | Last.fm guides song selection; Bliss remains the acoustic quality check. |
 
 Three job choices work together:
 
