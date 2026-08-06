@@ -1,7 +1,7 @@
 # Playlist Breaking Bad? Better Call Bliss.
 
 <p align="center">
-  <img src="docs/images/better-call-bliss-banner.svg" alt="Playlist Breaking Bad? Better Call Bliss." width="900">
+  <img src="docs/images/better-call-bliss-banner.png" alt="Playlist Breaking Bad? Better Call Bliss." width="900">
 </p>
 
 **Better Call Bliss** is a Lyrion Music Server plugin that turns a saved
