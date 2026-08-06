@@ -154,7 +154,7 @@ sub normalize {
         $options->{output_name} = $name;
     }
     $options->{output_name_generated} =
-        $input->{output_name_generated} ? 1 : 0;
+        length($options->{output_name} || '') ? 0 : 1;
 
     return $options;
 }

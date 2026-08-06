@@ -274,6 +274,9 @@ sub resolve_bridge_preview {
                 push @additions, {
                     track_id => $id,
                     relevance_distance => $growth_for{$id}->{relevance_distance},
+                    semantic_pool => $growth_for{$id}->{semantic_pool} || 'bliss_only',
+                    semantic_tier => $growth_for{$id}->{semantic_tier} || 'bliss_only',
+                    semantic_evidence => $growth_for{$id}->{semantic_evidence} || [],
                 };
             } else {
                 my $decision = $decision_for{$id};
@@ -285,6 +288,7 @@ sub resolve_bridge_preview {
                     direct_percentile => $decision->{direct_percentile},
                     semantic_pool => $decision->{semantic_pool} || 'bliss_only',
                     semantic_tier => $selected_bridge->{semantic_tier} || 'bliss_only',
+                    semantic_evidence => $selected_bridge->{semantic_evidence} || [],
                 };
             }
         }

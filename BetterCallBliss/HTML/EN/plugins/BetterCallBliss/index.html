@@ -91,7 +91,7 @@
   </details>
 [% END %]
 
-<form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
+<form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
     <div class="bea-row">
@@ -209,12 +209,12 @@
     <div class="bea-row">
       <label for="seed_limit">Musical context window (previous tracks)</label>
       <input type="number" min="1" max="50" name="seed_limit" id="seed_limit" value="[% bettercallbliss_form.seed_limit %]" required>
-      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.seed_limit %]</span>
+      <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.seed_limit %]</span>
     </div>
     <div class="bea-row">
       <label for="learned_percent">Learned-matrix blend (%)</label>
       <input type="number" min="0" max="100" name="learned_percent" id="learned_percent" value="[% bettercallbliss_form.learned_percent %]" required>
-      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.learned_percent %]</span>
+      <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.learned_percent %]</span>
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
     <p class="bea-note">These values are passed to the optimizer request for this preview.</p>
@@ -226,17 +226,17 @@
     <div class="bea-row">
       <label for="artist_window">Artist look-back (tracks)</label>
       <input type="number" min="0" max="10000" name="artist_window" id="artist_window" value="[% bettercallbliss_form.artist_window %]" required>
-      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.artist_window %]</span>
+      <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.artist_window %]</span>
     </div>
     <div class="bea-row">
       <label for="album_window">Album look-back (tracks)</label>
       <input type="number" min="0" max="10000" name="album_window" id="album_window" value="[% bettercallbliss_form.album_window %]" required>
-      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.album_window %]</span>
+      <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.album_window %]</span>
     </div>
     <div class="bea-row">
       <label for="track_window">Track look-back (tracks)</label>
       <input type="number" min="0" max="10000" name="track_window" id="track_window" value="[% bettercallbliss_form.track_window %]" required>
-      <span class="bea-disabled">BlissMixer default: [% bettercallbliss_defaults.track_window %]</span>
+      <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.track_window %]</span>
     </div>
   </fieldset>
 
@@ -259,7 +259,7 @@
       <label for="output_name">Copy name</label>
       <input type="text" maxlength="255" name="output_name" id="output_name" value="[% bettercallbliss_form.output_name | html %]" size="45">
     </div>
-    <p class="bea-note">Leave blank to generate a name from the playlist filename. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
+    <p class="bea-note">Leave blank to generate a name from the selected playlist only when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
     <div class="bea-row">
       <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
       <span class="bea-disabled">Will require explicit confirmation once writing is connected.</span>
@@ -391,12 +391,13 @@
     <legend>Preview result</legend>
     <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - [% bettercallbliss_job.stage | html %]</p>
     <p>Job ID: [% bettercallbliss_job.id | html %]</p>
-    <p>Requested output: [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source <b>[Not connected yet]</b>[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
+    <p>Requested output: [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source <b>[Not connected yet]</b>[% ELSIF bettercallbliss_job.output_name_generated && !bettercallbliss_job.output_name %]create copy with an automatic name when saved[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
     <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
     [% IF bettercallbliss_job.state == 'running' %]
       <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]">Refresh result now</a></p>
     [% ELSIF bettercallbliss_job.state == 'failed' %]
       <div class="bea-error"><b>[% bettercallbliss_job.error_code | html %]</b>: [% bettercallbliss_job.error | html %]</div>
+      <p><input class="inputbutton" form="bea-main-form" type="submit" name="run_preview" value="Run read-only preview again"></p>
     [% ELSE %]
       [% IF bettercallbliss_job.seed_growth_extension %]
         <div class="bea-ok">Grew [% bettercallbliss_job.relevance_reference_track_count %] seeds to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
@@ -442,12 +443,13 @@
           <ul>
             [% FOREACH addition = bettercallbliss_job.additions %]
               [% IF bettercallbliss_job.seed_growth_extension %]
-                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-seed Adaptive distance [% addition.relevance_distance %].</li>
+                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-seed Adaptive distance [% addition.relevance_distance %]; evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]); [% addition.semantic_summary | html %].</li>
               [% ELSE %]
                 <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
                 "[% addition.left | html %]" and "[% addition.right | html %]";
                 direct gap [% addition.direct_percent %]th percentile;
-                evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]).
+                evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]);
+                [% addition.semantic_summary | html %].
               </li>
               [% END %]
             [% END %]

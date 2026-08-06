@@ -1,14 +1,17 @@
 package Plugins::BetterCallBliss::Jobs;
 
 use strict;
+use File::Basename qw(basename);
 use File::Path qw(make_path);
 use File::Slurp qw(read_file write_file);
 use JSON::XS;
 use Proc::Background;
 use Time::HiRes qw(time);
 use Slim::Utils::Log;
+use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 use Slim::Utils::Timers;
+use Slim::Utils::Unicode;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::LastFmEvidence;
@@ -46,6 +49,19 @@ sub _file_identity {
     my @stat = stat($path);
     return unless @stat;
     return join(':', @stat[0, 1, 7, 9]);
+}
+
+sub _playlist_title {
+    my $playlist = shift;
+    my $url = eval { $playlist->url } || '';
+    if ($url =~ /^file:/i) {
+        my $path = Slim::Utils::Misc::pathFromFileURL($url);
+        my $decoded = Slim::Utils::Unicode::utf8decode_locale($path || '');
+        my $filename = basename($decoded || '');
+        $filename =~ s/\.[^.]+$//;
+        return $filename if length $filename;
+    }
+    return $playlist->title || $playlist->name;
 }
 
 sub _repeat_capacity_hint {
@@ -161,7 +177,7 @@ sub start_reorder_preview {
             ? 'Preparing Last.fm track and artist evidence' : 'Preparing request',
         started_at => time(),
         playlist_id => 0 + $playlist_id,
-        playlist_title => $built->{playlist}->title || $built->{playlist}->name,
+        playlist_title => _playlist_title($built->{playlist}),
         track_count => scalar @{$built->{request}->{source_tracks}},
         source_track_ids => [
             map { $_->{id} } @{$built->{request}->{source_tracks}}

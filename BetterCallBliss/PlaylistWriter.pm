@@ -9,8 +9,11 @@ use Scalar::Util qw(blessed);
 use Slim::Formats::Playlists::M3U;
 use Slim::Schema;
 use Slim::Utils::Misc;
+use Slim::Utils::Prefs;
 use Slim::Utils::Text;
 use Slim::Utils::Unicode;
+
+my $plugin_prefs = preferences('plugin.bettercallbliss');
 
 sub _fail {
     my ($code, $message) = @_;
@@ -73,6 +76,15 @@ sub available_copy_name {
     _fail('OUTPUT_NAME_EXHAUSTED', 'Could not find a free optimized copy name');
 }
 
+sub _automatic_copy_base {
+    my $job = shift;
+    my $title = $job->{playlist_title} || 'Optimized Playlist';
+    my $suffix = ($job->{options}->{extension_mode} || 'none') ne 'none'
+        ? ($plugin_prefs->get('extended_suffix') || 'Extended')
+        : ($plugin_prefs->get('output_suffix') || 'Optimized');
+    return $title . ' ' . $suffix;
+}
+
 sub _resolved_tracks {
     my $job = shift;
     my @selected = @{$job->{final_track_ids} || []};
@@ -114,8 +126,12 @@ sub create_copy {
     _fail('PLAYLIST_DIR_MISSING', 'The LMS playlist folder is not configured')
         unless $playlist_dir && -d $playlist_dir && -w $playlist_dir;
 
-    my $name = _normalized_name($requested_name);
-    $name = available_copy_name($name) if $automatic_name;
+    my $name = $automatic_name
+        ? available_copy_name(
+            length($requested_name || '')
+                ? $requested_name : _automatic_copy_base($job),
+        )
+        : _normalized_name($requested_name);
     my ($final_path, $final_url, $existing) =
         _target_for_name($playlist_dir, $name);
     _fail('OUTPUT_EXISTS', "A playlist named '$name' already exists")

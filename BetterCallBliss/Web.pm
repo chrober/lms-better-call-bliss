@@ -99,6 +99,28 @@ sub _form_from_job {
     return $form;
 }
 
+sub _semantic_evidence_summary {
+    my $evidence = shift;
+    return 'Bliss only; no Last.fm edge was attached to this selection'
+        unless ref($evidence) eq 'ARRAY' && @$evidence;
+    my @parts;
+    for my $edge (@$evidence) {
+        next unless ref($edge) eq 'HASH';
+        my $provider = $edge->{provider} || 'semantic';
+        my $kind = ($edge->{kind} || '') eq 'track'
+            ? 'similar track' : 'similar artist';
+        my $source = $edge->{source_endpoint} || $edge->{scope} || '';
+        $source =~ s/_/ /g;
+        my $where = length $source ? " from $source" : '';
+        my $rank = defined $edge->{raw_rank} ? ', rank ' . $edge->{raw_rank} : '';
+        my $score = defined $edge->{raw_score}
+            ? sprintf(', score %.2f', 0 + $edge->{raw_score}) : '';
+        push @parts, "$provider $kind$where$rank$score";
+    }
+    return @parts ? join('; ', @parts)
+        : 'Bliss only; no Last.fm edge was attached to this selection';
+}
+
 sub _result_view {
     my $job = shift;
     return unless $job;
@@ -109,6 +131,7 @@ sub _result_view {
         playlist_title => $job->{playlist_title},
         output_mode => $job->{options}->{output_mode},
         output_name => $job->{options}->{output_name},
+        output_name_generated => $job->{options}->{output_name_generated} ? 1 : 0,
         ordering_policy => $job->{options}->{ordering_policy},
         preserve_order => $job->{options}->{ordering_policy} eq 'preserve_order' ? 1 : 0,
         extension_mode => $job->{options}->{extension_mode},
@@ -197,6 +220,11 @@ sub _result_view {
                         relevance_distance => sprintf(
                             '%.4f', 0 + ($addition->{relevance_distance} || 0),
                         ),
+                        semantic_tier => $addition->{semantic_tier} || 'bliss_only',
+                        semantic_pool => $addition->{semantic_pool} || 'bliss_only',
+                        semantic_summary => _semantic_evidence_summary(
+                            $addition->{semantic_evidence},
+                        ),
                     };
                     next;
                 }
@@ -210,8 +238,11 @@ sub _result_view {
                     direct_percent => sprintf(
                         '%.1f', 100 * ($addition->{direct_percentile} || 0),
                     ),
-                    semantic_pool => $addition->{semantic_pool},
-                    semantic_tier => $addition->{semantic_tier},
+                    semantic_pool => $addition->{semantic_pool} || 'bliss_only',
+                    semantic_tier => $addition->{semantic_tier} || 'bliss_only',
+                    semantic_summary => _semantic_evidence_summary(
+                        $addition->{semantic_evidence},
+                    ),
                 };
             }
             $view->{additions} = \@additions;
@@ -273,24 +304,7 @@ sub handler {
     my $trimmed_output_name = $form->{output_name} || '';
     $trimmed_output_name =~ s/^\s+|\s+$//g;
     $form->{output_name} = $trimmed_output_name;
-    $form->{output_name_generated} = 0;
-    if (defined $form->{playlist_id}
-        && "$form->{playlist_id}" =~ /^\d+$/
-        && !length($form->{output_name})) {
-        for my $playlist (@$playlists) {
-            if ($playlist->{id} == $form->{playlist_id}) {
-                my $suffix = $form->{extension_mode} ne 'none'
-                    ? ($plugin_prefs->get('extended_suffix') || 'Extended')
-                    : ($plugin_prefs->get('output_suffix') || 'Optimized');
-                $form->{output_name} =
-                    Plugins::BetterCallBliss::PlaylistWriter::available_copy_name(
-                        $playlist->{title} . ' ' . $suffix,
-                    );
-                $form->{output_name_generated} = 1;
-                last;
-            }
-        }
-    }
+    $form->{output_name_generated} = length($form->{output_name}) ? 0 : 1;
 
     my ($job, $error);
     if ($params->{create_copy}) {
