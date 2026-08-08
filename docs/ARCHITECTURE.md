@@ -97,19 +97,13 @@ unrecognized Extras images to its generic extension glyph; the
 `timeline` glyph. Other skins and extension metadata use the actual packaged
 transparent monochrome PNG.
 
-BlissMixer and the shared scoring core treat the learned matrix as optional:
+BlissMixer and the shared scoring core treat the learned matrix as optional.
+Better Call Bliss now mirrors that fallback shape in the native optimizer:
 contexts with at least two tracks can use variance-based weighting alone, while
-BlissMixer can use its standard fallback for a one-track context. Better Call
-Bliss does not yet implement that fallback. Because every route has a first
-scored transition with exactly one preceding track, the currently bundled
-optimizer returns **MATRIX_REQUIRED**, loads the matrix directly, and uses it for
-that transition. A zero blend removes learned influence only from multi-track
-contexts; it does not remove the one-track dependency. The current integration
-therefore reports a missing matrix as a compatibility problem. Making it
-optional requires an implemented and tested native one-track fallback and
-optional matrix fields in the request/result artifacts; the plugin must not
-claim one based only on design intent. Semantic providers are outside the
-native process and remain optional and failure-tolerant.
+one-track contexts use the Static BlissMixer feature-weight matrix when no
+learned matrix is available. If the user selects Static explicitly, that same
+fixed matrix is used for every contextual distance. Semantic providers are
+outside the native process and remain optional and failure-tolerant.
 
 LMS ties `STDERR` to its logging adapter. Native jobs therefore follow LMS's
 scanner pattern: open private output handles, temporarily untie `STDERR`, fork

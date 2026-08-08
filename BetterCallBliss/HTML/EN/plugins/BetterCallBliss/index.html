@@ -206,9 +206,9 @@
     <div class="bea-row">
       <label for="algorithm">Strategy</label>
       <select name="algorithm" id="algorithm">
-        <option value="adaptive" selected>Adaptive dynamic weighting [Working]</option>
-        <option disabled>Static weighted distance [Native route not connected yet]</option>
-        <option disabled>Random forest [Native route not connected yet]</option>
+        <option value="adaptive"[% IF bettercallbliss_form.algorithm == 'adaptive' %] selected[% END %]>Adaptive dynamic weighting [Working]</option>
+        <option value="static"[% IF bettercallbliss_form.algorithm == 'static' %] selected[% END %]>Static BlissMixer weights [Working]</option>
+        <option value="forest" disabled>Extended Isolation Forest [Planned]</option>
       </select>
     </div>
     <div class="bea-row">
@@ -222,7 +222,8 @@
       <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.learned_percent %]</span>
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
-    <p class="bea-note">These values are passed to the optimizer request for this preview.</p>
+    <p class="bea-note">Current BlissMixer strategy: [% bettercallbliss_capability.algorithm | html %]. These values are passed to the optimizer request for this preview. Static uses BlissMixer's four metric sliders expanded to the 23 Bliss audio features. Adaptive can run without a learned matrix; in that case multi-track contexts use variance and one-track contexts fall back to the static BlissMixer weights.</p>
+    [% IF bettercallbliss_capability.algorithm == 'forest' %]<p class="bea-warning">BlissMixer currently uses Extended Isolation Forest, but Better Call Bliss does not route playlists with Forest yet. Choose Adaptive or Static for now.</p>[% END %]
   </fieldset>
 
   <fieldset class="bea-section">
@@ -446,6 +447,7 @@
     <p>Job ID: [% bettercallbliss_job.id | html %]</p>
     <p>Requested output: [% IF bettercallbliss_job.output_mode == 'player_queue' %]send to player queue [% bettercallbliss_job.queue_player_name | html %] ([% IF bettercallbliss_job.queue_action == 'replace' %]replace queue[% ELSIF bettercallbliss_job.queue_action == 'append' %]append to queue[% ELSE %]play next[% END %]; [% IF bettercallbliss_job.queue_start_playback %]start playback[% ELSE %]do not start playback[% END %])[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source playlist[% ELSIF bettercallbliss_job.output_name_generated && !bettercallbliss_job.output_name %]create copy with an automatic name when saved[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
     <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
+    [% IF bettercallbliss_job.mixing_note %]<p class="bea-note"><b>Mixing:</b> [% bettercallbliss_job.mixing_strategy | html %] (BlissMixer current setting: [% bettercallbliss_job.blissmixer_strategy | html %]). [% bettercallbliss_job.mixing_note | html %]</p>[% END %]
     [% IF bettercallbliss_job.state == 'running' %]
       <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]">Refresh result now</a></p>
     [% ELSIF bettercallbliss_job.state == 'failed' %]

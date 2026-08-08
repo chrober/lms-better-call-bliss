@@ -42,7 +42,7 @@ fall through to either working mode.
 | Double length | Not connected yet | Adds exactly `S` tracks, yielding `2S` tracks. |
 | Numeric editor for N/T | Working for exact additions and seed-growth target | Exact-count input is validated as 1-100 and constrained to `S - 1`. Seed-growth target is validated as 3-500 and must exceed `S`; the UI reports `S` seeds plus `T - S` additions. The generic bridge target-length preset remains future work. |
 | Musical context window (previous tracks) | Working, per job | Rolling preceding-track count used for every directional Adaptive leg. A bridge C between A and B is scored as history-to-C and updated-history-with-C-to-B; variance-based weighting begins with two available context tracks. |
-| Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. With two or more context tracks, 0 means pure variance weighting. The current optimizer still requires and uses the learned matrix for one-track contexts because its BlissMixer-style fallback is not implemented yet. |
+| Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. With two or more context tracks, 0 means pure variance weighting. If no learned matrix is available, Adaptive uses variance for multi-track contexts and Static BlissMixer weights for one-track contexts. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
@@ -54,7 +54,8 @@ fall through to either working mode.
 | Bridge trigger percentile | Working, per job | Validated as 0-100; only direct gaps strictly above this frozen contextual percentile are eligible. |
 | Internal bridge shortlist | Working, implementation-level | Addition jobs deterministically narrow each large internal-gap pool to 256 high-recall candidates before strict scoring. Endpoint-local semantic evidence is reserved; strict dynamic Adaptive scoring and all safety gates remain authoritative. This is intentionally not a job control in the current UX. |
 | LMS-local bridge inventory | Working, safety gate | Every addition job freezes a checksum-protected allowlist of usable Bliss rows that resolve to current non-remote LMS audio tracks. Non-allowlisted rows are removed before semantic ranking, shortlisting, and scoring; post-result LMS resolution remains mandatory. |
-| Static weighted / random-forest strategy | Not connected yet | Visible but disabled because native route currently accepts Adaptive only. |
+| Static weighted strategy | Working, per job | Uses BlissMixer's four static metric sliders expanded to the 23 Bliss feature weights; the same fixed matrix is used for every contextual distance. |
+| Extended Isolation Forest strategy | Not connected yet | Visible but disabled because native playlist routing does not implement Forest scoring yet. |
 | Review | Working for all connected combinations | The submitted form and result retain the job-specific values and explicitly state whether source order was optimized or preserved. |
 | Run preview | Working for all connected combinations | Launches the native optimizer asynchronously and never writes a playlist. |
 
@@ -85,11 +86,10 @@ fall through to either working mode.
 
 The Extras editor initializes scoring and repeat fields from BlissMixer. The
 submitted values belong to that job only and never update BlissMixer's global
-preferences. The current bundled optimizer supports only Adaptive routing and
-requires a learned matrix for its one-track contexts. This is a Better Call
-Bliss implementation limitation: BlissMixer itself can run without a learned
-matrix by using variance weighting for multi-track contexts and its standard
-fallback for a single seed. Unsupported strategies are disabled and labeled.
+preferences. The bundled optimizer supports Adaptive and Static routing. A
+learned matrix is optional: Adaptive blends it when supplied and otherwise uses
+variance weighting for multi-track contexts plus Static BlissMixer weights for
+one-track contexts. Extended Isolation Forest remains disabled and labeled.
 
 **Additional route-search attempts**, both output suffixes, automatic bridge budget, and
 automatic trigger percentile supply defaults for new jobs. Every value that

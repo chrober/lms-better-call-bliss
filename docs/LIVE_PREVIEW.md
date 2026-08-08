@@ -7,9 +7,8 @@ Verified path:
 
 1. LMS discovered the plugin and registered **Better Call Bliss** under
    Applications / My Apps.
-2. System status reported BlissMixer, `bliss.db`, the learned matrix required
-   by the current optimizer build,
-   the native optimizer, and scanner state.
+2. System status reported BlissMixer, `bliss.db`, optional learned-matrix
+   availability, the native optimizer, and scanner state.
 3. The review screen captured the server's real Adaptive configuration: three
    seed tracks, 20% learned blend, and artist/album/track look-back windows of
    5/10/100.
@@ -79,9 +78,8 @@ repeat windows, search restarts, and output disposition are now job fields;
 BlissMixer values are defaults only. Version `0.5.0` additionally connects
 automatic Bliss-only bridge discovery, and version `0.6.0` connects exact-count
 Bliss-only bridge discovery. Preserve-order and the remaining extension
-presets, static or forest routing, semantic providers, cancellation,
-durable history, report export, and source overwrite remain visibly marked
-**Not connected yet**.
+presets, forest routing, ListenBrainz, cancellation, durable history, and
+report export remain visibly marked **Not connected yet**.
 
 ## Create-copy persistence verification
 
@@ -441,9 +439,9 @@ The deployed page forces readable nested content in warning/error/success/info b
 
 The persistent ledger and visible Extras panel have different lifetimes. `CandidateInventory::init` establishes paths but does not load the previous summary. Opening Extras and running reorder-only do not prepare candidate inventory. The first automatic or exact-count addition Preview prepares or cache-loads it; only then is `candidate_inventory_ready=1` and the Extras audit panel is rendered for that LMS process. Immediately after the verification restart the panel was therefore absent even though the prior JSON ledger remained on disk. No bridge Preview was launched merely to populate it.
 
-The case-only duplicate can originate in analyser bookkeeping: `TracksV2.File` and its pre-insert lookup are exact and case-sensitive, while stale-row cleanup uses host-filesystem existence. On a case-insensitive filesystem or share, an older spelling can continue to “exist” after a later scan inserts the current spelling; `--keep-old` also suppresses cleanup. This is not an acoustic-feature mismatch.
+The case-only duplicate can originate in analyser bookkeeping: `TracksV2.File` and its pre-insert lookup are exact and case-sensitive, while stale-row cleanup uses host-filesystem existence. On a case-insensitive filesystem or share, an older spelling can continue to Ã¢â‚¬Å“existÃ¢â‚¬Â after a later scan inserts the current spelling; `--keep-old` also suppresses cleanup. This is not an acoustic-feature mismatch.
 
-The post-boot resource contention observed separately came from the LMS scanner pipeline. LMS exposes **Settings → Advanced → Performance → Scanner process priority**; positive values such as `10` or `15` lower scanner priority but extend scan duration. No scanner preference was changed during this deployment.
+The post-boot resource contention observed separately came from the LMS scanner pipeline. LMS exposes **Settings Ã¢â€ â€™ Advanced Ã¢â€ â€™ Performance Ã¢â€ â€™ Scanner process priority**; positive values such as `10` or `15` lower scanner priority but extend scan duration. No scanner preference was changed during this deployment.
 
 The service restart completed normally, temporary deployment files were removed, and no Preview/Create action changed a saved playlist.
 

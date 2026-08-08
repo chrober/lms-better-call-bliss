@@ -217,7 +217,18 @@ sub _result_view {
         write_error_code => $job->{write_error_code},
         write_error => $job->{write_error},
         persistence => $job->{persistence},
+        mixing_strategy => $job->{options}->{algorithm},
+        blissmixer_strategy => $job->{capability}->{algorithm},
+        learned_matrix_available => $job->{capability}->{matrix_available} ? 1 : 0,
     };
+    if (($view->{mixing_strategy} || '') eq 'static') {
+        $view->{mixing_note} = 'Static BlissMixer weights were used for every contextual distance.';
+    } elsif (!$view->{learned_matrix_available}) {
+        $view->{mixing_note} = 'No learned matrix was available. Adaptive used variance for multi-track contexts and Static BlissMixer weights for one-track contexts.';
+    } else {
+        $view->{mixing_note} = 'Adaptive used the learned matrix according to the selected blend.';
+    }
+
     if ($job->{state} eq 'failed') {
         $view->{error_code} = $job->{error_code};
         $view->{error} = $job->{error};

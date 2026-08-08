@@ -76,7 +76,7 @@ features are visibly marked as unavailable.
 ~~~mermaid
 flowchart LR
     LMS["Lyrion saved playlist"] --> P["Better Call Bliss plugin"]
-    BM["lms-blissmixer settings<br/>bliss.db and currently required<br/>learned matrix"] --> P
+    BM["lms-blissmixer settings<br/>bliss.db and optional<br/>learned matrix"] --> P
     LM["Optional LastMix<br/>Last.fm track and artist evidence"] --> P
     P --> O["bliss-playlist-optimizer"]
     O --> C["bliss-mixer-core<br/>shared Bliss scoring"]

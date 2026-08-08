@@ -66,6 +66,19 @@ sub _normalize_booleans {
     }
 }
 
+sub _normalize_feature_weights {
+    my $request = shift;
+    return unless ref($request->{scoring}) eq 'HASH';
+    return unless ref($request->{scoring}->{feature_weights}) eq 'ARRAY';
+    my $index = 0;
+    for my $weight (@{$request->{scoring}->{feature_weights}}) {
+        $request->{scoring}->{feature_weights}->[$index] = _json_number(
+            $weight, 'feature_weights[' . $index . ']',
+        );
+        $index++;
+    }
+}
+
 sub normalize_request_types {
     my $request = shift;
     die 'Optimizer request must be an object'
@@ -76,16 +89,18 @@ sub normalize_request_types {
         $request->{scoring}->{adaptive},
         qw(seed_limit learned_percent),
     );
+    _normalize_feature_weights($request);
     _normalize_integers(
         $request->{scoring}->{captured_blissmixer_preferences},
         qw(
             num_seed_tracks learned_blend no_repeat_artist
-            no_repeat_album no_repeat_track
+            no_repeat_album no_repeat_track weight_tempo weight_timbre
+            weight_loudness weight_chroma
         ),
     );
     _normalize_booleans(
         $request->{scoring}->{captured_blissmixer_preferences},
-        'use_adaptive_weights',
+        qw(use_adaptive_weights use_forest),
     );
     _normalize_integers(
         $request->{selection},
@@ -210,13 +225,33 @@ sub build_reorder_request {
                     $options->{learned_percent}, 'learned_percent',
                 ),
             },
+            feature_weights => [
+                map { _json_number($_, 'feature_weight') }
+                @{$capability->{feature_weights} || []}
+            ],
             captured_blissmixer_preferences => {
-                use_adaptive_weights => JSON::XS::true,
+                algorithm => $capability->{algorithm},
+                use_adaptive_weights => $capability->{use_adaptive_weights}
+                    ? JSON::XS::true : JSON::XS::false,
+                use_forest => $capability->{use_forest}
+                    ? JSON::XS::true : JSON::XS::false,
                 num_seed_tracks => _json_integer($capability->{seed_limit}),
                 learned_blend => _json_integer($capability->{learned_percent}),
                 no_repeat_artist => _json_integer($capability->{artist_window}),
                 no_repeat_album => _json_integer($capability->{album_window}),
                 no_repeat_track => _json_integer($capability->{track_window}),
+                weight_tempo => _json_integer(
+                    $capability->{static_weight_sliders}->{tempo},
+                ),
+                weight_timbre => _json_integer(
+                    $capability->{static_weight_sliders}->{timbre},
+                ),
+                weight_loudness => _json_integer(
+                    $capability->{static_weight_sliders}->{loudness},
+                ),
+                weight_chroma => _json_integer(
+                    $capability->{static_weight_sliders}->{chroma},
+                ),
             },
         },
         selection => {

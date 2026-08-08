@@ -17,10 +17,12 @@ sub defaults {
     my $lastfm_artist_guidance =
         $plugin_prefs->get('lastfm_artist_guidance_percent');
     $lastfm_artist_guidance = 75 unless defined $lastfm_artist_guidance;
+    my $default_algorithm = $capability->{algorithm} || 'adaptive';
+    $default_algorithm = 'adaptive' if $default_algorithm eq 'forest';
     return {
         ordering_policy => 'optimize_order',
         extension_mode => 'none',
-        algorithm => 'adaptive',
+        algorithm => $default_algorithm,
         seed_limit => int($capability->{seed_limit}),
         learned_percent => int($capability->{learned_percent}),
         artist_window => int($capability->{artist_window}),
@@ -80,8 +82,9 @@ sub normalize {
 
     $options->{algorithm} = $input->{algorithm}
         if defined $input->{algorithm};
-    die "Only Adaptive scoring is connected"
-        unless $options->{algorithm} eq 'adaptive';
+    die "Mixing strategy must be Adaptive or Static; Extended Isolation Forest is not connected yet"
+        unless $options->{algorithm} eq 'adaptive'
+            || $options->{algorithm} eq 'static';
 
     $options->{seed_limit} = _integer(
         $input, 'seed_limit', 1, 50, $options->{seed_limit},
