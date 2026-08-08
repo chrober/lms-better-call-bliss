@@ -20,7 +20,7 @@ my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $plugin_prefs = preferences('plugin.bettercallbliss');
 my $page = 'plugins/BetterCallBliss/index.html';
 my $icon =
-    'plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_timeline.png';
+    'plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_playlist_add_check_circle.png';
 
 sub init {
     Slim::Web::Pages->addPageFunction($page, \&handler);
@@ -107,7 +107,8 @@ sub _semantic_evidence_summary {
     for my $edge (@$evidence) {
         next unless ref($edge) eq 'HASH';
         my $provider = $edge->{provider} || 'semantic';
-        my $kind = ($edge->{kind} || '') eq 'track'
+        my $raw_kind = lc($edge->{kind} || '');
+        my $kind = ($raw_kind eq 'track' || $raw_kind eq 'recording')
             ? 'similar track' : 'similar artist';
         my $source = $edge->{source_endpoint} || $edge->{scope} || '';
         $source =~ s/_/ /g;
@@ -121,6 +122,45 @@ sub _semantic_evidence_summary {
         : 'Bliss only; no Last.fm edge was attached to this selection';
 }
 
+sub _semantic_evidence_stats {
+    my $additions = shift;
+    my %stats = (
+        total => 0,
+        bliss_only => 0,
+        lastfm_any => 0,
+        lastfm_artist => 0,
+        lastfm_track => 0,
+        lastfm_edges => 0,
+        other_semantic => 0,
+    );
+    for my $addition (@{$additions || []}) {
+        next unless ref($addition) eq 'HASH';
+        $stats{total}++;
+        my ($lastfm_any, $lastfm_artist, $lastfm_track, $other_semantic) = (0, 0, 0, 0);
+        for my $edge (@{$addition->{semantic_evidence} || []}) {
+            next unless ref($edge) eq 'HASH';
+            my $provider = lc($edge->{provider} || '');
+            my $kind = lc($edge->{kind} || '');
+            if ($provider eq 'last.fm') {
+                $lastfm_any = 1;
+                $stats{lastfm_edges}++;
+                if ($kind eq 'recording' || $kind eq 'track') {
+                    $lastfm_track = 1;
+                } elsif ($kind eq 'artist') {
+                    $lastfm_artist = 1;
+                }
+            } else {
+                $other_semantic = 1;
+            }
+        }
+        $stats{lastfm_any}++ if $lastfm_any;
+        $stats{lastfm_artist}++ if $lastfm_artist;
+        $stats{lastfm_track}++ if $lastfm_track;
+        $stats{other_semantic}++ if $other_semantic;
+        $stats{bliss_only}++ unless $lastfm_any || $other_semantic;
+    }
+    return \%stats;
+}
 sub _result_view {
     my $job = shift;
     return unless $job;
@@ -246,6 +286,7 @@ sub _result_view {
                 };
             }
             $view->{additions} = \@additions;
+            $view->{semantic_stats} = _semantic_evidence_stats(\@additions);
 
             my @decisions;
             for my $decision (@{$preview->{decisions} || []}) {

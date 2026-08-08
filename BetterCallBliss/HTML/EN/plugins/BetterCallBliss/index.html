@@ -438,6 +438,13 @@
         [% END %]
       </ol>
       [% IF bettercallbliss_job.bridge_extension %]
+        [% IF bettercallbliss_job.semantic_stats.total %]
+          <p class="bea-note"><b>Evidence used by additions:</b>
+            [% bettercallbliss_job.semantic_stats.lastfm_any %] of [% bettercallbliss_job.semantic_stats.total %] addition[% IF bettercallbliss_job.semantic_stats.total != 1 %]s[% END %] used Last.fm evidence
+            ([% bettercallbliss_job.semantic_stats.lastfm_track %] similar-track, [% bettercallbliss_job.semantic_stats.lastfm_artist %] similar-artist);
+            [% bettercallbliss_job.semantic_stats.bliss_only %] Bliss-only.
+          </p>
+        [% END %]
         <h4>[% IF bettercallbliss_job.seed_growth_extension %]Selected additions[% ELSE %]Additions and reasons[% END %]</h4>
         [% IF bettercallbliss_job.added_track_count %]
           <ul>

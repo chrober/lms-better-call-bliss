@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <extension>
   <id>5ff183ce-3d88-4aa1-8fa5-28fed965af76</id>
-  <icon>plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_timeline.png</icon>
+  <icon>plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_playlist_add_check_circle.png</icon>
   <name>PLUGIN_BETTERCALLBLISS_NAME</name>
   <module>Plugins::BetterCallBliss::Plugin</module>
   <version>0.14.0</version>
