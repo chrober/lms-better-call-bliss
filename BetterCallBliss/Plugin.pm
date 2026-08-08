@@ -4,6 +4,7 @@ use strict;
 use base qw(Slim::Plugin::Base);
 
 use File::Basename qw(dirname);
+use Config qw(%Config);
 use File::Spec::Functions qw(catdir);
 use Slim::Control::Request;
 use Slim::Utils::Log;
@@ -52,8 +53,9 @@ sub initPlugin {
     } elsif (main::ISMAC) {
         Slim::Utils::Misc::addFindBinPaths(catdir($dir, 'Bin', 'mac'));
     } else {
-        Slim::Utils::Misc::addFindBinPaths(catdir($dir, 'Bin', 'aarch64-linux'));
-        Slim::Utils::Misc::addFindBinPaths(catdir($dir, 'Bin', 'x86_64-linux'));
+        for my $platform (_linuxBinaryPlatforms()) {
+            Slim::Utils::Misc::addFindBinPaths(catdir($dir, 'Bin', $platform));
+        }
     }
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
     Plugins::BetterCallBliss::BlissCompatibility::init($optimizer_binary);
@@ -75,6 +77,16 @@ sub initPlugin {
     $initialized = 1;
     $log->info('initialized optimizer=' . ($optimizer_binary || 'missing'));
     return 1;
+}
+
+sub _linuxBinaryPlatforms {
+    my $signature = lc($Config{archname} || '');
+
+    return ('aarch64-linux') if $signature =~ /\b(aarch64|arm64)\b/;
+    return ('x86_64-linux') if $signature =~ /\b(x86_64|amd64)\b/;
+    return ('armhf-linux') if $signature =~ /\b(armv6|armv7|armhf)\b/ || $signature =~ /gnueabihf/;
+
+    return ('x86_64-linux', 'aarch64-linux', 'armhf-linux');
 }
 
 sub shutdownPlugin {

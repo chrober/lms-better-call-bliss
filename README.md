@@ -50,8 +50,9 @@ complete feature matrix.
   the configured Static BlissMixer weights. See
   [Is a learned matrix optional?](ALGORITHMS.md#is-a-learned-matrix-optional).
 - A configured local Lyrion music folder whose tracks correspond to bliss.db.
-- A bliss-playlist-optimizer binary for the server platform. Development
-  packages currently bundle the tested ARM64 Linux build.
+- A bliss-playlist-optimizer binary for the server platform. Release packages
+  bundle native binaries for Windows, macOS, x86_64 Linux, ARM64 Linux, and
+  ARMHF Linux.
 
 [LastMix](https://github.com/AF-1/lms-lastmix) is optional. When installed and
 enabled, it supplies anonymous Last.fm similar-track and similar-artist evidence. Missing
@@ -70,18 +71,40 @@ scoring and do not fail the optimization job.
 The source playlist is preserved. Source overwrite and all other unfinished
 features are visibly marked as unavailable.
 
+## Release and publishing workflow
+
+GitHub Actions workflow `.github/workflows/release.yml` builds a release package
+without committing native binaries to this repository:
+
+1. Checks out `chrober/bliss-playlist-optimizer` at the commit documented in
+   `BetterCallBliss/Bin/SOURCE.md`, unless an `optimizer_ref` override is
+   supplied manually.
+2. Builds optimizer binaries for `x86_64-linux`, `aarch64-linux`,
+   `armhf-linux`, `mac`, and `windows`.
+3. Copies those binaries into the matching `BetterCallBliss/Bin/<platform>/`
+   folders only inside the release workspace.
+4. Creates `lms-better-call-bliss-<version>.zip` plus SHA-1 and SHA-256 files.
+5. Publishes the GitHub Release and, unless disabled, updates
+   `chrober/lms-plugins` `repo.xml` with immutable release-asset URLs for
+   `unix`, `mac`, and `windows`.
+
+The cross-repository feed update requires a repository secret named
+`LMS_PLUGINS_TOKEN` with contents-write access to `chrober/lms-plugins`. Use
+`dry_run=true` to build and inspect the package as a workflow artifact without
+creating a release or touching the plugin feed.
+
 ## Repository contents
 
 - `BetterCallBliss/` is the installable Lyrion plugin source tree. It contains
   the Perl plugin modules, classic-web templates, settings page, strings,
   icons, and `install.xml` metadata.
-- The ARM64 Linux `bliss-playlist-optimizer` executable is intentionally not
-  committed here. It is built from the separate
+- The platform-specific `bliss-playlist-optimizer` executables are
+  intentionally not committed here. They are built from the separate
   [chrober/bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer)
   repository by GitHub Actions and copied into deployment/package artifacts.
-  The expected source commit, workflow run, and SHA-256 for the latest deployed
-  artifact are documented in `BetterCallBliss/Bin/aarch64-linux/SOURCE.md`.
-  `.gitignore` prevents the local executable from being accidentally committed.
+  The expected optimizer source commit, supported package folders, and release
+  packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
+  `.gitignore` prevents local executables from being accidentally committed.
 - `tests/` contains lightweight Perl regression tests for the plugin glue code.
   The tests stub the relevant LMS/LastMix APIs and check request JSON typing
   plus Last.fm evidence handling. This folder is not installed as runtime

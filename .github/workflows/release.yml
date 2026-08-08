@@ -1,0 +1,309 @@
+name: Publish Better Call Bliss
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Plugin version/tag. Empty reads BetterCallBliss/install.xml."
+        required: false
+        default: ""
+      optimizer_ref:
+        description: "bliss-playlist-optimizer git ref. Empty reads BetterCallBliss/Bin/SOURCE.md."
+        required: false
+        default: ""
+      prerelease:
+        description: "Mark the GitHub release as prerelease."
+        type: boolean
+        required: true
+        default: false
+      dry_run:
+        description: "Build and upload workflow artifacts only; do not create release or update lms-plugins."
+        type: boolean
+        required: true
+        default: false
+      update_lms_plugins:
+        description: "Update chrober/lms-plugins repo.xml after publishing the release."
+        type: boolean
+        required: true
+        default: true
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+  contents: write
+
+env:
+  OPTIMIZER_REPO: chrober/bliss-playlist-optimizer
+  PLUGIN_REPO: chrober/lms-plugins
+
+jobs:
+  build-optimizer:
+    name: Build optimizer (${{ matrix.folder }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - folder: x86_64-linux
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            binary: bliss-playlist-optimizer
+            apt: ""
+          - folder: aarch64-linux
+            runner: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            binary: bliss-playlist-optimizer
+            apt: gcc-aarch64-linux-gnu
+          - folder: armhf-linux
+            runner: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            binary: bliss-playlist-optimizer
+            apt: gcc-arm-linux-gnueabihf
+          - folder: mac
+            runner: macos-13
+            target: x86_64-apple-darwin
+            binary: bliss-playlist-optimizer
+            apt: ""
+          - folder: windows
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            binary: bliss-playlist-optimizer.exe
+            apt: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive optimizer ref
+        id: meta
+        shell: bash
+        env:
+          OPTIMIZER_REF_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.optimizer_ref || '' }}
+        run: |
+          set -euo pipefail
+          optimizer_ref="$OPTIMIZER_REF_INPUT"
+          if [ -z "$optimizer_ref" ]; then
+            optimizer_ref="$(python -c 'import pathlib,re; text=pathlib.Path("BetterCallBliss/Bin/SOURCE.md").read_text(encoding="utf-8"); match=re.search(r"Optimizer commit:\s*`([^`]+)`", text); print(match.group(1) if match else "")')"
+          fi
+          if [ -z "$optimizer_ref" ]; then
+            echo "Could not determine optimizer git ref" >&2
+            exit 1
+          fi
+          echo "optimizer_ref=$optimizer_ref" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          repository: chrober/bliss-playlist-optimizer
+          ref: ${{ steps.meta.outputs.optimizer_ref }}
+          path: optimizer
+
+      - uses: dtolnay/rust-toolchain@1.97.1
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux cross linker
+        if: ${{ runner.os == 'Linux' && matrix.apt != '' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ${{ matrix.apt }}
+
+      - name: Build optimizer
+        shell: bash
+        working-directory: optimizer
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          case "$TARGET" in
+            aarch64-unknown-linux-gnu)
+              export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+              ;;
+            armv7-unknown-linux-gnueabihf)
+              export CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc
+              ;;
+          esac
+          cargo build --release --locked --target "$TARGET"
+
+      - name: Stage optimizer binary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+          BINARY: ${{ matrix.binary }}
+        run: |
+          set -euo pipefail
+          mkdir -p optimizer-out
+          cp "optimizer/target/$TARGET/release/$BINARY" "optimizer-out/$BINARY"
+          if [[ "$BINARY" != *.exe ]]; then
+            chmod 0755 "optimizer-out/$BINARY"
+          fi
+          ls -l optimizer-out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: optimizer-${{ matrix.folder }}
+          path: optimizer-out/${{ matrix.binary }}
+          if-no-files-found: error
+
+  package-release:
+    runs-on: ubuntu-latest
+    needs: build-optimizer
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag: ${{ steps.meta.outputs.tag }}
+      asset_name: ${{ steps.meta.outputs.asset_name }}
+      asset_url: ${{ steps.meta.outputs.asset_url }}
+      sha1: ${{ steps.package.outputs.sha1 }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive release metadata
+        id: meta
+        env:
+          VERSION_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}
+        run: |
+          set -euo pipefail
+          version="$VERSION_INPUT"
+          if [ -z "$version" ]; then
+            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              version="${GITHUB_REF_NAME#v}"
+            else
+              version="$(python -c 'import xml.etree.ElementTree as ET; print(ET.parse("BetterCallBliss/install.xml").getroot().findtext("version"))')"
+            fi
+          fi
+          if [ -z "$version" ]; then
+            echo "Could not determine plugin version" >&2
+            exit 1
+          fi
+
+          install_version="$(python -c 'import xml.etree.ElementTree as ET; print(ET.parse("BetterCallBliss/install.xml").getroot().findtext("version"))')"
+          if [ "$version" != "$install_version" ]; then
+            echo "Requested version $version does not match BetterCallBliss/install.xml version $install_version" >&2
+            exit 1
+          fi
+
+          tag="$version"
+          asset_name="lms-better-call-bliss-$version.zip"
+          asset_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/$tag/$asset_name"
+
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "asset_name=$asset_name"
+            echo "asset_url=$asset_url"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: optimizer-*
+          path: optimizer-artifacts
+
+      - name: Install optimizer binaries into plugin tree
+        run: |
+          set -euo pipefail
+          install -m 0755 -D optimizer-artifacts/optimizer-aarch64-linux/bliss-playlist-optimizer BetterCallBliss/Bin/aarch64-linux/bliss-playlist-optimizer
+          install -m 0755 -D optimizer-artifacts/optimizer-armhf-linux/bliss-playlist-optimizer BetterCallBliss/Bin/armhf-linux/bliss-playlist-optimizer
+          install -m 0755 -D optimizer-artifacts/optimizer-x86_64-linux/bliss-playlist-optimizer BetterCallBliss/Bin/x86_64-linux/bliss-playlist-optimizer
+          install -m 0755 -D optimizer-artifacts/optimizer-mac/bliss-playlist-optimizer BetterCallBliss/Bin/mac/bliss-playlist-optimizer
+          install -m 0644 -D optimizer-artifacts/optimizer-windows/bliss-playlist-optimizer.exe BetterCallBliss/Bin/windows/bliss-playlist-optimizer.exe
+          find BetterCallBliss/Bin -maxdepth 2 -type f -print
+
+      - name: Package plugin zip
+        id: package
+        env:
+          ASSET_NAME: ${{ steps.meta.outputs.asset_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          zip -r "dist/$ASSET_NAME" BetterCallBliss
+          sha1="$(sha1sum "dist/$ASSET_NAME" | awk '{print $1}')"
+          sha256="$(sha256sum "dist/$ASSET_NAME" | awk '{print $1}')"
+          echo "$sha1  $ASSET_NAME" > "dist/$ASSET_NAME.sha1"
+          echo "$sha256  $ASSET_NAME" > "dist/$ASSET_NAME.sha256"
+          echo "sha1=$sha1" >> "$GITHUB_OUTPUT"
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload package as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.asset_name }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+          PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
+        run: |
+          set -euo pipefail
+          notes="dist/release-notes.md"
+          {
+            echo "# Better Call Bliss $VERSION"
+            echo
+            echo "Installable LMS plugin package containing BetterCallBliss plus native bliss-playlist-optimizer binaries for Windows, macOS, x86_64 Linux, ARM64 Linux, and ARMHF Linux."
+          } > "$notes"
+
+          prerelease_flag=()
+          if [ "$PRERELEASE" = "true" ]; then
+            prerelease_flag=(--prerelease)
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.zip dist/*.sha1 dist/*.sha256 --clobber
+          else
+            gh release create "$TAG" dist/*.zip dist/*.sha1 dist/*.sha256 \
+              --title "Better Call Bliss $VERSION" \
+              --notes-file "$notes" \
+              "${prerelease_flag[@]}"
+          fi
+
+      - name: Require cross-repo token for lms-plugins update
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && (github.event_name != 'workflow_dispatch' || inputs.update_lms_plugins) }}
+        env:
+          LMS_PLUGINS_TOKEN: ${{ secrets.LMS_PLUGINS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$LMS_PLUGINS_TOKEN" ]; then
+            echo "Set repository secret LMS_PLUGINS_TOKEN with contents:write access to $PLUGIN_REPO." >&2
+            exit 1
+          fi
+
+      - name: Checkout lms-plugins feed repository
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && (github.event_name != 'workflow_dispatch' || inputs.update_lms_plugins) }}
+        uses: actions/checkout@v4
+        with:
+          repository: chrober/lms-plugins
+          path: lms-plugins
+          token: ${{ secrets.LMS_PLUGINS_TOKEN }}
+
+      - name: Update lms-plugins repo.xml
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && (github.event_name != 'workflow_dispatch' || inputs.update_lms_plugins) }}
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          ASSET_URL: ${{ steps.meta.outputs.asset_url }}
+          SHA1: ${{ steps.package.outputs.sha1 }}
+        run: |
+          set -euo pipefail
+          python scripts/update_lms_plugins_repo.py \
+            --repo-xml lms-plugins/repo.xml \
+            --version "$VERSION" \
+            --url "$ASSET_URL" \
+            --sha "$SHA1"
+          python -c "import xml.etree.ElementTree as ET; ET.parse('lms-plugins/repo.xml')"
+
+      - name: Commit lms-plugins update
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && (github.event_name != 'workflow_dispatch' || inputs.update_lms_plugins) }}
+        working-directory: lms-plugins
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- repo.xml; then
+            echo "repo.xml already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add repo.xml
+          git commit -m "Publish Better Call Bliss ${{ steps.meta.outputs.version }}"
+          git push

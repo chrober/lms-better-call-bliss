@@ -1,4 +1,4 @@
 /build/
 /dist/
 /.local-test/
-BetterCallBliss/Bin/aarch64-linux/bliss-playlist-optimizer
+BetterCallBliss/Bin/**/bliss-playlist-optimizer*
