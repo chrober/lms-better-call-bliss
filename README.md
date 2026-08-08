@@ -75,17 +75,18 @@ features are visibly marked as unavailable.
 - `BetterCallBliss/` is the installable Lyrion plugin source tree. It contains
   the Perl plugin modules, classic-web templates, settings page, strings,
   icons, and `install.xml` metadata.
-- `BetterCallBliss/Bin/aarch64-linux/bliss-playlist-optimizer` is a committed
-  ARM64 Linux helper binary for piCorePlayer/Lyrion deployments. It is built
-  from the separate
+- The ARM64 Linux `bliss-playlist-optimizer` executable is intentionally not
+  committed here. It is built from the separate
   [chrober/bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer)
-  repository by GitHub Actions, not edited in this repository. Its exact source
-  commit, workflow run, and SHA-256 are documented in
-  `BetterCallBliss/Bin/aarch64-linux/SOURCE.md`.
-- `t/` contains lightweight Perl regression tests for the plugin glue code. The
-  tests stub the relevant LMS/LastMix APIs and check request JSON typing plus
-  Last.fm evidence handling. This folder is not installed as runtime plugin UI;
-  it is committed so future changes can catch these integration regressions.
+  repository by GitHub Actions and copied into deployment/package artifacts.
+  The expected source commit, workflow run, and SHA-256 for the latest deployed
+  artifact are documented in `BetterCallBliss/Bin/aarch64-linux/SOURCE.md`.
+  `.gitignore` prevents the local executable from being accidentally committed.
+- `tests/` contains lightweight Perl regression tests for the plugin glue code.
+  The tests stub the relevant LMS/LastMix APIs and check request JSON typing
+  plus Last.fm evidence handling. This folder is not installed as runtime
+  plugin UI; it is committed so future changes can catch these integration
+  regressions.
 - `docs/`, `ALGORITHMS.md`, and `README.md` are project documentation and are
   not required for the plugin to run.
 
