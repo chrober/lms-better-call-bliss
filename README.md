@@ -44,11 +44,10 @@ complete feature matrix.
   BlissMixer itself.
 - A completed Bliss analysis that produced a readable bliss.db in the Lyrion
   preferences directory.
-- A readable learned_matrix.json for the current bundled optimizer. The matrix
-  is optional in BlissMixer itself, but Better Call Bliss does not yet implement
-  BlissMixer's fallback for the first transition, where only one context track
-  exists. A zero blend removes learned influence from multi-track contexts but
-  still uses the matrix for one-track contexts. See
+- A readable learned_matrix.json is optional. When present, Adaptive can blend it
+  with dynamic variance. When absent, Better Call Bliss follows the BlissMixer
+  fallback shape: multi-track contexts use variance and one-track contexts use
+  the configured Static BlissMixer weights. See
   [Is a learned matrix optional?](ALGORITHMS.md#is-a-learned-matrix-optional).
 - A configured local Lyrion music folder whose tracks correspond to bliss.db.
 - A bliss-playlist-optimizer binary for the server platform. Development
@@ -70,6 +69,25 @@ scoring and do not fail the optimization job.
 
 The source playlist is preserved. Source overwrite and all other unfinished
 features are visibly marked as unavailable.
+
+## Repository contents
+
+- `BetterCallBliss/` is the installable Lyrion plugin source tree. It contains
+  the Perl plugin modules, classic-web templates, settings page, strings,
+  icons, and `install.xml` metadata.
+- `BetterCallBliss/Bin/aarch64-linux/bliss-playlist-optimizer` is a committed
+  ARM64 Linux helper binary for piCorePlayer/Lyrion deployments. It is built
+  from the separate
+  [chrober/bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer)
+  repository by GitHub Actions, not edited in this repository. Its exact source
+  commit, workflow run, and SHA-256 are documented in
+  `BetterCallBliss/Bin/aarch64-linux/SOURCE.md`.
+- `t/` contains lightweight Perl regression tests for the plugin glue code. The
+  tests stub the relevant LMS/LastMix APIs and check request JSON typing plus
+  Last.fm evidence handling. This folder is not installed as runtime plugin UI;
+  it is committed so future changes can catch these integration regressions.
+- `docs/`, `ALGORITHMS.md`, and `README.md` are project documentation and are
+  not required for the plugin to run.
 
 ## Component boundary
 
