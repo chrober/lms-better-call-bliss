@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 11;
+use Test::More tests => 16;
 use JSON::XS ();
 
 BEGIN {
@@ -32,10 +32,13 @@ BEGIN {
     $INC{'Plugins/BetterCallBliss/CandidateInventory.pm'} = __FILE__;
 
     package Plugins::BetterCallBliss::JobOptions;
+    our $extension_mode = 'exact_count';
+    our $additional_track_count = '1';
+    our $bridge_target_track_count = '25';
     sub normalize {
         return {
             ordering_policy => 'preserve_order',
-            extension_mode => 'exact_count',
+            extension_mode => $extension_mode,
             algorithm => 'adaptive',
             seed_limit => '3',
             learned_percent => '20',
@@ -51,7 +54,8 @@ BEGIN {
             lastfm_artist_guidance_percent => '75',
             max_added_tracks => '8',
             trigger_percent => '70',
-            additional_track_count => '1',
+            additional_track_count => $additional_track_count,
+            bridge_target_track_count => $bridge_target_track_count,
             target_track_count => '25',
             output_mode => 'create_copy',
             output_name => '',
@@ -145,3 +149,22 @@ like(
     qr/"album"\s*:\s*"1984"/,
     'digit-only album names remain JSON strings',
 );
+
+$Plugins::BetterCallBliss::JobOptions::extension_mode = 'double_count';
+$Plugins::BetterCallBliss::JobOptions::additional_track_count = '1';
+$Plugins::BetterCallBliss::JobOptions::bridge_target_track_count = '25';
+my $double = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+    7, 'preview-json-types-double', '/tmp/semantic-evidence.json', {},
+);
+my $double_json = JSON::XS->new->canonical->pretty->encode($double->{request});
+my $double_request = JSON::XS->new->decode($double_json);
+is($double_request->{extension}->{mode}, 'exact_count',
+    'double track count uses the native exact-count request');
+is($double_request->{extension}->{additional_track_count}, 2,
+    'double track count derives one addition per source track');
+ok(JSON::XS::is_bool($double_request->{extension}->{allow_opening_track}),
+    'double-count opening flag is a JSON boolean');
+ok($double_request->{extension}->{allow_opening_track},
+    'double-count enables an endpoint slot when internal gaps are insufficient');
+like($double_json, qr/"allow_opening_track"\s*:\s*true\b/,
+    'double-count opening flag is serialized as JSON true');

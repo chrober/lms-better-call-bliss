@@ -32,7 +32,7 @@ Three job choices work together:
 | [Add exactly N tracks](#add-exactly-n-tracks) | Working | Add the requested number or return no partial result. |
 | [Grow from these seeds](#grow-from-these-seeds) | Working | Use all originals as a musical mood board and build a larger playlist around them. |
 | [One bridge per transition](#add-exactly-n-tracks) | Planned | Put one additional song in every gap. |
-| [Reach target length / double length](#add-exactly-n-tracks) | Planned | Convenience presets that calculate how many songs to add. |
+| [Reach target track count / double track count](#add-exactly-n-tracks) | Working | Convenience presets that calculate how many songs to add. Duration-based targets remain future work. |
 | [Adaptive dynamic weighting](#adaptive-dynamic-weighting--working) | Working | Use BlissMixerÃ¢â‚¬â„¢s adaptive similarity measurement for each decision. |
 | [Static weighted distance](#static-weighted-distance--working) | Working | Reuse BlissMixer's fixed user priorities. |
 | [Extended Isolation Forest](#extended-isolation-forest--planned-for-better-call-bliss) | Planned | Reuse BlissMixer's model of the sound shared by several example songs. |
@@ -306,7 +306,7 @@ At each original gap the search branches into **skip this gap** and the best adm
 
 At the end, the optimizer selects the best route containing exactly N additions. If no retained route reaches N, it returns no partial playlist and reports whether the requested count exceeded structural capacity or was not found within the bounded search.
 
-The current plugin requests one bridge at most per internal original gap and disables opening and closing slots. With S source songs, the UI therefore allows no more than S Ã¢Ë†â€™ 1 additions. The native optimizer already contains bounded multi-track-gap and endpoint support, but those controls are not connected.
+Add exactly N requests one bridge at most per internal original gap and disables opening and closing slots. With S source songs, that direct mode therefore allows no more than S - 1 additions. Reach target track count and Double track count are convenience wrappers around the same native exact-count search: Better Call Bliss calculates the required additions from the desired final track count, and enables opening/closing slots only when internal gaps alone cannot reach the target. Duration-based targets remain future work.
 
 ~~~mermaid
 flowchart TD

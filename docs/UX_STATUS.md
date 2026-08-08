@@ -1,7 +1,7 @@
-# UX contract and implementation status
+﻿# UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.14.3` / `extras-job-editor-v18` UX shell. The shell is
+model and the exact boundary of the current `0.14.3` / `extras-job-editor-v19` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -32,15 +32,17 @@ fall through to either working mode.
 | --- | --- | --- |
 | Select saved playlist | Working | Lists LMS saved playlists with at least two tracks. |
 | Optimize source order | Working for no additions, automatic additions, exact-count additions, and seed growth | Original tracks may move. Seed growth always routes the complete final membership. |
-| Preserve source order | Working for automatic and exact-count additions | Every original track remains an immutable anchor in its input order. This UI slice fills internal gaps only, with at most one added track per gap; endpoint controls remain unavailable. |
+| Preserve source order | Working for automatic, exact-count, target track-count, and double track-count additions | Every original track remains an immutable anchor in its input order. Plain automatic/exact modes fill internal gaps only. Target/double track-count presets may enable opening/closing slots only when internal gaps cannot reach the requested count; explicit endpoint controls remain unavailable. |
 | No additional tracks | Working | Uses every original track exactly once and inserts none; unavailable with preserved order because that combination is a no-op. |
 | Add automatically | Working | With optimized order, reorders the source before examining gaps; with preserved order, examines only the original gaps. It adds up to the per-job budget where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass, and may add zero. |
 | Add exactly N tracks | Working | Adds exactly the validated user-entered number of unique eligible tracks or fails without returning a partial playlist. Both ordering policies permit one addition per internal source-track transition and no endpoint additions, so `1 <= N <= S - 1`. |
+| Reach target track count | Working | User enters the desired final track count. The plugin derives `N = T - S` and runs the exact-count bridge workflow. If the target needs more than the `S - 1` internal slots, opening/closing slots are enabled only as needed. |
 | Grow from these seeds | Working | Keeps all `S` source tracks exactly once, uses their complete immutable set as the Adaptive relevance reference, selects exactly `T - S` LMS-local analyzed additions under repeat-window capacity, and routes the complete `T`-track membership. The default target is 25. |
 | One bridge per source-track transition | Not connected yet | Adds one track in each of the `S - 1` original transitions, yielding `2S - 1` tracks. |
-| Target length | Not connected yet | Adds tracks until the exact total `T >= S` is reached. |
-| Double length | Not connected yet | Adds exactly `S` tracks, yielding `2S` tracks. |
-| Numeric editor for N/T | Working for exact additions and seed-growth target | Exact-count input is validated as 1-100 and constrained to `S - 1`. Seed-growth target is validated as 3-500 and must exceed `S`; the UI reports `S` seeds plus `T - S` additions. The generic bridge target-length preset remains future work. |
+| Target duration | Not connected yet | Duration-based targets need tolerance and duration-quality tradeoffs; this is deliberately separate from track-count targets. |
+| Double track count | Working | Adds exactly `S` tracks, yielding `2S` tracks, using one opening/closing slot when internal gaps alone provide only `S - 1` slots. |
+| Double duration | Not connected yet | Duration-based doubling remains future work. |
+| Numeric editor for N/T | Working for exact additions, target track count, and seed-growth target | Exact-count input is validated as 1-100 and constrained to `S - 1`. Target track count is validated as 3-500, must exceed `S`, and is constrained by one bridge per internal transition plus opening/closing slots. Seed-growth target is validated as 3-500 and must exceed `S`; the UI reports `S` seeds plus `T - S` additions. |
 | Musical context window (previous tracks) | Working, per job | Rolling preceding-track count used for every directional Adaptive leg. A bridge C between A and B is scored as history-to-C and updated-history-with-C-to-B; variance-based weighting begins with two available context tracks. |
 | Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. With two or more context tracks, 0 means pure variance weighting. If no learned matrix is available, Adaptive uses variance for multi-track contexts and Static BlissMixer weights for one-track contexts. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |

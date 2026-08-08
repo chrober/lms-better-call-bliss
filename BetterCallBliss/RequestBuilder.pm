@@ -190,12 +190,35 @@ sub build_reorder_request {
         $track_urls{$id} = $track->url;
     }
 
-    if ($options->{extension_mode} eq 'exact_count') {
-        my $maximum = @tracks - 1;
-        die 'Add exactly N tracks supports at most ' . $maximum
-            . ($maximum == 1 ? ' additional track' : ' additional tracks')
-            . ' for this playlist because the current workflow permits one '
-            . 'addition per internal source-track transition.' . chr(10)
+    my $internal_gap_count = @tracks - 1;
+    my $endpoint_capacity = 2;
+    my $exact_like_extension = $options->{extension_mode} eq 'exact_count'
+        || $options->{extension_mode} eq 'target_count'
+        || $options->{extension_mode} eq 'double_count';
+    if ($options->{extension_mode} eq 'target_count') {
+        die 'Target track count must exceed the source playlist size'
+            if $options->{bridge_target_track_count} <= @tracks;
+        $options->{target_track_count} = $options->{bridge_target_track_count};
+        $options->{additional_track_count} =
+            $options->{target_track_count} - @tracks;
+    } elsif ($options->{extension_mode} eq 'double_count') {
+        $options->{target_track_count} = 2 * @tracks;
+        $options->{additional_track_count} = @tracks;
+    }
+    if ($exact_like_extension) {
+        my $maximum = $internal_gap_count;
+        $maximum += $endpoint_capacity
+            if $options->{extension_mode} eq 'target_count'
+                || $options->{extension_mode} eq 'double_count';
+        my $capacity_reason = $options->{extension_mode} eq 'exact_count'
+            ? ' because Add exactly N uses one bridge per internal transition.'
+            : ' with one bridge per internal transition plus opening/closing slots.';
+        die 'The requested target needs ' . $options->{additional_track_count}
+            . ($options->{additional_track_count} == 1 ? ' additional track' : ' additional tracks')
+            . ', but this playlist currently supports at most ' . $maximum
+            . ($maximum == 1 ? ' addition' : ' additions')
+            . $capacity_reason
+            . chr(10)
             if $options->{additional_track_count} > $maximum;
     }
     if ($options->{extension_mode} eq 'seed_growth') {
@@ -289,13 +312,17 @@ sub build_reorder_request {
                 max_added_tracks => _json_integer($options->{max_added_tracks}),
                 trigger_percentile => $options->{trigger_percent} / 100,
             }
-            : $options->{extension_mode} eq 'exact_count' ? {
+            : $exact_like_extension ? {
                 mode => 'exact_count',
                 candidate_limit => _json_integer(5),
                 shortlist_limit => _json_integer(256),
                 max_tracks_per_gap => _json_integer(1),
-                allow_opening_track => JSON::XS::false,
-                allow_closing_track => JSON::XS::false,
+                allow_opening_track => ($options->{extension_mode} ne 'exact_count'
+                    && $options->{additional_track_count} > $internal_gap_count)
+                    ? JSON::XS::true : JSON::XS::false,
+                allow_closing_track => ($options->{extension_mode} ne 'exact_count'
+                    && $options->{additional_track_count} > $internal_gap_count)
+                    ? JSON::XS::true : JSON::XS::false,
                 additional_track_count => _json_integer($options->{additional_track_count}),
             }
             : $options->{extension_mode} eq 'seed_growth' ? {

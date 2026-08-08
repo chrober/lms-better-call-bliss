@@ -12,13 +12,16 @@ Better Call Bliss explicitly loads its own strings.txt during startup so develop
 
 The job editor labels ordering as **Source-track order**, additions separately, and Adaptive history as **Musical context window (previous tracks)**. It hides mode-specific sections when they are irrelevant, keeps their values for easy mode switching, uses BlissMixer-style slider-enhanced numeric inputs for bounded ranges where practical, places route-search attempts under Advanced, and rejects guaranteed no-op preserved combinations in both the page and server validator.
 
-**Preserve source order and fill gaps** is connected for automatic and
-exact-count additions. Every original track remains an immutable anchor in its
-input order. This first UI slice permits at most one addition in each internal
-gap and keeps opening/closing slots disabled. Preserve order with no possible
-addition is rejected as a guaranteed no-op. The plugin verifies the native
-ordering-policy echo, exact source order, final original subsequence, unique
-membership, and requested count before a result can be persisted.
+**Preserve source order and fill gaps** is connected for automatic, exact-count,
+target track-count, and double track-count additions. Every original track
+remains an immutable anchor in its input order. Plain exact-count mode permits
+at most one addition in each internal gap and keeps opening/closing slots
+disabled. Target track count and Double track count derive the required exact
+addition count from the selected playlist and enable opening/closing slots only
+when internal gaps alone cannot reach the target. Preserve order with no
+possible addition is rejected as a guaranteed no-op. The plugin verifies the
+native ordering-policy echo, exact source order, final original subsequence,
+unique membership, and requested count before a result can be persisted.
 
 The package includes a 512x512 transparent monochrome route icon. Its filename
 contains Material's `MTL_icon_timeline` marker, so the Extras renderer selects
@@ -67,4 +70,4 @@ membership, and acoustic gate still make the final choice. Debug performance
 output separates shortlisting from strict candidate scoring.
 
 Running results refresh automatically and completed/failed optimization and accept actions are displayed in prominent banners with stable error codes. After a job starts, every polling, result, and accept-action page rebuilds the editor from that job's normalized options. Inactive numeric controls remain submitted as read-only values, so failures and successful review pages retain the exact settings for adjustment and rerun. After a successful preview, **Accept this preview** lets the user choose the output target without rerunning the optimizer. Create optimized copy writes through Lyrion's core M3U formatter, exclusively creates a new file, creates the LMS playlist object, and verifies both file and catalog order. Blank names are Unicode-safe and select the next available numbered copy; explicit collisions fail visibly. Overwrite source requires confirmation and replaces the source playlist. Send to player queue applies the selected queue action to the selected player.
-The still-unconnected controls are explicitly marked **Not connected yet**: one bridge per source-track transition, generic target-length and double-length presets, multi-track preserved gaps beyond the current UI slice, opening/closing additions, cancellation, persistent reports, ListenBrainz evidence, and Extended Isolation Forest routing. See [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md) for the exact working/partial/future feature matrix.
+The still-unconnected controls are explicitly marked **Not connected yet**: one bridge per source-track transition, duration-based target/double presets, multi-track preserved gaps beyond the current UI slice, explicit opening/closing additions, cancellation, persistent reports, ListenBrainz evidence, and Extended Isolation Forest routing. See [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md) for the exact working/partial/future feature matrix.

@@ -232,7 +232,9 @@ sub start_reorder_preview {
             ? " max_added=$effective->{max_added_tracks}"
                 . " trigger_percent=$effective->{trigger_percent}"
             : '')
-        . ($effective->{extension_mode} eq 'seed_growth'
+        . (($effective->{extension_mode} eq 'seed_growth'
+                || $effective->{extension_mode} eq 'target_count'
+                || $effective->{extension_mode} eq 'double_count')
             ? " target_tracks=$effective->{target_track_count}"
             : '')
         . " output_mode=$effective->{output_mode}"
@@ -245,8 +247,13 @@ sub start_reorder_preview {
     $log->info(
         'job=' . $job_id
         . ' exact_count_requested=' . $effective->{additional_track_count}
-        . ' max_tracks_per_gap=1 endpoints=disabled'
-    ) if $effective->{extension_mode} eq 'exact_count';
+        . ' max_tracks_per_gap=1 endpoints='
+        . ($built->{request}->{extension}->{allow_opening_track}
+            || $built->{request}->{extension}->{allow_closing_track}
+            ? 'enabled' : 'disabled')
+    ) if $effective->{extension_mode} eq 'exact_count'
+        || $effective->{extension_mode} eq 'target_count'
+        || $effective->{extension_mode} eq 'double_count';
     if (main::DEBUGLOG && $log->is_debug) {
         my $capability = $built->{capability};
         $log->debug(

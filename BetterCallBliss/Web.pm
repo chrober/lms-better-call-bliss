@@ -103,7 +103,7 @@ sub _form_from_params {
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
         lastfm_track_guidance_percent lastfm_artist_guidance_percent
-        max_added_tracks trigger_percent additional_track_count target_track_count output_mode output_name
+        max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
@@ -204,6 +204,7 @@ sub _result_view {
         ordering_policy => $job->{options}->{ordering_policy},
         preserve_order => $job->{options}->{ordering_policy} eq 'preserve_order' ? 1 : 0,
         extension_mode => $job->{options}->{extension_mode},
+        source_track_count => 0 + ($job->{track_count} || 0),
         variation_percent => $job->{options}->{variation_percent},
         generation_seed => $job->{options}->{generation_seed},
         lastfm_enabled => $job->{options}->{lastfm_enabled},
@@ -242,7 +243,13 @@ sub _result_view {
             $view->{automatic_extension} = 1
                 if $job->{options}->{extension_mode} eq 'automatic';
             $view->{exact_count_extension} = 1
-                if $job->{options}->{extension_mode} eq 'exact_count';
+                if $job->{options}->{extension_mode} eq 'exact_count'
+                    || $job->{options}->{extension_mode} eq 'target_count'
+                    || $job->{options}->{extension_mode} eq 'double_count';
+            $view->{target_count_extension} = 1
+                if $job->{options}->{extension_mode} eq 'target_count';
+            $view->{double_count_extension} = 1
+                if $job->{options}->{extension_mode} eq 'double_count';
             $view->{seed_growth_extension} = 1
                 if $job->{options}->{extension_mode} eq 'seed_growth';
             $view->{base_route_objective} = sprintf(

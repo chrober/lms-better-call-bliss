@@ -77,19 +77,23 @@ sub resolve_bridge_preview {
     my $preview = $artifact->{selection_preview} || {};
     my $mode = $job->{options}->{extension_mode} || '';
     my $ordering = $job->{options}->{ordering_policy} || '';
+    my $exact_like = $mode eq 'exact_count'
+        || $mode eq 'target_count'
+        || $mode eq 'double_count';
+    my $preview_mode = $exact_like ? 'exact_count' : $mode;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong source-order policy')
         unless ($artifact->{ordering_policy} || '') eq $ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong addition mode')
-        unless (($mode eq 'automatic' || $mode eq 'exact_count' || $mode eq 'seed_growth')
-            && ($preview->{mode} || '') eq $mode);
+        unless (($mode eq 'automatic' || $exact_like || $mode eq 'seed_growth')
+            && ($preview->{mode} || '') eq $preview_mode);
     _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
-        if $mode eq 'exact_count'
+        if $exact_like
             && (!exists $preview->{requested_added_tracks}
                 || $preview->{requested_added_tracks}
                     != $job->{options}->{additional_track_count});
     _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview omitted its feasibility state')
-        if $mode eq 'exact_count' && !exists $preview->{feasible};
-    if ($mode eq 'exact_count' && !$preview->{feasible}) {
+        if $exact_like && !exists $preview->{feasible};
+    if ($exact_like && !$preview->{feasible}) {
         my $infeasibility = $preview->{infeasibility} || {};
         my $code = $infeasibility->{code} || 'EXACT_COUNT_INFEASIBLE';
         my $requested = 0 + ($preview->{requested_added_tracks} || 0);
@@ -185,7 +189,7 @@ sub resolve_bridge_preview {
     if ($mode eq 'automatic') {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The automatic preview exceeded its bridge budget')
             if @bridges > ($preview->{max_added_tracks} || 0);
-    } elsif ($mode eq 'exact_count') {
+    } elsif ($exact_like) {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
             unless defined $preview->{requested_added_tracks}
                 && $preview->{requested_added_tracks}

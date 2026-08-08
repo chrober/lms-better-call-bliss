@@ -38,6 +38,7 @@ sub defaults {
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
         additional_track_count => 1,
+        bridge_target_track_count => 25,
         target_track_count => 25,
         output_mode => 'create_copy',
         output_name => '',
@@ -72,10 +73,12 @@ sub normalize {
 
     $options->{extension_mode} = $input->{extension_mode}
         if defined $input->{extension_mode};
-    die "Extension mode must be Reorder only, Extend automatically, Add exactly N tracks, or Grow from these seeds"
+    die "Extension mode must be Reorder only, Extend automatically, Add exactly N tracks, Reach target track count, Double track count, or Grow from these seeds"
         unless $options->{extension_mode} eq 'none'
             || $options->{extension_mode} eq 'automatic'
             || $options->{extension_mode} eq 'exact_count'
+            || $options->{extension_mode} eq 'target_count'
+            || $options->{extension_mode} eq 'double_count'
             || $options->{extension_mode} eq 'seed_growth';
     $options->{ordering_policy} = 'optimize_order'
         if $options->{extension_mode} eq 'seed_growth';
@@ -135,6 +138,10 @@ sub normalize {
     $options->{additional_track_count} = _integer(
         $input, 'additional_track_count', 1, 100,
         $options->{additional_track_count},
+    );
+    $options->{bridge_target_track_count} = _integer(
+        $input, 'bridge_target_track_count', 3, 500,
+        $options->{bridge_target_track_count},
     );
     $options->{target_track_count} = _integer(
         $input, 'target_track_count', 3, 500,

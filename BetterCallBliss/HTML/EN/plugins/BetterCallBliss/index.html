@@ -123,10 +123,12 @@
         <option value="none"[% IF bettercallbliss_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
         <option value="automatic"[% IF bettercallbliss_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
         <option value="exact_count"[% IF bettercallbliss_form.extension_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks [Working]</option>
+        <option value="target_count"[% IF bettercallbliss_form.extension_mode == 'target_count' %] selected[% END %]>Reach target track count [Working]</option>
+        <option value="double_count"[% IF bettercallbliss_form.extension_mode == 'double_count' %] selected[% END %]>Double track count [Working]</option>
         <option value="seed_growth"[% IF bettercallbliss_form.extension_mode == 'seed_growth' %] selected[% END %]>Grow from these seeds to a target size [Working]</option>
         <option disabled>One bridge per source-track transition [Not connected yet]</option>
-        <option disabled>Reach target length [Not connected yet]</option>
-        <option disabled>Double playlist length [Not connected yet]</option>
+        <option disabled>Reach target duration [Not connected yet]</option>
+        <option disabled>Double duration [Not connected yet]</option>
       </select>
     </div>
     <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without requesting any possible additions would leave the playlist unchanged. Choose an addition mode with a non-zero target.</div>
@@ -167,8 +169,25 @@
       <input type="number" min="1" max="100" class="stdedit sliderInput_1_100_1" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
       <span class="bea-disabled" id="exact_count_limit">Choose a playlist to see the current limit.</span>
     </div>
-    <p class="bea-note">This connected slice inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
+    <p class="bea-note">This mode inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
     <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
+  </fieldset>
+
+  <fieldset class="bea-section bea-mode-section" id="target_count_fields">
+    <legend>Target track count</legend>
+    <p class="bea-note">Used only by Reach target track count. Enter the desired final number of tracks. Better Call Bliss calculates the required additions and may enable an opening or closing slot only when the internal gaps alone cannot reach the target.</p>
+    <div class="bea-row">
+      <label for="bridge_target_track_count">Final track count</label>
+      <input type="number" min="3" max="500" class="stdedit sliderInput_3_500_1" name="bridge_target_track_count" id="bridge_target_track_count" value="[% bettercallbliss_form.bridge_target_track_count %]" required>
+      <span class="bea-disabled" id="target_count_limit">Choose a playlist to see the current target range.</span>
+    </div>
+    <div id="target_count_warning" class="bea-warning bea-hidden"></div>
+  </fieldset>
+
+  <fieldset class="bea-section bea-mode-section" id="double_count_fields">
+    <legend>Double track count</legend>
+    <p class="bea-note">Used only by Double track count. This preset asks for one added local track per original source track, yielding exactly twice as many tracks. If internal gaps provide only S - 1 slots, Better Call Bliss may also use one opening or closing slot.</p>
+    <p class="bea-note" id="double_count_summary">Choose a playlist to see the calculated final size.</p>
   </fieldset>
 
   <fieldset class="bea-section" id="variation_fields">
@@ -278,6 +297,13 @@
     var exactCount = document.getElementById('additional_track_count');
     var exactLimit = document.getElementById('exact_count_limit');
     var exactWarning = document.getElementById('exact_count_warning');
+    var targetFields = document.getElementById('target_count_fields');
+    var targetInputs = targetFields.querySelectorAll('input');
+    var bridgeTarget = document.getElementById('bridge_target_track_count');
+    var targetLimit = document.getElementById('target_count_limit');
+    var targetWarning = document.getElementById('target_count_warning');
+    var doubleFields = document.getElementById('double_count_fields');
+    var doubleSummary = document.getElementById('double_count_summary');
     var growthFields = document.getElementById('seed_growth_fields');
     var growthInputs = growthFields.querySelectorAll('input');
     var growthTarget = document.getElementById('target_track_count');
@@ -324,6 +350,8 @@
       var noAdditions = extension.value === 'none';
       var automatic = extension.value === 'automatic';
       var exact = extension.value === 'exact_count';
+      var targetCount = extension.value === 'target_count';
+      var doubleCount = extension.value === 'double_count';
       var growth = extension.value === 'seed_growth';
       var additions = !noAdditions;
       if (growth && ordering.value !== 'optimize_order') {
@@ -337,7 +365,10 @@
         10
       );
       var maximumExact = Math.max(0, sourceCount - 1);
+      var maximumTargetAdditions = sourceCount > 0 ? maximumExact + 2 : 0;
+      var maximumTarget = sourceCount + maximumTargetAdditions;
       var requestedExact = parseInt(exactCount.value || '0', 10);
+      var requestedBridgeTarget = parseInt(bridgeTarget.value || '0', 10);
       var requestedTarget = parseInt(growthTarget.value || '0', 10);
       var zeroAutomaticBudget = automatic
         && parseInt(maximumAdditions.value || '0', 10) === 0;
@@ -345,6 +376,8 @@
         && (noAdditions || zeroAutomaticBudget);
       var invalidExact = exact && sourceCount > 0
         && (requestedExact < 1 || requestedExact > maximumExact);
+      var invalidTarget = targetCount && sourceCount > 0
+        && (requestedBridgeTarget <= sourceCount || requestedBridgeTarget > maximumTarget);
       var invalidGrowth = growth && sourceCount > 0
         && requestedTarget <= sourceCount;
 
@@ -355,13 +388,28 @@
       var exactSlider = companionSlider(exactCount);
       if (exactSlider) exactSlider.max = exactCount.max;
       exactLimit.textContent = sourceCount > 0
-        ? 'Current limit: ' + maximumExact + ' (one per transition); final size: '
+        ? 'Current limit: ' + maximumExact + ' internal additions; final size: '
           + (sourceCount + (requestedExact > 0 ? requestedExact : 0)) + '.'
         : 'Choose a playlist to see the current limit.';
       exactWarning.textContent = invalidExact
-        ? 'This playlist has ' + maximumExact + ' internal transitions, so the current exact-count workflow cannot add ' + requestedExact + ' tracks.'
+        ? 'This playlist has ' + maximumExact + ' internal transitions, so Add exactly N cannot add ' + requestedExact + ' tracks.'
         : '';
       setVisible(exactWarning, invalidExact);
+      bridgeTarget.max = maximumTarget || 500;
+      var targetSlider = companionSlider(bridgeTarget);
+      if (targetSlider) targetSlider.max = bridgeTarget.max;
+      var targetAdditions = requestedBridgeTarget - sourceCount;
+      targetLimit.textContent = sourceCount > 0
+        ? 'Current target range: ' + (sourceCount + 1) + ' to ' + maximumTarget
+          + ' tracks; current request adds ' + (targetAdditions > 0 ? targetAdditions : 0) + '.'
+        : 'Choose a playlist to see the current target range.';
+      targetWarning.textContent = invalidTarget
+        ? 'Choose a final track count greater than ' + sourceCount + ' and no more than ' + maximumTarget + ' for this playlist.'
+        : '';
+      setVisible(targetWarning, invalidTarget);
+      doubleSummary.textContent = sourceCount > 0
+        ? sourceCount + ' source tracks + ' + sourceCount + ' additions = ' + (2 * sourceCount) + ' tracks.'
+        : 'Choose a playlist to see the calculated final size.';
       growthCount.textContent = sourceCount > 0 && requestedTarget > sourceCount
         ? sourceCount + ' seeds + ' + (requestedTarget - sourceCount)
           + ' additions = ' + requestedTarget + ' tracks.'
@@ -370,7 +418,7 @@
         ? 'Choose a final size greater than the ' + sourceCount + ' source tracks.'
         : '';
       setVisible(growthWarning, invalidGrowth);
-      submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidGrowth;
+      submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidTarget || invalidGrowth;
 
       var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
       setVisible(lastFmFields, additions);
@@ -388,6 +436,9 @@
       setInputsReadOnly(automaticInputs, !automatic);
       setVisible(exactFields, exact);
       setInputsReadOnly(exactInputs, !exact);
+      setVisible(targetFields, targetCount);
+      setInputsReadOnly(targetInputs, !targetCount);
+      setVisible(doubleFields, doubleCount);
       setVisible(growthFields, growth);
       setInputsReadOnly(growthInputs, !growth);
       setVisible(learnedPercentRow, algorithm.value === 'adaptive');
@@ -399,6 +450,7 @@
     algorithm.addEventListener('change', synchronizeControls);
     maximumAdditions.addEventListener('input', synchronizeControls);
     exactCount.addEventListener('input', synchronizeControls);
+    bridgeTarget.addEventListener('input', synchronizeControls);
     growthTarget.addEventListener('input', synchronizeControls);
     if (lastFmEnabled) lastFmEnabled.addEventListener('change', synchronizeControls);
     synchronizeControls();
@@ -440,7 +492,13 @@
           </ul>
         </details>
       [% ELSIF bettercallbliss_job.exact_count_extension %]
-        <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Added exactly [% bettercallbliss_job.requested_added_tracks %] track[% IF bettercallbliss_job.requested_added_tracks != 1 %]s[% END %]; final size [% bettercallbliss_job.final_track_count %]. Base-route objective [% bettercallbliss_job.base_route_objective %].</div>
+        [% IF bettercallbliss_job.double_count_extension %]
+          <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Doubled [% bettercallbliss_job.source_track_count %] source tracks to [% bettercallbliss_job.final_track_count %] tracks by adding [% bettercallbliss_job.requested_added_tracks %]. Base-route objective [% bettercallbliss_job.base_route_objective %].</div>
+        [% ELSIF bettercallbliss_job.target_count_extension %]
+          <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Reached target size [% bettercallbliss_job.final_track_count %] by adding exactly [% bettercallbliss_job.requested_added_tracks %] track[% IF bettercallbliss_job.requested_added_tracks != 1 %]s[% END %]. Base-route objective [% bettercallbliss_job.base_route_objective %].</div>
+        [% ELSE %]
+          <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Added exactly [% bettercallbliss_job.requested_added_tracks %] track[% IF bettercallbliss_job.requested_added_tracks != 1 %]s[% END %]; final size [% bettercallbliss_job.final_track_count %]. Base-route objective [% bettercallbliss_job.base_route_objective %].</div>
+        [% END %]
         <p class="bea-note">The bounded search found up to [% bettercallbliss_job.maximum_additions_found %] feasible additions; its structural upper bound was [% bettercallbliss_job.structural_upper_bound %]. Evidence mode: [% bettercallbliss_job.semantic_mode | html %].</p>
       [% ELSIF bettercallbliss_job.automatic_extension %]
         <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Added [% bettercallbliss_job.added_track_count %] of at most [% bettercallbliss_job.max_added_tracks %] tracks; final size [% bettercallbliss_job.final_track_count %]. Base-route objective [% bettercallbliss_job.base_route_objective %].</div>
@@ -653,7 +711,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional ListenBrainz evidence, cancellation, persistent reports, player queue as an input source, and saved per-job reports. Player queue output targets and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
+  <p>One-per-transition presets, duration-based target/double presets, multi-track gaps, explicit opening/closing additions, forest routing, optional ListenBrainz evidence, cancellation, persistent reports, player queue as an input source, and saved per-job reports. Track-count target/double presets, player queue output targets, Static routing, and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]
