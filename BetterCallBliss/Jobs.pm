@@ -582,6 +582,56 @@ sub create_copy {
     return $result;
 }
 
+sub overwrite_source {
+    my ($job_id, $confirmed) = @_;
+    my $job = get($job_id);
+    die "JOB_NOT_FOUND: Preview job is no longer available\n" unless $job;
+    die "PREVIEW_NOT_COMPLETE: Wait for the preview to complete\n"
+        unless $job->{state} eq 'completed' && $job->{artifact};
+    die "OUTPUT_MODE_MISMATCH: This job requested Create optimized copy\n"
+        unless $job->{options}->{output_mode} eq 'overwrite_source';
+    die "OVERWRITE_NOT_CONFIRMED: Confirm that the source playlist should be overwritten\n"
+        unless $confirmed;
+    return $job->{persistence} if $job->{write_state}
+        && $job->{write_state} eq 'completed' && $job->{persistence};
+    die "OVERWRITE_IN_PROGRESS: Playlist overwrite is already running\n"
+        if $job->{write_state} && $job->{write_state} eq 'running';
+
+    $job->{write_state} = 'running';
+    $job->{write_stage} = 'Overwriting';
+    $log->info(
+        "job=$job_id stage=Overwriting output_mode=overwrite_source"
+    );
+    my $result;
+    eval {
+        $result = Plugins::BetterCallBliss::PlaylistWriter::overwrite_source($job);
+    };
+    if ($@ || !$result) {
+        my $error = $@ || 'OVERWRITE_FAILED: Unknown playlist overwrite failure';
+        $error =~ s/\s+/ /g;
+        $error = substr($error, 0, 500);
+        my ($code, $message) = $error =~ /^([A-Z_]+):\s*(.*)$/;
+        $job->{write_state} = 'failed';
+        $job->{write_stage} = 'Overwrite failed';
+        $job->{write_error_code} = $code || 'OVERWRITE_FAILED';
+        $job->{write_error} = $message || $error;
+        $log->error(
+            "job=$job_id stage=OverwriteFailed code=$job->{write_error_code}"
+            . " message=$job->{write_error}"
+        );
+        die "$job->{write_error_code}: $job->{write_error}\n";
+    }
+
+    $job->{write_state} = 'completed';
+    $job->{write_stage} = 'Overwritten and verified';
+    $job->{persistence} = $result;
+    $log->info(
+        "job=$job_id stage=OverwrittenAndVerified"
+        . " playlist_id=$result->{playlist_id}"
+        . " tracks=$result->{track_count}"
+    );
+    return $result;
+}
 sub shutdown {
     for my $job (values %jobs) {
         if ($job->{process} && $job->{process}->alive) {

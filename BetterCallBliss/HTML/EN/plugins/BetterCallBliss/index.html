@@ -48,18 +48,19 @@
     </div>
   [% ELSIF bettercallbliss_job.write_state == 'completed' %]
     <div class="bea-ok">
-      <b>Success.</b> Created and verified
+      <b>Success.</b>
+      [% IF bettercallbliss_job.persistence.output_mode == 'overwrite_source' %]Overwritten and verified[% ELSE %]Created and verified[% END %]
       "[% bettercallbliss_job.persistence.title | html %]"
       with [% bettercallbliss_job.persistence.track_count %] tracks.
     </div>
   [% ELSIF bettercallbliss_job.write_state == 'failed' %]
     <div class="bea-error">
-      <b>Copy not created - [% bettercallbliss_job.write_error_code | html %]:</b>
+      <b>[% IF bettercallbliss_job.output_mode == 'overwrite_source' %]Overwrite failed[% ELSE %]Copy not created[% END %] - [% bettercallbliss_job.write_error_code | html %]:</b>
       [% bettercallbliss_job.write_error | html %]
-      The source and any existing copy were left unchanged.
+      [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]The source and any existing copy were left unchanged.[% END %]
     </div>
   [% ELSE %]
-    <div class="bea-ok"><b>Preview completed successfully.</b> Review the result below, then create the optimized copy if it looks right.</div>
+    <div class="bea-ok"><b>Preview completed successfully.</b> Review the result below, then accept the selected output if it looks right.</div>
   [% END %]
 [% END %]
 
@@ -251,7 +252,7 @@
 
   <fieldset class="bea-section">
     <legend>Output after accepting a preview</legend>
-    <p class="bea-note">Create optimized copy is connected after a successful preview. Overwrite source remains unavailable.</p>
+    <p class="bea-note">Choose what happens after you accept a successful preview. Creating a copy is safest; overwriting the source requires a separate confirmation after the preview.</p>
     <div class="bea-row">
       <label><input type="radio" name="output_mode" value="create_copy"[% IF bettercallbliss_form.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
     </div>
@@ -262,7 +263,7 @@
     <p class="bea-note">Leave blank to generate a name from the selected playlist only when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
     <div class="bea-row">
       <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
-      <span class="bea-disabled">Will require explicit confirmation once writing is connected.</span>
+      <span class="bea-disabled">Requires explicit confirmation after preview; the source playlist file and LMS catalog order are replaced.</span>
     </div>
   </fieldset>
 
@@ -391,7 +392,7 @@
     <legend>Preview result</legend>
     <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - [% bettercallbliss_job.stage | html %]</p>
     <p>Job ID: [% bettercallbliss_job.id | html %]</p>
-    <p>Requested output: [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source <b>[Not connected yet]</b>[% ELSIF bettercallbliss_job.output_name_generated && !bettercallbliss_job.output_name %]create copy with an automatic name when saved[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
+    <p>Requested output: [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source playlist[% ELSIF bettercallbliss_job.output_name_generated && !bettercallbliss_job.output_name %]create copy with an automatic name when saved[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
     <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
     [% IF bettercallbliss_job.state == 'running' %]
       <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]">Refresh result now</a></p>
@@ -478,7 +479,7 @@
       [% END %]
       [% IF bettercallbliss_job.write_state == 'completed' %]
         <div class="bea-ok">
-          Created and verified saved playlist
+          [% IF bettercallbliss_job.persistence.output_mode == 'overwrite_source' %]Overwritten and verified saved playlist[% ELSE %]Created and verified saved playlist[% END %]
           <b>[% bettercallbliss_job.persistence.title | html %]</b>
           ([% bettercallbliss_job.persistence.track_count %] tracks,
           LMS ID [% bettercallbliss_job.persistence.playlist_id %]).
@@ -487,7 +488,7 @@
         <div class="bea-error">
           <b>[% bettercallbliss_job.write_error_code | html %]</b>:
           [% bettercallbliss_job.write_error | html %]
-          No incomplete copy remains.
+          [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]No incomplete copy remains.[% END %]
         </div>
       [% ELSIF bettercallbliss_job.output_mode == 'create_copy' %]
         <form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
@@ -496,7 +497,14 @@
         </form>
         <p class="bea-note">Creates a new playlist; the source remains unchanged. Name collisions fail safely.</p>
       [% ELSE %]
-        <p class="bea-warning">Overwrite source is not connected yet. No playlist can be written for this result.</p>
+        <form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
+          <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
+          <div class="bea-warning">
+            <label><input type="checkbox" name="confirm_overwrite" value="1"> I understand this will replace the existing saved playlist.</label>
+          </div>
+          <input class="inputbutton" type="submit" name="overwrite_source" value="Overwrite existing playlist">
+        </form>
+        <p class="bea-note">Replaces the source playlist file and LMS catalog order after verifying the generated M3U. If publication fails mid-way, Better Call Bliss attempts to restore the original file.</p>
       [% END %]
     [% END %]
   </fieldset>
@@ -504,7 +512,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional ListenBrainz evidence, cancellation, persistent reports, and playlist overwrite. Last.fm track and artist evidence through LastMix is connected and failure-tolerant.</p>
+  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional ListenBrainz evidence, cancellation, persistent reports, and player queue output targets. Last.fm track and artist evidence through LastMix is connected and failure-tolerant.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

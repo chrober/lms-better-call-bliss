@@ -1,10 +1,12 @@
 package Plugins::BetterCallBliss::PlaylistWriter;
 
 use strict;
+use Cwd qw(abs_path);
 use Errno qw(EEXIST);
 use Fcntl qw(O_CREAT O_EXCL O_WRONLY);
 use File::Copy qw(copy);
-use File::Spec::Functions qw(catfile);
+use File::Spec ();
+use File::Spec::Functions qw(abs2rel catfile);
 use Scalar::Util qw(blessed);
 use Slim::Formats::Playlists::M3U;
 use Slim::Schema;
@@ -233,4 +235,118 @@ sub create_copy {
     };
 }
 
+sub overwrite_source {
+    my $job = shift;
+    _fail('INVALID_JOB', 'A completed preview is required')
+        unless $job && $job->{state} eq 'completed' && $job->{artifact};
+
+    my $playlist = Slim::Schema->find('Playlist', $job->{playlist_id});
+    _fail('SOURCE_PLAYLIST_MISSING', 'The source playlist no longer exists')
+        unless blessed($playlist) && $playlist->can('setTracks');
+
+    my $source_url = eval { $playlist->url } || '';
+    _fail('SOURCE_PLAYLIST_NOT_FILE', 'Only file-backed saved playlists can be overwritten')
+        unless $source_url =~ /^file:/i;
+    my $source_path = Slim::Utils::Misc::pathFromFileURL($source_url);
+    $source_path = Slim::Utils::Unicode::utf8decode_locale($source_path || '');
+    _fail('SOURCE_PLAYLIST_MISSING', 'The source playlist file no longer exists')
+        unless length($source_path) && -f $source_path;
+
+    my $playlist_dir = Slim::Utils::Misc::getPlaylistDir();
+    _fail('PLAYLIST_DIR_MISSING', 'The LMS playlist folder is not configured')
+        unless $playlist_dir && -d $playlist_dir && -w $playlist_dir;
+    my $playlist_dir_abs = abs_path($playlist_dir);
+    my $source_abs = abs_path($source_path);
+    my $relative = defined $playlist_dir_abs && defined $source_abs
+        ? abs2rel($source_abs, $playlist_dir_abs) : '..';
+    _fail('SOURCE_PLAYLIST_OUTSIDE_DIR', 'Only playlists inside the LMS playlist folder can be overwritten')
+        if File::Spec->file_name_is_absolute($relative)
+            || $relative eq '..'
+            || $relative =~ /^\.\.(?:[\\\/]|$)/;
+    _fail('SOURCE_PLAYLIST_NOT_WRITABLE', 'The source playlist file is not writable')
+        unless -w $source_path;
+
+    my ($tracks, $urls) = _resolved_tracks($job);
+    my $temp_path = catfile(
+        $playlist_dir, '.bettercallbliss-' . $job->{id} . '-' . $$ . '.overwrite.tmp',
+    );
+    my $backup_path = catfile(
+        $playlist_dir, '.bettercallbliss-' . $job->{id} . '-' . $$ . '.backup',
+    );
+    _fail('TEMP_COLLISION', 'The private output temporary file already exists')
+        if -e $temp_path || -e $backup_path;
+
+    my $catalog_updated;
+    my $ok = eval {
+        my $written = Slim::Formats::Playlists::M3U->write(
+            $urls, undef, $temp_path, 1,
+        );
+        _fail('WRITE_FAILED', 'The LMS M3U writer could not create the overwrite file')
+            unless defined $written && -f $temp_path && -s $temp_path;
+
+        my @serialized = Slim::Formats::Playlists::M3U->read(
+            $temp_path, undef,
+            Slim::Utils::Misc::fileURLFromPath($temp_path),
+        );
+        my @serialized_urls = map {
+            blessed($_) && $_->can('url') ? $_->url : ''
+        } @serialized;
+        _fail('SERIALIZATION_MISMATCH', 'Temporary M3U order did not verify')
+            unless _same_urls($urls, \@serialized_urls);
+
+        copy($source_path, $backup_path)
+            or _fail('BACKUP_FAILED', "Could not back up source playlist: $!");
+        rename($temp_path, $source_path)
+            or _fail('PUBLISH_FAILED', "Could not replace source playlist: $!");
+
+        $playlist->setTracks($tracks);
+        $playlist->update;
+        Slim::Schema->forceCommit;
+        $catalog_updated = 1;
+
+        my @catalog_urls = map { $_->url } $playlist->tracks;
+        _fail('CATALOG_VERIFY_FAILED', 'LMS catalog order did not verify')
+            unless _same_urls($urls, \@catalog_urls);
+
+        my @final_tracks = Slim::Formats::Playlists::M3U->read(
+            $source_path, undef, $source_url,
+        );
+        my @final_urls = map {
+            blessed($_) && $_->can('url') ? $_->url : ''
+        } @final_tracks;
+        _fail('FILE_VERIFY_FAILED', 'Overwritten M3U order did not verify')
+            unless _same_urls($urls, \@final_urls);
+        1;
+    };
+    my $error = $@;
+
+    unless ($ok) {
+        unlink $temp_path if -e $temp_path;
+        if (-e $backup_path) {
+            copy($backup_path, $source_path);
+            unlink $backup_path;
+        }
+        if ($catalog_updated) {
+            eval {
+                my @restored = Slim::Formats::Playlists::M3U->read(
+                    $source_path, undef, $source_url,
+                );
+                $playlist->setTracks(\@restored);
+                $playlist->update;
+                Slim::Schema->forceCommit;
+            };
+        }
+        die $error || "OVERWRITE_FAILED: Unknown playlist overwrite failure\n";
+    }
+
+    unlink $backup_path if -e $backup_path;
+    return {
+        playlist_id => 0 + $playlist->id,
+        title => $job->{playlist_title} || $playlist->title || $playlist->name,
+        url => $source_url,
+        path => $source_path,
+        track_count => scalar @$urls,
+        output_mode => 'overwrite_source',
+    };
+}
 1;
