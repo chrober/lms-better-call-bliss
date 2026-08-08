@@ -119,6 +119,10 @@ sub _resolved_tracks {
     return (\@tracks, \@urls);
 }
 
+sub resolved_tracks_for_job {
+    return _resolved_tracks(@_);
+}
+
 sub create_copy {
     my ($job, $requested_name, $automatic_name) = @_;
     _fail('INVALID_JOB', 'A completed preview is required')

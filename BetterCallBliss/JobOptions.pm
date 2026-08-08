@@ -40,6 +40,9 @@ sub defaults {
         output_mode => 'create_copy',
         output_name => '',
         output_name_generated => 0,
+        queue_player_id => '',
+        queue_action => 'replace',
+        queue_start_playback => 0,
     };
 }
 
@@ -142,9 +145,25 @@ sub normalize {
                     && $options->{max_added_tracks} == 0));
     $options->{output_mode} = $input->{output_mode}
         if defined $input->{output_mode};
-    die "Output mode must be Create optimized copy or Overwrite source"
+    die "Output mode must be Create optimized copy, Overwrite source, or Send to player queue"
         unless $options->{output_mode} eq 'create_copy'
-            || $options->{output_mode} eq 'overwrite_source';
+            || $options->{output_mode} eq 'overwrite_source'
+            || $options->{output_mode} eq 'player_queue';
+
+    $options->{queue_player_id} = $input->{queue_player_id}
+        if defined $input->{queue_player_id};
+    $options->{queue_player_id} =~ s/^\s+|\s+$//g;
+    $options->{queue_action} = $input->{queue_action}
+        if defined $input->{queue_action};
+    die "Queue action must be Replace queue, Append to queue, or Play next"
+        unless $options->{queue_action} eq 'replace'
+            || $options->{queue_action} eq 'append'
+            || $options->{queue_action} eq 'play_next';
+    $options->{queue_start_playback} = $input->{queue_start_playback} ? 1 : 0
+        if exists $input->{queue_start_playback};
+    die "Choose a player for queue output"
+        if $options->{output_mode} eq 'player_queue'
+            && !length($options->{queue_player_id} || '');
 
     if (defined $input->{output_name}) {
         my $name = $input->{output_name};

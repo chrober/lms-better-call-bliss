@@ -49,15 +49,19 @@
   [% ELSIF bettercallbliss_job.write_state == 'completed' %]
     <div class="bea-ok">
       <b>Success.</b>
-      [% IF bettercallbliss_job.persistence.output_mode == 'overwrite_source' %]Overwritten and verified[% ELSE %]Created and verified[% END %]
-      "[% bettercallbliss_job.persistence.title | html %]"
-      with [% bettercallbliss_job.persistence.track_count %] tracks.
+      [% IF bettercallbliss_job.persistence.output_mode == 'player_queue' %]
+        Sent [% bettercallbliss_job.persistence.track_count %] tracks to [% bettercallbliss_job.persistence.player_name | html %].
+      [% ELSIF bettercallbliss_job.persistence.output_mode == 'overwrite_source' %]
+        Overwritten and verified "[% bettercallbliss_job.persistence.title | html %]" with [% bettercallbliss_job.persistence.track_count %] tracks.
+      [% ELSE %]
+        Created and verified "[% bettercallbliss_job.persistence.title | html %]" with [% bettercallbliss_job.persistence.track_count %] tracks.
+      [% END %]
     </div>
   [% ELSIF bettercallbliss_job.write_state == 'failed' %]
     <div class="bea-error">
-      <b>[% IF bettercallbliss_job.output_mode == 'overwrite_source' %]Overwrite failed[% ELSE %]Copy not created[% END %] - [% bettercallbliss_job.write_error_code | html %]:</b>
+      <b>[% IF bettercallbliss_job.output_mode == 'player_queue' %]Queue output failed[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]Overwrite failed[% ELSE %]Copy not created[% END %] - [% bettercallbliss_job.write_error_code | html %]:</b>
       [% bettercallbliss_job.write_error | html %]
-      [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]The source and any existing copy were left unchanged.[% END %]
+      [% IF bettercallbliss_job.output_mode == 'player_queue' %]The generated preview remains available; the selected player queue may be unchanged or partially changed depending on where LMS rejected the queue command.[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]The source and any existing copy were left unchanged.[% END %]
     </div>
   [% ELSE %]
     <div class="bea-ok"><b>Preview completed successfully.</b> Review the result below, then accept the selected output if it looks right.</div>
@@ -265,6 +269,35 @@
       <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
       <span class="bea-disabled">Requires explicit confirmation after preview; the source playlist file and LMS catalog order are replaced.</span>
     </div>
+    <div class="bea-row">
+      <label><input type="radio" name="output_mode" value="player_queue"[% IF bettercallbliss_form.output_mode == 'player_queue' %] checked[% END %]> Send to player queue</label>
+      <span class="bea-disabled">Sends the accepted preview to a selected player instead of saving a playlist.</span>
+    </div>
+    <div id="player_queue_fields">
+      <div class="bea-row">
+        <label for="queue_player_id">Player</label>
+        <select name="queue_player_id" id="queue_player_id">
+          <option value="">Choose a player...</option>
+          [% FOREACH player = bettercallbliss_players %]
+            <option value="[% player.id | html %]"[% IF bettercallbliss_form.queue_player_id == player.id %] selected[% END %]>[% player.name | html %][% UNLESS player.power %] (off)[% END %]</option>
+          [% END %]
+        </select>
+      </div>
+      <div class="bea-row">
+        <label for="queue_action">Queue action</label>
+        <select name="queue_action" id="queue_action">
+          <option value="replace"[% IF bettercallbliss_form.queue_action == 'replace' %] selected[% END %]>Replace queue</option>
+          <option value="append"[% IF bettercallbliss_form.queue_action == 'append' %] selected[% END %]>Append to queue</option>
+          <option value="play_next"[% IF bettercallbliss_form.queue_action == 'play_next' %] selected[% END %]>Play next</option>
+        </select>
+      </div>
+      <div class="bea-row">
+        <label for="queue_start_playback">Start playback</label>
+        <input type="checkbox" name="queue_start_playback" id="queue_start_playback" value="1"[% IF bettercallbliss_form.queue_start_playback %] checked[% END %]>
+      </div>
+      <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Append adds the result at the end. Play next inserts it after the current song.</p>
+      <div id="queue_output_warning" class="bea-warning bea-hidden">Choose a player before running the preview for queue output.</div>
+    </div>
   </fieldset>
 
   <input class="inputbutton" id="run_preview" type="submit" name="run_preview" value="Run read-only preview"[% IF !bettercallbliss_capability.ready %] disabled[% END %]>
@@ -295,7 +328,18 @@
     var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
     var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
     var submit = document.getElementById('run_preview');
+    var outputModes = document.querySelectorAll('input[name="output_mode"]');
+    var queueFields = document.getElementById('player_queue_fields');
+    var queuePlayer = document.getElementById('queue_player_id');
+    var queueWarning = document.getElementById('queue_output_warning');
     var capabilityReady = !submit.disabled;
+
+    function selectedOutputMode() {
+      for (var modeIndex = 0; modeIndex < outputModes.length; modeIndex++) {
+        if (outputModes[modeIndex].checked) return outputModes[modeIndex].value;
+      }
+      return 'create_copy';
+    }
 
     function synchronizeControls() {
       var preserve = ordering.value === 'preserve_order';
@@ -324,6 +368,8 @@
         && (requestedExact < 1 || requestedExact > maximumExact);
       var invalidGrowth = growth && sourceCount > 0
         && requestedTarget <= sourceCount;
+      var queueSelected = selectedOutputMode() === 'player_queue';
+      var invalidQueue = queueSelected && queuePlayer && !queuePlayer.value;
 
       noneOption.disabled = preserve;
       ordering.disabled = growth;
@@ -345,7 +391,9 @@
         ? 'Choose a final size greater than the ' + sourceCount + ' source tracks.'
         : '';
       growthWarning.classList.toggle('bea-hidden', !invalidGrowth);
-      submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidGrowth;
+      if (queueFields) queueFields.classList.toggle('bea-disabled', !queueSelected);
+      if (queueWarning) queueWarning.classList.toggle('bea-hidden', !invalidQueue);
+      submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidGrowth || invalidQueue;
       if (lastFmTrackGuidance) {
         lastFmTrackGuidance.readOnly = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
       }
@@ -383,6 +431,10 @@
     exactCount.addEventListener('input', synchronizeControls);
     growthTarget.addEventListener('input', synchronizeControls);
     if (lastFmEnabled) lastFmEnabled.addEventListener('change', synchronizeControls);
+    if (queuePlayer) queuePlayer.addEventListener('change', synchronizeControls);
+    for (var outputIndex = 0; outputIndex < outputModes.length; outputIndex++) {
+      outputModes[outputIndex].addEventListener('change', synchronizeControls);
+    }
     synchronizeControls();
   }());
 </script>
@@ -392,7 +444,7 @@
     <legend>Preview result</legend>
     <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - [% bettercallbliss_job.stage | html %]</p>
     <p>Job ID: [% bettercallbliss_job.id | html %]</p>
-    <p>Requested output: [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source playlist[% ELSIF bettercallbliss_job.output_name_generated && !bettercallbliss_job.output_name %]create copy with an automatic name when saved[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
+    <p>Requested output: [% IF bettercallbliss_job.output_mode == 'player_queue' %]send to player queue [% bettercallbliss_job.queue_player_name | html %] ([% IF bettercallbliss_job.queue_action == 'replace' %]replace queue[% ELSIF bettercallbliss_job.queue_action == 'append' %]append to queue[% ELSE %]play next[% END %]; [% IF bettercallbliss_job.queue_start_playback %]start playback[% ELSE %]do not start playback[% END %])[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source playlist[% ELSIF bettercallbliss_job.output_name_generated && !bettercallbliss_job.output_name %]create copy with an automatic name when saved[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
     <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
     [% IF bettercallbliss_job.state == 'running' %]
       <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]">Refresh result now</a></p>
@@ -479,17 +531,33 @@
       [% END %]
       [% IF bettercallbliss_job.write_state == 'completed' %]
         <div class="bea-ok">
-          [% IF bettercallbliss_job.persistence.output_mode == 'overwrite_source' %]Overwritten and verified saved playlist[% ELSE %]Created and verified saved playlist[% END %]
-          <b>[% bettercallbliss_job.persistence.title | html %]</b>
-          ([% bettercallbliss_job.persistence.track_count %] tracks,
-          LMS ID [% bettercallbliss_job.persistence.playlist_id %]).
+          [% IF bettercallbliss_job.persistence.output_mode == 'player_queue' %]
+            Sent [% bettercallbliss_job.persistence.track_count %] tracks to <b>[% bettercallbliss_job.persistence.player_name | html %]</b>
+            ([% IF bettercallbliss_job.persistence.queue_action == 'replace' %]replace queue[% ELSIF bettercallbliss_job.persistence.queue_action == 'append' %]append to queue[% ELSE %]play next[% END %]; [% IF bettercallbliss_job.persistence.started_playback %]started playback[% ELSE %]did not start playback[% END %]).
+          [% ELSIF bettercallbliss_job.persistence.output_mode == 'overwrite_source' %]
+            Overwritten and verified saved playlist
+            <b>[% bettercallbliss_job.persistence.title | html %]</b>
+            ([% bettercallbliss_job.persistence.track_count %] tracks,
+            LMS ID [% bettercallbliss_job.persistence.playlist_id %]).
+          [% ELSE %]
+            Created and verified saved playlist
+            <b>[% bettercallbliss_job.persistence.title | html %]</b>
+            ([% bettercallbliss_job.persistence.track_count %] tracks,
+            LMS ID [% bettercallbliss_job.persistence.playlist_id %]).
+          [% END %]
         </div>
       [% ELSIF bettercallbliss_job.write_state == 'failed' %]
         <div class="bea-error">
           <b>[% bettercallbliss_job.write_error_code | html %]</b>:
           [% bettercallbliss_job.write_error | html %]
-          [% IF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]No incomplete copy remains.[% END %]
+          [% IF bettercallbliss_job.output_mode == 'player_queue' %]The generated preview remains available; retry after checking the selected player.[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]No incomplete copy remains.[% END %]
         </div>
+      [% ELSIF bettercallbliss_job.output_mode == 'player_queue' %]
+        <form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
+          <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
+          <input class="inputbutton" type="submit" name="send_to_queue" value="Send to player queue">
+        </form>
+        <p class="bea-note">Sends this preview to [% bettercallbliss_job.queue_player_name | html %]. Replace queue clears that player's current queue before adding the generated result.</p>
       [% ELSIF bettercallbliss_job.output_mode == 'create_copy' %]
         <form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
           <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
@@ -512,7 +580,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional ListenBrainz evidence, cancellation, persistent reports, and player queue output targets. Last.fm track and artist evidence through LastMix is connected and failure-tolerant.</p>
+  <p>One-per-transition and target-length presets, multi-track gaps, opening/closing additions, static and forest routing, optional ListenBrainz evidence, cancellation, persistent reports, player queue as an input source, and saved per-job reports. Player queue output targets and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

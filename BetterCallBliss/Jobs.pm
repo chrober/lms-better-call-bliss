@@ -17,6 +17,7 @@ use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::LastFmEvidence;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
+use Plugins::BetterCallBliss::QueueWriter;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $server_prefs = preferences('server');
@@ -235,6 +236,11 @@ sub start_reorder_preview {
             ? " target_tracks=$effective->{target_track_count}"
             : '')
         . " output_mode=$effective->{output_mode}"
+        . ($effective->{output_mode} eq 'player_queue'
+            ? " queue_player=$effective->{queue_player_id}"
+                . " queue_action=$effective->{queue_action}"
+                . " queue_start=$effective->{queue_start_playback}"
+            : '')
     );
     $log->info(
         'job=' . $job_id
@@ -629,6 +635,60 @@ sub overwrite_source {
         "job=$job_id stage=OverwrittenAndVerified"
         . " playlist_id=$result->{playlist_id}"
         . " tracks=$result->{track_count}"
+    );
+    return $result;
+}
+
+sub send_to_queue {
+    my $job_id = shift;
+    my $job = get($job_id);
+    die "JOB_NOT_FOUND: Preview job is no longer available\n" unless $job;
+    die "PREVIEW_NOT_COMPLETE: Wait for the preview to complete\n"
+        unless $job->{state} eq 'completed' && $job->{artifact};
+    die "OUTPUT_MODE_MISMATCH: This job requested a saved-playlist output\n"
+        unless $job->{options}->{output_mode} eq 'player_queue';
+    return $job->{persistence} if $job->{write_state}
+        && $job->{write_state} eq 'completed' && $job->{persistence};
+    die "QUEUE_SEND_IN_PROGRESS: Queue output is already running\n"
+        if $job->{write_state} && $job->{write_state} eq 'running';
+
+    $job->{write_state} = 'running';
+    $job->{write_stage} = 'Sending to player queue';
+    $log->info(
+        "job=$job_id stage=SendingToPlayerQueue"
+        . " player=$job->{options}->{queue_player_id}"
+        . " action=$job->{options}->{queue_action}"
+        . " start=$job->{options}->{queue_start_playback}"
+    );
+    my $result;
+    eval {
+        $result = Plugins::BetterCallBliss::QueueWriter::send_to_player($job);
+    };
+    if ($@ || !$result) {
+        my $error = $@ || 'QUEUE_SEND_FAILED: Unknown queue output failure';
+        $error =~ s/\s+/ /g;
+        $error = substr($error, 0, 500);
+        my ($code, $message) = $error =~ /^([A-Z_]+):\s*(.*)$/;
+        $job->{write_state} = 'failed';
+        $job->{write_stage} = 'Queue send failed';
+        $job->{write_error_code} = $code || 'QUEUE_SEND_FAILED';
+        $job->{write_error} = $message || $error;
+        $log->error(
+            "job=$job_id stage=QueueSendFailed code=$job->{write_error_code}"
+            . " message=$job->{write_error}"
+        );
+        die "$job->{write_error_code}: $job->{write_error}\n";
+    }
+
+    $job->{write_state} = 'completed';
+    $job->{write_stage} = 'Sent to player queue';
+    $job->{persistence} = $result;
+    $log->info(
+        "job=$job_id stage=SentToPlayerQueue"
+        . " player=$result->{player_id}"
+        . " action=$result->{queue_action}"
+        . " tracks=$result->{track_count}"
+        . " start=$result->{started_playback}"
     );
     return $result;
 }

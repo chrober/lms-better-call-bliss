@@ -3,6 +3,7 @@ package Plugins::BetterCallBliss::Web;
 use strict;
 use File::Basename qw(basename);
 use Slim::Schema;
+use Slim::Player::Client;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Misc;
@@ -54,6 +55,29 @@ sub _playlist_title {
     return $playlist->title || $playlist->name;
 }
 
+sub _players {
+    my @rows;
+    for my $player (Slim::Player::Client::clients()) {
+        next unless $player;
+        my $id = eval { $player->id } || '';
+        next unless length $id;
+        my $name = eval { $player->name } || $id;
+        push @rows, {
+            id => $id,
+            name => $name,
+            power => eval { $player->power } ? 1 : 0,
+        };
+    }
+    @rows = sort { lc($a->{name} || '') cmp lc($b->{name} || '') } @rows;
+    return \@rows;
+}
+
+sub _player_name {
+    my $player_id = shift || '';
+    return '' unless length $player_id;
+    my $player = Slim::Player::Client::getClient($player_id);
+    return $player ? (eval { $player->name } || $player_id) : $player_id;
+}
 sub _playlists {
     my @rows;
     for my $playlist (sort {
@@ -80,6 +104,7 @@ sub _form_from_params {
         variation_percent generation_seed lastfm_enabled
         lastfm_track_guidance_percent lastfm_artist_guidance_percent
         max_added_tracks trigger_percent additional_track_count target_track_count output_mode output_name
+        queue_player_id queue_action queue_start_playback
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }
@@ -172,6 +197,10 @@ sub _result_view {
         output_mode => $job->{options}->{output_mode},
         output_name => $job->{options}->{output_name},
         output_name_generated => $job->{options}->{output_name_generated} ? 1 : 0,
+        queue_player_id => $job->{options}->{queue_player_id},
+        queue_player_name => _player_name($job->{options}->{queue_player_id}),
+        queue_action => $job->{options}->{queue_action},
+        queue_start_playback => $job->{options}->{queue_start_playback},
         ordering_policy => $job->{options}->{ordering_policy},
         preserve_order => $job->{options}->{ordering_policy} eq 'preserve_order' ? 1 : 0,
         extension_mode => $job->{options}->{extension_mode},
@@ -341,6 +370,7 @@ sub handler {
         $form->{lastfm_enabled} = $params->{lastfm_enabled} ? 1 : 0;
     }
     my $playlists = _playlists();
+    my $players = _players();
 
     my $trimmed_output_name = $form->{output_name} || '';
     $trimmed_output_name =~ s/^\s+|\s+$//g;
@@ -372,6 +402,17 @@ sub handler {
         $error = $@;
         $error =~ s/\s+/ /g if $error;
         $error = undef if $job && ($job->{write_state} || '') eq 'failed';
+    } elsif ($params->{send_to_queue}) {
+        eval {
+            die "Preview job is no longer available"
+                unless $params->{job_id};
+            $job = Plugins::BetterCallBliss::Jobs::get($params->{job_id});
+            die "Preview job is no longer available" unless $job;
+            Plugins::BetterCallBliss::Jobs::send_to_queue($params->{job_id});
+        };
+        $error = $@;
+        $error =~ s/\s+/ /g if $error;
+        $error = undef if $job && ($job->{write_state} || '') eq 'failed';
     } elsif ($params->{run_preview}) {
         eval {
             die "Choose a saved playlist"
@@ -391,6 +432,7 @@ sub handler {
     $form = _form_from_job($job, $defaults) if $job;
 
     $params->{bettercallbliss_playlists} = $playlists;
+    $params->{bettercallbliss_players} = $players;
     $params->{bettercallbliss_form} = $form;
     $params->{bettercallbliss_defaults} = $defaults;
     $params->{bettercallbliss_capability} = $capability;
