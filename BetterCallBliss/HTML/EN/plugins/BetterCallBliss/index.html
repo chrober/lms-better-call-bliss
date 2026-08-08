@@ -159,6 +159,18 @@
     <p class="bea-note">Only transitions above this percentile are considered. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.</p>
   </fieldset>
 
+  <fieldset class="bea-section bea-mode-section" id="exact_count_fields">
+    <legend>Exact additions</legend>
+    <p class="bea-note">Used only by Add exactly N tracks. The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.</p>
+    <div class="bea-row">
+      <label for="additional_track_count">Exact number of additional tracks</label>
+      <input type="number" min="1" max="100" class="stdedit sliderInput_1_100_1" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
+      <span class="bea-disabled" id="exact_count_limit">Choose a playlist to see the current limit.</span>
+    </div>
+    <p class="bea-note">This connected slice inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
+    <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
+  </fieldset>
+
   <fieldset class="bea-section" id="variation_fields">
     <legend>Variation</legend>
     <div class="bea-row">
@@ -194,17 +206,6 @@
     <p class="bea-note">Better Call Bliss asks LastMix for tracks and artists related to the complete original playlist. For an individual gap, track evidence from both neighboring songs is strongest, followed by one neighbor, similar artists, and the original artist collection as fallback. These percentages set bounded influence, not ownership of the choice: candidates must still be local, repeat-safe, and pass Bliss acoustic checks. Zero ignores that evidence type. Network/API failures fall back to Bliss without failing the job.</p>
   </fieldset>
 
-  <fieldset class="bea-section bea-mode-section" id="exact_count_fields">
-    <legend>Exact additions</legend>
-    <p class="bea-note">Used only by Add exactly N tracks. The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.</p>
-    <div class="bea-row">
-      <label for="additional_track_count">Exact number of additional tracks</label>
-      <input type="number" min="1" max="100" class="stdedit sliderInput_1_100_1" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
-      <span class="bea-disabled" id="exact_count_limit">Choose a playlist to see the current limit.</span>
-    </div>
-    <p class="bea-note">This connected slice inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
-    <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
-  </fieldset>
 
   <fieldset class="bea-section" id="mixing_strategy_fields">
     <legend>Mixing strategy</legend>

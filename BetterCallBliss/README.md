@@ -1,12 +1,14 @@
 # Plugin package
 
-This directory contains the installable `0.14.0` Better Call Bliss plugin package. It contributes **Better Call Bliss** under Extras and retains informational playlist/track context entries. Lyrion's Applications/OPML adapter cannot expose a portable rich multi-field form, so the job editor uses the same classic-web mechanism as Virtual Library Creator.
+This directory contains the installable `0.14.1` Better Call Bliss plugin package. It contributes **Better Call Bliss** under Extras and retains informational playlist/track context entries. Lyrion's Applications/OPML adapter cannot expose a portable rich multi-field form, so the job editor uses the same classic-web mechanism as Virtual Library Creator.
 
 The repository-level overview lives at [chrober/lms-better-call-bliss](https://github.com/chrober/lms-better-call-bliss/). User-facing playlist modes and per-job options are described in the [strategy guide](https://github.com/chrober/lms-better-call-bliss/blob/main/ALGORITHMS.md), and the current working/partial/planned UX boundary is tracked in [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md).
 
 The connected paths select a real saved playlist and start a native reorder-only, automatic-extension, exact-count, or exact-target **Grow from these seeds** Preview. Seed growth keeps the full source playlist as its immutable relevance anchor. BlissMixer supplies defaults, but every job may override the mixing strategy, artist, album, and track repeat windows, context size, learned blend, route-search restart count, strategy-neutral Variation, and optional Last.fm similar-track and similar-artist guidance. Both Last.fm guidance controls default to 75%; they only rerank local, Bliss-qualified candidates. Setting an artist or album window to zero disables that constraint, allowing single-artist or single-album collections to be optimized.
 
 The plugin delegates acoustic scoring, route search, bridge selection, and seed-growth membership selection to an installed `bliss-playlist-optimizer` binary. Better Call Bliss owns Lyrion identity capture, optional LastMix/Last.fm evidence collection, Preview polling, result validation, and playlist or player-queue persistence. A learned matrix is optional: Adaptive blends it when available, and otherwise falls back to variance plus Static BlissMixer weights for one-track contexts.
+
+Better Call Bliss explicitly loads its own strings.txt during startup so development deployments from Cache/Plugins expose localized Extras captions and Settings labels even when LMS does not include that directory in its automatic string scan.
 
 The job editor labels ordering as **Source-track order**, additions separately, and Adaptive history as **Musical context window (previous tracks)**. It hides mode-specific sections when they are irrelevant, keeps their values for easy mode switching, uses BlissMixer-style slider-enhanced numeric inputs for bounded ranges where practical, places route-search attempts under Advanced, and rejects guaranteed no-op preserved combinations in both the page and server validator.
 

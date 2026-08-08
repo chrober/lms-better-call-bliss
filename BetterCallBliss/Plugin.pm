@@ -5,11 +5,12 @@ use base qw(Slim::Plugin::Base);
 
 use File::Basename qw(dirname);
 use Config qw(%Config);
-use File::Spec::Functions qw(catdir);
+use File::Spec::Functions qw(catdir catfile);
 use Slim::Control::Request;
 use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
+use Slim::Utils::Strings;
 
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
@@ -48,6 +49,7 @@ sub initPlugin {
         listenbrainz_enabled => 0,
     });
     my $dir = dirname(__FILE__);
+    _loadStrings($dir);
     if (main::ISWINDOWS) {
         Slim::Utils::Misc::addFindBinPaths(catdir($dir, 'Bin', 'windows'));
     } elsif (main::ISMAC) {
@@ -77,6 +79,28 @@ sub initPlugin {
     $initialized = 1;
     $log->info('initialized optimizer=' . ($optimizer_binary || 'missing'));
     return 1;
+}
+
+sub _loadStrings {
+    my $dir = shift;
+    my $strings = catfile($dir, 'strings.txt');
+
+    Slim::Utils::Strings::loadFile($strings) if -r $strings;
+
+    # Development deployments from Cache/Plugins are not always included in
+    # PluginManager's startup string scan. Material Skin asks for the localized
+    # page-link token when rendering Extras; make the display token available
+    # even if the file scan missed this plugin directory.
+    Slim::Utils::Strings::setString('PLUGIN_BETTERCALLBLISS_NAME', 'Better Call Bliss')
+        unless Slim::Utils::Strings::stringExists('PLUGIN_BETTERCALLBLISS_NAME');
+    Slim::Utils::Strings::setString(
+        'PLUGIN_BETTERCALLBLISS_TAGLINE',
+        'Playlist Breaking Bad? Better Call Bliss.',
+    ) unless Slim::Utils::Strings::stringExists('PLUGIN_BETTERCALLBLISS_TAGLINE');
+    Slim::Utils::Strings::setString(
+        'PLUGIN_BETTERCALLBLISS_DESC',
+        'Optimize saved playlists using Bliss analysis, repeat constraints, and optional Last.fm evidence.',
+    ) unless Slim::Utils::Strings::stringExists('PLUGIN_BETTERCALLBLISS_DESC');
 }
 
 sub _linuxBinaryPlatforms {
@@ -110,7 +134,7 @@ sub statusCommand {
     ) if defined $inventory->{unmatched_row_count};
     $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
         if $inventory->{audit_path};
-    $request->addResult('ux_contract', 'extras-job-editor-v14');
+    $request->addResult('ux_contract', 'extras-job-editor-v15');
     $request->addResult(
         'working_mode',
         'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/create-copy',

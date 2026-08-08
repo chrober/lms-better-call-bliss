@@ -76,11 +76,12 @@ features are visibly marked as unavailable.
 GitHub Actions workflow `.github/workflows/release.yml` builds a release package
 without committing native binaries to this repository:
 
-1. Checks out `chrober/bliss-playlist-optimizer` at the commit documented in
-   `BetterCallBliss/Bin/SOURCE.md`, unless an `optimizer_ref` override is
+1. Reads the pinned `bliss-playlist-optimizer` release from
+   `BetterCallBliss/Bin/SOURCE.md`, unless an `optimizer_release` override is
    supplied manually.
-2. Builds optimizer binaries for `x86_64-linux`, `aarch64-linux`,
-   `armhf-linux`, `mac`, and `windows`.
+2. Downloads the published optimizer binaries for `x86_64-linux`,
+   `aarch64-linux`, `armhf-linux`, `mac`, and `windows` from that release and
+   verifies their `.sha256` files.
 3. Copies those binaries into the matching `BetterCallBliss/Bin/<platform>/`
    folders only inside the release workspace.
 4. Creates `lms-better-call-bliss-<version>.zip` plus SHA-1 and SHA-256 files.
@@ -99,10 +100,10 @@ creating a release or touching the plugin feed.
   the Perl plugin modules, classic-web templates, settings page, strings,
   icons, and `install.xml` metadata.
 - The platform-specific `bliss-playlist-optimizer` executables are
-  intentionally not committed here. They are built from the separate
+  intentionally not committed here. They are published by the separate
   [chrober/bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer)
-  repository by GitHub Actions and copied into deployment/package artifacts.
-  The expected optimizer source commit, supported package folders, and release
+  repository release workflow and copied into deployment/package artifacts by this plugin release workflow.
+  The expected optimizer release, supported package folders, and release
   packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
   `.gitignore` prevents local executables from being accidentally committed.
 - `tests/` contains lightweight Perl regression tests for the plugin glue code.

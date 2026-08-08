@@ -1,19 +1,17 @@
 # Binary provenance
 
 The deployable `bliss-playlist-optimizer` executables are intentionally not
-committed to this repository. Plugin packages and development deployments build
-or fetch platform artifacts from the separate `chrober/bliss-playlist-optimizer`
-repository.
+committed to this repository. Plugin packages fetch platform artifacts from the
+separate `chrober/bliss-playlist-optimizer` repository.
 
 Latest packaged optimizer source:
 
-- Optimizer commit: `f231023b8baa25dc7cf11ff74a1747adb17e6337`
+- Optimizer release: `v0.1.0`
+- Optimizer commit: `b8e356bc8e7d87ea361ef11c973e4615b782736d`
 - Program contract: `0.1.0`, core API `0.1`
-- Previous ARM64 SHA-256: `43f0ac5dc611413f4566bc37838c36a3dfafb372af626d03512f5c7e5dd40540`
-- Previous ARM64 workflow run: <https://github.com/chrober/bliss-playlist-optimizer/actions/runs/31252986801>
 
-The GitHub release workflow checks out the optimizer source commit above,
-builds the supported native targets, places the results below the matching
+The GitHub release workflow downloads the optimizer release above, verifies each
+published `.sha256` file, places the binaries below the matching
 `BetterCallBliss/Bin/<platform>/` folders in the release package, and records
 the package checksum in the LMS plugin repository feed.
 
@@ -25,6 +23,6 @@ Supported package folders:
 - `mac/bliss-playlist-optimizer`
 - `windows/bliss-playlist-optimizer.exe`
 
-If a newer optimizer commit is used, update the commit above and verify
-`bliss-playlist-optimizer version --json` on each target family that is meant to
-be advertised through the LMS repository feed.
+If a newer optimizer release is used, update the release tag and commit above.
+The optimizer release workflow owns the native build and test gate; the plugin
+release workflow consumes only successful published optimizer assets.
