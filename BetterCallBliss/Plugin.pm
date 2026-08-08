@@ -84,23 +84,43 @@ sub initPlugin {
 sub _loadStrings {
     my $dir = shift;
     my $strings = catfile($dir, 'strings.txt');
+    return unless -r $strings;
 
-    Slim::Utils::Strings::loadFile($strings) if -r $strings;
+    Slim::Utils::Strings::loadFile($strings);
+    _activateStringsFile($strings);
+}
 
-    # Development deployments from Cache/Plugins are not always included in
-    # PluginManager's startup string scan. Material Skin asks for the localized
-    # page-link token when rendering Extras; make the display token available
-    # even if the file scan missed this plugin directory.
-    Slim::Utils::Strings::setString('PLUGIN_BETTERCALLBLISS_NAME', 'Better Call Bliss')
-        unless Slim::Utils::Strings::stringExists('PLUGIN_BETTERCALLBLISS_NAME');
-    Slim::Utils::Strings::setString(
-        'PLUGIN_BETTERCALLBLISS_TAGLINE',
-        'Playlist Breaking Bad? Better Call Bliss.',
-    ) unless Slim::Utils::Strings::stringExists('PLUGIN_BETTERCALLBLISS_TAGLINE');
-    Slim::Utils::Strings::setString(
-        'PLUGIN_BETTERCALLBLISS_DESC',
-        'Optimize saved playlists using Bliss analysis, repeat constraints, and optional Last.fm evidence.',
-    ) unless Slim::Utils::Strings::stringExists('PLUGIN_BETTERCALLBLISS_DESC');
+sub _activateStringsFile {
+    my $strings = shift;
+    my $language = uc(Slim::Utils::Strings::getLanguage() || 'EN');
+    my ($base_language) = split /_/, $language;
+    my ($token, %values_by_token);
+
+    if (open my $fh, '<:utf8', $strings) {
+        while (my $line = <$fh>) {
+            chomp $line;
+            $line =~ s/\r\z//;
+            next if $line =~ /^\s*\z/ || $line =~ /^#/;
+            if ($line =~ /^(\S+)\z/) {
+                $token = $1;
+                next;
+            }
+            if (defined $token && $line =~ /^\t(\S*)\t(.+)\z/) {
+                my $lang = uc($1 || $language);
+                $values_by_token{$token}{$lang} = $2;
+            }
+        }
+        close $fh;
+    }
+
+    for my $name (keys %values_by_token) {
+        my $values = $values_by_token{$name};
+        my $value = $values->{$language}
+            || $values->{$base_language}
+            || $values->{EN}
+            || $values->{DE};
+        Slim::Utils::Strings::setString($name, $value) if defined $value;
+    }
 }
 
 sub _linuxBinaryPlatforms {
@@ -134,7 +154,7 @@ sub statusCommand {
     ) if defined $inventory->{unmatched_row_count};
     $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
         if $inventory->{audit_path};
-    $request->addResult('ux_contract', 'extras-job-editor-v15');
+    $request->addResult('ux_contract', 'extras-job-editor-v16');
     $request->addResult(
         'working_mode',
         'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/create-copy',
