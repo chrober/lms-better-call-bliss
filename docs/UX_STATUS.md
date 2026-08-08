@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.14.3` UX shell. The shell is
+model and the exact boundary of the current `0.14.3` / `extras-job-editor-v18` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -69,7 +69,7 @@ fall through to either working mode.
 | Result | Partial | Real completed/failed job, lost on LMS restart. |
 | Refresh result | Working | Automatically re-reads the selected in-memory job every 1.5 seconds while running; manual refresh remains available. |
 | Cancel preview | Not connected yet | No cancellable native-process handle is exposed. |
-| Result summary | Working | Prominently reports running, Preview success/failure, and copy success/failure, then shows selected strategy, objective, worst transition, and constraint validation. |
+| Result summary | Working | Prominently reports running, Preview success/failure, and accept-time save/send success/failure, then shows selected strategy, objective, worst transition, and constraint validation. |
 | Proposed order | Working | Shows every original track and its original position. |
 | Additions and reasons | Working for automatic, exact-count, and seed-growth extension | Bridge modes label every added local track, original endpoints, direct-gap percentile, and evidence tier/pool. Seed growth labels each addition with its distance from the fixed full-seed Adaptive reference and reports seed/addition/final counts. |
 | Seed-growth selection and route diagnostics | Working | Reports best/mean/furthest fixed-seed Adaptive relevance separately from final-route strategy, transition sum, worst transition, objective, and arc error. A collapsible acceptance section confirms exact target, every seed once, local additions, unique membership, and repeat-window compliance. |
@@ -77,9 +77,11 @@ fall through to either working mode.
 | Warnings | Partial | Repeat validation, read-only safety, Last.fm provider fallback states, and a service-wide-error circuit breaker are real; a complete provider/cache dashboard remains open. |
 | Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
 | Non-LMS Bliss-row audit | Working | After the first addition job, Extras shows the current excluded-row count and persistent ledger path. The private JSON ledger retains current/resolved state, reason, row identity, metadata, and first/last-seen observations across LMS restarts. Existing case-variant duplicates are identified separately and include the related exact LMS identity. |
+| Accept preview | Working | Completed previews expose the output target only after the result has been reviewed. Changing output fields does not rerun the optimizer, and failed accept attempts keep the same preview available for retry. |
 | Create optimized copy | Working | Separate post-Preview action writes and verifies a new LMS playlist. Blank names preserve Unicode from the decoded source filename and choose the next free numbered suffix; explicit collisions fail visibly and safely. |
-| Overwrite source | Not connected yet | Captured for UX continuity but never mutates the source. |
-| Change options and rerun | Working for in-memory jobs | Polling, success, failure, and copy-action pages restore every normalized job value into the editor; users can adjust those values and start another Preview. Drafts do not survive an LMS restart. |
+| Overwrite source | Working | Separate post-Preview action requires explicit confirmation, replaces the source playlist file and LMS catalog order, and attempts to restore the original file if publication fails. |
+| Send to player queue | Working | Separate post-Preview action sends the generated order to a selected player with Replace queue, Append to queue, or Play next behavior, and optional playback start. |
+| Change options and rerun | Working for in-memory jobs | Polling, success, failure, and accept-action pages restore every normalized job value into the editor; users can adjust those values and start another Preview. Drafts do not survive an LMS restart. |
 | Discard result | Not connected yet | Session results expire naturally on LMS restart. |
 
 ## Settings
@@ -91,7 +93,7 @@ learned matrix is optional: Adaptive blends it when supplied and otherwise uses
 variance weighting for multi-track contexts plus Static BlissMixer weights for
 one-track contexts. Extended Isolation Forest remains disabled and labeled.
 
-**Additional route-search attempts**, both output suffixes, automatic bridge budget, and automatic trigger percentile supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The following settings are persisted to establish their future contract but are labeled **not connected yet** on the settings page:
+**Additional route-search attempts**, automatic bridge budget, automatic trigger percentile, and Last.fm guidance values supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The following settings are persisted to establish their future contract but are labeled **not connected yet** on the settings page:
 
 - ListenBrainz enablement;
 - semantic cache freshness and stale-offline lifetime; and
@@ -105,29 +107,13 @@ ListenBrainz remains optional and is deliberately deferred.
 
 ## Safety boundary
 
-Version `0.14.3` keeps Preview read-only and permits only an explicit,
-post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
-M3U serializer, verifies the same-directory temporary file, exclusively claims
-the final path without overwrite semantics, copies the verified bytes, creates
-the LMS catalog object, and compares both catalog and final-file order with the
-optimizer result. It rejects an explicit existing name without touching it,
-automatically chooses a free numbered name only when the field was left blank,
-and removes only artifacts created by the failed attempt. Lyrion's playlist
-object is updated directly, so this workflow does not depend on a library scan.
-Source overwrite, remaining extension modes, and every other shell-only action remain
-unreachable. Automatic and exact-count extension additionally require the native source
-membership proofs, an unchanged database file identity during the job, exact
-source subsequence preservation, unique final membership, and successful
-read-only resolution of every proposed bridge to a local LMS track.
-The frozen LMS-local allowlist is required for plugin addition jobs and is applied before the native candidate search. It is bound to the exact guarded `bliss.db` identity; an invalid checksum, wrong schema, unknown row, database mismatch, or missing source membership fails the request. The later per-bridge resolution remains a separate fail-closed proof if LMS membership changes after inventory capture.
-Preserve-order jobs additionally require the artifact policy to match the job
-and the selected base-route IDs to equal the source IDs in exact order.
-Exact-count additionally requires the artifact's requested count to match the
-job, an explicit feasible state, and exactly `N` resolved bridges. A native
-infeasibility proof becomes a visible failed Preview and is never normalized
-or persisted as a partial sequence.
+Version `0.14.3` keeps Preview read-only. Completed previews are accepted through explicit post-Preview actions: create a verified copy, overwrite the source playlist with confirmation, or send the result to a player queue. Create optimized copy uses Lyrion's core M3U serializer, verifies the same-directory temporary file, exclusively claims the final path without overwrite semantics, copies the verified bytes, creates the LMS catalog object, and compares both catalog and final-file order with the optimizer result. It rejects an explicit existing name without touching it, automatically chooses a free numbered name only when the field was left blank, and removes only artifacts created by the failed attempt. Overwrite source verifies the generated M3U and attempts to restore the original file if publication fails. Queue output does not write a saved playlist; it resolves the preview to LMS URLs and applies the chosen player queue action.
+
+Automatic and exact-count extension additionally require the native source membership proofs, an unchanged database file identity during the job, exact source subsequence preservation, unique final membership, and successful read-only resolution of every proposed bridge to a local LMS track. The frozen LMS-local allowlist is required for plugin addition jobs and is applied before the native candidate search. It is bound to the exact guarded `bliss.db` identity; an invalid checksum, wrong schema, unknown row, database mismatch, or missing source membership fails the request. The later per-bridge resolution remains a separate fail-closed proof if LMS membership changes after inventory capture.
+
 Seed growth additionally requires an exact target match, unique final membership, every source ID exactly once, exactly `T - S` resolved additions, and selection details for every added Bliss row. Its native proof block must also affirm local-inventory membership and artist/album/track repeat compliance before the plugin accepts the result. Added tracks never enter the relevance anchor; they affect only complete-membership routing.
 
+Running results refresh automatically and completed/failed optimization and accept actions are displayed in prominent banners with stable error codes. After a job starts, every polling, result, and accept-action page rebuilds the editor from that job's normalized options. Inactive numeric controls remain submitted as read-only values, so failures and successful review pages retain the exact settings for adjustment and rerun. After a successful preview, **Accept this preview** lets the user choose the output target without rerunning the optimizer.
 ## piCorePlayer development deployment
 
 For a manually deployed development build, use piCorePlayer's supported manual

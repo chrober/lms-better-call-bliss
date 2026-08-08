@@ -395,7 +395,7 @@ sub handler {
                 unless $params->{job_id};
             $job = Plugins::BetterCallBliss::Jobs::get($params->{job_id});
             die "Preview job is no longer available" unless $job;
-            Plugins::BetterCallBliss::Jobs::create_copy($params->{job_id});
+            Plugins::BetterCallBliss::Jobs::create_copy($params->{job_id}, $params);
         };
         $error = $@;
         $error =~ s/\s+/ /g if $error;
@@ -408,6 +408,7 @@ sub handler {
             die "Preview job is no longer available" unless $job;
             Plugins::BetterCallBliss::Jobs::overwrite_source(
                 $params->{job_id}, $params->{confirm_overwrite} ? 1 : 0,
+                $params,
             );
         };
         $error = $@;
@@ -419,7 +420,7 @@ sub handler {
                 unless $params->{job_id};
             $job = Plugins::BetterCallBliss::Jobs::get($params->{job_id});
             die "Preview job is no longer available" unless $job;
-            Plugins::BetterCallBliss::Jobs::send_to_queue($params->{job_id});
+            Plugins::BetterCallBliss::Jobs::send_to_queue($params->{job_id}, $params);
         };
         $error = $@;
         $error =~ s/\s+/ /g if $error;

@@ -66,16 +66,5 @@ evolving-state scorer and every semantic, repeat,
 membership, and acoustic gate still make the final choice. Debug performance
 output separates shortlisting from strict candidate scoring.
 
-Running results refresh automatically and completed/failed optimization and
-copy states are displayed in prominent banners with stable error codes. After
-a job starts, every polling, result, and copy-action page rebuilds the editor
-from that job's normalized options. Inactive numeric controls remain submitted
-as read-only values, so failures and successful review pages retain the exact
-settings for adjustment and rerun. After a successful preview, Create optimized
-copy writes through Lyrion's core M3U
-formatter, exclusively creates a new file, creates the LMS playlist object, and
-verifies both file and catalog order. Blank names are Unicode-safe and select
-the next available numbered copy; explicit collisions fail visibly. The source
-is never changed. Overwrite source remains visibly unavailable.
-
+Running results refresh automatically and completed/failed optimization and accept actions are displayed in prominent banners with stable error codes. After a job starts, every polling, result, and accept-action page rebuilds the editor from that job's normalized options. Inactive numeric controls remain submitted as read-only values, so failures and successful review pages retain the exact settings for adjustment and rerun. After a successful preview, **Accept this preview** lets the user choose the output target without rerunning the optimizer. Create optimized copy writes through Lyrion's core M3U formatter, exclusively creates a new file, creates the LMS playlist object, and verifies both file and catalog order. Blank names are Unicode-safe and select the next available numbered copy; explicit collisions fail visibly. Overwrite source requires confirmation and replaces the source playlist. Send to player queue applies the selected queue action to the selected player.
 The still-unconnected controls are explicitly marked **Not connected yet**: one bridge per source-track transition, generic target-length and double-length presets, multi-track preserved gaps beyond the current UI slice, opening/closing additions, cancellation, persistent reports, ListenBrainz evidence, and Extended Isolation Forest routing. See [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md) for the exact working/partial/future feature matrix.

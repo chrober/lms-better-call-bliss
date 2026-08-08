@@ -261,52 +261,7 @@
     <p class="bea-note" id="restart_help">Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.</p>
   </details>
 
-  <fieldset class="bea-section">
-    <legend>Output after accepting a preview</legend>
-    <p class="bea-note">Choose what happens after you accept a successful preview. Creating a copy is safest; overwriting the source requires a separate confirmation after the preview.</p>
-    <div class="bea-row">
-      <label><input type="radio" name="output_mode" value="create_copy"[% IF bettercallbliss_form.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
-    </div>
-    <div class="bea-row" id="copy_name_row">
-      <label for="output_name">Copy name</label>
-      <input type="text" maxlength="255" name="output_name" id="output_name" value="[% bettercallbliss_form.output_name | html %]" size="45">
-    </div>
-    <p class="bea-note" id="copy_name_note">Leave blank to generate a name from the selected playlist only when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
-    <div class="bea-row">
-      <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
-      <span class="bea-disabled">Requires explicit confirmation after preview; the source playlist file and LMS catalog order are replaced.</span>
-    </div>
-    <div class="bea-row">
-      <label><input type="radio" name="output_mode" value="player_queue"[% IF bettercallbliss_form.output_mode == 'player_queue' %] checked[% END %]> Send to player queue</label>
-      <span class="bea-disabled">Sends the accepted preview to a selected player instead of saving a playlist.</span>
-    </div>
-    <div id="player_queue_fields">
-      <div class="bea-row">
-        <label for="queue_player_id">Player</label>
-        <select name="queue_player_id" id="queue_player_id">
-          <option value="">Choose a player...</option>
-          [% FOREACH player = bettercallbliss_players %]
-            <option value="[% player.id | html %]"[% IF bettercallbliss_form.queue_player_id == player.id %] selected[% END %]>[% player.name | html %][% UNLESS player.power %] (off)[% END %]</option>
-          [% END %]
-        </select>
-      </div>
-      <div class="bea-row">
-        <label for="queue_action">Queue action</label>
-        <select name="queue_action" id="queue_action">
-          <option value="replace"[% IF bettercallbliss_form.queue_action == 'replace' %] selected[% END %]>Replace queue</option>
-          <option value="append"[% IF bettercallbliss_form.queue_action == 'append' %] selected[% END %]>Append to queue</option>
-          <option value="play_next"[% IF bettercallbliss_form.queue_action == 'play_next' %] selected[% END %]>Play next</option>
-        </select>
-      </div>
-      <div class="bea-row">
-        <label for="queue_start_playback">Start playback</label>
-        <input type="checkbox" name="queue_start_playback" id="queue_start_playback" value="1"[% IF bettercallbliss_form.queue_start_playback %] checked[% END %]>
-      </div>
-      <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Append adds the result at the end. Play next inserts it after the current song.</p>
-      <div id="queue_output_warning" class="bea-warning bea-hidden">Choose a player before running the preview for queue output.</div>
-    </div>
-  </fieldset>
-
+  <p class="bea-note">This only creates a read-only preview. After reviewing the result, choose whether to save a copy, overwrite the source playlist, or send it to a player queue.</p>
   <input class="inputbutton" id="run_preview" type="submit" name="run_preview" value="Run read-only preview"[% IF !bettercallbliss_capability.ready %] disabled[% END %]>
 </form>
 
@@ -339,21 +294,7 @@
     var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
     var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
     var submit = document.getElementById('run_preview');
-    var outputModes = document.querySelectorAll('input[name="output_mode"]');
-    var copyNameRow = document.getElementById('copy_name_row');
-    var copyNameNote = document.getElementById('copy_name_note');
-    var queueFields = document.getElementById('player_queue_fields');
-    var queuePlayer = document.getElementById('queue_player_id');
-    var queueWarning = document.getElementById('queue_output_warning');
     var capabilityReady = !submit.disabled;
-
-    function selectedOutputMode() {
-      for (var modeIndex = 0; modeIndex < outputModes.length; modeIndex++) {
-        if (outputModes[modeIndex].checked) return outputModes[modeIndex].value;
-      }
-      return 'create_copy';
-    }
-
     function setVisible(element, visible) {
       if (!element) return;
       element.classList.toggle('bea-hidden', !visible);
@@ -406,9 +347,6 @@
         && (requestedExact < 1 || requestedExact > maximumExact);
       var invalidGrowth = growth && sourceCount > 0
         && requestedTarget <= sourceCount;
-      var queueSelected = selectedOutputMode() === 'player_queue';
-      var createCopySelected = selectedOutputMode() === 'create_copy';
-      var invalidQueue = queueSelected && queuePlayer && !queuePlayer.value;
 
       noneOption.disabled = preserve;
       ordering.disabled = growth;
@@ -432,11 +370,7 @@
         ? 'Choose a final size greater than the ' + sourceCount + ' source tracks.'
         : '';
       setVisible(growthWarning, invalidGrowth);
-      setVisible(queueFields, queueSelected);
-      setVisible(copyNameRow, createCopySelected);
-      setVisible(copyNameNote, createCopySelected);
-      setVisible(queueWarning, invalidQueue);
-      submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidGrowth || invalidQueue;
+      submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidGrowth;
 
       var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
       setVisible(lastFmFields, additions);
@@ -467,10 +401,6 @@
     exactCount.addEventListener('input', synchronizeControls);
     growthTarget.addEventListener('input', synchronizeControls);
     if (lastFmEnabled) lastFmEnabled.addEventListener('change', synchronizeControls);
-    if (queuePlayer) queuePlayer.addEventListener('change', synchronizeControls);
-    for (var outputIndex = 0; outputIndex < outputModes.length; outputIndex++) {
-      outputModes[outputIndex].addEventListener('change', synchronizeControls);
-    }
     synchronizeControls();
     window.setTimeout(synchronizeControls, 0);
   }());
@@ -481,7 +411,11 @@
     <legend>Preview result</legend>
     <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - [% bettercallbliss_job.stage | html %]</p>
     <p>Job ID: [% bettercallbliss_job.id | html %]</p>
-    <p>Requested output: [% IF bettercallbliss_job.output_mode == 'player_queue' %]send to player queue [% bettercallbliss_job.queue_player_name | html %] ([% IF bettercallbliss_job.queue_action == 'replace' %]replace queue[% ELSIF bettercallbliss_job.queue_action == 'append' %]append to queue[% ELSE %]play next[% END %]; [% IF bettercallbliss_job.queue_start_playback %]start playback[% ELSE %]do not start playback[% END %])[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]overwrite source playlist[% ELSIF bettercallbliss_job.output_name_generated && !bettercallbliss_job.output_name %]create copy with an automatic name when saved[% ELSE %]create copy "[% bettercallbliss_job.output_name | html %]"[% END %]</p>
+    [% IF bettercallbliss_job.state == 'completed' %]
+      <p class="bea-note">This preview has not changed any playlist or player queue yet. Choose an output below after reviewing the result.</p>
+    [% ELSE %]
+      <p class="bea-note">Preview runs are read-only and do not change playlists or player queues.</p>
+    [% END %]
     <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
     [% IF bettercallbliss_job.mixing_note %]<p class="bea-note"><b>Mixing:</b> [% bettercallbliss_job.mixing_strategy | html %] (BlissMixer current setting: [% bettercallbliss_job.blissmixer_strategy | html %]). [% bettercallbliss_job.mixing_note | html %]</p>[% END %]
     [% IF bettercallbliss_job.state == 'running' %]
@@ -584,37 +518,138 @@
             LMS ID [% bettercallbliss_job.persistence.playlist_id %]).
           [% END %]
         </div>
-      [% ELSIF bettercallbliss_job.write_state == 'failed' %]
+      [% ELSE %]
+        [% IF bettercallbliss_job.write_state == 'failed' %]
         <div class="bea-error">
           <b>[% bettercallbliss_job.write_error_code | html %]</b>:
           [% bettercallbliss_job.write_error | html %]
           [% IF bettercallbliss_job.output_mode == 'player_queue' %]The generated preview remains available; retry after checking the selected player.[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]No incomplete copy remains.[% END %]
         </div>
-      [% ELSIF bettercallbliss_job.output_mode == 'player_queue' %]
-        <form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
-          <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
-          <input class="inputbutton" type="submit" name="send_to_queue" value="Send to player queue">
-        </form>
-        <p class="bea-note">Sends this preview to [% bettercallbliss_job.queue_player_name | html %]. Replace queue clears that player's current queue before adding the generated result.</p>
-      [% ELSIF bettercallbliss_job.output_mode == 'create_copy' %]
-        <form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
-          <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
-          <input class="inputbutton" type="submit" name="create_copy" value="Create optimized copy">
-        </form>
-        <p class="bea-note">Creates a new playlist; the source remains unchanged. Name collisions fail safely.</p>
-      [% ELSE %]
-        <form action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
-          <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
-          <div class="bea-warning">
-            <label><input type="checkbox" name="confirm_overwrite" value="1"> I understand this will replace the existing saved playlist.</label>
-          </div>
-          <input class="inputbutton" type="submit" name="overwrite_source" value="Overwrite existing playlist">
-        </form>
-        <p class="bea-note">Replaces the source playlist file and LMS catalog order after verifying the generated M3U. If publication fails mid-way, Better Call Bliss attempts to restore the original file.</p>
+        [% END %]
+        <fieldset class="bea-section">
+          <legend>Accept this preview</legend>
+          <p class="bea-note">The generated order above is reusable. Pick the output target now; changing these fields does not rerun the optimizer.</p>
+          <form id="bea-accept-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
+            <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
+            <div class="bea-row">
+              <label><input type="radio" name="output_mode" value="create_copy"[% IF bettercallbliss_job.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
+            </div>
+            <div class="bea-row" id="accept_copy_name_row">
+              <label for="accept_output_name">Copy name</label>
+              <input type="text" maxlength="255" name="output_name" id="accept_output_name" value="[% bettercallbliss_job.output_name | html %]" size="45">
+            </div>
+            <p class="bea-note" id="accept_copy_name_note">Leave blank to generate a fresh name from the selected playlist when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
+            <div class="bea-row">
+              <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_job.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
+              <span class="bea-disabled">Requires explicit confirmation; the source playlist file and LMS catalog order are replaced.</span>
+            </div>
+            <div id="accept_overwrite_fields">
+              <div class="bea-warning">
+                <label><input type="checkbox" name="confirm_overwrite" value="1"> I understand this will replace the existing saved playlist.</label>
+              </div>
+              <p class="bea-note">If publication fails mid-way, Better Call Bliss attempts to restore the original file.</p>
+            </div>
+            <div class="bea-row">
+              <label><input type="radio" name="output_mode" value="player_queue"[% IF bettercallbliss_job.output_mode == 'player_queue' %] checked[% END %]> Send to player queue</label>
+              <span class="bea-disabled">Sends the accepted preview to a selected player instead of saving a playlist.</span>
+            </div>
+            <div id="accept_player_queue_fields">
+              <div class="bea-row">
+                <label for="accept_queue_player_id">Player</label>
+                <select name="queue_player_id" id="accept_queue_player_id">
+                  <option value="">Choose a player...</option>
+                  [% FOREACH player = bettercallbliss_players %]
+                    <option value="[% player.id | html %]"[% IF bettercallbliss_job.queue_player_id == player.id %] selected[% END %]>[% player.name | html %][% UNLESS player.power %] (off)[% END %]</option>
+                  [% END %]
+                </select>
+              </div>
+              <div class="bea-row">
+                <label for="accept_queue_action">Queue action</label>
+                <select name="queue_action" id="accept_queue_action">
+                  <option value="replace"[% IF bettercallbliss_job.queue_action == 'replace' %] selected[% END %]>Replace queue</option>
+                  <option value="append"[% IF bettercallbliss_job.queue_action == 'append' %] selected[% END %]>Append to queue</option>
+                  <option value="play_next"[% IF bettercallbliss_job.queue_action == 'play_next' %] selected[% END %]>Play next</option>
+                </select>
+              </div>
+              <div class="bea-row">
+                <label for="accept_queue_start_playback">Start playback</label>
+                <input type="checkbox" name="queue_start_playback" id="accept_queue_start_playback" value="1"[% IF bettercallbliss_job.queue_start_playback %] checked[% END %]>
+              </div>
+              <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Append adds the result at the end. Play next inserts it after the current song.</p>
+              <div id="accept_queue_output_warning" class="bea-warning bea-hidden">Choose a player before sending to a player queue.</div>
+            </div>
+            <p>
+              <input class="inputbutton" id="accept_create_copy" type="submit" name="create_copy" value="Create optimized copy">
+              <input class="inputbutton" id="accept_overwrite_source" type="submit" name="overwrite_source" value="Overwrite existing playlist">
+              <input class="inputbutton" id="accept_send_to_queue" type="submit" name="send_to_queue" value="Send to player queue">
+            </p>
+          </form>
+        </fieldset>
       [% END %]
     [% END %]
   </fieldset>
 [% END %]
+
+
+<script>
+  (function () {
+    var form = document.getElementById('bea-accept-form');
+    if (!form) return;
+    var modes = form.querySelectorAll('input[name="output_mode"]');
+    var copyFields = document.getElementById('accept_copy_name_row');
+    var copyNote = document.getElementById('accept_copy_name_note');
+    var overwriteFields = document.getElementById('accept_overwrite_fields');
+    var queueFields = document.getElementById('accept_player_queue_fields');
+    var queuePlayer = document.getElementById('accept_queue_player_id');
+    var queueWarning = document.getElementById('accept_queue_output_warning');
+    var copyButton = document.getElementById('accept_create_copy');
+    var overwriteButton = document.getElementById('accept_overwrite_source');
+    var queueButton = document.getElementById('accept_send_to_queue');
+
+    function selectedMode() {
+      for (var index = 0; index < modes.length; index++) {
+        if (modes[index].checked) return modes[index].value;
+      }
+      return 'create_copy';
+    }
+
+    function setVisible(element, visible) {
+      if (!element) return;
+      element.classList.toggle('bea-hidden', !visible);
+      element.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    }
+
+    function synchronizeAcceptControls() {
+      var mode = selectedMode();
+      var queueSelected = mode === 'player_queue';
+      var queueInvalid = queueSelected && queuePlayer && !queuePlayer.value;
+      setVisible(copyFields, mode === 'create_copy');
+      setVisible(copyNote, mode === 'create_copy');
+      setVisible(overwriteFields, mode === 'overwrite_source');
+      setVisible(queueFields, queueSelected);
+      setVisible(queueWarning, queueInvalid);
+      if (copyButton) {
+        copyButton.classList.toggle('bea-hidden', mode !== 'create_copy');
+        copyButton.disabled = mode !== 'create_copy';
+      }
+      if (overwriteButton) {
+        overwriteButton.classList.toggle('bea-hidden', mode !== 'overwrite_source');
+        overwriteButton.disabled = mode !== 'overwrite_source';
+      }
+      if (queueButton) {
+        queueButton.classList.toggle('bea-hidden', !queueSelected);
+        queueButton.disabled = !queueSelected || queueInvalid;
+      }
+    }
+
+    for (var index = 0; index < modes.length; index++) {
+      modes[index].addEventListener('change', synchronizeAcceptControls);
+    }
+    if (queuePlayer) queuePlayer.addEventListener('change', synchronizeAcceptControls);
+    synchronizeAcceptControls();
+    window.setTimeout(synchronizeAcceptControls, 0);
+  }());
+</script>
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>

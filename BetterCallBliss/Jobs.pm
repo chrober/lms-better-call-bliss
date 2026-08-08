@@ -527,19 +527,67 @@ sub all {
     return sort { $b->{started_at} <=> $a->{started_at} } values %jobs;
 }
 
+sub _clean_output_name {
+    my $name = shift;
+    $name = '' unless defined $name;
+    $name =~ s/[\x00-\x1f]+/ /g;
+    $name =~ s/^\s+|\s+$//g;
+    die "INVALID_OUTPUT_NAME: Output playlist name is too long\n"
+        if length($name) > 255;
+    return $name;
+}
+
+sub _apply_output_options {
+    my ($job, $mode, $params) = @_;
+    $params ||= {};
+    die "INVALID_OUTPUT_MODE: Unknown output target\n"
+        unless $mode eq 'create_copy'
+            || $mode eq 'overwrite_source'
+            || $mode eq 'player_queue';
+
+    my $options = $job->{options} ||= {};
+    $options->{output_mode} = $mode;
+
+    if ($mode eq 'create_copy') {
+        my $name = exists $params->{output_name}
+            ? $params->{output_name} : $options->{output_name};
+        $options->{output_name} = _clean_output_name($name);
+        $options->{output_name_generated} =
+            length($options->{output_name} || '') ? 0 : 1;
+    } elsif ($mode eq 'player_queue') {
+        my $player_id = exists $params->{queue_player_id}
+            ? $params->{queue_player_id} : $options->{queue_player_id};
+        $player_id = '' unless defined $player_id;
+        $player_id =~ s/^\s+|\s+$//g;
+        die "PLAYER_REQUIRED: Choose a player for queue output\n"
+            unless length $player_id;
+        $options->{queue_player_id} = $player_id;
+
+        my $action = exists $params->{queue_action}
+            ? $params->{queue_action} : ($options->{queue_action} || 'replace');
+        die "INVALID_QUEUE_ACTION: Queue action must be Replace queue, Append to queue, or Play next\n"
+            unless $action eq 'replace'
+                || $action eq 'append'
+                || $action eq 'play_next';
+        $options->{queue_action} = $action;
+        $options->{queue_start_playback} = exists $params->{queue_start_playback}
+            ? ($params->{queue_start_playback} ? 1 : 0)
+            : ($options->{queue_start_playback} ? 1 : 0);
+    }
+}
 sub create_copy {
-    my $job_id = shift;
+    my ($job_id, $params) = @_;
     my $job = get($job_id);
     die "JOB_NOT_FOUND: Preview job is no longer available\n" unless $job;
     die "PREVIEW_NOT_COMPLETE: Wait for the preview to complete\n"
         unless $job->{state} eq 'completed' && $job->{artifact};
-    die "OUTPUT_MODE_MISMATCH: This job requested Overwrite source\n"
-        unless $job->{options}->{output_mode} eq 'create_copy';
+    _apply_output_options($job, 'create_copy', $params);
     return $job->{persistence} if $job->{write_state}
         && $job->{write_state} eq 'completed' && $job->{persistence};
     die "CREATE_IN_PROGRESS: Playlist creation is already running\n"
         if $job->{write_state} && $job->{write_state} eq 'running';
 
+    delete @$job{qw(write_error_code write_error)};
     $job->{write_state} = 'running';
     $job->{write_stage} = 'Creating';
     $log->info(
@@ -589,13 +637,12 @@ sub create_copy {
 }
 
 sub overwrite_source {
-    my ($job_id, $confirmed) = @_;
+    my ($job_id, $confirmed, $params) = @_;
     my $job = get($job_id);
     die "JOB_NOT_FOUND: Preview job is no longer available\n" unless $job;
     die "PREVIEW_NOT_COMPLETE: Wait for the preview to complete\n"
         unless $job->{state} eq 'completed' && $job->{artifact};
-    die "OUTPUT_MODE_MISMATCH: This job requested Create optimized copy\n"
-        unless $job->{options}->{output_mode} eq 'overwrite_source';
+    _apply_output_options($job, 'overwrite_source', $params);
     die "OVERWRITE_NOT_CONFIRMED: Confirm that the source playlist should be overwritten\n"
         unless $confirmed;
     return $job->{persistence} if $job->{write_state}
@@ -603,6 +650,7 @@ sub overwrite_source {
     die "OVERWRITE_IN_PROGRESS: Playlist overwrite is already running\n"
         if $job->{write_state} && $job->{write_state} eq 'running';
 
+    delete @$job{qw(write_error_code write_error)};
     $job->{write_state} = 'running';
     $job->{write_stage} = 'Overwriting';
     $log->info(
@@ -640,18 +688,18 @@ sub overwrite_source {
 }
 
 sub send_to_queue {
-    my $job_id = shift;
+    my ($job_id, $params) = @_;
     my $job = get($job_id);
     die "JOB_NOT_FOUND: Preview job is no longer available\n" unless $job;
     die "PREVIEW_NOT_COMPLETE: Wait for the preview to complete\n"
         unless $job->{state} eq 'completed' && $job->{artifact};
-    die "OUTPUT_MODE_MISMATCH: This job requested a saved-playlist output\n"
-        unless $job->{options}->{output_mode} eq 'player_queue';
+    _apply_output_options($job, 'player_queue', $params);
     return $job->{persistence} if $job->{write_state}
         && $job->{write_state} eq 'completed' && $job->{persistence};
     die "QUEUE_SEND_IN_PROGRESS: Queue output is already running\n"
         if $job->{write_state} && $job->{write_state} eq 'running';
 
+    delete @$job{qw(write_error_code write_error)};
     $job->{write_state} = 'running';
     $job->{write_stage} = 'Sending to player queue';
     $log->info(
@@ -692,6 +740,7 @@ sub send_to_queue {
     );
     return $result;
 }
+
 sub shutdown {
     for my $job (values %jobs) {
         if ($job->{process} && $job->{process}->alive) {
