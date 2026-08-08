@@ -2,7 +2,7 @@
 
 Better Call Bliss turns a saved playlist into a smoother listening experience. You decide whether existing songs may move, whether new songs may be added, and how much freedom the optimizer has. Better Call Bliss previews the result, and nothing is saved until you accept it.
 
-This document describes the current 0.14.2 implementation. **Working** means the choice is available in the Lyrion job editor. **Planned** means it is shown but cannot yet be selected.
+This document describes the current 0.14.3 implementation. **Working** means the choice is available in the Lyrion job editor. **Planned** means it is shown but cannot yet be selected.
 
 ## Choose the result you want
 

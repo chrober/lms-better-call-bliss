@@ -8,7 +8,7 @@ use Slim::Utils::PluginManager;
 my $prefs = preferences('plugin.bettercallbliss');
 
 sub name {
-    return Slim::Web::HTTP::CSRF->protectName('Better Call Bliss');
+    return Slim::Web::HTTP::CSRF->protectName('PLUGIN_BETTERCALLBLISS_NAME');
 }
 
 sub page {

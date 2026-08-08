@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.14.2` UX shell. The shell is
+model and the exact boundary of the current `0.14.3` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -105,7 +105,7 @@ ListenBrainz remains optional and is deliberately deferred.
 
 ## Safety boundary
 
-Version `0.14.2` keeps Preview read-only and permits only an explicit,
+Version `0.14.3` keeps Preview read-only and permits only an explicit,
 post-Preview **Create optimized copy** mutation. The writer uses Lyrion's core
 M3U serializer, verifies the same-directory temporary file, exclusively claims
 the final path without overwrite semantics, copies the verified bytes, creates
