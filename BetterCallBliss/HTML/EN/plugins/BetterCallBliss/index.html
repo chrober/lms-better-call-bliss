@@ -18,7 +18,8 @@
   .bea-info, .bea-info * { color: #0b3c5d !important; background: #e8f5fd !important; }
   .bea-disabled { color: var(--text-color, #555); opacity: .72; }
   .bea-order { margin-top: .8em; }
-  .bea-hidden { display: none; }
+  .bea-hidden { display: none !important; }
+  .bea-mode-section.bea-hidden { display: none !important; }
   details.bea-section > summary { cursor: pointer; font-weight: bold; }
 </style>
 
@@ -131,38 +132,38 @@
     <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without requesting any possible additions would leave the playlist unchanged. Choose an addition mode with a non-zero target.</div>
   </fieldset>
 
-  <fieldset class="bea-section" id="seed_growth_fields">
+  <fieldset class="bea-section bea-mode-section" id="seed_growth_fields">
     <legend>Grow from these seeds</legend>
     <p class="bea-note">Used only by Grow from these seeds. Every source song is kept exactly once. The complete source playlist remains the fixed musical reference while local analyzed tracks are selected, so newly added songs cannot pull later choices away from the original taste. The complete seed-plus-addition membership is then reordered for transition flow.</p>
     <div class="bea-row">
       <label for="target_track_count">Final playlist size</label>
-      <input type="number" min="3" max="500" name="target_track_count" id="target_track_count" value="[% bettercallbliss_form.target_track_count %]" required>
+      <input type="number" min="3" max="500" class="stdedit sliderInput_3_500_1" name="target_track_count" id="target_track_count" value="[% bettercallbliss_form.target_track_count %]" required>
       <span class="bea-disabled" id="seed_growth_count">Choose a playlist to see the addition count.</span>
     </div>
     <div id="seed_growth_warning" class="bea-warning bea-hidden"></div>
   </fieldset>
 
-  <fieldset class="bea-section" id="automatic_extension_fields">
+  <fieldset class="bea-section bea-mode-section" id="automatic_extension_fields">
     <legend>Automatic additions</legend>
     <p class="bea-note">Used only by Add automatically. It may legitimately add zero tracks when no transition exceeds the trigger or no candidate improves it.</p>
     <div class="bea-row">
       <label for="max_added_tracks">Maximum additional tracks</label>
-      <input type="number" min="0" max="100" name="max_added_tracks" id="max_added_tracks" value="[% bettercallbliss_form.max_added_tracks %]" required>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="max_added_tracks" id="max_added_tracks" value="[% bettercallbliss_form.max_added_tracks %]" required>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.max_added_tracks %]</span>
     </div>
     <div class="bea-row">
       <label for="trigger_percent">Bridge trigger percentile (%)</label>
-      <input type="number" min="0" max="100" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.trigger_percent %]</span>
     </div>
     <p class="bea-note">Only transitions above this percentile are considered. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.</p>
   </fieldset>
 
-  <fieldset class="bea-section">
-    <legend>Variation and Last.fm guidance</legend>
+  <fieldset class="bea-section" id="variation_fields">
+    <legend>Variation</legend>
     <div class="bea-row">
       <label for="variation_percent">Variation (%)</label>
-      <input type="number" min="0" max="100" name="variation_percent" id="variation_percent" value="[% bettercallbliss_form.variation_percent %]" required>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="variation_percent" id="variation_percent" value="[% bettercallbliss_form.variation_percent %]" required>
       <span class="bea-disabled">0 = strict best match; higher values explore a wider top-quality pool.</span>
     </div>
     <div class="bea-row">
@@ -170,6 +171,10 @@
       <input type="number" min="0" max="4294967295" name="generation_seed" id="generation_seed" value="[% bettercallbliss_form.generation_seed %]" placeholder="new seed each run">
     </div>
     <p class="bea-note">Variation is applied after the selected similarity strategy, so it also applies to future Static and Forest strategies. Leave the seed blank for a new result on each run; enter a previous result seed to reproduce it.</p>
+  </fieldset>
+
+  <fieldset class="bea-section" id="lastfm_guidance_fields">
+    <legend>Last.fm guidance</legend>
     <input type="hidden" name="lastfm_present" value="1">
     <div class="bea-row">
       <label for="lastfm_enabled">Use Last.fm guidance</label>
@@ -178,30 +183,30 @@
     </div>
     <div class="bea-row">
       <label for="lastfm_track_guidance_percent">Similar-track guidance (%)</label>
-      <input type="number" min="0" max="100" name="lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% bettercallbliss_form.lastfm_track_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% bettercallbliss_form.lastfm_track_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.lastfm_track_guidance_percent %]</span>
     </div>
     <div class="bea-row">
       <label for="lastfm_artist_guidance_percent">Similar-artist guidance (%)</label>
-      <input type="number" min="0" max="100" name="lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% bettercallbliss_form.lastfm_artist_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% bettercallbliss_form.lastfm_artist_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.lastfm_artist_guidance_percent %]</span>
     </div>
-    <p class="bea-note">Better Call Bliss asks LastMix for tracks and artists related to the complete original playlist. For an individual gap, track evidence from both neighboring songs is strongest, followed by one neighbor, similar artists, and the original artist collection as fallback. These percentages set bounded influence, not ownership of the choice: candidates must still be local, repeat-safe, and pass Bliss acoustic checks. Zero ignores that evidence type. Network/API failures fall back to Bliss without failing the job. Last.fm is not used for fixed-membership Reorder only jobs.</p>
+    <p class="bea-note">Better Call Bliss asks LastMix for tracks and artists related to the complete original playlist. For an individual gap, track evidence from both neighboring songs is strongest, followed by one neighbor, similar artists, and the original artist collection as fallback. These percentages set bounded influence, not ownership of the choice: candidates must still be local, repeat-safe, and pass Bliss acoustic checks. Zero ignores that evidence type. Network/API failures fall back to Bliss without failing the job.</p>
   </fieldset>
 
-  <fieldset class="bea-section" id="exact_count_fields">
+  <fieldset class="bea-section bea-mode-section" id="exact_count_fields">
     <legend>Exact additions</legend>
     <p class="bea-note">Used only by Add exactly N tracks. The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.</p>
     <div class="bea-row">
       <label for="additional_track_count">Exact number of additional tracks</label>
-      <input type="number" min="1" max="100" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
+      <input type="number" min="1" max="100" class="stdedit sliderInput_1_100_1" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
       <span class="bea-disabled" id="exact_count_limit">Choose a playlist to see the current limit.</span>
     </div>
     <p class="bea-note">This connected slice inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
     <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
   </fieldset>
 
-  <fieldset class="bea-section">
+  <fieldset class="bea-section" id="mixing_strategy_fields">
     <legend>Mixing strategy</legend>
     <div class="bea-row">
       <label for="algorithm">Strategy</label>
@@ -213,12 +218,12 @@
     </div>
     <div class="bea-row">
       <label for="seed_limit">Musical context window (previous tracks)</label>
-      <input type="number" min="1" max="50" name="seed_limit" id="seed_limit" value="[% bettercallbliss_form.seed_limit %]" required>
+      <input type="number" min="1" max="50" class="stdedit sliderInput_1_50_1" name="seed_limit" id="seed_limit" value="[% bettercallbliss_form.seed_limit %]" required>
       <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.seed_limit %]</span>
     </div>
-    <div class="bea-row">
+    <div class="bea-row" id="learned_percent_row">
       <label for="learned_percent">Learned-matrix blend (%)</label>
-      <input type="number" min="0" max="100" name="learned_percent" id="learned_percent" value="[% bettercallbliss_form.learned_percent %]" required>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="learned_percent" id="learned_percent" value="[% bettercallbliss_form.learned_percent %]" required>
       <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.learned_percent %]</span>
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
@@ -246,11 +251,11 @@
     </div>
   </fieldset>
 
-  <details class="bea-section" id="advanced_search">
+  <details class="bea-section bea-mode-section" id="advanced_search">
     <summary>Advanced search effort</summary>
     <div class="bea-row">
       <label for="restart_count">Additional route-search attempts</label>
-      <input type="number" min="0" max="500" name="restart_count" id="restart_count" value="[% bettercallbliss_form.restart_count %]" required>
+      <input type="number" min="0" max="500" class="stdedit sliderInput_0_500_1" name="restart_count" id="restart_count" value="[% bettercallbliss_form.restart_count %]" required>
     </div>
     <p class="bea-note" id="restart_help">Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.</p>
   </details>
@@ -261,11 +266,11 @@
     <div class="bea-row">
       <label><input type="radio" name="output_mode" value="create_copy"[% IF bettercallbliss_form.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
     </div>
-    <div class="bea-row">
+    <div class="bea-row" id="copy_name_row">
       <label for="output_name">Copy name</label>
       <input type="text" maxlength="255" name="output_name" id="output_name" value="[% bettercallbliss_form.output_name | html %]" size="45">
     </div>
-    <p class="bea-note">Leave blank to generate a name from the selected playlist only when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
+    <p class="bea-note" id="copy_name_note">Leave blank to generate a name from the selected playlist only when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
     <div class="bea-row">
       <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_form.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
       <span class="bea-disabled">Requires explicit confirmation after preview; the source playlist file and LMS catalog order are replaced.</span>
@@ -309,6 +314,7 @@
     var ordering = document.getElementById('ordering_policy');
     var playlist = document.getElementById('playlist_id');
     var extension = document.getElementById('extension_mode');
+    var algorithm = document.getElementById('algorithm');
     var automaticFields = document.getElementById('automatic_extension_fields');
     var automaticInputs = automaticFields.querySelectorAll('input');
     var exactFields = document.getElementById('exact_count_fields');
@@ -322,14 +328,19 @@
     var growthCount = document.getElementById('seed_growth_count');
     var growthWarning = document.getElementById('seed_growth_warning');
     var maximumAdditions = document.getElementById('max_added_tracks');
+    var learnedPercentRow = document.getElementById('learned_percent_row');
     var restarts = document.getElementById('restart_count');
     var restartHelp = document.getElementById('restart_help');
+    var advancedSearch = document.getElementById('advanced_search');
     var warning = document.getElementById('mode_combination_warning');
+    var lastFmFields = document.getElementById('lastfm_guidance_fields');
     var lastFmEnabled = document.getElementById('lastfm_enabled');
     var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
     var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
     var submit = document.getElementById('run_preview');
     var outputModes = document.querySelectorAll('input[name="output_mode"]');
+    var copyNameRow = document.getElementById('copy_name_row');
+    var copyNameNote = document.getElementById('copy_name_note');
     var queueFields = document.getElementById('player_queue_fields');
     var queuePlayer = document.getElementById('queue_player_id');
     var queueWarning = document.getElementById('queue_output_warning');
@@ -342,12 +353,37 @@
       return 'create_copy';
     }
 
+    function setVisible(element, visible) {
+      if (!element) return;
+      element.classList.toggle('bea-hidden', !visible);
+      element.setAttribute('aria-hidden', visible ? 'false' : 'true');
+    }
+
+    function companionSlider(input) {
+      return input && input.id ? document.getElementById('mskslider.' + input.id) : null;
+    }
+
+    function setReadOnlyWithSlider(input, readOnly) {
+      if (!input) return;
+      input.readOnly = readOnly;
+      var slider = companionSlider(input);
+      if (slider) slider.disabled = readOnly;
+    }
+
+    function setInputsReadOnly(inputs, readOnly) {
+      for (var index = 0; index < inputs.length; index++) {
+        inputs[index].disabled = false;
+        setReadOnlyWithSlider(inputs[index], readOnly);
+      }
+    }
+
     function synchronizeControls() {
       var preserve = ordering.value === 'preserve_order';
       var noAdditions = extension.value === 'none';
       var automatic = extension.value === 'automatic';
       var exact = extension.value === 'exact_count';
       var growth = extension.value === 'seed_growth';
+      var additions = !noAdditions;
       if (growth && ordering.value !== 'optimize_order') {
         ordering.value = 'optimize_order';
         preserve = false;
@@ -370,12 +406,15 @@
       var invalidGrowth = growth && sourceCount > 0
         && requestedTarget <= sourceCount;
       var queueSelected = selectedOutputMode() === 'player_queue';
+      var createCopySelected = selectedOutputMode() === 'create_copy';
       var invalidQueue = queueSelected && queuePlayer && !queuePlayer.value;
 
       noneOption.disabled = preserve;
       ordering.disabled = growth;
-      warning.classList.toggle('bea-hidden', !invalidCombination);
+      setVisible(warning, invalidCombination);
       exactCount.max = maximumExact || 100;
+      var exactSlider = companionSlider(exactCount);
+      if (exactSlider) exactSlider.max = exactCount.max;
       exactLimit.textContent = sourceCount > 0
         ? 'Current limit: ' + maximumExact + ' (one per transition); final size: '
           + (sourceCount + (requestedExact > 0 ? requestedExact : 0)) + '.'
@@ -383,7 +422,7 @@
       exactWarning.textContent = invalidExact
         ? 'This playlist has ' + maximumExact + ' internal transitions, so the current exact-count workflow cannot add ' + requestedExact + ' tracks.'
         : '';
-      exactWarning.classList.toggle('bea-hidden', !invalidExact);
+      setVisible(exactWarning, invalidExact);
       growthCount.textContent = sourceCount > 0 && requestedTarget > sourceCount
         ? sourceCount + ' seeds + ' + (requestedTarget - sourceCount)
           + ' additions = ' + requestedTarget + ' tracks.'
@@ -391,43 +430,38 @@
       growthWarning.textContent = invalidGrowth
         ? 'Choose a final size greater than the ' + sourceCount + ' source tracks.'
         : '';
-      growthWarning.classList.toggle('bea-hidden', !invalidGrowth);
-      if (queueFields) queueFields.classList.toggle('bea-disabled', !queueSelected);
-      if (queueWarning) queueWarning.classList.toggle('bea-hidden', !invalidQueue);
+      setVisible(growthWarning, invalidGrowth);
+      setVisible(queueFields, queueSelected);
+      setVisible(copyNameRow, createCopySelected);
+      setVisible(copyNameNote, createCopySelected);
+      setVisible(queueWarning, invalidQueue);
       submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidGrowth || invalidQueue;
-      if (lastFmTrackGuidance) {
-        lastFmTrackGuidance.readOnly = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
-      }
-      if (lastFmArtistGuidance) {
-        lastFmArtistGuidance.readOnly = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
-      }
+
+      var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
+      setVisible(lastFmFields, additions);
+      setReadOnlyWithSlider(lastFmTrackGuidance, lastFmInactive);
+      setReadOnlyWithSlider(lastFmArtistGuidance, lastFmInactive);
 
       restarts.disabled = false;
-      restarts.readOnly = preserve;
+      setReadOnlyWithSlider(restarts, preserve);
+      setVisible(advancedSearch, !preserve);
       restartHelp.textContent = preserve
         ? 'Not used when source order is preserved.'
         : 'Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.';
 
-      automaticFields.classList.toggle('bea-disabled', !automatic);
-      for (var index = 0; index < automaticInputs.length; index++) {
-        automaticInputs[index].disabled = false;
-        automaticInputs[index].readOnly = !automatic;
-      }
-      exactFields.classList.toggle('bea-disabled', !exact);
-      for (var exactIndex = 0; exactIndex < exactInputs.length; exactIndex++) {
-        exactInputs[exactIndex].disabled = false;
-        exactInputs[exactIndex].readOnly = !exact;
-      }
-      growthFields.classList.toggle('bea-disabled', !growth);
-      for (var growthIndex = 0; growthIndex < growthInputs.length; growthIndex++) {
-        growthInputs[growthIndex].disabled = false;
-        growthInputs[growthIndex].readOnly = !growth;
-      }
+      setVisible(automaticFields, automatic);
+      setInputsReadOnly(automaticInputs, !automatic);
+      setVisible(exactFields, exact);
+      setInputsReadOnly(exactInputs, !exact);
+      setVisible(growthFields, growth);
+      setInputsReadOnly(growthInputs, !growth);
+      setVisible(learnedPercentRow, algorithm.value === 'adaptive');
     }
 
     ordering.addEventListener('change', synchronizeControls);
     playlist.addEventListener('change', synchronizeControls);
     extension.addEventListener('change', synchronizeControls);
+    algorithm.addEventListener('change', synchronizeControls);
     maximumAdditions.addEventListener('input', synchronizeControls);
     exactCount.addEventListener('input', synchronizeControls);
     growthTarget.addEventListener('input', synchronizeControls);
@@ -437,6 +471,7 @@
       outputModes[outputIndex].addEventListener('change', synchronizeControls);
     }
     synchronizeControls();
+    window.setTimeout(synchronizeControls, 0);
   }());
 </script>
 

@@ -47,7 +47,7 @@ fall through to either working mode.
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
 | Last.fm guidance | Working, optional and per job | Requires enabled LastMix and queries similar tracks and artists for the complete distinct source set. Similar-track and similar-artist guidance are separate 0-100 bounded influences, both defaulting to 75. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
-| Relevance-aware controls | Working | Automatic, exact-count, seed-growth, and route-attempt inputs become read-only when irrelevant but remain submitted for draft restoration; exact and target counts follow the selected playlist; seed growth forces complete-membership order optimization; guaranteed no-op combinations disable submission and fail server validation if bypassed. |
+| Relevance-aware controls | Working | The Extras editor shows only sections relevant to the selected source-order and addition mode. Hidden sections keep their values for mode switching, selected-mode inputs remain submitted for draft restoration, exact and target counts follow the selected playlist, seed growth forces complete-membership order optimization, and guaranteed no-op combinations disable submission and fail server validation if bypassed. Bounded numeric controls use the same `sliderInput_min_max_step` enhancement classes as BlissMixer settings where practical. |
 | Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
 | LMS scan coordination | Working | Preview pauses while LMS reports an active library scan, explains that the catalog is changing, and retries the page automatically until the scan finishes. |
 | Automatic bridge budget | Working, per job | Validated as 0-100; limits successful additions rather than candidate analysis. |
@@ -91,11 +91,7 @@ learned matrix is optional: Adaptive blends it when supplied and otherwise uses
 variance weighting for multi-track contexts plus Static BlissMixer weights for
 one-track contexts. Extended Isolation Forest remains disabled and labeled.
 
-**Additional route-search attempts**, both output suffixes, automatic bridge budget, and
-automatic trigger percentile supply defaults for new jobs. Every value that
-affects optimization is copied into and may be overridden by the job. The
-following settings are persisted to establish their future contract but are labeled
-**not connected yet** on the settings page:
+**Additional route-search attempts**, both output suffixes, automatic bridge budget, and automatic trigger percentile supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The following settings are persisted to establish their future contract but are labeled **not connected yet** on the settings page:
 
 - ListenBrainz enablement;
 - semantic cache freshness and stale-offline lifetime; and

@@ -10,7 +10,7 @@
   </p>
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_RESTART_COUNT" desc="PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC" %]
-    <input type="number" min="10" max="500" class="stdedit" name="pref_restart_count" id="restart_count" value="[% prefs.restart_count %]" size="6">
+    <input type="number" min="10" max="500" class="stdedit sliderInput_10_500_1" name="pref_restart_count" id="restart_count" value="[% prefs.restart_count %]" size="6">
   [% END %]
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC" %]
@@ -22,11 +22,11 @@
   [% END %]
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET" desc="PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit" name="pref_auto_bridge_budget" id="auto_bridge_budget" value="[% prefs.auto_bridge_budget %]" size="6">
+    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_auto_bridge_budget" id="auto_bridge_budget" value="[% prefs.auto_bridge_budget %]" size="6">
   [% END %]
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT" desc="PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit" name="pref_auto_trigger_percent" id="auto_trigger_percent" value="[% prefs.auto_trigger_percent %]" size="6">
+    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_auto_trigger_percent" id="auto_trigger_percent" value="[% prefs.auto_trigger_percent %]" size="6">
   [% END %]
 [% END %]
 
@@ -40,11 +40,11 @@
   [% END %]
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
+    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
   [% END %]
 
   [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
+    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
   [% END %]
 [% END %]
 

@@ -8,11 +8,7 @@ The connected paths select a real saved playlist and start a native reorder-only
 
 The plugin delegates acoustic scoring, route search, bridge selection, and seed-growth membership selection to an installed `bliss-playlist-optimizer` binary. Better Call Bliss owns Lyrion identity capture, optional LastMix/Last.fm evidence collection, Preview polling, result validation, and playlist or player-queue persistence. A learned matrix is optional: Adaptive blends it when available, and otherwise falls back to variance plus Static BlissMixer weights for one-track contexts.
 
-The job editor labels ordering as **Source-track order**, additions separately,
-and Adaptive history as **Musical context window (previous tracks)**. Automatic
-addition inputs are disabled when irrelevant, route-search attempts live under
-Advanced and are disabled for preserved order, and guaranteed no-op preserved
-combinations are rejected in both the page and server validator.
+The job editor labels ordering as **Source-track order**, additions separately, and Adaptive history as **Musical context window (previous tracks)**. It hides mode-specific sections when they are irrelevant, keeps their values for easy mode switching, uses BlissMixer-style slider-enhanced numeric inputs for bounded ranges where practical, places route-search attempts under Advanced, and rejects guaranteed no-op preserved combinations in both the page and server validator.
 
 **Preserve source order and fill gaps** is connected for automatic and
 exact-count additions. Every original track remains an immutable anchor in its
