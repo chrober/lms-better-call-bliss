@@ -1,7 +1,7 @@
-﻿# UX contract and implementation status
+# UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.14.3` / `extras-job-editor-v19` UX shell. The shell is
+model and the exact boundary of the current `0.14.4` / `extras-job-editor-v20` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -22,8 +22,8 @@ fall through to either working mode.
 | Extras > Better Call Bliss | Working | Opens the rich per-job editor and result area. The page title uses the full tagline, **Playlist Breaking Bad? Better Call Bliss.** |
 | Extensions contribution icon | Working | Explicitly registers the packaged 512x512 transparent monochrome route icon. Material recognizes its `MTL_icon_timeline` marker and renders the theme-colored `timeline` glyph instead of the generic puzzle piece. |
 | Applications / My Apps > Better Call Bliss | Removed | The OPML adapter cannot provide the required portable multi-field form. |
-| Saved-playlist context > Better Call Bliss... | Partial | Visible informational shortcut; directs the user to Extras. |
-| Track context > Bliss me there... | Not connected yet | Describes the planned route-to-track capability; starts no job. |
+| Saved-playlist context > Better Call Bliss... | Working | Opens the rich job editor with the selected saved playlist preselected. In Material this appears as an item menu/More action rather than a permanent inline row button. |
+| Track context > Bliss me there... | Working, first slice | Opens the job editor for a read-only preview from the selected player's current queue tail to the selected local track. The current implementation preserves those two anchors, inserts one bridge with the existing exact-count bridge engine, and sends only the generated suffix to the player queue after acceptance. Native multi-hop destination-lock routing remains planned. |
 | Full EN/DE menu localization | Not connected yet | The Extras shell is English-first; settings labels have EN/DE strings. |
 
 ## Optimization wizard
@@ -59,7 +59,7 @@ fall through to either working mode.
 | Static weighted strategy | Working, per job | Uses BlissMixer's four static metric sliders expanded to the 23 Bliss feature weights; the same fixed matrix is used for every contextual distance. |
 | Extended Isolation Forest strategy | Not connected yet | Visible but disabled because native playlist routing does not implement Forest scoring yet. |
 | Review | Working for all connected combinations | The submitted form and result retain the job-specific values and explicitly state whether source order was optimized or preserved. |
-| Run preview | Working for all connected combinations | Launches the native optimizer asynchronously and never writes a playlist. |
+| Run preview | Working for all connected combinations | Launches the native optimizer asynchronously and never writes a playlist. Context route-to-track previews are read-only until the generated suffix is explicitly sent to a player queue. |
 
 `S` is the original source-track count. Last.fm track or artist evidence local to a transition `A -> B` is preferred; evidence from the complete original source artist pool is only a fallback. ListenBrainz remains later.
 
@@ -109,7 +109,7 @@ ListenBrainz remains optional and is deliberately deferred.
 
 ## Safety boundary
 
-Version `0.14.3` keeps Preview read-only. Completed previews are accepted through explicit post-Preview actions: create a verified copy, overwrite the source playlist with confirmation, or send the result to a player queue. Create optimized copy uses Lyrion's core M3U serializer, verifies the same-directory temporary file, exclusively claims the final path without overwrite semantics, copies the verified bytes, creates the LMS catalog object, and compares both catalog and final-file order with the optimizer result. It rejects an explicit existing name without touching it, automatically chooses a free numbered name only when the field was left blank, and removes only artifacts created by the failed attempt. Overwrite source verifies the generated M3U and attempts to restore the original file if publication fails. Queue output does not write a saved playlist; it resolves the preview to LMS URLs and applies the chosen player queue action.
+Version `0.14.4` keeps Preview read-only. Completed previews are accepted through explicit post-Preview actions: create a verified copy, overwrite the source playlist with confirmation, or send the result to a player queue. Create optimized copy uses Lyrion's core M3U serializer, verifies the same-directory temporary file, exclusively claims the final path without overwrite semantics, copies the verified bytes, creates the LMS catalog object, and compares both catalog and final-file order with the optimizer result. It rejects an explicit existing name without touching it, automatically chooses a free numbered name only when the field was left blank, and removes only artifacts created by the failed attempt. Overwrite source verifies the generated M3U and attempts to restore the original file if publication fails. Queue output does not write a saved playlist; it resolves the preview to LMS URLs and applies the chosen player queue action.
 
 Automatic and exact-count extension additionally require the native source membership proofs, an unchanged database file identity during the job, exact source subsequence preservation, unique final membership, and successful read-only resolution of every proposed bridge to a local LMS track. The frozen LMS-local allowlist is required for plugin addition jobs and is applied before the native candidate search. It is bound to the exact guarded `bliss.db` identity; an invalid checksum, wrong schema, unknown row, database mismatch, or missing source membership fails the request. The later per-bridge resolution remains a separate fail-closed proof if LMS membership changes after inventory capture.
 

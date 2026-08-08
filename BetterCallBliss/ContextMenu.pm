@@ -1,10 +1,12 @@
 package Plugins::BetterCallBliss::ContextMenu;
 
 use strict;
+use URI::Escape qw(uri_escape_utf8);
 use Slim::Menu::PlaylistInfo;
 use Slim::Menu::TrackInfo;
 
 my $registered = 0;
+my $page = '/plugins/BetterCallBliss/index.html';
 
 sub init {
     return if $registered;
@@ -30,26 +32,61 @@ sub shutdown {
     $registered = 0;
 }
 
-sub playlistInfoHandler {
-    my ($client, $url, $playlist) = @_;
-    return unless $playlist && $playlist->can('tracks');
+sub _link {
+    my %params = @_;
+    my @pairs;
+    for my $name (sort keys %params) {
+        next unless defined $params{$name};
+        push @pairs, uri_escape_utf8($name) . '=' . uri_escape_utf8($params{$name});
+    }
+    return $page . (@pairs ? '?' . join('&', @pairs) : '');
+}
+
+sub _web_item {
+    my ($name, $description, $href) = @_;
     return {
-        name => "Better Call Bliss... [shortcut not connected yet]",
-        description => "Use Extras > Better Call Bliss to select this playlist manually.",
+        name => $name,
+        title => $name,
+        description => $description,
         type => 'text',
+        weblink => $href,
         favorites => 0,
     };
 }
 
+sub playlistInfoHandler {
+    my ($client, $url, $playlist) = @_;
+    return unless $playlist && $playlist->can('tracks') && $playlist->can('id');
+    return _web_item(
+        'Better Call Bliss...',
+        'Open Better Call Bliss with this saved playlist preselected.',
+        _link(
+            source_mode => 'saved_playlist',
+            playlist_id => 0 + $playlist->id,
+        ),
+    );
+}
+
 sub trackInfoHandler {
     my ($client, $url, $track) = @_;
-    return unless $track && !$track->remote;
-    return {
-        name => 'Bliss me there... [not connected yet]',
-        description => 'Planned: preview a fluent route from the selected queue tail to this track.',
-        type => 'text',
-        favorites => 0,
-    };
+    return unless $client && $track && !$track->remote && $track->can('id');
+    my $player_id = eval { $client->id } || '';
+    return unless length $player_id;
+    return _web_item(
+        'Bliss me there...',
+        'Preview a fluent bridge from the current queue tail to this track, then append the accepted route to the player queue.',
+        _link(
+            source_mode => 'route_to_track',
+            route_player_id => $player_id,
+            route_target_track_id => 0 + $track->id,
+            queue_player_id => $player_id,
+            queue_action => 'append',
+            output_mode => 'player_queue',
+            ordering_policy => 'preserve_order',
+            extension_mode => 'exact_count',
+            additional_track_count => 1,
+        ),
+    );
 }
 
 1;

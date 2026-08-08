@@ -100,37 +100,54 @@
 <form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
-    <div class="bea-row">
-      <label for="playlist_id">Saved playlist</label>
-      <select name="playlist_id" id="playlist_id" required>
-        <option value="">Choose a playlist...</option>
-        [% FOREACH playlist = bettercallbliss_playlists %]
-          <option value="[% playlist.id %]" data-track-count="[% playlist.count %]"[% IF bettercallbliss_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
-        [% END %]
-      </select>
-    </div>
-    <div class="bea-row">
-      <label for="ordering_policy">Source-track order</label>
-      <select name="ordering_policy" id="ordering_policy">
-        <option value="optimize_order"[% IF bettercallbliss_form.ordering_policy == 'optimize_order' %] selected[% END %]>Optimize source order [Working]</option>
-        <option value="preserve_order"[% IF bettercallbliss_form.ordering_policy == 'preserve_order' %] selected[% END %]>Preserve source order and fill gaps [Working]</option>
-      </select>
-    </div>
-    <p class="bea-note">Optimize may move the existing tracks. Preserve keeps every source track as an immutable anchor in its current order and permits additions only inside the existing gaps.</p>
-    <div class="bea-row">
-      <label for="extension_mode">Additional tracks</label>
-      <select name="extension_mode" id="extension_mode">
-        <option value="none"[% IF bettercallbliss_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
-        <option value="automatic"[% IF bettercallbliss_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
-        <option value="exact_count"[% IF bettercallbliss_form.extension_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks [Working]</option>
-        <option value="target_count"[% IF bettercallbliss_form.extension_mode == 'target_count' %] selected[% END %]>Reach target track count [Working]</option>
-        <option value="double_count"[% IF bettercallbliss_form.extension_mode == 'double_count' %] selected[% END %]>Double track count [Working]</option>
-        <option value="seed_growth"[% IF bettercallbliss_form.extension_mode == 'seed_growth' %] selected[% END %]>Grow from these seeds to a target size [Working]</option>
-        <option disabled>One bridge per source-track transition [Not connected yet]</option>
-        <option disabled>Reach target duration [Not connected yet]</option>
-        <option disabled>Double duration [Not connected yet]</option>
-      </select>
-    </div>
+    <input type="hidden" name="source_mode" id="source_mode" value="[% bettercallbliss_form.source_mode | html %]">
+    [% IF bettercallbliss_form.source_mode == 'route_to_track' %]
+      <div class="bea-info">
+        <b>Bliss me there...</b><br>
+        Build a preview route from the current tail of <b>[% bettercallbliss_route_context.player_name | html %]</b>'s queue to
+        <b>[% bettercallbliss_route_context.target_label | html %]</b>.
+        The queue tail is used only as the left anchor; when accepted, Better Call Bliss sends only the generated suffix to the player queue.
+      </div>
+      <input type="hidden" name="route_player_id" id="route_player_id" value="[% bettercallbliss_form.route_player_id | html %]">
+      <input type="hidden" name="route_target_track_id" id="route_target_track_id" value="[% bettercallbliss_form.route_target_track_id | html %]">
+      <input type="hidden" id="route_source_track_count" value="2">
+      <select name="playlist_id" id="playlist_id" class="bea-hidden"><option value="" data-track-count="2" selected>Route anchors</option></select>
+      <select name="ordering_policy" id="ordering_policy" class="bea-hidden"><option value="preserve_order" selected>Preserve source order</option></select>
+      <select name="extension_mode" id="extension_mode" class="bea-hidden"><option value="exact_count" selected>Add exactly N tracks</option></select>
+      <p class="bea-note">This first route-to-track slice uses the existing bridge engine: current queue tail -> bridge -> selected track. Set Exact additions to 1. Longer multi-hop routes need native multi-bridge gap support and remain on the roadmap.</p>
+    [% ELSE %]
+      <div class="bea-row">
+        <label for="playlist_id">Saved playlist</label>
+        <select name="playlist_id" id="playlist_id" required>
+          <option value="">Choose a playlist...</option>
+          [% FOREACH playlist = bettercallbliss_playlists %]
+            <option value="[% playlist.id %]" data-track-count="[% playlist.count %]"[% IF bettercallbliss_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
+          [% END %]
+        </select>
+      </div>
+      <div class="bea-row">
+        <label for="ordering_policy">Source-track order</label>
+        <select name="ordering_policy" id="ordering_policy">
+          <option value="optimize_order"[% IF bettercallbliss_form.ordering_policy == 'optimize_order' %] selected[% END %]>Optimize source order [Working]</option>
+          <option value="preserve_order"[% IF bettercallbliss_form.ordering_policy == 'preserve_order' %] selected[% END %]>Preserve source order and fill gaps [Working]</option>
+        </select>
+      </div>
+      <p class="bea-note">Optimize may move the existing tracks. Preserve keeps every source track as an immutable anchor in its current order and permits additions only inside the existing gaps.</p>
+      <div class="bea-row">
+        <label for="extension_mode">Additional tracks</label>
+        <select name="extension_mode" id="extension_mode">
+          <option value="none"[% IF bettercallbliss_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
+          <option value="automatic"[% IF bettercallbliss_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
+          <option value="exact_count"[% IF bettercallbliss_form.extension_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks [Working]</option>
+          <option value="target_count"[% IF bettercallbliss_form.extension_mode == 'target_count' %] selected[% END %]>Reach target track count [Working]</option>
+          <option value="double_count"[% IF bettercallbliss_form.extension_mode == 'double_count' %] selected[% END %]>Double track count [Working]</option>
+          <option value="seed_growth"[% IF bettercallbliss_form.extension_mode == 'seed_growth' %] selected[% END %]>Grow from these seeds to a target size [Working]</option>
+          <option disabled>Add N bridge tracks between every pair of source tracks [Not connected yet]</option>
+          <option disabled>Reach target duration [Not connected yet]</option>
+          <option disabled>Double duration [Not connected yet]</option>
+        </select>
+      </div>
+    [% END %]
     <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without requesting any possible additions would leave the playlist unchanged. Choose an addition mode with a non-zero target.</div>
   </fieldset>
 
@@ -281,7 +298,7 @@
   </details>
 
   <p class="bea-note">This only creates a read-only preview. After reviewing the result, choose whether to save a copy, overwrite the source playlist, or send it to a player queue.</p>
-  <input class="inputbutton" id="run_preview" type="submit" name="run_preview" value="Run read-only preview"[% IF !bettercallbliss_capability.ready %] disabled[% END %]>
+  <input class="inputbutton" id="run_preview" type="submit" name="[% IF bettercallbliss_form.source_mode == 'route_to_track' %]run_route_to_track_preview[% ELSE %]run_preview[% END %]" value="Run read-only preview"[% IF !bettercallbliss_capability.ready %] disabled[% END %]>
 </form>
 
 <script>
@@ -474,7 +491,7 @@
       <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]">Refresh result now</a></p>
     [% ELSIF bettercallbliss_job.state == 'failed' %]
       <div class="bea-error"><b>[% bettercallbliss_job.error_code | html %]</b>: [% bettercallbliss_job.error | html %]</div>
-      <p><input class="inputbutton" form="bea-main-form" type="submit" name="run_preview" value="Run read-only preview again"></p>
+      <p><input class="inputbutton" form="bea-main-form" type="submit" name="[% IF bettercallbliss_job.route_to_track %]run_route_to_track_preview[% ELSE %]run_preview[% END %]" value="Run read-only preview again"></p>
     [% ELSE %]
       [% IF bettercallbliss_job.seed_growth_extension %]
         <div class="bea-ok">Grew [% bettercallbliss_job.relevance_reference_track_count %] seeds to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
@@ -586,29 +603,37 @@
         [% END %]
         <fieldset class="bea-section">
           <legend>Accept this preview</legend>
+          [% IF bettercallbliss_job.route_to_track %]
+          <p class="bea-note"><b>Bliss me there...</b> sends only the generated route suffix to the selected player queue. The first displayed source track is the current queue-tail anchor and is not appended again.</p>
+        [% ELSE %]
           <p class="bea-note">The generated order above is reusable. Pick the output target now; changing these fields does not rerun the optimizer.</p>
+        [% END %]
           <form id="bea-accept-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
             <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
+            [% UNLESS bettercallbliss_job.route_to_track %]
             <div class="bea-row">
               <label><input type="radio" name="output_mode" value="create_copy"[% IF bettercallbliss_job.output_mode == 'create_copy' %] checked[% END %]> Create optimized copy (recommended)</label>
             </div>
-            <div class="bea-row" id="accept_copy_name_row">
+            [% END %]
+            <div class="bea-row[% IF bettercallbliss_job.route_to_track %] bea-hidden[% END %]" id="accept_copy_name_row">
               <label for="accept_output_name">Copy name</label>
               <input type="text" maxlength="255" name="output_name" id="accept_output_name" value="[% bettercallbliss_job.output_name | html %]" size="45">
             </div>
-            <p class="bea-note" id="accept_copy_name_note">Leave blank to generate a fresh name from the selected playlist when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
+            <p class="bea-note[% IF bettercallbliss_job.route_to_track %] bea-hidden[% END %]" id="accept_copy_name_note">Leave blank to generate a fresh name from the selected playlist when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
+            [% UNLESS bettercallbliss_job.route_to_track %]
             <div class="bea-row">
               <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_job.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
               <span class="bea-disabled">Requires explicit confirmation; the source playlist file and LMS catalog order are replaced.</span>
             </div>
-            <div id="accept_overwrite_fields">
+            [% END %]
+            <div id="accept_overwrite_fields"[% IF bettercallbliss_job.route_to_track %] class="bea-hidden"[% END %]>
               <div class="bea-warning">
                 <label><input type="checkbox" name="confirm_overwrite" value="1"> I understand this will replace the existing saved playlist.</label>
               </div>
               <p class="bea-note">If publication fails mid-way, Better Call Bliss attempts to restore the original file.</p>
             </div>
             <div class="bea-row">
-              <label><input type="radio" name="output_mode" value="player_queue"[% IF bettercallbliss_job.output_mode == 'player_queue' %] checked[% END %]> Send to player queue</label>
+              <label><input type="radio" name="output_mode" value="player_queue"[% IF bettercallbliss_job.output_mode == 'player_queue' || bettercallbliss_job.route_to_track %] checked[% END %]> Send to player queue</label>
               <span class="bea-disabled">Sends the accepted preview to a selected player instead of saving a playlist.</span>
             </div>
             <div id="accept_player_queue_fields">
@@ -637,8 +662,8 @@
               <div id="accept_queue_output_warning" class="bea-warning bea-hidden">Choose a player before sending to a player queue.</div>
             </div>
             <p>
-              <input class="inputbutton" id="accept_create_copy" type="submit" name="create_copy" value="Create optimized copy">
-              <input class="inputbutton" id="accept_overwrite_source" type="submit" name="overwrite_source" value="Overwrite existing playlist">
+              [% UNLESS bettercallbliss_job.route_to_track %]<input class="inputbutton" id="accept_create_copy" type="submit" name="create_copy" value="Create optimized copy">[% END %]
+              [% UNLESS bettercallbliss_job.route_to_track %]<input class="inputbutton" id="accept_overwrite_source" type="submit" name="overwrite_source" value="Overwrite existing playlist">[% END %]
               <input class="inputbutton" id="accept_send_to_queue" type="submit" name="send_to_queue" value="Send to player queue">
             </p>
           </form>
@@ -711,7 +736,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition presets, duration-based target/double presets, multi-track gaps, explicit opening/closing additions, forest routing, optional ListenBrainz evidence, cancellation, persistent reports, player queue as an input source, and saved per-job reports. Track-count target/double presets, player queue output targets, Static routing, and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
+  <p>One-per-transition presets, duration-based target/double presets, multi-track gaps, explicit opening/closing additions, forest routing, optional ListenBrainz evidence, cancellation, persistent reports, player queue as an input source, and saved per-job reports. Track-count target/double presets, player queue output targets, saved-playlist context shortcuts, the first Bliss me there route-to-track slice, Static routing, and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

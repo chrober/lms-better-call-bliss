@@ -2,7 +2,7 @@
 
 Better Call Bliss turns a saved playlist into a smoother listening experience. You decide whether existing songs may move, whether new songs may be added, and how much freedom the optimizer has. Better Call Bliss previews the result, and nothing is saved until you accept it.
 
-This document describes the current 0.14.3 implementation. **Working** means the choice is available in the Lyrion job editor. **Planned** means it is shown but cannot yet be selected.
+This document describes the current 0.14.4 implementation. **Working** means the choice is available in the Lyrion job editor. **Planned** means it is shown but cannot yet be selected.
 
 ## Choose the result you want
 
@@ -14,6 +14,7 @@ This document describes the current 0.14.3 implementation. **Working** means the
 | Turn a tiny playlist into a full mix with the same general character | [Grow from these seeds](#grow-from-these-seeds) | Every original song stays; similar local songs are selected until the target size is reached; then the complete set is arranged. |
 | Get a different but still sensible result | [Increase Variation](#variation-and-reproducibility) | Search explores different good alternatives without relaxing its quality and repeat rules. |
 | Let related recordings and artists support addition choices | [Enable Last.fm guidance](#lastfm-track-and-artist-guidance) | Similar-track and similar-artist evidence help rank suitable additions; Bliss remains the acoustic quality check. |
+| Append a fluent path from the current queue to a chosen song | [Bliss me there...](#bliss-me-there) from a track context menu | The current queue tail and chosen track stay fixed; Better Call Bliss previews one bridge between them and appends only the new suffix after acceptance. |
 
 Three job choices work together:
 
@@ -31,6 +32,7 @@ Three job choices work together:
 | [Add automatically](#add-automatically) | Working | Repair only transitions that need it, up to a limit. |
 | [Add exactly N tracks](#add-exactly-n-tracks) | Working | Add the requested number or return no partial result. |
 | [Grow from these seeds](#grow-from-these-seeds) | Working | Use all originals as a musical mood board and build a larger playlist around them. |
+| [Bliss me there...](#bliss-me-there) | Working, first slice | From a track context menu, append a bridge-and-destination route from the current player queue tail. |
 | [One bridge per transition](#add-exactly-n-tracks) | Planned | Put one additional song in every gap. |
 | [Reach target track count / double track count](#add-exactly-n-tracks) | Working | Convenience presets that calculate how many songs to add. Duration-based targets remain future work. |
 | [Adaptive dynamic weighting](#adaptive-dynamic-weighting--working) | Working | Use BlissMixerÃ¢â‚¬â„¢s adaptive similarity measurement for each decision. |
@@ -40,6 +42,13 @@ Three job choices work together:
 ## How the pieces fit together
 
 The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, freezes the LMS-local candidate inventory, and optionally asks LastMix for Last.fm track and artist relationships. The native [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer) performs scoring and bounded search. Only the plugin writes a playlist, and only after the user accepts a completed Preview.
+
+## Bliss me there
+
+Use this from a local track's context menu when a player already has something in its queue and you want to arrive at the selected song smoothly. Better Call Bliss opens its editor with the selected player and destination track prefilled. The preview uses the current end of that player's queue as the left anchor and the selected track as the right anchor.
+
+The connected first slice uses the same exact-count bridge engine as **Add exactly N tracks**. That means it currently supports one inserted bridge between the queue tail and the destination track. When you accept the preview with **Send to player queue**, the queue-tail anchor shown in the preview is skipped, so only the bridge and destination track are sent to the player queue. The deeper native destination-lock mode for longer fluent routes remains future work.
+
 
 ~~~mermaid
 flowchart TD

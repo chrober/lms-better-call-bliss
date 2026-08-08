@@ -49,6 +49,13 @@ sub send_to_player {
     _fail('EMPTY_RESULT', 'The preview did not produce any tracks')
         unless $urls && @$urls;
 
+    my $skip = 0 + ($job->{route_output_skip_source_count} || 0);
+    if ($skip > 0) {
+        _fail('EMPTY_RESULT', 'The generated route contains no tracks to send')
+            if $skip >= @$urls;
+        $urls = [@$urls[$skip .. $#$urls]];
+    }
+
     my $action = $options->{queue_action} || 'replace';
     my $start = $options->{queue_start_playback} ? 1 : 0;
     my $command;
@@ -77,6 +84,7 @@ sub send_to_player {
         'sent preview job=' . ($job->{id} || 'unknown')
         . ' to player=' . ($client->id || $player_id)
         . " action=$action start=$start tracks=" . scalar(@$urls)
+        . ($skip ? " skipped_source_anchors=$skip" : '')
     );
 
     return {

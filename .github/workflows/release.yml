@@ -184,11 +184,11 @@ jobs:
       - name: Require cross-repo token for lms-plugins update
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && (github.event_name != 'workflow_dispatch' || inputs.update_lms_plugins) }}
         env:
-          LMS_PLUGINS_TOKEN: ${{ secrets.LMS_PLUGINS_TOKEN }}
+          LMS_PLUGINS_TOKEN: ${{ secrets.LMS_PLUGINS_TOKEN || secrets.MS_PLUGINS_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "$LMS_PLUGINS_TOKEN" ]; then
-            echo "Set repository secret LMS_PLUGINS_TOKEN with contents:write access to $PLUGIN_REPO." >&2
+            echo "Set repository secret LMS_PLUGINS_TOKEN or MS_PLUGINS_TOKEN with contents:write access to $PLUGIN_REPO." >&2
             exit 1
           fi
 
@@ -198,7 +198,7 @@ jobs:
         with:
           repository: chrober/lms-plugins
           path: lms-plugins
-          token: ${{ secrets.LMS_PLUGINS_TOKEN }}
+          token: ${{ secrets.LMS_PLUGINS_TOKEN || secrets.MS_PLUGINS_TOKEN }}
 
       - name: Update lms-plugins repo.xml
         if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.dry_run) && (github.event_name != 'workflow_dispatch' || inputs.update_lms_plugins) }}

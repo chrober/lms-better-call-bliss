@@ -4,6 +4,7 @@ use strict;
 use File::Basename qw(basename);
 use File::Path qw(make_path);
 use File::Slurp qw(read_file write_file);
+use Scalar::Util qw(blessed);
 use JSON::XS;
 use Proc::Background;
 use Time::HiRes qw(time);
@@ -12,6 +13,8 @@ use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
 use Slim::Utils::Timers;
 use Slim::Utils::Unicode;
+use Slim::Player::Client;
+use Slim::Player::Playlist;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::LastFmEvidence;
@@ -138,19 +141,24 @@ sub _launch_optimizer {
     );
 }
 
-sub start_reorder_preview {
-    my ($playlist_id, $options) = @_;
-    die "Optimizer binary is unavailable"
-        unless $optimizer_binary && -x $optimizer_binary;
+sub _track_label {
+    my $track = shift;
+    return 'Unknown track' unless $track;
+    my $artist = eval { $track->artistName } || 'Unknown Artist';
+    my $title = eval { $track->title } || eval { $track->path } || 'Unknown Title';
+    return "$artist - $title";
+}
 
+sub _new_job_context {
     my $job_id = sprintf('preview-%d-%04d', int(time()), ++$serial);
     my $dir = $job_root . '/' . $job_id;
     make_path($dir);
-    my $semantic_path = $dir . '/semantic-evidence.json';
+    return ($job_id, $dir, $dir . '/semantic-evidence.json');
+}
 
-    my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
-        $playlist_id, $job_id, $semantic_path, $options,
-    );
+sub _start_preview_from_built {
+    my ($job_id, $dir, $semantic_path, $built, $fields) = @_;
+    $fields ||= {};
     my $native_command = $built->{options}->{extension_mode} ne 'none'
         ? 'bridge' : 'route';
     my $database_identity = _file_identity($built->{capability}->{database});
@@ -171,14 +179,17 @@ sub start_reorder_preview {
     my $lastfm_applies = $built->{options}->{lastfm_enabled}
         && $built->{options}->{extension_mode} ne 'none';
 
+    my $playlist_title = defined $fields->{playlist_title}
+        ? $fields->{playlist_title}
+        : _playlist_title($built->{playlist});
     $jobs{$job_id} = {
         id => $job_id,
         state => 'running',
         stage => $lastfm_applies
             ? 'Preparing Last.fm track and artist evidence' : 'Preparing request',
         started_at => time(),
-        playlist_id => 0 + $playlist_id,
-        playlist_title => _playlist_title($built->{playlist}),
+        playlist_id => 0 + ($fields->{playlist_id} || 0),
+        playlist_title => $playlist_title,
         track_count => scalar @{$built->{request}->{source_tracks}},
         source_track_ids => [
             map { $_->{id} } @{$built->{request}->{source_tracks}}
@@ -200,10 +211,18 @@ sub start_reorder_preview {
         result_path => $result_path,
         stderr_path => $stderr_path,
     };
+    for my $key (qw(
+        route_to_track route_output_skip_source_count route_player_id
+        route_target_track_id route_tail_track_id route_target_label route_tail_label
+    )) {
+        $jobs{$job_id}->{$key} = $fields->{$key} if exists $fields->{$key};
+    }
+
     my $effective = $built->{options};
     my $initial_stage = $jobs{$job_id}->{stage};
+    my $source_log = $fields->{source_log} || ('playlist_id=' . ($fields->{playlist_id} || 0));
     $log->info(
-        "job=$job_id stage=$initial_stage playlist_id=$playlist_id"
+        "job=$job_id stage=$initial_stage $source_log"
         . " ordering=$effective->{ordering_policy}"
         . " extension=$effective->{extension_mode}"
         . " algorithm=$effective->{algorithm}"
@@ -343,6 +362,82 @@ sub start_reorder_preview {
     return $jobs{$job_id};
 }
 
+sub start_reorder_preview {
+    my ($playlist_id, $options) = @_;
+    die "Optimizer binary is unavailable"
+        unless $optimizer_binary && -x $optimizer_binary;
+
+    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+        $playlist_id, $job_id, $semantic_path, $options,
+    );
+    return _start_preview_from_built(
+        $job_id, $dir, $semantic_path, $built,
+        {playlist_id => 0 + $playlist_id},
+    );
+}
+
+sub start_route_to_track_preview {
+    my ($player_id, $target_track_id, $options) = @_;
+    die "Optimizer binary is unavailable"
+        unless $optimizer_binary && -x $optimizer_binary;
+    $player_id = '' unless defined $player_id;
+    $player_id =~ s/^\s+|\s+$//g;
+    die "Choose the player whose queue should be used as the route start"
+        unless length $player_id;
+
+    my $client = Slim::Player::Client::getClient($player_id);
+    die "The selected player is no longer connected" unless blessed($client);
+    $client = $client->master if $client->can('master');
+    my $count = eval { Slim::Player::Playlist::count($client) } || 0;
+    die "The selected player queue is empty; play or queue a source track first"
+        unless $count > 0;
+    my $tail = Slim::Player::Playlist::track($client, $count - 1, 1, 0);
+    die "Could not resolve the current queue tail to a local LMS track"
+        unless $tail && !$tail->remote && $tail->can('id');
+
+    die "Choose a destination track"
+        unless defined $target_track_id && "$target_track_id" =~ /^\d+$/;
+    my $target = Slim::Schema->find('Track', int($target_track_id));
+    die "Destination track was not found in the LMS library"
+        unless $target && !$target->remote && $target->can('id');
+    die "The selected destination is already the current queue tail"
+        if $tail->id == $target->id;
+
+    my %route_options = (%{$options || {}});
+    $route_options{ordering_policy} = 'preserve_order';
+    $route_options{extension_mode} = 'exact_count';
+    $route_options{additional_track_count} = defined $route_options{additional_track_count}
+        && "$route_options{additional_track_count}" =~ /^\d+$/
+        ? $route_options{additional_track_count} : 1;
+    $route_options{output_mode} = 'player_queue';
+    $route_options{queue_player_id} = $player_id;
+    $route_options{queue_action} = $route_options{queue_action} || 'append';
+
+    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    my $tail_label = _track_label($tail);
+    my $target_label = _track_label($target);
+    my $title = "Bliss me there: $tail_label -> $target_label";
+    my $built = Plugins::BetterCallBliss::RequestBuilder::build_sequence_request(
+        $title, [$tail, $target], $job_id, $semantic_path, \%route_options,
+    );
+    return _start_preview_from_built(
+        $job_id, $dir, $semantic_path, $built,
+        {
+            playlist_id => 0,
+            playlist_title => $title,
+            source_log => 'route_to_track player=' . ($client->id || $player_id)
+                . ' tail_track=' . $tail->id . ' target_track=' . $target->id,
+            route_to_track => 1,
+            route_output_skip_source_count => 1,
+            route_player_id => $client->id || $player_id,
+            route_tail_track_id => 0 + $tail->id,
+            route_target_track_id => 0 + $target->id,
+            route_tail_label => $tail_label,
+            route_target_label => $target_label,
+        },
+    );
+}
 sub _poll {
     my $job_id = shift;
     my $job = $jobs{$job_id} || return;

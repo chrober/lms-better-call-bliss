@@ -1,4 +1,4 @@
-﻿package Plugins::BetterCallBliss::Plugin;
+package Plugins::BetterCallBliss::Plugin;
 
 use strict;
 use base qw(Slim::Plugin::Base);
@@ -154,10 +154,10 @@ sub statusCommand {
     ) if defined $inventory->{unmatched_row_count};
     $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
         if $inventory->{audit_path};
-    $request->addResult('ux_contract', 'extras-job-editor-v19');
+    $request->addResult('ux_contract', 'extras-job-editor-v20');
     $request->addResult(
         'working_mode',
-        'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/create-copy',
+        'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/context-route-to-track/playlist-or-queue-output',
     );
     $request->setStatusDone();
 }

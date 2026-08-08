@@ -148,25 +148,18 @@ sub normalize_request_types {
     return $request;
 }
 
-sub build_reorder_request {
-    my ($playlist_id, $job_id, $semantic_path, $job_input) = @_;
-    my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
-    die join('; ', @{$capability->{problems}}) unless $capability->{ready};
-    my $options = Plugins::BetterCallBliss::JobOptions::normalize(
-        $capability, $job_input,
-    );
-    $options->{generation_seed} = _job_seed($job_id)
-        unless defined $options->{generation_seed};
-
-    my $playlist = Slim::Schema->find('Playlist', $playlist_id);
-    die "Saved playlist not found" unless $playlist && $playlist->can('tracks');
-    my @tracks = $playlist->tracks;
-    die "At least two local tracks are required" unless @tracks >= 2;
+sub _track_bundle {
+    my ($tracks, $capability, $error_prefix) = @_;
+    die "$error_prefix requires at least two local tracks"
+        unless ref($tracks) eq 'ARRAY' && @$tracks >= 2;
 
     my (@source_tracks, %labels, %original_positions, %track_urls);
     my $position = 0;
-    for my $track (@tracks) {
-        die "Playlist contains a non-local item" unless $track && !$track->remote;
+    for my $track (@$tracks) {
+        die "$error_prefix contains a non-local item"
+            unless $track && !$track->remote;
+        die "$error_prefix contains a track without an LMS id"
+            unless $track->can('id') && defined $track->id;
         my $id = 'lms-track-' . $track->id;
         my $artist = $track->artistName || 'Unknown Artist';
         my $title = $track->title || $track->path;
@@ -190,20 +183,44 @@ sub build_reorder_request {
         $track_urls{$id} = $track->url;
     }
 
-    my $internal_gap_count = @tracks - 1;
+    return (\@source_tracks, \%labels, \%original_positions, \%track_urls);
+}
+
+sub _build_sequence_request {
+    my ($args) = @_;
+    my $job_id = $args->{job_id};
+    my $semantic_path = $args->{semantic_path};
+    my $job_input = $args->{job_input};
+    my $tracks = $args->{tracks};
+    my $title = $args->{title};
+    my $playlist = $args->{playlist};
+    my $error_prefix = $args->{error_prefix} || 'Source';
+
+    my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+    die join('; ', @{$capability->{problems}}) unless $capability->{ready};
+    my $options = Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, $job_input,
+    );
+    $options->{generation_seed} = _job_seed($job_id)
+        unless defined $options->{generation_seed};
+
+    my ($source_tracks, $labels, $original_positions, $track_urls)
+        = _track_bundle($tracks, $capability, $error_prefix);
+    my $source_count = scalar @$source_tracks;
+    my $internal_gap_count = $source_count - 1;
     my $endpoint_capacity = 2;
     my $exact_like_extension = $options->{extension_mode} eq 'exact_count'
         || $options->{extension_mode} eq 'target_count'
         || $options->{extension_mode} eq 'double_count';
     if ($options->{extension_mode} eq 'target_count') {
         die 'Target track count must exceed the source playlist size'
-            if $options->{bridge_target_track_count} <= @tracks;
+            if $options->{bridge_target_track_count} <= $source_count;
         $options->{target_track_count} = $options->{bridge_target_track_count};
         $options->{additional_track_count} =
-            $options->{target_track_count} - @tracks;
+            $options->{target_track_count} - $source_count;
     } elsif ($options->{extension_mode} eq 'double_count') {
-        $options->{target_track_count} = 2 * @tracks;
-        $options->{additional_track_count} = @tracks;
+        $options->{target_track_count} = 2 * $source_count;
+        $options->{additional_track_count} = $source_count;
     }
     if ($exact_like_extension) {
         my $maximum = $internal_gap_count;
@@ -215,7 +232,7 @@ sub build_reorder_request {
             : ' with one bridge per internal transition plus opening/closing slots.';
         die 'The requested target needs ' . $options->{additional_track_count}
             . ($options->{additional_track_count} == 1 ? ' additional track' : ' additional tracks')
-            . ', but this playlist currently supports at most ' . $maximum
+            . ', but this source currently supports at most ' . $maximum
             . ($maximum == 1 ? ' addition' : ' additions')
             . $capacity_reason
             . chr(10)
@@ -223,7 +240,7 @@ sub build_reorder_request {
     }
     if ($options->{extension_mode} eq 'seed_growth') {
         die 'Grow from these seeds target must exceed the source playlist size'
-            if $options->{target_track_count} <= @tracks;
+            if $options->{target_track_count} <= $source_count;
     }
 
     my $artifacts = {
@@ -239,7 +256,7 @@ sub build_reorder_request {
         schema_version => 1,
         job_id => $job_id,
         artifacts => $artifacts,
-        source_tracks => \@source_tracks,
+        source_tracks => $source_tracks,
         scoring => {
             algorithm => $options->{algorithm},
             adaptive => {
@@ -345,12 +362,42 @@ sub build_reorder_request {
     return {
         request => $request,
         playlist => $playlist,
-        labels => \%labels,
-        original_positions => \%original_positions,
-        track_urls => \%track_urls,
+        playlist_title => $title,
+        labels => $labels,
+        original_positions => $original_positions,
+        track_urls => $track_urls,
         capability => $capability,
         options => $options,
     };
+}
+
+sub build_sequence_request {
+    my ($title, $tracks, $job_id, $semantic_path, $job_input) = @_;
+    return _build_sequence_request({
+        title => $title,
+        tracks => $tracks,
+        job_id => $job_id,
+        semantic_path => $semantic_path,
+        job_input => $job_input,
+        error_prefix => $title || 'Source',
+    });
+}
+
+sub build_reorder_request {
+    my ($playlist_id, $job_id, $semantic_path, $job_input) = @_;
+    my $playlist = Slim::Schema->find('Playlist', $playlist_id);
+    die "Saved playlist not found" unless $playlist && $playlist->can('tracks');
+    my @tracks = $playlist->tracks;
+    die "At least two local tracks are required" unless @tracks >= 2;
+    return _build_sequence_request({
+        playlist => $playlist,
+        title => undef,
+        tracks => \@tracks,
+        job_id => $job_id,
+        semantic_path => $semantic_path,
+        job_input => $job_input,
+        error_prefix => 'Playlist',
+    });
 }
 
 1;

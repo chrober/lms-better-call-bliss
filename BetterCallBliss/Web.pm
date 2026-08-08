@@ -78,6 +78,27 @@ sub _player_name {
     my $player = Slim::Player::Client::getClient($player_id);
     return $player ? (eval { $player->name } || $player_id) : $player_id;
 }
+
+sub _track_label {
+    my $track_id = shift;
+    return '' unless defined $track_id && "$track_id" =~ /^\d+$/;
+    my $track = Slim::Schema->find('Track', int($track_id));
+    return '' unless $track;
+    my $artist = eval { $track->artistName } || 'Unknown Artist';
+    my $title = eval { $track->title } || eval { $track->path } || 'Unknown Title';
+    return "$artist - $title";
+}
+
+sub _route_context {
+    my $form = shift || {};
+    return unless ($form->{source_mode} || '') eq 'route_to_track';
+    return {
+        player_id => $form->{route_player_id} || $form->{queue_player_id} || '',
+        player_name => _player_name($form->{route_player_id} || $form->{queue_player_id}),
+        target_track_id => $form->{route_target_track_id},
+        target_label => _track_label($form->{route_target_track_id}),
+    };
+}
 sub _playlists {
     my @rows;
     for my $playlist (sort {
@@ -99,7 +120,7 @@ sub _form_from_params {
     my ($params, $defaults) = @_;
     my $form = {%$defaults};
     for my $name (qw(
-        playlist_id ordering_policy extension_mode algorithm seed_limit
+        source_mode playlist_id route_player_id route_target_track_id ordering_policy extension_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
         lastfm_track_guidance_percent lastfm_artist_guidance_percent
@@ -108,15 +129,22 @@ sub _form_from_params {
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }
+    $form->{source_mode} = 'saved_playlist'
+        unless ($form->{source_mode} || '') eq 'route_to_track';
     return $form;
 }
 
 sub _form_from_job {
     my ($job, $defaults) = @_;
     my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
-    my $form = _form_from_params(
-        {%$options, playlist_id => $job->{playlist_id}}, $defaults,
-    );
+    my %params = (%$options, playlist_id => $job->{playlist_id});
+    if ($job->{route_to_track}) {
+        $params{source_mode} = 'route_to_track';
+        $params{route_player_id} = $job->{route_player_id};
+        $params{route_target_track_id} = $job->{route_target_track_id};
+        $params{queue_player_id} = $options->{queue_player_id} || $job->{route_player_id};
+    }
+    my $form = _form_from_params(\%params, $defaults);
     $form->{output_name_generated} =
         $options->{output_name_generated} ? 1 : 0;
     $form->{generation_seed} = ''
@@ -221,6 +249,10 @@ sub _result_view {
         mixing_strategy => $job->{options}->{algorithm},
         blissmixer_strategy => $job->{capability}->{algorithm},
         learned_matrix_available => $job->{capability}->{matrix_available} ? 1 : 0,
+        route_to_track => $job->{route_to_track} ? 1 : 0,
+        route_player_id => $job->{route_player_id},
+        route_tail_label => $job->{route_tail_label},
+        route_target_label => $job->{route_target_label},
     };
     if (($view->{mixing_strategy} || '') eq 'static') {
         $view->{mixing_note} = 'Static BlissMixer weights were used for every contextual distance.';
@@ -384,7 +416,18 @@ sub handler {
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
     my $form = _form_from_params($params, $defaults);
-    if ($params->{run_preview} && $params->{lastfm_present}) {
+    if (($form->{source_mode} || '') eq 'route_to_track') {
+        $form->{route_player_id} ||= $form->{queue_player_id};
+        if (!$form->{route_player_id} && $client) {
+            $form->{route_player_id} = eval { $client->id } || '';
+        }
+        $form->{queue_player_id} ||= $form->{route_player_id};
+        $form->{queue_action} ||= 'append';
+        $form->{output_mode} = 'player_queue';
+        $form->{ordering_policy} = 'preserve_order';
+        $form->{extension_mode} = 'exact_count';
+    }
+    if (($params->{run_preview} || $params->{run_route_to_track_preview}) && $params->{lastfm_present}) {
         $form->{lastfm_enabled} = $params->{lastfm_enabled} ? 1 : 0;
     }
     my $playlists = _playlists();
@@ -432,6 +475,18 @@ sub handler {
         $error = $@;
         $error =~ s/\s+/ /g if $error;
         $error = undef if $job && ($job->{write_state} || '') eq 'failed';
+    } elsif ($params->{run_route_to_track_preview}
+        || ($params->{run_preview} && ($form->{source_mode} || '') eq 'route_to_track')) {
+        eval {
+            $job = Plugins::BetterCallBliss::Jobs::start_route_to_track_preview(
+                $form->{route_player_id} || $form->{queue_player_id},
+                $form->{route_target_track_id},
+                $form,
+            );
+        };
+        $error = $@;
+        $error =~ s/\s+/ /g if $error;
+        $log->warn("Could not start route-to-track preview: $error") if $error;
     } elsif ($params->{run_preview}) {
         eval {
             die "Choose a saved playlist"
@@ -453,6 +508,7 @@ sub handler {
     $params->{bettercallbliss_playlists} = $playlists;
     $params->{bettercallbliss_players} = $players;
     $params->{bettercallbliss_form} = $form;
+    $params->{bettercallbliss_route_context} = _route_context($form);
     $params->{bettercallbliss_defaults} = $defaults;
     $params->{bettercallbliss_capability} = $capability;
     $params->{bettercallbliss_lastmix_available}
