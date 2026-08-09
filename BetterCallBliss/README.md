@@ -1,6 +1,6 @@
 # Plugin package
 
-This directory contains the installable `0.15.0` Better Call Bliss plugin package. It contributes **Better Call Bliss** under Extras and exposes playlist/track context shortcuts for supported controllers such as Material Skin. Lyrion's Applications/OPML adapter cannot expose a portable rich multi-field form, so the job editor uses the same classic-web mechanism as Virtual Library Creator.
+This directory contains the installable `0.15.1` Better Call Bliss plugin package. It contributes **Better Call Bliss** under Extras and exposes playlist/track context shortcuts for supported controllers such as Material Skin. Lyrion's Applications/OPML adapter cannot expose a portable rich multi-field form, so the job editor uses the same classic-web mechanism as Virtual Library Creator.
 
 The repository-level overview lives at [chrober/lms-better-call-bliss](https://github.com/chrober/lms-better-call-bliss/). User-facing playlist modes and per-job options are described in the [strategy guide](https://github.com/chrober/lms-better-call-bliss/blob/main/ALGORITHMS.md), and the current working/partial/planned UX boundary is tracked in [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md).
 
