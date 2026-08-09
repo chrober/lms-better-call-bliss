@@ -31,6 +31,14 @@ BEGIN {
             artist_window => '5',
             album_window => '10',
             track_window => '100',
+            use_adaptive_weights => 1,
+            use_forest => 0,
+            static_weight_sliders => {
+                tempo => '25',
+                timbre => '25',
+                loudness => '25',
+                chroma => '25',
+            },
         };
     }
     $INC{'Plugins/BetterCallBliss/BlissCompatibility.pm'} = __FILE__;
