@@ -179,6 +179,8 @@ sub resolve_bridge_preview {
             unless @originals == @source
                 && scalar(keys %original) == @source
                 && !scalar(grep { !$original{$_} } @source);
+        _fail('BRIDGE_ARTIFACT_INVALID', 'Seed growth changed preserved source order')
+            if $ordering eq 'preserve_order' && !_same_values(\@originals, \@source);
     } else {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The final sequence changed the optimized base order')
             unless _same_values(\@originals, \@selected);

@@ -125,7 +125,7 @@ sub _form_from_params {
     my ($params, $defaults) = @_;
     my $form = {%$defaults};
     for my $name (qw(
-        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id ordering_policy extension_mode algorithm seed_limit
+        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
         lastfm_track_guidance_percent lastfm_artist_guidance_percent
@@ -162,6 +162,62 @@ sub _form_from_job {
     $form->{generation_seed} = ''
         unless $options->{generation_seed_supplied};
     return $form;
+}
+
+
+sub _job_mode_label {
+    my $job = shift || {};
+    my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
+    my $purpose = $options->{addition_purpose} || '';
+    return 'Bliss me there...' if $job->{route_to_track};
+    return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
+    return 'Improve difficult transitions' if $purpose eq 'automatic'
+        || ($options->{extension_mode} || '') eq 'automatic';
+    return 'Extend playlist' if $purpose eq 'extend_playlist';
+    return 'Grow from these seeds' if $purpose eq 'seed_growth'
+        || ($options->{extension_mode} || '') eq 'seed_growth';
+    return 'Strict gap bridge placement';
+}
+
+sub _job_summary {
+    my $job = shift || {};
+    my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
+    my $started = int($job->{started_at} || 0);
+    my $finished = int($job->{finished_at} || 0);
+    my $elapsed = int(($finished || time()) - ($job->{started_at} || time()));
+    $elapsed = 0 if $elapsed < 0;
+    my $state = $job->{state} || 'unknown';
+    my $status = $job->{stage} || $state;
+    if ($state eq 'failed') {
+        $status = 'Failed: ' . ($job->{error_code} || 'UNKNOWN_FAILURE');
+    } elsif ($state eq 'completed') {
+        $status = 'Completed';
+        $status .= ' - added ' . (0 + ($job->{added_track_count} || 0))
+            if ($options->{extension_mode} || 'none') ne 'none';
+    } elsif ($state eq 'cancelled') {
+        $status = 'Cancelled';
+    }
+    return {
+        id => $job->{id},
+        state => $state,
+        stage => $job->{stage} || '',
+        status => $status,
+        title => $job->{playlist_title} || 'Untitled source',
+        mode => _job_mode_label($job),
+        started_at => $started,
+        started_text => $started ? scalar localtime($started) : '',
+        elapsed_seconds => $elapsed,
+        can_cancel => $state eq 'running' ? 1 : 0,
+        can_open => 1,
+    };
+}
+
+sub _job_lists {
+    my @summaries = map { _job_summary($_) } Plugins::BetterCallBliss::Jobs::all();
+    my @running = grep { ($_->{state} || '') eq 'running' } @summaries;
+    my @recent = grep { ($_->{state} || '') ne 'running' } @summaries;
+    splice(@recent, 8) if @recent > 8;
+    return (\@running, \@recent);
 }
 
 sub _semantic_evidence_summary {
@@ -304,6 +360,8 @@ sub _result_view {
                 if $job->{options}->{extension_mode} eq 'double_count';
             $view->{seed_growth_extension} = 1
                 if $job->{options}->{extension_mode} eq 'seed_growth';
+            $view->{extend_playlist_extension} = 1
+                if ($job->{options}->{addition_purpose} || '') eq 'extend_playlist';
             $view->{base_route_objective} = sprintf(
                 '%.3f', $artifact->{selected_route_objective},
             );
@@ -466,7 +524,15 @@ sub handler {
     $form->{output_name_generated} = length($form->{output_name}) ? 0 : 1;
 
     my ($job, $error);
-    if ($params->{create_copy}) {
+    if ($params->{cancel_job}) {
+        eval {
+            die "Preview job is no longer available"
+                unless $params->{job_id};
+            $job = Plugins::BetterCallBliss::Jobs::cancel($params->{job_id});
+        };
+        $error = $@;
+        $error =~ s/\s+/ /g if $error;
+    } elsif ($params->{create_copy}) {
         eval {
             die "Preview job is no longer available"
                 unless $params->{job_id};
@@ -537,6 +603,10 @@ sub handler {
     }
 
     $form = _form_from_job($job, $defaults) if $job;
+
+    my ($running_jobs, $recent_jobs) = _job_lists();
+    $params->{bettercallbliss_running_jobs} = $running_jobs;
+    $params->{bettercallbliss_recent_jobs} = $recent_jobs;
 
     $params->{bettercallbliss_playlists} = $playlists;
     $params->{bettercallbliss_players} = $players;

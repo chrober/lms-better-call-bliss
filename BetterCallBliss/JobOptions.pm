@@ -22,6 +22,8 @@ sub defaults {
     return {
         ordering_policy => 'optimize_order',
         extension_mode => 'none',
+        addition_purpose => 'none',
+        addition_amount_mode => 'exact_count',
         algorithm => $default_algorithm,
         seed_limit => int($capability->{seed_limit}),
         learned_percent => int($capability->{learned_percent}),
@@ -81,8 +83,43 @@ sub normalize {
             || $options->{extension_mode} eq 'target_count'
             || $options->{extension_mode} eq 'double_count'
             || $options->{extension_mode} eq 'seed_growth';
-    $options->{ordering_policy} = 'optimize_order'
-        if $options->{extension_mode} eq 'seed_growth';
+
+    my $addition_purpose_provided = defined $input->{addition_purpose};
+    $options->{addition_purpose} = $input->{addition_purpose}
+        if $addition_purpose_provided;
+    die "Additional tracks must be No additions, Improve difficult transitions, Extend playlist, or Grow from these seeds"
+        unless $options->{addition_purpose} eq 'none'
+            || $options->{addition_purpose} eq 'automatic'
+            || $options->{addition_purpose} eq 'extend_playlist'
+            || $options->{addition_purpose} eq 'seed_growth';
+    $options->{addition_amount_mode} = $input->{addition_amount_mode}
+        if defined $input->{addition_amount_mode};
+    die "Chosen amount must be Add exactly N tracks, Reach final track count, or Double track count"
+        unless $options->{addition_amount_mode} eq 'exact_count'
+            || $options->{addition_amount_mode} eq 'target_count'
+            || $options->{addition_amount_mode} eq 'double_count';
+    if (!defined $input->{addition_purpose}) {
+        if ($options->{extension_mode} eq 'exact_count'
+            || $options->{extension_mode} eq 'target_count'
+            || $options->{extension_mode} eq 'double_count') {
+            $options->{addition_purpose} = 'none';
+            $options->{addition_amount_mode} = $options->{extension_mode};
+        } elsif ($options->{extension_mode} eq 'automatic'
+            || $options->{extension_mode} eq 'seed_growth') {
+            $options->{addition_purpose} = $options->{extension_mode};
+        } else {
+            $options->{addition_purpose} = 'none';
+        }
+    }
+    if ($addition_purpose_provided) {
+        if ($options->{addition_purpose} eq 'extend_playlist') {
+            $options->{extension_mode} = 'seed_growth';
+        } elsif ($options->{addition_purpose} eq 'automatic'
+            || $options->{addition_purpose} eq 'seed_growth'
+            || $options->{addition_purpose} eq 'none') {
+            $options->{extension_mode} = $options->{addition_purpose};
+        }
+    }
 
     $options->{algorithm} = $input->{algorithm}
         if defined $input->{algorithm};

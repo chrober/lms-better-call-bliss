@@ -21,6 +21,10 @@
   .bea-hidden { display: none !important; }
   .bea-mode-section.bea-hidden { display: none !important; }
   details.bea-section > summary { cursor: pointer; font-weight: bold; }
+  .bea-job-list { margin: .5em 0 0 1.2em; }
+  .bea-job-list li { margin: .45em 0; }
+  .bea-inline-form { display: inline; margin-left: .8em; }
+  .bea-small-button { font-size: .9em; }
 </style>
 
 <h2>Playlist Breaking Bad? Better Call Bliss.</h2>
@@ -35,18 +39,19 @@
 
 [% IF bettercallbliss_job %]
   [% IF bettercallbliss_job.state == 'running' %]
-    <div class="bea-info"><b>Optimization is running.</b> This page refreshes automatically until the result is available.</div>
-    <script>
-      window.setTimeout(function () {
-        window.location.replace('[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]');
-      }, 1500);
-    </script>
+    <div id="bea-live-status-banner" class="bea-info" data-job-id="[% bettercallbliss_job.id | html %]">
+      <b>Optimization is running.</b>
+      <span id="bea-live-status-text">[% bettercallbliss_job.stage | html %]</span>
+      <span id="bea-live-status-elapsed"></span>
+    </div>
   [% ELSIF bettercallbliss_job.state == 'failed' %]
     <div class="bea-error">
       <b>Optimization failed - [% bettercallbliss_job.error_code | html %]:</b>
       [% bettercallbliss_job.error | html %]
       No playlist was changed.
     </div>
+  [% ELSIF bettercallbliss_job.state == 'cancelled' %]
+    <div class="bea-info"><b>Preview cancelled.</b> No playlist or player queue was changed.</div>
   [% ELSIF bettercallbliss_job.write_state == 'completed' %]
     <div class="bea-ok">
       <b>Success.</b>
@@ -80,9 +85,44 @@
   [% END %]
 [% END %]
 
-[% IF bettercallbliss_candidate_inventory.ready %]
+[% IF bettercallbliss_running_jobs.size || bettercallbliss_recent_jobs.size %]
+  <details class="bea-section" id="bea-job-overview"[% IF bettercallbliss_running_jobs.size %] open[% END %]>
+    <summary id="bea-job-overview-summary">Running and recent previews[% IF bettercallbliss_running_jobs.size %] ([% bettercallbliss_running_jobs.size %] running)[% END %]</summary>
+    [% IF bettercallbliss_running_jobs.size %]
+      <h4 id="bea-running-jobs-heading">Running</h4>
+      <ul class="bea-job-list" id="bea-running-jobs-list">
+        [% FOREACH item = bettercallbliss_running_jobs %]
+          <li>
+            <b>[% item.title | html %]</b> - [% item.mode | html %];
+            [% item.status | html %]; elapsed [% item.elapsed_seconds %]s.
+            <a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% item.id | html %]">Open</a>
+            <form class="bea-inline-form bea-cancel-job-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
+              <input type="hidden" name="job_id" value="[% item.id | html %]">
+              <input class="inputbutton bea-small-button" type="submit" name="cancel_job" value="Cancel preview">
+            </form>
+          </li>
+        [% END %]
+      </ul>
+    [% END %]
+    [% IF bettercallbliss_recent_jobs.size %]
+      <h4 id="bea-recent-jobs-heading">Recent</h4>
+      <ul class="bea-job-list" id="bea-recent-jobs-list">
+        [% FOREACH item = bettercallbliss_recent_jobs %]
+          <li>
+            <b>[% item.title | html %]</b> - [% item.mode | html %];
+            [% item.status | html %]; elapsed [% item.elapsed_seconds %]s.
+            <a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% item.id | html %]">Open</a>
+          </li>
+        [% END %]
+      </ul>
+      <p class="bea-note" id="bea-recent-jobs-note">Recent previews are kept only while LMS is running. Persistent job history is still on the roadmap.</p>
+    [% END %]
+  </details>
+[% END %]
+
+[% IF bettercallbliss_candidate_inventory.ready && bettercallbliss_candidate_inventory.unmatched_row_count %]
   <details class="bea-section">
-    <summary>Bliss library membership audit</summary>
+    <summary>Diagnostics: Bliss library membership audit ([% bettercallbliss_candidate_inventory.unmatched_row_count %] excluded rows)</summary>
     <p>
       [% bettercallbliss_candidate_inventory.allowed_row_count %] usable Bliss rows
       match current local LMS tracks.
@@ -163,27 +203,36 @@
         </select>
       </div>
       <p class="bea-note">Optimize may move the existing tracks. Preserve keeps every source track as an immutable anchor in its current order and permits additions only inside the existing gaps.</p>
+      <input type="hidden" name="extension_mode" id="extension_mode" value="[% bettercallbliss_form.extension_mode | html %]">
       <div class="bea-row">
-        <label for="extension_mode">Additional tracks</label>
-        <select name="extension_mode" id="extension_mode">
-          <option value="none"[% IF bettercallbliss_form.extension_mode == 'none' %] selected[% END %]>None - reorder existing tracks only [Working]</option>
-          <option value="automatic"[% IF bettercallbliss_form.extension_mode == 'automatic' %] selected[% END %]>Add automatically [Working]</option>
-          <option value="exact_count"[% IF bettercallbliss_form.extension_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks [Working]</option>
-          <option value="target_count"[% IF bettercallbliss_form.extension_mode == 'target_count' %] selected[% END %]>Reach target track count [Working]</option>
-          <option value="double_count"[% IF bettercallbliss_form.extension_mode == 'double_count' %] selected[% END %]>Double track count [Working]</option>
-          <option value="seed_growth"[% IF bettercallbliss_form.extension_mode == 'seed_growth' %] selected[% END %]>Grow from these seeds to a target size [Working]</option>
-          <option disabled>Add N bridge tracks between every pair of source tracks [Not connected yet]</option>
-          <option disabled>Reach target duration [Not connected yet]</option>
-          <option disabled>Double duration [Not connected yet]</option>
+        <label for="addition_purpose">Additional tracks</label>
+        <select name="addition_purpose" id="addition_purpose">
+          <option value="none"[% IF bettercallbliss_form.addition_purpose == 'none' %] selected[% END %]>No additions - only use the source tracks [Working]</option>
+          <option value="automatic"[% IF bettercallbliss_form.addition_purpose == 'automatic' %] selected[% END %]>Improve difficult transitions when useful [Working]</option>
+          <option value="extend_playlist"[% IF bettercallbliss_form.addition_purpose == 'extend_playlist' %] selected[% END %]>Extend playlist [Working]</option>
+          <option value="seed_growth"[% IF bettercallbliss_form.addition_purpose == 'seed_growth' %] selected[% END %]>Grow from these seeds [Working]</option>
+          <option disabled>Advanced: strict gap bridge placement [Planned]</option>
+          <option disabled>Reach a target duration [Planned]</option>
+          <option disabled>Double playlist duration [Planned]</option>
         </select>
       </div>
+      <p class="bea-note" id="addition_purpose_note"></p>
+      <div class="bea-row" id="addition_amount_mode_row">
+        <label for="addition_amount_mode">Chosen amount</label>
+        <select name="addition_amount_mode" id="addition_amount_mode">
+          <option value="exact_count"[% IF bettercallbliss_form.addition_amount_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks</option>
+          <option value="target_count"[% IF bettercallbliss_form.addition_amount_mode == 'target_count' %] selected[% END %]>Reach a final track count</option>
+          <option value="double_count"[% IF bettercallbliss_form.addition_amount_mode == 'double_count' %] selected[% END %]>Double the track count</option>
+        </select>
+      </div>
+      <p class="bea-note" id="addition_amount_note"></p>
     [% END %]
-    <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without requesting any possible additions would leave the playlist unchanged. Choose an addition mode with a non-zero target.</div>
+    <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without allowing additions would leave the result unchanged. Choose transition improvements, Extend playlist, or seed growth with a larger target.</div>
   </fieldset>
 
   <fieldset class="bea-section bea-mode-section" id="seed_growth_fields">
-    <legend>Grow from these seeds</legend>
-    <p class="bea-note">Used only by Grow from these seeds. Every source song is kept exactly once. The complete source playlist remains the fixed musical reference while local analyzed tracks are selected, so newly added songs cannot pull later choices away from the original taste. The complete seed-plus-addition membership is then reordered for transition flow.</p>
+    <legend id="seed_growth_legend">Grow from these seeds</legend>
+    <p class="bea-note" id="seed_growth_note">Used by Grow from these seeds and Extend playlist. Every source song is kept exactly once. The complete source playlist or queue snapshot remains the fixed musical reference while local analyzed tracks are selected, so newly added songs cannot pull later choices away from the original taste. With Optimize source order, the complete seed-plus-addition membership may be rerouted for flow. With Preserve source order, source tracks remain anchors in their current order and additions fill around them when the native optimizer can satisfy the repeat windows.</p>
     <div class="bea-row">
       <label for="target_track_count">Final playlist size</label>
       <input type="number" min="3" max="500" class="stdedit sliderInput_3_500_1" name="target_track_count" id="target_track_count" value="[% bettercallbliss_form.target_track_count %]" required>
@@ -210,19 +259,19 @@
 
   <fieldset class="bea-section bea-mode-section" id="exact_count_fields">
     <legend>Exact additions</legend>
-    <p class="bea-note">Used only by Add exactly N tracks. The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.</p>
+    <p class="bea-note">Used by Extend playlist when you choose Add exactly N tracks. The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.</p>
     <div class="bea-row">
       <label for="additional_track_count">Exact number of additional tracks</label>
       <input type="number" min="1" max="100" class="stdedit sliderInput_1_100_1" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
       <span class="bea-disabled" id="exact_count_limit">Choose a source to see the current limit.</span>
     </div>
-    <p class="bea-note">This mode inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
+    <p class="bea-note">Extend playlist is not limited by the number of existing gaps. It selects additions from the local analyzed library and then arranges or places them according to Source-track order.</p>
     <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
   </fieldset>
 
   <fieldset class="bea-section bea-mode-section" id="target_count_fields">
     <legend>Target track count</legend>
-    <p class="bea-note">Used only by Reach target track count. Enter the desired final number of tracks. Better Call Bliss calculates the required additions and may enable an opening or closing slot only when the internal gaps alone cannot reach the target.</p>
+    <p class="bea-note">Used by Extend playlist when you choose Reach final track count. Enter the desired final number of tracks; Better Call Bliss calculates how many local additions are needed.</p>
     <div class="bea-row">
       <label for="bridge_target_track_count">Final track count</label>
       <input type="number" min="3" max="500" class="stdedit sliderInput_3_500_1" name="bridge_target_track_count" id="bridge_target_track_count" value="[% bettercallbliss_form.bridge_target_track_count %]" required>
@@ -233,7 +282,7 @@
 
   <fieldset class="bea-section bea-mode-section" id="double_count_fields">
     <legend>Double track count</legend>
-    <p class="bea-note">Used only by Double track count. This preset asks for one added local track per original source track, yielding exactly twice as many tracks. If internal gaps provide only S - 1 slots, Better Call Bliss may also use one opening or closing slot.</p>
+    <p class="bea-note">Used by Extend playlist when you choose Double track count. This preset asks for one added local track per source track, yielding exactly twice as many tracks.</p>
     <p class="bea-note" id="double_count_summary">Choose a source to see the calculated final size.</p>
   </fieldset>
 
@@ -343,6 +392,11 @@
     var sourceInputWarning = document.getElementById('source_input_warning');
     var sourceQueueNote = document.getElementById('source_queue_note');
     var extension = document.getElementById('extension_mode');
+    var additionPurpose = document.getElementById('addition_purpose');
+    var additionAmountMode = document.getElementById('addition_amount_mode');
+    var additionAmountModeRow = document.getElementById('addition_amount_mode_row');
+    var additionPurposeNote = document.getElementById('addition_purpose_note');
+    var additionAmountNote = document.getElementById('addition_amount_note');
     var algorithm = document.getElementById('algorithm');
     var automaticFields = document.getElementById('automatic_extension_fields');
     var automaticInputs = automaticFields.querySelectorAll('input');
@@ -399,20 +453,68 @@
       }
     }
 
+    function initializeAdditionControls() {
+      if (!additionPurpose || !additionAmountMode) return;
+      var submittedPurpose = additionPurpose.value || '';
+      var submittedAmount = additionAmountMode.value || '';
+      if (submittedPurpose) {
+        if (submittedAmount) additionAmountMode.value = submittedAmount;
+        return;
+      }
+      var mode = extension.value || 'none';
+      if (mode === 'exact_count' || mode === 'target_count' || mode === 'double_count') {
+        additionPurpose.value = 'extend_playlist';
+        additionAmountMode.value = mode;
+      } else if (mode === 'automatic' || mode === 'seed_growth') {
+        additionPurpose.value = mode;
+      } else {
+        additionPurpose.value = 'none';
+        additionAmountMode.value = 'exact_count';
+      }
+    }
+
+    function syncExtensionModeFromAdditionControls() {
+      if (!additionPurpose || !additionAmountMode) return extension.value;
+      if (additionPurpose.value === 'extend_playlist') {
+        extension.value = 'seed_growth';
+      } else {
+        extension.value = additionPurpose.value;
+      }
+      return extension.value;
+    }
+
+    function updateAdditionNotes(purpose, mode) {
+      if (!additionPurposeNote || !additionAmountNote) return;
+      var purposeNotes = {
+        none: 'No local tracks are inserted. With Optimize source order this is a pure reordering run; with Preserve source order it would be a no-op.',
+        automatic: 'Better Call Bliss only adds a bridge when a transition looks difficult and an eligible local track improves it.',
+        extend_playlist: 'Add the requested amount from the local analyzed library, then arrange the enlarged playlist according to Source-track order.',
+        seed_growth: 'Use the source songs as taste seeds and grow a fuller playlist around that fixed seed set.'
+      };
+      var amountNotes = {
+        exact_count: 'Adds exactly the requested number of tracks. This is not limited by the number of existing source gaps.',
+        target_count: 'You enter the final playlist size; Better Call Bliss calculates how many additions are needed.',
+        double_count: 'A preset for exactly twice as many tracks as the source snapshot.'
+      };
+      additionPurposeNote.textContent = purposeNotes[purpose] || '';
+      additionAmountNote.textContent = purpose === 'extend_playlist' ? (amountNotes[mode] || '') : '';
+    }
+
+    initializeAdditionControls();
+
     function synchronizeControls() {
+      syncExtensionModeFromAdditionControls();
       var preserve = ordering.value === 'preserve_order';
       var noAdditions = extension.value === 'none';
       var automatic = extension.value === 'automatic';
-      var exact = extension.value === 'exact_count';
-      var targetCount = extension.value === 'target_count';
-      var doubleCount = extension.value === 'double_count';
-      var growth = extension.value === 'seed_growth';
+      var extendPlaylist = additionPurpose && additionPurpose.value === 'extend_playlist';
+      var amountMode = additionAmountMode ? additionAmountMode.value : 'exact_count';
+      var exact = extendPlaylist && amountMode === 'exact_count';
+      var targetCount = extendPlaylist && amountMode === 'target_count';
+      var doubleCount = extendPlaylist && amountMode === 'double_count';
+      var growth = extension.value === 'seed_growth' && !extendPlaylist;
       var additions = !noAdditions;
-      if (growth && ordering.value !== 'optimize_order') {
-        ordering.value = 'optimize_order';
-        preserve = false;
-      }
-      var noneOption = extension.querySelector('option[value="none"]');
+      var noneOption = additionPurpose ? additionPurpose.querySelector('option[value="none"]') : null;
       var currentSourceMode = sourceMode ? sourceMode.value : 'saved_playlist';
       var selectedPlaylist = playlist && playlist.options[playlist.selectedIndex];
       var sourceCount = parseInt(
@@ -433,9 +535,8 @@
         }
       }
       var invalidSource = currentSourceMode !== 'route_to_track' && sourceCount < 2;
-      var maximumExact = Math.max(0, sourceCount - 1);
-      var maximumTargetAdditions = sourceCount > 0 ? maximumExact + 2 : 0;
-      var maximumTarget = sourceCount + maximumTargetAdditions;
+      var maximumExact = 100;
+      var maximumTarget = 500;
       var requestedExact = parseInt(exactCount.value || '0', 10);
       var requestedBridgeTarget = parseInt(bridgeTarget.value || '0', 10);
       var requestedTarget = parseInt(growthTarget.value || '0', 10);
@@ -444,14 +545,23 @@
       var invalidCombination = preserve
         && (noAdditions || zeroAutomaticBudget);
       var invalidExact = exact && sourceCount > 0
-        && (requestedExact < 1 || requestedExact > maximumExact);
+        && (requestedExact < 1 || requestedExact > maximumExact
+          || sourceCount + requestedExact > maximumTarget);
       var invalidTarget = targetCount && sourceCount > 0
         && (requestedBridgeTarget <= sourceCount || requestedBridgeTarget > maximumTarget);
+      var invalidDouble = doubleCount && sourceCount > 0 && (2 * sourceCount > maximumTarget);
       var invalidGrowth = growth && sourceCount > 0
         && requestedTarget <= sourceCount;
+      if (extendPlaylist && sourceCount > 0) {
+        if (exact) growthTarget.value = sourceCount + (requestedExact > 0 ? requestedExact : 0);
+        if (targetCount) growthTarget.value = requestedBridgeTarget > 0 ? requestedBridgeTarget : sourceCount;
+        if (doubleCount) growthTarget.value = 2 * sourceCount;
+      }
 
-      noneOption.disabled = preserve;
-      ordering.disabled = growth;
+      if (noneOption) noneOption.disabled = false;
+      ordering.disabled = false;
+      setVisible(additionAmountModeRow, additionPurpose && additionPurpose.value === 'extend_playlist');
+      updateAdditionNotes(additionPurpose ? additionPurpose.value : extension.value, extension.value);
       setVisible(savedPlaylistFields, currentSourceMode === 'saved_playlist');
       setVisible(playerQueueFields, currentSourceMode === 'player_queue');
       if (playlist) playlist.required = currentSourceMode === 'saved_playlist';
@@ -467,11 +577,14 @@
       var exactSlider = companionSlider(exactCount);
       if (exactSlider) exactSlider.max = exactCount.max;
       exactLimit.textContent = sourceCount > 0
-        ? 'Current limit: ' + maximumExact + ' internal additions; final size: '
-          + (sourceCount + (requestedExact > 0 ? requestedExact : 0)) + '.'
-        : 'Choose a source to see the current limit.';
+        ? 'Final size: ' + sourceCount + ' source tracks + '
+          + (requestedExact > 0 ? requestedExact : 0) + ' additions = '
+          + (sourceCount + (requestedExact > 0 ? requestedExact : 0)) + ' tracks.'
+        : 'Choose a source to see the calculated final size.';
       exactWarning.textContent = invalidExact
-        ? 'This source snapshot has ' + maximumExact + ' internal transitions, so Add exactly N cannot add ' + requestedExact + ' tracks.'
+        ? (sourceCount + requestedExact > maximumTarget
+            ? 'This would exceed the current 500-track target limit.'
+            : 'Choose between 1 and ' + maximumExact + ' additional tracks.')
         : '';
       setVisible(exactWarning, invalidExact);
       bridgeTarget.max = maximumTarget || 500;
@@ -479,7 +592,7 @@
       if (targetSlider) targetSlider.max = bridgeTarget.max;
       var targetAdditions = requestedBridgeTarget - sourceCount;
       targetLimit.textContent = sourceCount > 0
-        ? 'Current target range: ' + (sourceCount + 1) + ' to ' + maximumTarget
+        ? 'Target range: ' + (sourceCount + 1) + ' to ' + maximumTarget
           + ' tracks; current request adds ' + (targetAdditions > 0 ? targetAdditions : 0) + '.'
         : 'Choose a source to see the current target range.';
       targetWarning.textContent = invalidTarget
@@ -488,6 +601,7 @@
       setVisible(targetWarning, invalidTarget);
       doubleSummary.textContent = sourceCount > 0
         ? sourceCount + ' source tracks + ' + sourceCount + ' additions = ' + (2 * sourceCount) + ' tracks.'
+          + (invalidDouble ? ' This exceeds the current 500-track target limit.' : '')
         : 'Choose a source to see the calculated final size.';
       growthCount.textContent = sourceCount > 0 && requestedTarget > sourceCount
         ? sourceCount + ' seeds + ' + (requestedTarget - sourceCount)
@@ -497,7 +611,7 @@
         ? 'Choose a final size greater than the ' + sourceCount + ' source tracks.'
         : '';
       setVisible(growthWarning, invalidGrowth);
-      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidGrowth;
+      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble || invalidGrowth;
 
       var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
       setVisible(lastFmFields, additions);
@@ -519,7 +633,7 @@
       setInputsReadOnly(targetInputs, !targetCount);
       setVisible(doubleFields, doubleCount);
       setVisible(growthFields, growth);
-      setInputsReadOnly(growthInputs, !growth);
+      setInputsReadOnly(growthInputs, !(growth || extendPlaylist));
       setVisible(learnedPercentRow, algorithm.value === 'adaptive');
     }
 
@@ -528,7 +642,8 @@
     if (playlist) playlist.addEventListener('change', synchronizeControls);
     if (sourcePlayer) sourcePlayer.addEventListener('change', synchronizeControls);
     if (sourceQueueScope) sourceQueueScope.addEventListener('change', synchronizeControls);
-    extension.addEventListener('change', synchronizeControls);
+    if (additionPurpose) additionPurpose.addEventListener('change', synchronizeControls);
+    if (additionAmountMode) additionAmountMode.addEventListener('change', synchronizeControls);
     algorithm.addEventListener('change', synchronizeControls);
     maximumAdditions.addEventListener('input', synchronizeControls);
     exactCount.addEventListener('input', synchronizeControls);
@@ -541,9 +656,9 @@
 </script>
 
 [% IF bettercallbliss_job %]
-  <fieldset class="bea-section">
+  <fieldset class="bea-section" id="bea-preview-result">
     <legend>Preview result</legend>
-    <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - [% bettercallbliss_job.stage | html %]</p>
+    <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - <span id="bea-preview-stage">[% bettercallbliss_job.stage | html %]</span><span id="bea-preview-elapsed"></span></p>
     <p>Job ID: [% bettercallbliss_job.id | html %]</p>
     [% IF bettercallbliss_job.state == 'completed' %]
       <p class="bea-note">This preview has not changed any playlist or player queue yet. Choose an output below after reviewing the result.</p>
@@ -553,15 +668,28 @@
     <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
     [% IF bettercallbliss_job.mixing_note %]<p class="bea-note"><b>Mixing:</b> [% bettercallbliss_job.mixing_strategy | html %] (BlissMixer current setting: [% bettercallbliss_job.blissmixer_strategy | html %]). [% bettercallbliss_job.mixing_note | html %]</p>[% END %]
     [% IF bettercallbliss_job.state == 'running' %]
-      <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]">Refresh result now</a></p>
+      <p id="bea-live-refresh-hint">Waiting for the preview result. This status updates in place; your scroll position is preserved.</p>
+      <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]#bea-preview-result">Load full result now</a></p>
+      <form class="bea-cancel-job-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
+        <input type="hidden" name="job_id" value="[% bettercallbliss_job.id | html %]">
+        <input class="inputbutton" type="submit" name="cancel_job" value="Cancel preview">
+      </form>
     [% ELSIF bettercallbliss_job.state == 'failed' %]
       <div class="bea-error"><b>[% bettercallbliss_job.error_code | html %]</b>: [% bettercallbliss_job.error | html %]</div>
       <p><input class="inputbutton" form="bea-main-form" type="submit" name="[% IF bettercallbliss_job.route_to_track %]run_route_to_track_preview[% ELSE %]run_preview[% END %]" value="Run read-only preview again"></p>
+    [% ELSIF bettercallbliss_job.state == 'cancelled' %]
+      <div class="bea-info"><b>Preview cancelled.</b> No playlist or player queue was changed.</div>
+      <p><input class="inputbutton" form="bea-main-form" type="submit" name="[% IF bettercallbliss_job.route_to_track %]run_route_to_track_preview[% ELSE %]run_preview[% END %]" value="Run read-only preview again"></p>
     [% ELSE %]
       [% IF bettercallbliss_job.seed_growth_extension %]
-        <div class="bea-ok">Grew [% bettercallbliss_job.relevance_reference_track_count %] seeds to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
-        <p class="bea-note">The original seed set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
-        <p class="bea-note"><b>Fixed-seed relevance:</b> best [% bettercallbliss_job.relevance_minimum %], average [% bettercallbliss_job.relevance_mean %], furthest [% bettercallbliss_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
+        [% IF bettercallbliss_job.extend_playlist_extension %]
+          <div class="bea-ok">Extended [% bettercallbliss_job.relevance_reference_track_count %] source tracks to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
+          <p class="bea-note">The original source set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
+        [% ELSE %]
+          <div class="bea-ok">Grew [% bettercallbliss_job.relevance_reference_track_count %] seeds to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
+          <p class="bea-note">The original seed set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
+        [% END %]
+        <p class="bea-note"><b>[% IF bettercallbliss_job.extend_playlist_extension %]Fixed-source relevance[% ELSE %]Fixed-seed relevance[% END %]:</b> best [% bettercallbliss_job.relevance_minimum %], average [% bettercallbliss_job.relevance_mean %], furthest [% bettercallbliss_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
         <p class="bea-note"><b>Final route flow:</b> [% bettercallbliss_job.selected_strategy | html %]; transition sum [% bettercallbliss_job.route_transition_sum %], worst transition [% bettercallbliss_job.route_worst_transition %], objective [% bettercallbliss_job.route_objective %], arc error [% bettercallbliss_job.route_arc_error %].</p>
         <details>
           <summary>Verified acceptance checks</summary>
@@ -598,7 +726,7 @@
       <ol class="bea-order">
         [% FOREACH track = bettercallbliss_job.order %]
           <li>[% track.artist | html %] - [% track.title | html %]
-            [% IF track.bridge %]<b>[% IF bettercallbliss_job.seed_growth_extension %][Added from seed similarity][% ELSE %][Added bridge][% END %]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
+            [% IF track.bridge %]<b>[% IF bettercallbliss_job.extend_playlist_extension %][Added extension][% ELSIF bettercallbliss_job.seed_growth_extension %][Added from seed similarity][% ELSE %][Added bridge][% END %]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
           </li>
         [% END %]
       </ol>
@@ -724,7 +852,7 @@
                 <label for="accept_queue_start_playback">Start playback</label>
                 <input type="checkbox" name="queue_start_playback" id="accept_queue_start_playback" value="1"[% IF bettercallbliss_job.queue_start_playback %] checked[% END %]>
               </div>
-              <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Replace upcoming tracks keeps the current queue item and playback state, removes only later queue entries, then appends the accepted result. For the same player used as input, create the preview from Use only upcoming tracks to avoid duplicating the current song. Append adds the result at the end. Play next inserts it after the current song.</p>
+              <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Replace upcoming tracks keeps the current queue item and playback state, removes only later queue entries, then appends the accepted result. When source and target are the same player, Better Call Bliss rechecks the live queue at send time and trims already-played preview items when it can still recognize the snapshot. Append adds the result at the end. Play next inserts it after the current song.</p>
               <div id="accept_queue_output_warning" class="bea-warning bea-hidden">Choose a player before sending to a player queue.</div>
             </div>
             <p>
@@ -739,6 +867,217 @@
   </fieldset>
 [% END %]
 
+
+
+[% IF bettercallbliss_job && bettercallbliss_job.state == 'running' %]
+<script>
+  (function () {
+    var jobId = '[% bettercallbliss_job.id | html %]';
+    if (!jobId) return;
+
+    var serverJsonUrl = '[% webroot %]jsonrpc.js';
+    var pollTimer;
+    var finishing = false;
+
+    function text(value) {
+      return value === undefined || value === null ? '' : String(value);
+    }
+
+    function setText(id, value) {
+      var el = document.getElementById(id);
+      if (el) el.textContent = text(value);
+    }
+
+    function setClass(el, className) {
+      if (!el) return;
+      el.classList.remove('bea-info', 'bea-ok', 'bea-error');
+      el.classList.add(className);
+    }
+
+    function elapsedText(job) {
+      var seconds = parseInt(job && job.elapsed_seconds ? job.elapsed_seconds : 0, 10);
+      if (!seconds || seconds < 0) return '';
+      return ' (elapsed ' + seconds + 's)';
+    }
+
+
+    function escapeHtml(value) {
+      return text(value).replace(/[&<>"']/g, function (ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+
+    function renderJobItem(job, includeCancel) {
+      var id = escapeHtml(job.id || '');
+      var html = '<li>'
+        + '<b>' + escapeHtml(job.title || 'Untitled source') + '</b> - '
+        + escapeHtml(job.mode || '') + '; '
+        + escapeHtml(job.status || job.stage || job.state || '')
+        + '; elapsed ' + parseInt(job.elapsed_seconds || 0, 10) + 's. '
+        + '<a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=' + id + '">Open</a>';
+      if (includeCancel && job.state === 'running') {
+        html += ' <form class="bea-inline-form bea-cancel-job-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">'
+          + '<input type="hidden" name="job_id" value="' + id + '">'
+          + '<input class="inputbutton bea-small-button" type="submit" name="cancel_job" value="Cancel preview">'
+          + '</form>';
+      }
+      return html + '</li>';
+    }
+
+    function setVisibleById(id, visible) {
+      var el = document.getElementById(id);
+      if (el) el.classList.toggle('bea-hidden', !visible);
+    }
+
+    function bindCancelForms(scope) {
+      var root = scope || document;
+      var forms = root.querySelectorAll('.bea-cancel-job-form');
+      for (var i = 0; i < forms.length; i++) {
+        if (forms[i].getAttribute('data-bea-bound')) continue;
+        forms[i].setAttribute('data-bea-bound', '1');
+        forms[i].addEventListener('submit', function (event) {
+          event.preventDefault();
+          var input = this.querySelector('input[name="job_id"]');
+          var targetJobId = input ? input.value : jobId;
+          var buttons = this.querySelectorAll('input, button');
+          for (var b = 0; b < buttons.length; b++) buttons[b].disabled = true;
+          cancelJob(targetJobId).catch(function () {
+            window.location.replace(resultUrl());
+          });
+        });
+      }
+    }
+
+    function updateJobLists(result) {
+      if (!result) return;
+      var running = result.running_jobs || [];
+      var recent = result.recent_jobs || [];
+      var overview = document.getElementById('bea-job-overview');
+      if (!overview) return;
+
+      var summary = document.getElementById('bea-job-overview-summary');
+      if (summary) {
+        summary.textContent = 'Running and recent previews'
+          + (running.length ? ' (' + running.length + ' running)' : '');
+      }
+      overview.open = running.length > 0 || overview.open;
+
+      var runningList = document.getElementById('bea-running-jobs-list');
+      if (runningList) {
+        runningList.innerHTML = running.map(function (job) {
+          return renderJobItem(job, true);
+        }).join('');
+      }
+      setVisibleById('bea-running-jobs-heading', running.length > 0);
+      setVisibleById('bea-running-jobs-list', running.length > 0);
+
+      var recentList = document.getElementById('bea-recent-jobs-list');
+      if (recentList) {
+        recentList.innerHTML = recent.map(function (job) {
+          return renderJobItem(job, false);
+        }).join('');
+      }
+      setVisibleById('bea-recent-jobs-heading', recent.length > 0);
+      setVisibleById('bea-recent-jobs-list', recent.length > 0);
+      setVisibleById('bea-recent-jobs-note', recent.length > 0);
+      bindCancelForms(overview);
+    }
+
+    function requestJob(action, id) {
+      var msg = JSON.stringify({
+        id: 1,
+        method: 'slim.request',
+        params: ['', ['bettercallbliss', 'job', action, 'job_id:' + id]]
+      });
+      return fetch(serverJsonUrl, {
+        method: 'post',
+        headers: { 'Content-Type': 'application/json', 'Origin': window.location.hostname },
+        body: msg
+      }).then(function (response) {
+        if (!response.ok) throw new Error('HTTP error ' + response.status);
+        return response.json();
+      });
+    }
+
+    function resultUrl() {
+      var base = '[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id | html %]';
+      return base + '#bea-preview-result';
+    }
+
+    function finishWithServerRender() {
+      if (finishing) return;
+      finishing = true;
+      if (pollTimer) window.clearInterval(pollTimer);
+      window.setTimeout(function () {
+        window.location.replace(resultUrl());
+      }, 700);
+    }
+
+    function updateCurrentJob(job) {
+      if (!job) return;
+      var state = text(job.state);
+      var status = text(job.status || job.stage || state);
+      var banner = document.getElementById('bea-live-status-banner');
+      setText('bea-live-status-text', status);
+      setText('bea-live-status-elapsed', elapsedText(job));
+      setText('bea-preview-stage', text(job.stage || status));
+      setText('bea-preview-elapsed', elapsedText(job));
+
+      var cancelButtons = document.querySelectorAll('.bea-cancel-job-form input[name="cancel_job"]');
+      for (var i = 0; i < cancelButtons.length; i++) {
+        cancelButtons[i].disabled = state !== 'running';
+      }
+
+      if (state === 'running') return;
+
+      if (state === 'completed') {
+        setClass(banner, 'bea-ok');
+        setText('bea-live-status-text', 'Preview completed. Loading the full result...');
+      } else if (state === 'cancelled') {
+        setClass(banner, 'bea-info');
+        setText('bea-live-status-text', 'Preview cancelled. Loading the final status...');
+      } else {
+        setClass(banner, 'bea-error');
+        setText('bea-live-status-text', status || 'Preview failed. Loading details...');
+      }
+      setText('bea-live-status-elapsed', elapsedText(job));
+      finishWithServerRender();
+    }
+
+    function pollJob() {
+      requestJob('status', jobId).then(function (response) {
+        if (response && response.result) {
+          updateJobLists(response.result);
+          if (response.result.job) {
+            updateCurrentJob(response.result.job);
+          } else if (response.result.state === 'not_found') {
+            updateCurrentJob({ state: 'failed', status: response.result.error || 'Preview job is no longer available' });
+          }
+        }
+      }).catch(function (error) {
+        setText('bea-live-status-elapsed', ' (status update failed: ' + error.message + ')');
+      });
+    }
+
+    function cancelJob(id) {
+      return requestJob('cancel', id).then(function (response) {
+        if (response && response.result) updateJobLists(response.result);
+        if (id === jobId && response && response.result) {
+          updateCurrentJob(response.result.job || {
+            state: response.result.state || 'failed',
+            status: response.result.error || 'Cancel failed'
+          });
+        }
+      });
+    }
+
+    bindCancelForms(document);
+
+    pollJob();
+    pollTimer = window.setInterval(pollJob, 1500);
+  }());
+</script>
+[% END %]
 
 <script>
   (function () {

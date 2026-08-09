@@ -76,6 +76,10 @@ sub initPlugin {
         [0, 1, 0, \&statusCommand],
     );
 
+    Slim::Control::Request::addDispatch(
+        ['bettercallbliss', 'job', '_cmd'],
+        [0, 0, 1, \&jobCommand],
+    );
     $initialized = 1;
     $log->info('initialized optimizer=' . ($optimizer_binary || 'missing'));
     return 1;
@@ -142,6 +146,109 @@ sub shutdownPlugin {
 
 sub optimizerBinary { return $optimizer_binary; }
 
+sub _job_mode_label {
+    my $job = shift || {};
+    my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
+    my $purpose = $options->{addition_purpose} || '';
+    return 'Bliss me there...' if $job->{route_to_track};
+    return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
+    return 'Improve difficult transitions' if $purpose eq 'automatic'
+        || ($options->{extension_mode} || '') eq 'automatic';
+    return 'Extend playlist' if $purpose eq 'extend_playlist';
+    return 'Grow from these seeds' if $purpose eq 'seed_growth'
+        || ($options->{extension_mode} || '') eq 'seed_growth';
+    return 'Strict gap bridge placement';
+}
+
+sub _job_payload {
+    my $job = shift || {};
+    my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
+    my $started = int($job->{started_at} || 0);
+    my $finished = int($job->{finished_at} || 0);
+    my $elapsed = int(($finished || time()) - ($job->{started_at} || time()));
+    $elapsed = 0 if $elapsed < 0;
+    my $state = $job->{state} || 'unknown';
+    my $status = $job->{stage} || $state;
+    if ($state eq 'failed') {
+        $status = 'Failed: ' . ($job->{error_code} || 'UNKNOWN_FAILURE');
+    } elsif ($state eq 'completed') {
+        $status = 'Completed';
+        $status .= ' - added ' . (0 + ($job->{added_track_count} || 0))
+            if ($options->{extension_mode} || 'none') ne 'none';
+    } elsif ($state eq 'cancelled') {
+        $status = 'Cancelled';
+    }
+    return {
+        id => $job->{id} || '',
+        state => $state,
+        stage => $job->{stage} || '',
+        status => $status,
+        title => $job->{playlist_title} || 'Untitled source',
+        mode => _job_mode_label($job),
+        started_at => $started,
+        finished_at => $finished,
+        elapsed_seconds => $elapsed,
+        can_cancel => $state eq 'running' ? 1 : 0,
+        error_code => $job->{error_code} || '',
+        error => $job->{error} || '',
+        write_state => $job->{write_state} || '',
+        write_error_code => $job->{write_error_code} || '',
+        write_error => $job->{write_error} || '',
+        source_track_count => 0 + ($job->{track_count} || 0),
+        final_track_count => 0 + ($job->{final_track_count} || 0),
+        added_track_count => 0 + ($job->{added_track_count} || 0),
+    };
+}
+
+sub _job_lists_payload {
+    my @summaries = map { _job_payload($_) } Plugins::BetterCallBliss::Jobs::all();
+    my @running = grep { ($_->{state} || '') eq 'running' } @summaries;
+    my @recent = grep { ($_->{state} || '') ne 'running' } @summaries;
+    splice(@recent, 8) if @recent > 8;
+    return (\@running, \@recent);
+}
+
+sub jobCommand {
+    my $request = shift;
+    my $cmd = $request->getParam('_cmd') || '';
+    if ($request->paramUndefinedOrNotOneOf($cmd, ['status', 'cancel']) ) {
+        $request->setStatusBadParams();
+        return;
+    }
+
+    my $job_id = $request->getParam('job_id') || '';
+    if (!$job_id) {
+        $request->setStatusBadParams();
+        return;
+    }
+
+    my ($job, $error);
+    if ($cmd eq 'cancel') {
+        eval { $job = Plugins::BetterCallBliss::Jobs::cancel($job_id); };
+        $error = $@;
+    } else {
+        $job = Plugins::BetterCallBliss::Jobs::get($job_id);
+    }
+
+    if ($error) {
+        $error =~ s/\s+/ /g;
+        $request->addResult('state', 'failed');
+        $request->addResult('error_code', 'JOB_COMMAND_FAILED');
+        $request->addResult('error', $error);
+    } elsif (!$job) {
+        $request->addResult('state', 'not_found');
+        $request->addResult('error_code', 'JOB_NOT_FOUND');
+        $request->addResult('error', 'Preview job is no longer available');
+    } else {
+        $request->addResult('job', _job_payload($job));
+    }
+
+    my ($running, $recent) = _job_lists_payload();
+    $request->addResult('running_jobs', $running);
+    $request->addResult('recent_jobs', $recent);
+    $request->setStatusDone();
+}
+
 sub statusCommand {
     my $request = shift;
     my $status = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
@@ -154,7 +261,7 @@ sub statusCommand {
     ) if defined $inventory->{unmatched_row_count};
     $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
         if $inventory->{audit_path};
-    $request->addResult('ux_contract', 'extras-job-editor-v20');
+    $request->addResult('ux_contract', 'extras-job-editor-v22');
     $request->addResult(
         'working_mode',
         'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/context-route-to-track/playlist-or-queue-output',

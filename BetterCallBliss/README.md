@@ -4,24 +4,26 @@ This directory contains the installable `0.15.0` Better Call Bliss plugin packag
 
 The repository-level overview lives at [chrober/lms-better-call-bliss](https://github.com/chrober/lms-better-call-bliss/). User-facing playlist modes and per-job options are described in the [strategy guide](https://github.com/chrober/lms-better-call-bliss/blob/main/ALGORITHMS.md), and the current working/partial/planned UX boundary is tracked in [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md).
 
-The connected saved-playlist path selects a real saved playlist and starts a native reorder-only, automatic-extension, exact-count, target-count, double-count, or **Grow from these seeds** Preview. The connected player-queue path snapshots the full queue, the current-plus-upcoming segment, or only upcoming tracks and optimizes that immutable snapshot. The connected track path, **Bliss me there...**, previews a queue-tail-to-selected-track bridge and sends only the accepted route suffix to the player queue. Seed growth keeps the full source playlist as its immutable relevance anchor. BlissMixer supplies defaults, but every job may override the mixing strategy, artist, album, and track repeat windows, context size, learned blend, route-search restart count, strategy-neutral Variation, and optional Last.fm similar-track and similar-artist guidance. Both Last.fm guidance controls default to 75%; they only rerank local, Bliss-qualified candidates. Setting an artist or album window to zero disables that constraint, allowing single-artist or single-album collections to be optimized.
+The connected saved-playlist path selects a real saved playlist and starts a native Preview using the selected addition purpose: no additions, difficult-transition improvements, **Extend playlist** (exact additions, final track count, or double count), or **Grow from these seeds**. Grow can either route the complete seed-plus-addition set freely or preserve the source-track order and place additions around those anchors. The connected player-queue path snapshots the full queue, the current-plus-upcoming segment, or only upcoming tracks and optimizes that immutable snapshot. The connected track path, **Bliss me there...**, previews a queue-tail-to-selected-track bridge and sends only the accepted route suffix to the player queue. Seed growth keeps the full source playlist as its immutable relevance anchor. BlissMixer supplies defaults, but every job may override the mixing strategy, artist, album, and track repeat windows, context size, learned blend, route-search restart count, strategy-neutral Variation, and optional Last.fm similar-track and similar-artist guidance. Both Last.fm guidance controls default to 75%; they only rerank local, Bliss-qualified candidates. Setting an artist or album window to zero disables that constraint, allowing single-artist or single-album collections to be optimized.
 
 The plugin delegates acoustic scoring, route search, bridge selection, and seed-growth membership selection to an installed `bliss-playlist-optimizer` binary. Better Call Bliss owns Lyrion identity capture, optional LastMix/Last.fm evidence collection, Preview polling, result validation, and playlist or player-queue persistence, including replacing only the upcoming part of an active queue. A learned matrix is optional: Adaptive blends it when available, and otherwise falls back to variance plus Static BlissMixer weights for one-track contexts.
 
 Better Call Bliss explicitly loads its own strings.txt during startup so development deployments from Cache/Plugins expose localized Extras captions and Settings labels even when LMS does not include that directory in its automatic string scan.
 
-The job editor labels ordering as **Source-track order**, additions separately, and Adaptive history as **Musical context window (previous tracks)**. It hides mode-specific sections when they are irrelevant, keeps their values for easy mode switching, uses BlissMixer-style slider-enhanced numeric inputs for bounded ranges where practical, places route-search attempts under Advanced, and rejects guaranteed no-op preserved combinations in both the page and server validator.
+Credit: lms-blissmixer already provides the **Create bliss mix** / **Bliss Mix erstellen** action for immediate Bliss-based mix generation. Better Call Bliss is intentionally a companion workflow, not a replacement for that feature: it adds auditable previews, per-job playlist and queue constraints, and explicit persistence choices around saved playlists and player queues.
 
-**Preserve source order and fill gaps** is connected for automatic, exact-count,
-target track-count, and double track-count additions. Every original track
-remains an immutable anchor in its input order. Plain exact-count mode permits
-at most one addition in each internal gap and keeps opening/closing slots
-disabled. Target track count and Double track count derive the required exact
-addition count from the selected playlist and enable opening/closing slots only
-when internal gaps alone cannot reach the target. Preserve order with no
-possible addition is rejected as a guaranteed no-op. The plugin verifies the
-native ordering-policy echo, exact source order, final original subsequence,
-unique membership, and requested count before a result can be persisted.
+The job editor labels ordering as **Source-track order**, asks for the **Additional tracks** purpose separately from **Chosen amount**, and labels Adaptive history as **Musical context window (previous tracks)**. It hides mode-specific sections when they are irrelevant, keeps their values for easy mode switching, uses BlissMixer-style slider-enhanced numeric inputs for bounded ranges where practical, places route-search attempts under Advanced, and rejects guaranteed no-op preserved combinations in both the page and server validator.
+
+**Preserve source order and fill gaps** is connected for difficult-transition
+improvements, Extend playlist, and Grow from these seeds. Every original track
+remains an immutable anchor in its input order. Difficult-transition
+improvements inspect source gaps and may add zero. Extend playlist uses the
+same fixed-source-set membership selection as seed growth, so exact additions,
+final target count, and double-count requests are not capped by the number of
+existing gaps. Preserve order with no possible addition is rejected as a
+guaranteed no-op. The plugin verifies the native ordering-policy echo, exact
+source order, final original subsequence, unique membership, and requested
+count before a result can be persisted.
 
 The package includes a 512x512 transparent monochrome route icon. Its filename
 contains Material's `MTL_icon_timeline` marker, so the Extras renderer selects
@@ -34,7 +36,7 @@ foreground/background pairs on both their containers and every nested element,
 including bold/list content that host themes would otherwise repaint. Notes and disabled hints follow the host
 `--text-color` with reduced emphasis rather than using fixed gray text.
 
-Automatic extension adds only candidates that pass the native contextual
+Difficult-transition improvement adds only candidates that pass the native contextual
 trigger, acoustic-improvement, uniqueness, and repeat gates, up to the per-job
 budget. Opaque Bliss row identities are validated, resolved read-only through
 `bliss.db` to local LMS tracks immediately after Preview, and frozen as LMS
@@ -52,14 +54,11 @@ as fallback, and continues with Bliss when LastMix or Last.fm is unavailable.
 Service-offline, temporarily-unavailable, and rate-limit errors stop the
 remaining provider calls for that job instead of repeatedly hitting Last.fm.
 
-Every addition job first snapshots current local LMS track identities and intersects them with usable `TracksV2` rows. The resulting checksum-protected allowlist is bound to the exact `bliss.db` file identity and applied natively before candidate shortlisting or scoring. Unmatched Bliss rows remain excluded even when their acoustic score would otherwise win. A persistent ledger at `<LMS cache>/bettercallbliss/non-lms-bliss-rows.json` records their paths, metadata, reasons, first/last-seen times, observation counts, and resolved/current state for review; the Extras page shows the current count and file location after the first addition job. Existing files are not automatically eligible: when a Bliss row differs from a unique LMS identity only by filename case, the audit records `filename_case_differs_from_lms_catalog` and the related LMS identity, preserving exact membership and preventing duplicate case-variant candidates.
+Every addition job first snapshots current local LMS track identities and intersects them with usable `TracksV2` rows. The resulting checksum-protected allowlist is bound to the exact `bliss.db` file identity and applied natively before candidate shortlisting or scoring. Unmatched Bliss rows remain excluded even when their acoustic score would otherwise win. A persistent ledger at `<LMS cache>/bettercallbliss/non-lms-bliss-rows.json` records their paths, metadata, reasons, first/last-seen times, observation counts, and resolved/current state for review. The Extras page keeps this out of the normal workflow and shows the audit box only when the current inventory has excluded rows. Existing files are not automatically eligible: when a Bliss row differs from a unique LMS identity only by filename case, the audit records `filename_case_differs_from_lms_catalog` and the related LMS identity, preserving exact membership and preventing duplicate case-variant candidates.
 
-Exact-count extension accepts a per-job positive integer up to the number of
-internal source transitions. It succeeds only when the native bounded search
-returns exactly that many unique bridges with membership proofs; infeasible
-searches fail visibly and no partial result can be persisted.
+Extend playlist accepts a per-job exact addition count, final track count, or double-count preset. It computes the requested final size and delegates membership selection to the native seed-growth request, so it can add more tracks than there are source gaps. Infeasible searches fail visibly and no partial result can be persisted.
 
-Both connected addition modes use a deterministic 256-track internal-gap
+Difficult-transition bridge improvements use a deterministic 256-track internal-gap
 shortlist before strict bridge evaluation. This is an implementation-level
 performance bound, not a musical scoring replacement or user-visible job
 parameter. The proxy retains endpoint-local semantic candidates first and uses
@@ -69,5 +68,5 @@ evolving-state scorer and every semantic, repeat,
 membership, and acoustic gate still make the final choice. Debug performance
 output separates shortlisting from strict candidate scoring.
 
-Running results refresh automatically and completed/failed optimization and accept actions are displayed in prominent banners with stable error codes. After a job starts, every polling, result, and accept-action page rebuilds the editor from that job's normalized options. Inactive numeric controls remain submitted as read-only values, so failures and successful review pages retain the exact settings for adjustment and rerun. After a successful preview, **Accept this preview** lets the user choose the output target without rerunning the optimizer. Create optimized copy writes through Lyrion's core M3U formatter, exclusively creates a new file, creates the LMS playlist object, and verifies both file and catalog order. Blank names are Unicode-safe and select the next available numbered copy; explicit collisions fail visibly. Overwrite source requires confirmation and replaces the source playlist. Send to player queue applies the selected queue action to the selected player; **Replace upcoming tracks** leaves the currently playing item untouched and swaps only the queue tail.
-The still-unconnected controls are explicitly marked **Not connected yet**: one bridge per source-track transition, duration-based target/double presets, multi-track preserved gaps beyond the current UI slice, explicit opening/closing additions, cancellation, persistent reports, ListenBrainz evidence, and Extended Isolation Forest routing. See [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md) for the exact working/partial/future feature matrix.
+Running Preview status updates in place through the Better Call Bliss JSON-RPC job command, can be cancelled while the native optimizer is still active, and completed/failed/cancelled optimization plus accept actions are displayed in prominent banners with stable error codes. The full result is rendered once after the job reaches a terminal state rather than reloading the page every polling cycle. After a job starts, every polling, result, and accept-action page rebuilds the editor from that job's normalized options. Inactive numeric controls remain submitted as read-only values, so failures and successful review pages retain the exact settings for adjustment and rerun. The Extras page also shows running previews and the most recent completed, failed, or cancelled previews retained in LMS memory; this Running/Recent panel updates in place while polling. Durable history and export remain future work. After a successful preview, **Accept this preview** lets the user choose the output target without rerunning the optimizer. Create optimized copy writes through Lyrion's core M3U formatter, exclusively creates a new file, creates the LMS playlist object, and verifies both file and catalog order. Blank names are Unicode-safe and select the next available numbered copy; explicit collisions fail visibly. Overwrite source requires confirmation and replaces the source playlist. Send to player queue applies the selected queue action to the selected player; **Replace upcoming tracks** leaves the currently playing item untouched and swaps only the queue tail. When source and target are the same player, the plugin rechecks the live queue and trims already-played preview items if the snapshot is still recognizable.
+The still-unconnected controls are explicitly marked **Not connected yet**: advanced strict gap bridge placement, add N bridge tracks per source transition, duration-based target/double presets, multi-track preserved gaps beyond the current UI slice, explicit opening/closing additions, persistence-phase cancellation, durable reports/history, ListenBrainz evidence, and Extended Isolation Forest routing. See [UX status](https://github.com/chrober/lms-better-call-bliss/blob/main/docs/UX_STATUS.md) for the exact working/partial/future feature matrix.

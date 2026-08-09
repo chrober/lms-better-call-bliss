@@ -216,6 +216,7 @@ sub _start_preview_from_built {
         route_target_track_id route_tail_track_id route_target_label route_tail_label
         source_mode source_player_id source_player_name source_queue_scope
         source_queue_count source_queue_current_index source_queue_active
+        source_queue_start_index source_queue_track_urls source_queue_current_url
     )) {
         $jobs{$job_id}->{$key} = $fields->{$key} if exists $fields->{$key};
     }
@@ -406,7 +407,10 @@ sub start_queue_preview {
             source_queue_scope => $snapshot->{scope} || $scope || 'full',
             source_queue_count => 0 + ($snapshot->{queue_count} || 0),
             source_queue_current_index => 0 + ($snapshot->{current_index} || 0),
+            source_queue_start_index => 0 + ($snapshot->{start_index} || 0),
             source_queue_active => ($snapshot->{active} || 0) ? 1 : 0,
+            source_queue_track_urls => $snapshot->{track_urls} || [],
+            source_queue_current_url => $snapshot->{current_url},
         },
     );
 }
@@ -660,6 +664,33 @@ sub get {
 sub all {
     _poll($_) for grep { $jobs{$_}->{state} eq 'running' } keys %jobs;
     return sort { $b->{started_at} <=> $a->{started_at} } values %jobs;
+}
+
+
+sub cancel {
+    my $job_id = shift;
+    my $job = $jobs{$job_id};
+    die "JOB_NOT_FOUND: Preview job is no longer available\n" unless $job;
+    return $job unless ($job->{state} || '') eq 'running';
+
+    if ($job->{process}) {
+        if ($job->{process}->alive) {
+            eval { $job->{process}->die; };
+            eval { $job->{process}->terminate; } if $@;
+        } else {
+            _poll($job_id);
+            return $jobs{$job_id};
+        }
+    }
+
+    delete $job->{process};
+    $job->{state} = 'cancelled';
+    $job->{stage} = 'Cancelled';
+    $job->{finished_at} = time();
+    $job->{error_code} = 'CANCELLED';
+    $job->{error} = 'Preview cancelled by user. No playlist or player queue was changed.';
+    $log->info("job=$job_id stage=Cancelled");
+    return $job;
 }
 
 sub _clean_output_name {

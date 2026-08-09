@@ -210,8 +210,16 @@ sub _queue_snapshot {
         scope => $scope,
         queue_count => 0 + $count,
         current_index => 0 + $current,
+        start_index => 0 + $start,
         active => $has_current,
         tracks => \@tracks,
+        track_urls => [map { $_->url } @tracks],
+        current_url => $has_current
+            ? eval {
+                my $track = Slim::Player::Playlist::track($client, $current, 1, 0);
+                $track ? $track->url : undef;
+            }
+            : undef,
     };
 }
 sub _track_bundle {
@@ -275,6 +283,26 @@ sub _build_sequence_request {
     my $source_count = scalar @$source_tracks;
     my $internal_gap_count = $source_count - 1;
     my $endpoint_capacity = 2;
+    if (($options->{addition_purpose} || '') eq 'extend_playlist') {
+        if (($options->{addition_amount_mode} || '') eq 'target_count') {
+            die 'Target track count must exceed the source playlist size'
+                if $options->{bridge_target_track_count} <= $source_count;
+            $options->{target_track_count} = $options->{bridge_target_track_count};
+            $options->{additional_track_count} =
+                $options->{target_track_count} - $source_count;
+        } elsif (($options->{addition_amount_mode} || '') eq 'double_count') {
+            $options->{target_track_count} = 2 * $source_count;
+            $options->{additional_track_count} = $source_count;
+        } else {
+            $options->{target_track_count} =
+                $source_count + $options->{additional_track_count};
+        }
+        die 'Extended playlist final size must not exceed 500 tracks'
+            if $options->{target_track_count} > 500;
+        die 'Extend playlist target must exceed the source playlist size'
+            if $options->{target_track_count} <= $source_count;
+        $options->{extension_mode} = 'seed_growth';
+    }
     my $exact_like_extension = $options->{extension_mode} eq 'exact_count'
         || $options->{extension_mode} eq 'target_count'
         || $options->{extension_mode} eq 'double_count';
@@ -305,8 +333,12 @@ sub _build_sequence_request {
             if $options->{additional_track_count} > $maximum;
     }
     if ($options->{extension_mode} eq 'seed_growth') {
-        die 'Grow from these seeds target must exceed the source playlist size'
+        my $target_label = (($options->{addition_purpose} || '') eq 'extend_playlist')
+            ? 'Extend playlist target' : 'Grow from these seeds target';
+        die $target_label . ' must exceed the source playlist size'
             if $options->{target_track_count} <= $source_count;
+        die $target_label . ' must not exceed 500 tracks'
+            if $options->{target_track_count} > 500;
     }
 
     my $artifacts = {

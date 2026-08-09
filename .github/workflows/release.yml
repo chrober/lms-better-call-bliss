@@ -39,7 +39,20 @@ env:
   PLUGIN_REPO: chrober/lms-plugins
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Perl test dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes libjson-xs-perl
+      - name: Run plugin regression tests
+        run: prove -l tests
+
   package-release:
+    needs: test
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.meta.outputs.version }}

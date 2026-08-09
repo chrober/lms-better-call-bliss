@@ -8,10 +8,10 @@ This document describes the current 0.15.0 implementation. **Working** means the
 
 | If you want toÃ¢â‚¬Â¦ | ChooseÃ¢â‚¬Â¦ | What happens |
 | --- | --- | --- |
-| Smooth out a shuffled collection without adding songs | [Optimize source order + Reorder only](#reorder-existing-tracks-only) | The same songs are rearranged. |
-| Keep a carefully chosen order but soften awkward changes | [Preserve source order](#preserve-source-order-and-fill-gaps) + [Add automatically](#add-automatically) | Original songs stay put; helpful songs may be inserted between them. |
-| Make a playlist exactly N songs longer | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + [Add exactly N tracks](#add-exactly-n-tracks) | Exactly N suitable local songs are inserted, or the job explains why it cannot do so. |
-| Turn a tiny playlist into a full mix with the same general character | [Grow from these seeds](#grow-from-these-seeds) | Every original song stays; similar local songs are selected until the target size is reached; then the complete set is arranged. |
+| Smooth out a shuffled collection without adding songs | [Optimize source order](#reorder-existing-tracks-only) + Additional tracks: No additions | The same songs are rearranged. |
+| Keep a carefully chosen order but soften awkward changes | [Preserve source order](#preserve-source-order-and-fill-gaps) + Additional tracks: Improve difficult transitions | Original songs stay put; helpful songs may be inserted between them. |
+| Make a playlist exactly N songs longer | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + Additional tracks: [Extend playlist](#extend-playlist) | Exactly N suitable local songs are inserted, or the job explains why it cannot do so. |
+| Turn a tiny playlist into a full mix with the same general character | Additional tracks: [Grow from these seeds](#grow-from-these-seeds) | Every original song stays; similar local songs are selected until the target size is reached; then the result is either routed freely or arranged around the preserved source order. |
 | Get a different but still sensible result | [Increase Variation](#variation-and-reproducibility) | Search explores different good alternatives without relaxing its quality and repeat rules. |
 | Let related recordings and artists support addition choices | [Enable Last.fm guidance](#lastfm-track-and-artist-guidance) | Similar-track and similar-artist evidence help rank suitable additions; Bliss remains the acoustic quality check. |
 | Append a fluent path from the current queue to a chosen song | [Bliss me there...](#bliss-me-there) from a track context menu | The current queue tail and chosen track stay fixed; Better Call Bliss previews one bridge between them and appends only the new suffix after acceptance. |
@@ -19,7 +19,7 @@ This document describes the current 0.15.0 implementation. **Working** means the
 Three job choices work together:
 
 1. **Source-track order** decides whether songs already in the playlist may move.
-2. **Additional tracks** decides whether the playlist keeps its membership, repairs selected gaps, gains an exact number of songs, or grows from a seed collection.
+2. **Additional tracks** first asks for the listener-facing purpose: no additions, improve difficult transitions, extend the playlist by a chosen amount, or grow from the source songs as seeds. Only **Extend playlist** opens the second **Chosen amount** selector for exact additions, final track count, or double track count.
 3. **Mixing strategy** supplies the similarity measurement used by those playlist operations. Better Call Bliss reuses this capability from BlissMixer; it is not the main feature being selected here.
 
 ## Features at a glance
@@ -28,12 +28,12 @@ Three job choices work together:
 | --- | --- | --- |
 | [Optimize source order](#reorder-existing-tracks-only) | Working | Rearrange the original songs into a smoother sequence. |
 | [Preserve source order and fill gaps](#preserve-source-order-and-fill-gaps) | Working | Keep the originals in their chosen order and insert help between them. |
-| [Reorder existing tracks only](#reorder-existing-tracks-only) | Working | Change the order, not the contents. |
-| [Add automatically](#add-automatically) | Working | Repair only transitions that need it, up to a limit. |
-| [Add exactly N tracks](#add-exactly-n-tracks) | Working | Add the requested number or return no partial result. |
+| [No additions / reorder existing tracks only](#reorder-existing-tracks-only) | Working | Change the order, not the contents. |
+| [Improve difficult transitions](#add-automatically) | Working | Repair only transitions that need it, up to a limit. |
+| [Extend playlist](#extend-playlist) | Working | Choose exact additions, a final track count, or a double-count preset. |
 | [Grow from these seeds](#grow-from-these-seeds) | Working | Use all originals as a musical mood board and build a larger playlist around them. |
 | [Bliss me there...](#bliss-me-there) | Working, first slice | From a track context menu, append a bridge-and-destination route from the current player queue tail. |
-| [One bridge per transition](#add-exactly-n-tracks) | Planned | Put one additional song in every gap. |
+| Add N bridge tracks per source transition | Planned | A future placement preset for adding the same number of bridge songs inside every original gap. |
 | [Reach target track count / double track count](#add-exactly-n-tracks) | Working | Convenience presets that calculate how many songs to add. Duration-based targets remain future work. |
 | [Adaptive dynamic weighting](#adaptive-dynamic-weighting--working) | Working | Use BlissMixerÃ¢â‚¬â„¢s adaptive similarity measurement for each decision. |
 | [Static weighted distance](#static-weighted-distance--working) | Working | Reuse BlissMixer's fixed user priorities. |
@@ -59,10 +59,10 @@ flowchart TD
     I --> N
     L["Optional LastMix<br/>track and artist relationships"] --> N
     N --> S["Choose source route<br/>or preserve anchors"]
-    S --> X{"Additional tracks"}
+    S --> X{"Additional-track purpose"}
     X -- None --> R["Final route"]
-    X -- Automatic or exact --> B["Gap-specific bridge search"]
-    X -- Seed growth --> G["Complete-seed relevance search<br/>then final route search"]
+    X -- Improve difficult transitions --> B["Gap-specific bridge search"]
+    X -- Extend playlist<br/>or grow from seeds --> G["Complete-source relevance search<br/>then final route search"]
     B --> R
     G --> R
     R --> V["Result artifact and proofs"]
@@ -143,7 +143,7 @@ For example, A Ã¢â€ â€™ B Ã¢â€ â€™ C can become A Ã¢â�
 
 #### Options for Preserve source order
 
-Preserve is an ordering policy used with **Add automatically** or **Add exactly N tracks**. The chosen addition workflow supplies its remaining controls.
+Preserve is an ordering policy used with **Improve difficult transitions**, **Extend playlist**, or **Grow from these seeds**. The chosen addition workflow supplies its remaining controls.
 
 | Option | Range / default | Effect with preserved anchors |
 | --- | --- | --- |
@@ -180,9 +180,11 @@ The remaining tracks form a checksum-protected candidate inventory for this job.
 
 ### Add automatically
 
+In the current Extras UI this appears as **Improve difficult transitions when useful**.
+
 Better Call Bliss first decides the order of the original songsÃ¢â‚¬â€or respects your order if you chose Preserve. It then listens to each handover and asks: Ã¢â‚¬Å“Is this one of the awkward changes, and can one extra song genuinely improve it?Ã¢â‚¬Â
 
-Suppose the playlist contains A followed by B. A candidate C is used only if A Ã¢â€ â€™ C and C Ã¢â€ â€™ B both work. It is not enough for C to resemble only A or only B. If the original transition is already fine, or no candidate improves it safely, nothing is inserted. Therefore **Add automatically** can correctly add zero songs.
+Suppose the playlist contains A followed by B. A candidate C is used only if A -> C and C -> B both work. It is not enough for C to resemble only A or only B. If the original transition is already fine, or no candidate improves it safely, nothing is inserted. Therefore **Add automatically** can correctly add zero songs. This mode improves difficult transitions; it is not yet the repeat-window spacer-repair mode that can insert several tracks solely to separate repeated artists or albums.
 
 #### Options for Add automatically
 
@@ -283,51 +285,60 @@ flowchart TD
     K -- Yes --> R["Return result and decisions"]
 ~~~
 
-### Add exactly N tracks
+### Extend playlist
 
-This asks for a result of a specific size. Better Call Bliss considers different gaps and combinations instead of simply filling the first N gaps. It succeeds only when it can place all N songs while keeping every transition and repeat rule acceptable. Otherwise it returns an explanation rather than quietly producing fewer additions.
+Use **Extend playlist** when the playlist should become larger by a chosen amount. This is the everyday "please add N more songs" workflow: if you ask for 20 additions, Better Call Bliss tries to add 20 local analyzed songs. It is not capped by the number of gaps between the source tracks.
 
-The current plugin can add at most one song between each pair of original songs. It does not add a song before the first or after the last original song.
+The source songs still matter. Every original track is retained exactly once and the complete source set stays the fixed musical reference while additions are selected. Newly selected songs do not pull the next choices away from the original taste. After membership is chosen, **Source-track order** decides placement: Optimize may route the enlarged set freely, while Preserve keeps the original songs as ordered anchors and places additions around them when the repeat windows can be satisfied.
 
-#### Options for Add exactly N tracks
+The **Chosen amount** selector has three count-based variants:
+
+- **Add exactly N tracks:** final size is `S + N`.
+- **Reach a final track count:** final size is the entered target `T`; additions are `T - S`.
+- **Double the track count:** final size is `2S`; additions are `S`.
+
+Duration-based targets remain future work. Advanced strict gap-bridge placement is a separate planned mode, because it answers a different question: ?put bridge routes inside source gaps? rather than ?make this playlist larger.?
+
+#### Options for Extend playlist
 
 | Option | Range / default | Effect in this workflow |
 | --- | --- | --- |
-| Source-track order | Optimize by default | Either optimizes the originals before insertion or preserves them as anchors. |
-| Musical context window | 1Ã¢â‚¬â€œ50; inherited from BlissMixer | Controls both contextual legs of every candidate insertion and final route scoring. |
+| Source-track order | Optimize by default | Optimize routes the complete extended set freely. Preserve keeps source tracks as ordered anchors and places additions around them. |
+| Chosen amount | Exact additions, final track count, or double count | Defines the requested final size. |
+| Exact number of additions | 1-100; default 1 | Used only by Add exactly N tracks. It is not limited by `S - 1` gaps. |
+| Final track count | 3-500; default 25 | Used only by Reach final track count. Must be greater than `S`. |
+| Musical context window | 1-50; inherited from BlissMixer | Controls final route ordering only. Membership relevance always uses every original source track. |
 | Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
-| Artist look-back | 0Ã¢â‚¬â€œ10,000; inherited | Rejects candidate combinations and final routes with artists too close together. Zero disables it. |
-| Album look-back | 0Ã¢â‚¬â€œ10,000; inherited | Rejects candidate combinations and final routes with albums too close together. Zero disables it. |
-| Additional route-search attempts | 0Ã¢â‚¬â€œ500; default 50 | Applies only when source order is Optimize. |
-| Variation | 0Ã¢â‚¬â€œ100%; default 25 | Can vary the optimized source route; exact bridge combination search remains deterministic afterward. |
-| Generation seed | 0Ã¢â‚¬â€œ4,294,967,295; generated by default | Reproduces the optimized source route when source order may move. |
+| Artist look-back | 0-10,000; inherited | Limits artist membership capacity and constrains the final route. Zero disables it. |
+| Album look-back | 0-10,000; inherited | Limits album membership capacity and constrains the final route. Zero disables it. |
+| Additional route-search attempts | 0-500; default 50 | Applies only when Source-track order is Optimize. |
+| Variation | 0-100%; default 25 | Varies the added membership and final route inside a bounded high-quality pool. |
+| Generation seed | 0-4,294,967,295; generated by default | Reproduces both membership selection and final ordering. |
 | Use Last.fm guidance | Inherited; optional | Enables failure-tolerant track and artist evidence through LastMix. |
-| Similar-track guidance | 0Ã¢â‚¬â€œ100%; default 75 | Bounded support from recording relationships for each possible insertion. |
-| Similar-artist guidance | 0Ã¢â‚¬â€œ100%; default 75 | Bounded support from local artist relationships and the original-collection fallback. |
-| Exact number of additions | 1Ã¢â‚¬â€œ100; default 1 | Required total, further limited by the current internal-gap capacity of S Ã¢Ë†â€™ 1. |
+| Similar-track guidance | 0-100%; default 75 | Bounded support from recording relationships while ranking local candidates. |
+| Similar-artist guidance | 0-100%; default 75 | Bounded support from artist relationships while ranking local candidates. |
 | Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
 
-#### How the exact combination is found
+#### How Extend playlist chooses additions
 
-Exact mode uses the same candidate inventory, Last.fm evidence strengths, bounded guidance adjustment, two-leg contextual scoring, repeat constraints, and fixed acoustic gates as automatic mode. It does not use the automatic trigger and does not simply take the first eligible gaps.
+Extend playlist uses the native seed-growth request. The optimizer ranks current LMS-local Bliss candidates against one fixed Adaptive context built from the complete source set. Repeat-window capacity is applied during membership selection, and every selected addition must still resolve to the current LMS library before the result can be accepted.
 
-At each original gap the search branches into **skip this gap** and the best admissible insertion choices. After each insertion it re-evaluates the objective for the complete evolving route. States are grouped by their current number of additions, and only a bounded set of the best routes continues. The current native beam width is 64; the plugin supplies up to five retained candidate alternatives per gap.
-
-At the end, the optimizer selects the best route containing exactly N additions. If no retained route reaches N, it returns no partial playlist and reports whether the requested count exceeded structural capacity or was not found within the bounded search.
-
-Add exactly N requests one bridge at most per internal original gap and disables opening and closing slots. With S source songs, that direct mode therefore allows no more than S - 1 additions. Reach target track count and Double track count are convenience wrappers around the same native exact-count search: Better Call Bliss calculates the required additions from the desired final track count, and enables opening/closing slots only when internal gaps alone cannot reach the target. Duration-based targets remain future work.
+This means Extend playlist behaves like users expect from an extension feature: the chosen count is a real count request. It can still fail, but failures should be about real constraints such as insufficient repeat-safe local candidates, missing Bliss analysis, or a target larger than the supported 500-track request limit?not merely because the original playlist has too few internal gaps.
 
 ~~~mermaid
 flowchart TD
-    A["Original route"] --> B["First original gap"]
-    B --> C["Branch: skip or insert one<br/>admissible bridge candidate"]
-    C --> D["Re-score each complete<br/>evolving route"]
-    D --> E["Group by addition count<br/>and retain best bounded states"]
-    E --> F{"More original gaps?"}
-    F -- Yes --> C
-    F -- No --> G{"A retained route<br/>contains exactly N additions?"}
-    G -- No --> X["Fail without partial output"]
-    G -- Yes --> H["Return the best exact-count route"]
+    A["Source playlist or queue snapshot"] --> B["Calculate requested final size"]
+    B --> C["Build fixed source-set relevance reference"]
+    C --> D["Rank current LMS-local Bliss candidates"]
+    D --> E["Apply uniqueness and repeat-window capacity"]
+    E --> F{"Enough additions found?"}
+    F -- No --> X["Fail without partial output"]
+    F -- Yes --> G["Combine originals and additions"]
+    G --> H{"Source-track order"}
+    H -- Optimize --> I["Route complete extended set freely"]
+    H -- Preserve --> J["Keep originals as ordered anchors<br/>and place additions around them"]
+    I --> R["Read-only preview"]
+    J --> R
 ~~~
 
 ### Grow from these seeds
@@ -336,12 +347,13 @@ This is for a small playlist that says Ã¢â‚¬Å“more music like this.Ã¢
 
 Newly selected songs do not change the mood board. If you start with soul and metal seeds, the first addition cannot pull the next search farther and farther toward an unrelated style. The original collection remains the reference throughout.
 
-All original songs are retained, but their order may change. **Grow from these seeds** always optimizes the final order because arranging the enlarged collection is part of the workflow.
+All original songs are retained. With **Optimize source order**, the enlarged collection may be freely routed for flow. With **Preserve source order**, the original songs remain anchors in their current order and the selected additions are placed around them. Preserve mode is useful for live queues and carefully chosen seed order; it can still fail if the target size is too small to satisfy the repeat windows.
 
 #### Options for Grow from these seeds
 
 | Option | Range / default | Effect in this workflow |
 | --- | --- | --- |
+| Source-track order | Optimize by default | Optimize routes the complete grown set freely. Preserve keeps source tracks as ordered anchors and places additions around them. |
 | Final playlist size | 3Ã¢â‚¬â€œ500; default 25 | Exact target size; it must be greater than the number of original seeds. |
 | Musical context window | 1Ã¢â‚¬â€œ50; inherited from BlissMixer | Controls final route ordering only. Membership relevance always uses every original seed. |
 | Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
@@ -391,6 +403,8 @@ flowchart TD
 ~~~
 
 ## Similarity supplied by BlissMixer
+
+BlissMixer also already owns an immediate mix-generation action, **Create bliss mix** / **Bliss Mix erstellen**. Better Call Bliss credits that feature and treats it as related prior work: BlissMixer creates playable Bliss mixes directly, while Better Call Bliss focuses on previewable, auditable playlist and queue transformations before anything is saved or sent to a player.
 
 Similarity scoring is an input to the playlist workflows above, not Better Call BlissÃ¢â‚¬â„¢s main feature. The algorithms and learned-matrix capability come from the [BlissMixer implementation and its algorithm guide](https://github.com/chrober/lms-blissmixer/blob/main/ALGORITHMS.md). Better Call Bliss depends on a compatible lms-blissmixer installation and reuses the shared native Bliss scoring core so both applications interpret the 23 Bliss audio features consistently.
 

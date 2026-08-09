@@ -35,6 +35,17 @@ which is bundled with supported plugin packages.
   player queue, with optional start playback.
 - Never modifies bliss.db or the source audio files.
 
+## Relationship to BlissMixer
+
+Better Call Bliss deliberately builds on and credits the existing
+[lms-blissmixer](https://github.com/chrober/lms-blissmixer) feature
+**Create bliss mix** / **Bliss Mix erstellen**. That BlissMixer action already
+generates immediate Bliss-based mixes from seeds or queue context. Better Call
+Bliss is a companion workflow around the same Bliss ecosystem: it previews
+auditable saved-playlist and player-queue transformations, exposes per-job
+constraints, and lets the user choose whether to save, overwrite, or send the
+accepted result to a player.
+
 See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 explanations, technical flowcharts, option ranges, and the exact boundary
 between working and planned modes. See [UX status](docs/UX_STATUS.md) for the
@@ -85,16 +96,19 @@ unsupported combinations are visibly marked or rejected before persistence.
 GitHub Actions workflow `.github/workflows/release.yml` builds a release package
 without committing native binaries to this repository:
 
-1. Reads the pinned `bliss-playlist-optimizer` release from
+1. Runs the lightweight Perl regression suite from `tests/`. The suite stubs
+   LMS/LastMix APIs and checks request JSON typing, Last.fm evidence, per-job
+   option normalization, localization metadata, and source-package hygiene.
+2. Reads the pinned `bliss-playlist-optimizer` release from
    `BetterCallBliss/Bin/SOURCE.md`, unless an `optimizer_release` override is
    supplied manually.
-2. Downloads the published optimizer binaries for `x86_64-linux`,
+3. Downloads the published optimizer binaries for `x86_64-linux`,
    `aarch64-linux`, `armhf-linux`, `mac`, and `windows` from that release and
    verifies their `.sha256` files.
-3. Copies those binaries into the matching `BetterCallBliss/Bin/<platform>/`
+4. Copies those binaries into the matching `BetterCallBliss/Bin/<platform>/`
    folders only inside the release workspace.
-4. Creates `lms-better-call-bliss-<version>.zip` plus SHA-1 and SHA-256 files.
-5. Publishes the GitHub Release and, unless disabled, updates
+5. Creates `lms-better-call-bliss-<version>.zip` plus SHA-1 and SHA-256 files.
+6. Publishes the GitHub Release and, unless disabled, updates
    `chrober/lms-plugins` `repo.xml` with immutable release-asset URLs for
    `unix`, `mac`, and `windows`.
 
@@ -116,8 +130,10 @@ creating a release or touching the plugin feed.
   packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
   `.gitignore` prevents local executables from being accidentally committed.
 - `tests/` contains lightweight Perl regression tests for the plugin glue code.
-  The tests stub the relevant LMS/LastMix APIs and check request JSON typing
-  plus Last.fm evidence handling. This folder is not installed as runtime
+  The tests stub the relevant LMS/LastMix APIs and check request JSON typing,
+  Last.fm evidence handling, per-job option normalization, localization
+  metadata, and source-package hygiene. GitHub Actions runs them on push, pull
+  request, and before release packaging. This folder is not installed as runtime
   plugin UI; it is committed so future changes can catch these integration
   regressions.
 - `docs/`, `ALGORITHMS.md`, and `README.md` are project documentation and are

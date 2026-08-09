@@ -41,6 +41,95 @@ sub _current_queue_index {
     return (0 + $index, 0 + $count);
 }
 
+sub _queue_urls {
+    my $client = shift;
+    my (undef, $count) = _current_queue_index($client);
+    my @urls;
+    for my $index (0 .. $count - 1) {
+        my $track = eval { Slim::Player::Playlist::track($client, $index, 1, 0) };
+        push @urls, $track ? $track->url : undef;
+    }
+    return \@urls;
+}
+
+sub _url_position {
+    my ($urls, $wanted) = @_;
+    return undef unless defined $wanted && ref($urls) eq 'ARRAY';
+    for my $index (0 .. $#$urls) {
+        return $index if defined $urls->[$index] && $urls->[$index] eq $wanted;
+    }
+    return undef;
+}
+
+sub _live_current_url {
+    my ($client, $current) = @_;
+    my $track = eval { Slim::Player::Playlist::track($client, $current, 1, 0) };
+    return $track ? $track->url : undef;
+}
+
+sub _reconciled_same_player_upcoming_urls {
+    my ($job, $client, $urls) = @_;
+    return ($urls, {}) unless ($job->{source_mode} || '') eq 'player_queue';
+    return ($urls, {}) unless ($job->{source_player_id} || '') eq (eval { $client->id } || '');
+    return ($urls, {}) if ($job->{source_queue_scope} || '') eq 'upcoming_only';
+
+    my ($current, $count) = _current_queue_index($client);
+    _fail(
+        'QUEUE_SNAPSHOT_CHANGED',
+        'The selected player queue is empty; rerun the preview or choose Replace queue/Append to queue.',
+    ) unless $count > 0;
+
+    my $live_current_url = _live_current_url($client, $current);
+    _fail(
+        'QUEUE_SNAPSHOT_CHANGED',
+        'The current queue item is no longer a local LMS track; rerun the preview or choose Replace queue/Append to queue.',
+    ) unless defined $live_current_url;
+
+    my $captured_urls = ref($job->{source_queue_track_urls}) eq 'ARRAY'
+        ? $job->{source_queue_track_urls}
+        : [];
+    my $captured_position = _url_position($captured_urls, $live_current_url);
+    _fail(
+        'QUEUE_SNAPSHOT_CHANGED',
+        'The player advanced or changed to a track outside the preview snapshot; rerun the preview or choose Replace queue/Append to queue.',
+    ) unless defined $captured_position;
+
+    my $live_urls = _queue_urls($client);
+    my $remaining_live = $count - $current;
+    my $remaining_captured = @$captured_urls - $captured_position;
+    my $compare = $remaining_live < $remaining_captured
+        ? $remaining_live : $remaining_captured;
+    for my $offset (0 .. $compare - 1) {
+        my $live = $live_urls->[$current + $offset];
+        my $captured = $captured_urls->[$captured_position + $offset];
+        next if defined $live && defined $captured && $live eq $captured;
+        _fail(
+            'QUEUE_SNAPSHOT_CHANGED',
+            'The selected player queue changed since this preview was created; rerun the preview or choose Replace queue/Append to queue.',
+        );
+    }
+
+    my $result_position = _url_position($urls, $live_current_url);
+    _fail(
+        'QUEUE_PREVIEW_NO_LONGER_ALIGNED',
+        'The currently playing track is not present in the accepted preview result; rerun the preview or choose Replace queue/Append to queue.',
+    ) unless defined $result_position;
+
+    my $first_upcoming = $result_position + 1;
+    _fail(
+        'EMPTY_RESULT',
+        'The accepted preview contains no tracks after the currently playing item.',
+    ) if $first_upcoming > $#$urls;
+
+    my @trimmed = @$urls[$first_upcoming .. $#$urls];
+    return (\@trimmed, {
+        reconciled_same_player => 1,
+        live_current_index => 0 + $current,
+        preview_current_position => 0 + $result_position,
+        trimmed_preview_prefix => 0 + $first_upcoming,
+    });
+}
+
 sub _replace_upcoming_tracks {
     my ($client, $urls) = @_;
     my ($current, $count) = _current_queue_index($client);
@@ -57,6 +146,7 @@ sub _replace_upcoming_tracks {
         removed_count => $removed,
     };
 }
+
 sub send_to_player {
     my $job = shift;
     _fail('INVALID_JOB', 'A completed preview is required')
@@ -85,23 +175,16 @@ sub send_to_player {
     }
 
     my $action = $options->{queue_action} || 'replace';
-    if ($action eq 'replace_upcoming'
-        && ($job->{source_mode} || '') eq 'player_queue'
-        && ($job->{source_player_id} || '') eq ($client->id || $player_id)
-        && ($job->{source_queue_scope} || '') ne 'upcoming_only') {
-        _fail(
-            'QUEUE_ACTION_NEEDS_UPCOMING_SOURCE',
-            'Replace upcoming tracks on the same player requires a preview built from Use only upcoming tracks, otherwise the current song could be duplicated. Choose Replace queue or rerun with the upcoming-only queue snapshot.',
-        );
-    }
     my $start = $options->{queue_start_playback} ? 1 : 0;
     my $command;
     my $queue_edit = {};
+    my $reconcile = {};
     if ($action eq 'replace') {
         _execute($client, ['playlist', 'clear']);
         $command = ['playlist', 'addtracks', 'listRef', $urls];
         _execute($client, $command);
     } elsif ($action eq 'replace_upcoming') {
+        ($urls, $reconcile) = _reconciled_same_player_upcoming_urls($job, $client, $urls);
         $queue_edit = _replace_upcoming_tracks($client, $urls);
     } elsif ($action eq 'append') {
         $command = ['playlist', 'addtracks', 'listRef', $urls];
@@ -127,6 +210,12 @@ sub send_to_player {
         . ' to player=' . ($client->id || $player_id)
         . " action=$action start=$start tracks=" . scalar(@$urls)
         . ($skip ? " skipped_source_anchors=$skip" : '')
+        . ($reconcile->{reconciled_same_player}
+            ? " reconciled_same_player=1 trimmed_preview_prefix="
+                . (0 + ($reconcile->{trimmed_preview_prefix} || 0))
+                . " live_current_index="
+                . (0 + ($reconcile->{live_current_index} || 0))
+            : '')
         . ($action eq 'replace_upcoming'
             ? " preserved_queue_prefix=" . (0 + ($queue_edit->{preserved_count} || 0))
                 . " removed_upcoming=" . (0 + ($queue_edit->{removed_count} || 0))
@@ -143,6 +232,8 @@ sub send_to_player {
         queue_count => defined $queue_count ? 0 + $queue_count : undef,
         preserved_queue_prefix => 0 + ($queue_edit->{preserved_count} || 0),
         removed_upcoming_count => 0 + ($queue_edit->{removed_count} || 0),
+        reconciled_same_player => $reconcile->{reconciled_same_player} ? 1 : 0,
+        trimmed_preview_prefix => 0 + ($reconcile->{trimmed_preview_prefix} || 0),
     };
 }
 
