@@ -5,28 +5,35 @@
 </p>
 
 **Better Call Bliss** is a Lyrion Music Server plugin that turns a saved
-playlist into a smoother listening journey. It can reorder the existing songs,
-insert suitable bridge tracks, preserve the original order while filling its
-gaps, or grow a short seed playlist into a longer mix. Every job is previewed
-before a new playlist is written, and artist, album, and track repeat rules
+playlist or a current player queue snapshot into a smoother listening journey.
+It can reorder the existing songs, insert suitable bridge tracks, preserve the
+original order while filling its gaps, grow a short seed playlist into a longer
+mix, or rebuild the upcoming part of a live queue. Every job is previewed before
+anything is saved or sent to a player, and artist, album, and track repeat rules
 remain hard constraints.
 
 The plugin owns the Lyrion user interface, settings, Last.fm integration,
-background jobs, result review, and playlist creation. CPU-intensive acoustic
+background jobs, result review, playlist persistence, and player-queue output.
+CPU-intensive acoustic
 scoring and route search are delegated to the network-free Rust engine
 [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer),
 which is bundled with supported plugin packages.
 
 ## What it does
 
-- Reorders every song in a curated playlist for better transition flow.
+- Reorders every song in a curated playlist or queue snapshot for better transition flow.
 - Adds bridges automatically only where a transition is difficult.
 - Adds exactly a requested number of tracks or grows seeds to a target size.
 - Preserves the existing order when requested and inserts tracks only in gaps.
 - Uses dynamic Adaptive Bliss similarity, optional learned preferences,
-  per-job variation, and optional Last.fm similar-artist guidance.
-- Shows a read-only preview and diagnostics before creating a verified copy.
-- Never modifies bliss.db, the source audio files, or the source playlist.
+  per-job variation, and optional Last.fm similar-track and similar-artist guidance.
+- Uses a saved playlist, a full player queue, only upcoming queue tracks, or the
+  current-plus-upcoming queue segment as input.
+- Shows a read-only preview and diagnostics before creating a verified copy,
+  overwriting the source playlist, or sending the result to a player queue.
+- Can replace, append to, play next, or replace only the upcoming part of a
+  player queue, with optional start playback.
+- Never modifies bliss.db or the source audio files.
 
 See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 explanations, technical flowcharts, option ranges, and the exact boundary
@@ -62,14 +69,16 @@ scoring and do not fail the optimization job.
 ## Basic use
 
 1. Open **Extras > Better Call Bliss**.
-2. Select a saved playlist.
+2. Select either a saved playlist or a player queue snapshot as the source.
 3. Choose the source-order policy, addition mode, and per-job options.
 4. Run the read-only Preview.
 5. Review the proposed order, additions, proofs, and diagnostics.
-6. Create an optimized copy when satisfied.
+6. Accept the preview by creating a copy, overwriting the source playlist when
+   available, or sending the result to a player queue.
 
-The source playlist is preserved. Source overwrite and all other unfinished
-features are visibly marked as unavailable.
+When a live player is used as both source and target, **Replace upcoming tracks**
+keeps the currently playing song untouched and updates only the queue tail. All
+unsupported combinations are visibly marked or rejected before persistence.
 
 ## Release and publishing workflow
 
@@ -119,6 +128,7 @@ creating a release or touching the plugin feed.
 ~~~mermaid
 flowchart LR
     LMS["Lyrion saved playlist"] --> P["Better Call Bliss plugin"]
+    Q["Current player queue snapshot"] --> P
     BM["lms-blissmixer settings<br/>bliss.db and optional<br/>learned matrix"] --> P
     LM["Optional LastMix<br/>Last.fm track and artist evidence"] --> P
     P --> O["bliss-playlist-optimizer"]
@@ -129,8 +139,10 @@ flowchart LR
 ~~~
 
 Better Call Bliss is under active development. The current implementation
-supports Adaptive scoring, optimized or preserved source order, reorder-only,
-automatic additions, exact-count additions, and seed growth. Disabled controls
+supports Adaptive scoring, optimized or preserved source order, saved-playlist
+and player-queue sources, playlist and queue outputs, reorder-only, automatic
+additions, exact-count additions, target/double track-count presets, and seed
+growth. Disabled controls
 in the UI describe planned capabilities rather than silently pretending to
 work.
 
