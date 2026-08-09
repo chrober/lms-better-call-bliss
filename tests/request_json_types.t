@@ -10,6 +10,14 @@ BEGIN {
     sub find { return $playlist }
     $INC{'Slim/Schema.pm'} = __FILE__;
 
+    package Slim::Player::Client;
+    $INC{'Slim/Player/Client.pm'} = __FILE__;
+
+    package Slim::Player::Playlist;
+    $INC{'Slim/Player/Playlist.pm'} = __FILE__;
+
+    package Slim::Player::Source;
+    $INC{'Slim/Player/Source.pm'} = __FILE__;
     package Plugins::BetterCallBliss::BlissCompatibility;
     sub snapshot {
         return {
