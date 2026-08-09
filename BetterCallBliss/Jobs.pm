@@ -214,6 +214,8 @@ sub _start_preview_from_built {
     for my $key (qw(
         route_to_track route_output_skip_source_count route_player_id
         route_target_track_id route_tail_track_id route_target_label route_tail_label
+        source_mode source_player_id source_player_name source_queue_scope
+        source_queue_count source_queue_current_index source_queue_active
     )) {
         $jobs{$job_id}->{$key} = $fields->{$key} if exists $fields->{$key};
     }
@@ -377,6 +379,37 @@ sub start_reorder_preview {
     );
 }
 
+sub start_queue_preview {
+    my ($player_id, $scope, $options) = @_;
+    die "Optimizer binary is unavailable"
+        unless $optimizer_binary && -x $optimizer_binary;
+
+    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    my $built = Plugins::BetterCallBliss::RequestBuilder::build_queue_request(
+        $player_id, $scope, $job_id, $semantic_path, $options,
+    );
+    my $snapshot = $built->{queue_snapshot} || {};
+    return _start_preview_from_built(
+        $job_id, $dir, $semantic_path, $built,
+        {
+            playlist_id => 0,
+            playlist_title => $built->{playlist_title},
+            source_log => 'player_queue player=' . ($snapshot->{player_id} || $player_id)
+                . ' scope=' . ($snapshot->{scope} || $scope || 'full')
+                . ' captured_tracks=' . scalar(@{$built->{request}->{source_tracks} || []})
+                . ' queue_count=' . (0 + ($snapshot->{queue_count} || 0))
+                . ' current_index=' . (0 + ($snapshot->{current_index} || 0))
+                . ' active=' . (($snapshot->{active} || 0) ? 1 : 0),
+            source_mode => 'player_queue',
+            source_player_id => $snapshot->{player_id} || $player_id,
+            source_player_name => $snapshot->{player_name} || $player_id,
+            source_queue_scope => $snapshot->{scope} || $scope || 'full',
+            source_queue_count => 0 + ($snapshot->{queue_count} || 0),
+            source_queue_current_index => 0 + ($snapshot->{current_index} || 0),
+            source_queue_active => ($snapshot->{active} || 0) ? 1 : 0,
+        },
+    );
+}
 sub start_route_to_track_preview {
     my ($player_id, $target_track_id, $options) = @_;
     die "Optimizer binary is unavailable"
@@ -667,8 +700,9 @@ sub _apply_output_options {
 
         my $action = exists $params->{queue_action}
             ? $params->{queue_action} : ($options->{queue_action} || 'replace');
-        die "INVALID_QUEUE_ACTION: Queue action must be Replace queue, Append to queue, or Play next\n"
+        die "INVALID_QUEUE_ACTION: Queue action must be Replace queue, Replace upcoming tracks, Append to queue, or Play next\n"
             unless $action eq 'replace'
+                || $action eq 'replace_upcoming'
                 || $action eq 'append'
                 || $action eq 'play_next';
         $options->{queue_action} = $action;

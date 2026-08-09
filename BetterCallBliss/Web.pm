@@ -4,6 +4,8 @@ use strict;
 use File::Basename qw(basename);
 use Slim::Schema;
 use Slim::Player::Client;
+use Slim::Player::Playlist;
+use Slim::Player::Source;
 use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Misc;
@@ -66,6 +68,9 @@ sub _players {
             id => $id,
             name => $name,
             power => eval { $player->power } ? 1 : 0,
+            queue_count => 0 + (eval { Slim::Player::Playlist::count($player) } || 0),
+            current_index => 0 + (eval { Slim::Player::Source::playingSongIndex($player) } || 0),
+            active => ((eval { Slim::Player::Source::playmode($player) } || '') =~ /^(?:play|pause)$/) ? 1 : 0,
         };
     }
     @rows = sort { lc($a->{name} || '') cmp lc($b->{name} || '') } @rows;
@@ -120,7 +125,7 @@ sub _form_from_params {
     my ($params, $defaults) = @_;
     my $form = {%$defaults};
     for my $name (qw(
-        source_mode playlist_id route_player_id route_target_track_id ordering_policy extension_mode algorithm seed_limit
+        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id ordering_policy extension_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
         lastfm_track_guidance_percent lastfm_artist_guidance_percent
@@ -130,7 +135,9 @@ sub _form_from_params {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }
     $form->{source_mode} = 'saved_playlist'
-        unless ($form->{source_mode} || '') eq 'route_to_track';
+        unless ($form->{source_mode} || '') eq 'route_to_track'
+            || ($form->{source_mode} || '') eq 'player_queue';
+    $form->{source_queue_scope} ||= 'full';
     return $form;
 }
 
@@ -138,6 +145,11 @@ sub _form_from_job {
     my ($job, $defaults) = @_;
     my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
     my %params = (%$options, playlist_id => $job->{playlist_id});
+    if (($job->{source_mode} || '') eq 'player_queue') {
+        $params{source_mode} = 'player_queue';
+        $params{source_player_id} = $job->{source_player_id};
+        $params{source_queue_scope} = $job->{source_queue_scope};
+    }
     if ($job->{route_to_track}) {
         $params{source_mode} = 'route_to_track';
         $params{route_player_id} = $job->{route_player_id};
@@ -250,6 +262,14 @@ sub _result_view {
         blissmixer_strategy => $job->{capability}->{algorithm},
         learned_matrix_available => $job->{capability}->{matrix_available} ? 1 : 0,
         route_to_track => $job->{route_to_track} ? 1 : 0,
+        source_mode => $job->{source_mode} || ($job->{route_to_track} ? 'route_to_track' : 'saved_playlist'),
+        source_player_id => $job->{source_player_id},
+        source_player_name => $job->{source_player_name},
+        source_queue_scope => $job->{source_queue_scope},
+        source_queue_count => $job->{source_queue_count},
+        source_queue_current_index => $job->{source_queue_current_index},
+        source_queue_active => $job->{source_queue_active} ? 1 : 0,
+        source_overwrite_supported => ($job->{playlist_id} || 0) > 0 && !$job->{route_to_track} ? 1 : 0,
         route_player_id => $job->{route_player_id},
         route_tail_label => $job->{route_tail_label},
         route_target_label => $job->{route_target_label},
@@ -416,6 +436,13 @@ sub handler {
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
     my $form = _form_from_params($params, $defaults);
+    if (($form->{source_mode} || '') eq 'player_queue') {
+        $form->{source_player_id} ||= $form->{queue_player_id};
+        if (!$form->{source_player_id} && $client) {
+            $form->{source_player_id} = eval { $client->id } || '';
+        }
+        $form->{source_queue_scope} ||= 'full';
+    }
     if (($form->{source_mode} || '') eq 'route_to_track') {
         $form->{route_player_id} ||= $form->{queue_player_id};
         if (!$form->{route_player_id} && $client) {
@@ -489,11 +516,17 @@ sub handler {
         $log->warn("Could not start route-to-track preview: $error") if $error;
     } elsif ($params->{run_preview}) {
         eval {
-            die "Choose a saved playlist"
-                unless defined $form->{playlist_id} && "$form->{playlist_id}" =~ /^\d+$/;
-            $job = Plugins::BetterCallBliss::Jobs::start_reorder_preview(
-                int($form->{playlist_id}), $form,
-            );
+            if (($form->{source_mode} || '') eq 'player_queue') {
+                $job = Plugins::BetterCallBliss::Jobs::start_queue_preview(
+                    $form->{source_player_id}, $form->{source_queue_scope}, $form,
+                );
+            } else {
+                die "Choose a saved playlist"
+                    unless defined $form->{playlist_id} && "$form->{playlist_id}" =~ /^\d+$/;
+                $job = Plugins::BetterCallBliss::Jobs::start_reorder_preview(
+                    int($form->{playlist_id}), $form,
+                );
+            }
         };
         $error = $@;
         $error =~ s/\s+/ /g if $error;

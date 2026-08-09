@@ -100,8 +100,8 @@
 <form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
-    <input type="hidden" name="source_mode" id="source_mode" value="[% bettercallbliss_form.source_mode | html %]">
     [% IF bettercallbliss_form.source_mode == 'route_to_track' %]
+      <input type="hidden" name="source_mode" id="source_mode" value="route_to_track">
       <div class="bea-info">
         <b>Bliss me there...</b><br>
         Build a preview route from the current tail of <b>[% bettercallbliss_route_context.player_name | html %]</b>'s queue to
@@ -117,14 +117,44 @@
       <p class="bea-note">This first route-to-track slice uses the existing bridge engine: current queue tail -> bridge -> selected track. Set Exact additions to 1. Longer multi-hop routes need native multi-bridge gap support and remain on the roadmap.</p>
     [% ELSE %]
       <div class="bea-row">
-        <label for="playlist_id">Saved playlist</label>
-        <select name="playlist_id" id="playlist_id" required>
-          <option value="">Choose a playlist...</option>
-          [% FOREACH playlist = bettercallbliss_playlists %]
-            <option value="[% playlist.id %]" data-track-count="[% playlist.count %]"[% IF bettercallbliss_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
-          [% END %]
+        <label for="source_mode">Input source</label>
+        <select name="source_mode" id="source_mode">
+          <option value="saved_playlist"[% IF bettercallbliss_form.source_mode != 'player_queue' %] selected[% END %]>Saved playlist</option>
+          <option value="player_queue"[% IF bettercallbliss_form.source_mode == 'player_queue' %] selected[% END %]>Current player queue</option>
         </select>
       </div>
+      <div id="saved_playlist_source_fields"[% IF bettercallbliss_form.source_mode == 'player_queue' %] class="bea-hidden"[% END %]>
+        <div class="bea-row">
+          <label for="playlist_id">Saved playlist</label>
+          <select name="playlist_id" id="playlist_id">
+            <option value="">Choose a playlist...</option>
+            [% FOREACH playlist = bettercallbliss_playlists %]
+              <option value="[% playlist.id %]" data-track-count="[% playlist.count %]"[% IF bettercallbliss_form.playlist_id == playlist.id %] selected[% END %]>[% playlist.title | html %] ([% playlist.count %] tracks)</option>
+            [% END %]
+          </select>
+        </div>
+      </div>
+      <div id="player_queue_source_fields"[% IF bettercallbliss_form.source_mode != 'player_queue' %] class="bea-hidden"[% END %]>
+        <div class="bea-row">
+          <label for="source_player_id">Player queue</label>
+          <select name="source_player_id" id="source_player_id">
+            <option value="">Choose a player...</option>
+            [% FOREACH player = bettercallbliss_players %]
+              <option value="[% player.id | html %]" data-queue-count="[% player.queue_count %]" data-current-index="[% player.current_index %]" data-active="[% player.active %]"[% IF bettercallbliss_form.source_player_id == player.id %] selected[% END %]>[% player.name | html %] ([% player.queue_count %] queued[% IF player.active %], playing[% END %])[% UNLESS player.power %] (off)[% END %]</option>
+            [% END %]
+          </select>
+        </div>
+        <div class="bea-row">
+          <label for="source_queue_scope">Queue snapshot</label>
+          <select name="source_queue_scope" id="source_queue_scope">
+            <option value="full"[% IF bettercallbliss_form.source_queue_scope == 'full' %] selected[% END %]>Use the full queue</option>
+            <option value="current_and_upcoming"[% IF bettercallbliss_form.source_queue_scope == 'current_and_upcoming' %] selected[% END %]>Use now-playing and upcoming tracks</option>
+            <option value="upcoming_only"[% IF bettercallbliss_form.source_queue_scope == 'upcoming_only' %] selected[% END %]>Use only upcoming tracks</option>
+          </select>
+        </div>
+        <p class="bea-note" id="source_queue_note">The selected queue is captured as a frozen source snapshot when the preview starts. Later queue changes do not affect the running job.</p>
+      </div>
+      <div id="source_input_warning" class="bea-warning bea-hidden"></div>
       <div class="bea-row">
         <label for="ordering_policy">Source-track order</label>
         <select name="ordering_policy" id="ordering_policy">
@@ -184,7 +214,7 @@
     <div class="bea-row">
       <label for="additional_track_count">Exact number of additional tracks</label>
       <input type="number" min="1" max="100" class="stdedit sliderInput_1_100_1" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
-      <span class="bea-disabled" id="exact_count_limit">Choose a playlist to see the current limit.</span>
+      <span class="bea-disabled" id="exact_count_limit">Choose a source to see the current limit.</span>
     </div>
     <p class="bea-note">This mode inserts at most one track inside each internal source-track transition. Opening and closing additions are not enabled.</p>
     <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
@@ -196,7 +226,7 @@
     <div class="bea-row">
       <label for="bridge_target_track_count">Final track count</label>
       <input type="number" min="3" max="500" class="stdedit sliderInput_3_500_1" name="bridge_target_track_count" id="bridge_target_track_count" value="[% bettercallbliss_form.bridge_target_track_count %]" required>
-      <span class="bea-disabled" id="target_count_limit">Choose a playlist to see the current target range.</span>
+      <span class="bea-disabled" id="target_count_limit">Choose a source to see the current target range.</span>
     </div>
     <div id="target_count_warning" class="bea-warning bea-hidden"></div>
   </fieldset>
@@ -204,7 +234,7 @@
   <fieldset class="bea-section bea-mode-section" id="double_count_fields">
     <legend>Double track count</legend>
     <p class="bea-note">Used only by Double track count. This preset asks for one added local track per original source track, yielding exactly twice as many tracks. If internal gaps provide only S - 1 slots, Better Call Bliss may also use one opening or closing slot.</p>
-    <p class="bea-note" id="double_count_summary">Choose a playlist to see the calculated final size.</p>
+    <p class="bea-note" id="double_count_summary">Choose a source to see the calculated final size.</p>
   </fieldset>
 
   <fieldset class="bea-section" id="variation_fields">
@@ -297,7 +327,7 @@
     <p class="bea-note" id="restart_help">Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.</p>
   </details>
 
-  <p class="bea-note">This only creates a read-only preview. After reviewing the result, choose whether to save a copy, overwrite the source playlist, or send it to a player queue.</p>
+  <p class="bea-note">This only creates a read-only preview. After reviewing the result, choose whether to save a copy, overwrite the source when applicable, or send it to a player queue.</p>
   <input class="inputbutton" id="run_preview" type="submit" name="[% IF bettercallbliss_form.source_mode == 'route_to_track' %]run_route_to_track_preview[% ELSE %]run_preview[% END %]" value="Run read-only preview"[% IF !bettercallbliss_capability.ready %] disabled[% END %]>
 </form>
 
@@ -305,6 +335,13 @@
   (function () {
     var ordering = document.getElementById('ordering_policy');
     var playlist = document.getElementById('playlist_id');
+    var sourceMode = document.getElementById('source_mode');
+    var savedPlaylistFields = document.getElementById('saved_playlist_source_fields');
+    var playerQueueFields = document.getElementById('player_queue_source_fields');
+    var sourcePlayer = document.getElementById('source_player_id');
+    var sourceQueueScope = document.getElementById('source_queue_scope');
+    var sourceInputWarning = document.getElementById('source_input_warning');
+    var sourceQueueNote = document.getElementById('source_queue_note');
     var extension = document.getElementById('extension_mode');
     var algorithm = document.getElementById('algorithm');
     var automaticFields = document.getElementById('automatic_extension_fields');
@@ -376,11 +413,26 @@
         preserve = false;
       }
       var noneOption = extension.querySelector('option[value="none"]');
-      var selectedPlaylist = playlist.options[playlist.selectedIndex];
+      var currentSourceMode = sourceMode ? sourceMode.value : 'saved_playlist';
+      var selectedPlaylist = playlist && playlist.options[playlist.selectedIndex];
       var sourceCount = parseInt(
         selectedPlaylist && selectedPlaylist.getAttribute('data-track-count') || '0',
         10
       );
+      if (currentSourceMode === 'player_queue') {
+        var selectedPlayer = sourcePlayer && sourcePlayer.options[sourcePlayer.selectedIndex];
+        var queueCount = parseInt(selectedPlayer && selectedPlayer.getAttribute('data-queue-count') || '0', 10);
+        var currentIndex = parseInt(selectedPlayer && selectedPlayer.getAttribute('data-current-index') || '0', 10);
+        var active = selectedPlayer && selectedPlayer.getAttribute('data-active') === '1';
+        var scope = sourceQueueScope ? sourceQueueScope.value : 'full';
+        sourceCount = queueCount;
+        if (scope === 'current_and_upcoming' && active) sourceCount = Math.max(0, queueCount - currentIndex);
+        if (scope === 'upcoming_only' && active) sourceCount = Math.max(0, queueCount - currentIndex - 1);
+        if (sourceQueueNote) {
+          sourceQueueNote.textContent = 'The selected queue snapshot currently contains about ' + sourceCount + ' track' + (sourceCount === 1 ? '' : 's') + '. It is frozen when the preview starts; later queue changes do not affect the running job.';
+        }
+      }
+      var invalidSource = currentSourceMode !== 'route_to_track' && sourceCount < 2;
       var maximumExact = Math.max(0, sourceCount - 1);
       var maximumTargetAdditions = sourceCount > 0 ? maximumExact + 2 : 0;
       var maximumTarget = sourceCount + maximumTargetAdditions;
@@ -400,6 +452,16 @@
 
       noneOption.disabled = preserve;
       ordering.disabled = growth;
+      setVisible(savedPlaylistFields, currentSourceMode === 'saved_playlist');
+      setVisible(playerQueueFields, currentSourceMode === 'player_queue');
+      if (playlist) playlist.required = currentSourceMode === 'saved_playlist';
+      if (sourcePlayer) sourcePlayer.required = currentSourceMode === 'player_queue';
+      if (sourceInputWarning) {
+        sourceInputWarning.textContent = currentSourceMode === 'player_queue'
+          ? 'Choose a player queue scope containing at least two local tracks.'
+          : 'Choose a saved playlist containing at least two local tracks.';
+      }
+      setVisible(sourceInputWarning, invalidSource);
       setVisible(warning, invalidCombination);
       exactCount.max = maximumExact || 100;
       var exactSlider = companionSlider(exactCount);
@@ -407,9 +469,9 @@
       exactLimit.textContent = sourceCount > 0
         ? 'Current limit: ' + maximumExact + ' internal additions; final size: '
           + (sourceCount + (requestedExact > 0 ? requestedExact : 0)) + '.'
-        : 'Choose a playlist to see the current limit.';
+        : 'Choose a source to see the current limit.';
       exactWarning.textContent = invalidExact
-        ? 'This playlist has ' + maximumExact + ' internal transitions, so Add exactly N cannot add ' + requestedExact + ' tracks.'
+        ? 'This source snapshot has ' + maximumExact + ' internal transitions, so Add exactly N cannot add ' + requestedExact + ' tracks.'
         : '';
       setVisible(exactWarning, invalidExact);
       bridgeTarget.max = maximumTarget || 500;
@@ -419,23 +481,23 @@
       targetLimit.textContent = sourceCount > 0
         ? 'Current target range: ' + (sourceCount + 1) + ' to ' + maximumTarget
           + ' tracks; current request adds ' + (targetAdditions > 0 ? targetAdditions : 0) + '.'
-        : 'Choose a playlist to see the current target range.';
+        : 'Choose a source to see the current target range.';
       targetWarning.textContent = invalidTarget
         ? 'Choose a final track count greater than ' + sourceCount + ' and no more than ' + maximumTarget + ' for this playlist.'
         : '';
       setVisible(targetWarning, invalidTarget);
       doubleSummary.textContent = sourceCount > 0
         ? sourceCount + ' source tracks + ' + sourceCount + ' additions = ' + (2 * sourceCount) + ' tracks.'
-        : 'Choose a playlist to see the calculated final size.';
+        : 'Choose a source to see the calculated final size.';
       growthCount.textContent = sourceCount > 0 && requestedTarget > sourceCount
         ? sourceCount + ' seeds + ' + (requestedTarget - sourceCount)
           + ' additions = ' + requestedTarget + ' tracks.'
-        : 'The target must be larger than the source playlist.';
+        : 'The target must be larger than the source snapshot.';
       growthWarning.textContent = invalidGrowth
         ? 'Choose a final size greater than the ' + sourceCount + ' source tracks.'
         : '';
       setVisible(growthWarning, invalidGrowth);
-      submit.disabled = !capabilityReady || invalidCombination || invalidExact || invalidTarget || invalidGrowth;
+      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidGrowth;
 
       var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
       setVisible(lastFmFields, additions);
@@ -462,7 +524,10 @@
     }
 
     ordering.addEventListener('change', synchronizeControls);
-    playlist.addEventListener('change', synchronizeControls);
+    if (sourceMode) sourceMode.addEventListener('change', synchronizeControls);
+    if (playlist) playlist.addEventListener('change', synchronizeControls);
+    if (sourcePlayer) sourcePlayer.addEventListener('change', synchronizeControls);
+    if (sourceQueueScope) sourceQueueScope.addEventListener('change', synchronizeControls);
     extension.addEventListener('change', synchronizeControls);
     algorithm.addEventListener('change', synchronizeControls);
     maximumAdditions.addEventListener('input', synchronizeControls);
@@ -580,7 +645,7 @@
         <div class="bea-ok">
           [% IF bettercallbliss_job.persistence.output_mode == 'player_queue' %]
             Sent [% bettercallbliss_job.persistence.track_count %] tracks to <b>[% bettercallbliss_job.persistence.player_name | html %]</b>
-            ([% IF bettercallbliss_job.persistence.queue_action == 'replace' %]replace queue[% ELSIF bettercallbliss_job.persistence.queue_action == 'append' %]append to queue[% ELSE %]play next[% END %]; [% IF bettercallbliss_job.persistence.started_playback %]started playback[% ELSE %]did not start playback[% END %]).
+            ([% IF bettercallbliss_job.persistence.queue_action == 'replace' %]replace queue[% ELSIF bettercallbliss_job.persistence.queue_action == 'replace_upcoming' %]replace upcoming tracks[% ELSIF bettercallbliss_job.persistence.queue_action == 'append' %]append to queue[% ELSE %]play next[% END %]; [% IF bettercallbliss_job.persistence.started_playback %]started playback[% ELSE %]did not start playback[% END %]).
           [% ELSIF bettercallbliss_job.persistence.output_mode == 'overwrite_source' %]
             Overwritten and verified saved playlist
             <b>[% bettercallbliss_job.persistence.title | html %]</b>
@@ -619,14 +684,14 @@
               <label for="accept_output_name">Copy name</label>
               <input type="text" maxlength="255" name="output_name" id="accept_output_name" value="[% bettercallbliss_job.output_name | html %]" size="45">
             </div>
-            <p class="bea-note[% IF bettercallbliss_job.route_to_track %] bea-hidden[% END %]" id="accept_copy_name_note">Leave blank to generate a fresh name from the selected playlist when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
-            [% UNLESS bettercallbliss_job.route_to_track %]
+            <p class="bea-note[% IF bettercallbliss_job.route_to_track %] bea-hidden[% END %]" id="accept_copy_name_note">Leave blank to generate a fresh name from the selected source when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).</p>
+            [% IF bettercallbliss_job.source_overwrite_supported %]
             <div class="bea-row">
               <label><input type="radio" name="output_mode" value="overwrite_source"[% IF bettercallbliss_job.output_mode == 'overwrite_source' %] checked[% END %]> Overwrite existing playlist</label>
               <span class="bea-disabled">Requires explicit confirmation; the source playlist file and LMS catalog order are replaced.</span>
             </div>
             [% END %]
-            <div id="accept_overwrite_fields"[% IF bettercallbliss_job.route_to_track %] class="bea-hidden"[% END %]>
+            <div id="accept_overwrite_fields"[% UNLESS bettercallbliss_job.source_overwrite_supported %] class="bea-hidden"[% END %]>
               <div class="bea-warning">
                 <label><input type="checkbox" name="confirm_overwrite" value="1"> I understand this will replace the existing saved playlist.</label>
               </div>
@@ -650,6 +715,7 @@
                 <label for="accept_queue_action">Queue action</label>
                 <select name="queue_action" id="accept_queue_action">
                   <option value="replace"[% IF bettercallbliss_job.queue_action == 'replace' %] selected[% END %]>Replace queue</option>
+                  <option value="replace_upcoming"[% IF bettercallbliss_job.queue_action == 'replace_upcoming' %] selected[% END %]>Replace upcoming tracks</option>
                   <option value="append"[% IF bettercallbliss_job.queue_action == 'append' %] selected[% END %]>Append to queue</option>
                   <option value="play_next"[% IF bettercallbliss_job.queue_action == 'play_next' %] selected[% END %]>Play next</option>
                 </select>
@@ -658,12 +724,12 @@
                 <label for="accept_queue_start_playback">Start playback</label>
                 <input type="checkbox" name="queue_start_playback" id="accept_queue_start_playback" value="1"[% IF bettercallbliss_job.queue_start_playback %] checked[% END %]>
               </div>
-              <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Append adds the result at the end. Play next inserts it after the current song.</p>
+              <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Replace upcoming tracks keeps the current queue item and playback state, removes only later queue entries, then appends the accepted result. For the same player used as input, create the preview from Use only upcoming tracks to avoid duplicating the current song. Append adds the result at the end. Play next inserts it after the current song.</p>
               <div id="accept_queue_output_warning" class="bea-warning bea-hidden">Choose a player before sending to a player queue.</div>
             </div>
             <p>
               [% UNLESS bettercallbliss_job.route_to_track %]<input class="inputbutton" id="accept_create_copy" type="submit" name="create_copy" value="Create optimized copy">[% END %]
-              [% UNLESS bettercallbliss_job.route_to_track %]<input class="inputbutton" id="accept_overwrite_source" type="submit" name="overwrite_source" value="Overwrite existing playlist">[% END %]
+              [% IF bettercallbliss_job.source_overwrite_supported %]<input class="inputbutton" id="accept_overwrite_source" type="submit" name="overwrite_source" value="Overwrite existing playlist">[% END %]
               <input class="inputbutton" id="accept_send_to_queue" type="submit" name="send_to_queue" value="Send to player queue">
             </p>
           </form>
@@ -736,7 +802,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition presets, duration-based target/double presets, multi-track gaps, explicit opening/closing additions, forest routing, optional ListenBrainz evidence, cancellation, persistent reports, player queue as an input source, and saved per-job reports. Track-count target/double presets, player queue output targets, saved-playlist context shortcuts, the first Bliss me there route-to-track slice, Static routing, and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
+  <p>One-per-transition presets, duration-based target/double presets, multi-track gaps, explicit opening/closing additions, forest routing, optional ListenBrainz evidence, cancellation, persistent reports, saved per-job reports. Track-count target/double presets, player queue output targets, saved-playlist context shortcuts, the first Bliss me there route-to-track slice, Static routing, and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

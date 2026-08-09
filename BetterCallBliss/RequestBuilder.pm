@@ -2,7 +2,11 @@ package Plugins::BetterCallBliss::RequestBuilder;
 
 use strict;
 use JSON::XS ();
+use Scalar::Util qw(blessed);
 use Slim::Schema;
+use Slim::Player::Client;
+use Slim::Player::Playlist;
+use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::JobOptions;
@@ -148,6 +152,68 @@ sub normalize_request_types {
     return $request;
 }
 
+sub _queue_scope {
+    my $scope = shift || 'full';
+    die "Queue scope must be full queue, now-playing plus upcoming, or upcoming only"
+        unless $scope eq 'full'
+            || $scope eq 'current_and_upcoming'
+            || $scope eq 'upcoming_only';
+    return $scope;
+}
+
+sub _queue_client {
+    my $player_id = shift || '';
+    $player_id =~ s/^\s+|\s+$//g;
+    die "Choose a player queue to use as input" unless length $player_id;
+    my $client = Slim::Player::Client::getClient($player_id);
+    die "The selected queue player is no longer connected" unless blessed($client);
+    $client = $client->master if $client->can('master');
+    return $client;
+}
+
+sub _queue_snapshot {
+    my ($player_id, $scope) = @_;
+    $scope = _queue_scope($scope);
+    my $client = _queue_client($player_id);
+    my $count = eval { Slim::Player::Playlist::count($client) } || 0;
+    die "The selected player queue is empty" unless $count > 0;
+
+    my $mode = eval { Slim::Player::Source::playmode($client) } || '';
+    my $has_current = ($mode eq 'play' || $mode eq 'pause') ? 1 : 0;
+    my $current = eval { Slim::Player::Source::playingSongIndex($client) };
+    $current = 0 unless defined $current && "$current" =~ /^\d+$/;
+    $current = 0 if $current < 0;
+    $current = $count - 1 if $current >= $count;
+
+    my $start = 0;
+    if ($scope eq 'current_and_upcoming') {
+        $start = $has_current ? $current : 0;
+    } elsif ($scope eq 'upcoming_only') {
+        $start = $has_current ? $current + 1 : 0;
+    }
+    die "The selected queue scope contains fewer than two upcoming local tracks"
+        if $start >= $count;
+
+    my @tracks;
+    for my $index ($start .. $count - 1) {
+        my $track = Slim::Player::Playlist::track($client, $index, 1, 0);
+        die "Queue snapshot contains a stream or non-library item at position "
+            . ($index + 1)
+            unless $track && !$track->remote && $track->can('id');
+        push @tracks, $track;
+    }
+    die "Queue snapshot requires at least two local tracks" unless @tracks >= 2;
+
+    return {
+        player_id => eval { $client->id } || $player_id,
+        player_name => eval { $client->name } || $player_id,
+        scope => $scope,
+        queue_count => 0 + $count,
+        current_index => 0 + $current,
+        active => $has_current,
+        tracks => \@tracks,
+    };
+}
 sub _track_bundle {
     my ($tracks, $capability, $error_prefix) = @_;
     die "$error_prefix requires at least two local tracks"
@@ -383,6 +449,22 @@ sub build_sequence_request {
     });
 }
 
+sub build_queue_request {
+    my ($player_id, $scope, $job_id, $semantic_path, $job_input) = @_;
+    my $snapshot = _queue_snapshot($player_id, $scope);
+    my $title = 'Queue snapshot: ' . $snapshot->{player_name};
+    $title .= ' (' . $snapshot->{scope} . ')';
+    my $built = _build_sequence_request({
+        title => $title,
+        tracks => $snapshot->{tracks},
+        job_id => $job_id,
+        semantic_path => $semantic_path,
+        job_input => $job_input,
+        error_prefix => 'Queue snapshot',
+    });
+    $built->{queue_snapshot} = $snapshot;
+    return $built;
+}
 sub build_reorder_request {
     my ($playlist_id, $job_id, $semantic_path, $job_input) = @_;
     my $playlist = Slim::Schema->find('Playlist', $playlist_id);

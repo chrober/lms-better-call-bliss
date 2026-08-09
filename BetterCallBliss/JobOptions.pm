@@ -45,6 +45,7 @@ sub defaults {
         output_name_generated => 0,
         queue_player_id => '',
         queue_action => 'replace',
+        source_queue_scope => 'full',
         queue_start_playback => 0,
     };
 }
@@ -165,8 +166,9 @@ sub normalize {
     $options->{queue_player_id} =~ s/^\s+|\s+$//g;
     $options->{queue_action} = $input->{queue_action}
         if defined $input->{queue_action};
-    die "Queue action must be Replace queue, Append to queue, or Play next"
+    die "Queue action must be Replace queue, Replace upcoming tracks, Append to queue, or Play next"
         unless $options->{queue_action} eq 'replace'
+            || $options->{queue_action} eq 'replace_upcoming'
             || $options->{queue_action} eq 'append'
             || $options->{queue_action} eq 'play_next';
     $options->{queue_start_playback} = $input->{queue_start_playback} ? 1 : 0
