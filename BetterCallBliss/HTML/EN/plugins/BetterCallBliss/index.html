@@ -25,6 +25,9 @@
   details.bea-section > summary { cursor: pointer; font-weight: bold; }
   .bea-job-list { margin: .5em 0 0 1.2em; }
   .bea-job-list li { margin: .45em 0; }
+  .bea-job-status { margin: .25em 0 .25em 0; opacity: .92; }
+  .bea-job-detail-list { margin: .25em 0 .35em 1.4em; opacity: .86; }
+  .bea-job-detail-list li { margin: .15em 0; }
   .bea-inline-form { display: inline; margin-left: .8em; }
   .bea-small-button { font-size: .9em; }
 </style>
@@ -45,6 +48,7 @@
       <b>Optimization is running.</b>
       <span id="bea-live-status-text">[% bettercallbliss_job.stage | html %]</span>
       <span id="bea-live-status-elapsed"></span>
+      <div id="bea-live-status-detail" class="bea-job-status">[% bettercallbliss_job.status_detail | html %]</div>
     </div>
   [% ELSIF bettercallbliss_job.state == 'failed' %]
     <div class="bea-error">
@@ -97,6 +101,12 @@
           <li>
             <b>[% item.title | html %]</b> - [% item.mode | html %];
             [% item.status | html %]; elapsed [% item.elapsed_seconds %]s.
+            [% IF item.status_detail_lines.size %]
+              <div class="bea-job-status"><b>Status:</b></div>
+              <ul class="bea-job-detail-list">
+                [% FOREACH detail = item.status_detail_lines %]<li>[% detail | html %]</li>[% END %]
+              </ul>
+            [% END %]
             <a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% item.id | html %]">Open</a>
             <form class="bea-inline-form bea-cancel-job-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
               <input type="hidden" name="job_id" value="[% item.id | html %]">
@@ -113,6 +123,12 @@
           <li>
             <b>[% item.title | html %]</b> - [% item.mode | html %];
             [% item.status | html %]; elapsed [% item.elapsed_seconds %]s.
+            [% IF item.status_detail_lines.size %]
+              <div class="bea-job-status"><b>Status:</b></div>
+              <ul class="bea-job-detail-list">
+                [% FOREACH detail = item.status_detail_lines %]<li>[% detail | html %]</li>[% END %]
+              </ul>
+            [% END %]
             <a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% item.id | html %]">Open</a>
           </li>
         [% END %]
@@ -923,6 +939,19 @@
       });
     }
 
+    function renderJobDetails(job) {
+      var lines = job && job.status_detail_lines;
+      if (!lines || !lines.length) {
+        return job && job.status_detail
+          ? '<div class="bea-job-status"><b>Status:</b> ' + escapeHtml(job.status_detail) + '</div>'
+          : '';
+      }
+      var html = '<div class="bea-job-status"><b>Status:</b></div><ul class="bea-job-detail-list">';
+      for (var i = 0; i < lines.length; i++) {
+        html += '<li>' + escapeHtml(lines[i]) + '</li>';
+      }
+      return html + '</ul>';
+    }
     function renderJobItem(job, includeCancel) {
       var id = escapeHtml(job.id || '');
       var html = '<li>'
@@ -930,6 +959,7 @@
         + escapeHtml(job.mode || '') + '; '
         + escapeHtml(job.status || job.stage || job.state || '')
         + '; elapsed ' + parseInt(job.elapsed_seconds || 0, 10) + 's. '
+        + renderJobDetails(job)
         + '<a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=' + id + '">Open</a>';
       if (includeCancel && job.state === 'running') {
         html += ' <form class="bea-inline-form bea-cancel-job-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">'
@@ -1036,6 +1066,7 @@
       var banner = document.getElementById('bea-live-status-banner');
       setText('bea-live-status-text', status);
       setText('bea-live-status-elapsed', elapsedText(job));
+      setText('bea-live-status-detail', job.status_detail || '');
       setText('bea-preview-stage', text(job.stage || status));
       setText('bea-preview-elapsed', elapsedText(job));
 

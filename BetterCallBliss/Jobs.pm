@@ -24,12 +24,13 @@ use Plugins::BetterCallBliss::QueueWriter;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $server_prefs = preferences('server');
-my ($optimizer_binary, $job_root, $library_cache_root);
+my ($optimizer_binary, $job_root, $library_cache_root, $optimizer_supports_progress);
 my %jobs;
 my $serial = 0;
 
 sub init {
     $optimizer_binary = shift;
+    $optimizer_supports_progress = shift ? 1 : 0;
     my $cache_root = ($server_prefs->get('cachedir') || Slim::Utils::Prefs::dir())
         . '/bettercallbliss';
     $job_root = $cache_root . '/jobs';
@@ -98,6 +99,153 @@ sub _repeat_capacity_hint {
     return;
 }
 
+sub _extension_detail {
+    my ($options, $job) = @_;
+    my $mode = $options->{extension_mode} || 'none';
+    return 'Additional tracks: none; this run only reorders the source set.'
+        if $mode eq 'none';
+    return 'Additional tracks: improve difficult transitions; may add up to '
+        . (0 + ($options->{max_added_tracks} || 0))
+        . ' tracks when transitions exceed the configured trigger.'
+        if $mode eq 'automatic';
+    return 'Additional tracks: make the playlist exactly '
+        . (0 + ($options->{additional_track_count} || 0))
+        . ' tracks longer.'
+        if $mode eq 'exact_count';
+    return 'Additional tracks: reach '
+        . (0 + ($options->{target_track_count} || 0))
+        . ' total tracks.'
+        if $mode eq 'target_count';
+    return 'Additional tracks: double the source playlist to '
+        . (0 + ($options->{target_track_count} || 0))
+        . ' total tracks.'
+        if $mode eq 'double_count';
+    return 'Additional tracks: extend the playlist against the complete source '
+        . 'set as the fixed reference.'
+        if $mode eq 'fixed_source_extension';
+    return 'Additional tracks: ' . $mode;
+}
+
+sub _ordering_detail {
+    my $options = shift || {};
+    return ($options->{ordering_policy} || '') eq 'preserve_order'
+        ? 'Ordering: preserve the source order; additions are placed around those anchors.'
+        : 'Ordering: optimize source and added tracks together.';
+}
+
+sub _native_progress_detail {
+    my $job = shift || {};
+    my $progress = ref($job->{native_progress}) eq 'HASH'
+        ? $job->{native_progress} : undef;
+    return unless $progress && length($progress->{msg} || '');
+    my $detail = 'Status: native optimizer - ' . $progress->{msg};
+    if (defined $progress->{percent}) {
+        $detail .= sprintf(' (%.0f%%', 0 + $progress->{percent});
+        if (defined $progress->{current} && defined $progress->{total}) {
+            $detail .= ', ' . (0 + $progress->{current}) . '/' . (0 + $progress->{total});
+        }
+        $detail .= ')';
+    } elsif (defined $progress->{current} && defined $progress->{total}) {
+        $detail .= ' (' . (0 + $progress->{current}) . '/' . (0 + $progress->{total}) . ')';
+    }
+    $detail .= '.' unless $detail =~ /[.!?]\s*$/;
+    return $detail;
+}
+sub _running_phase_detail {
+    my $job = shift || {};
+    my $native = _native_progress_detail($job);
+    return $native if $native;
+    if (!$job->{process}) {
+        return 'Status: collecting optional Last.fm track and artist evidence.'
+            if ($job->{lastfm_state} || '') eq 'preparing';
+        return 'Status: preparing the optimizer request.';
+    }
+    return 'Status: native optimizer is selecting additions and searching the final route.'
+        if ($job->{native_command} || '') eq 'bridge';
+    return 'Status: native optimizer is searching the best route through the source tracks.';
+}
+
+sub status_detail_lines {
+    my $job = shift || {};
+    my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
+    my $state = $job->{state} || 'unknown';
+    my @details;
+
+    if ($state eq 'running') {
+        push @details, _running_phase_detail($job);
+    } elsif ($state eq 'completed') {
+        my $added = 0 + ($job->{added_track_count} || 0);
+        my $final = 0 + ($job->{final_track_count} || 0);
+        push @details, "Status: preview completed; final playlist has $final tracks"
+            . ($added ? " with $added additions." : '.');
+    } elsif ($state eq 'failed') {
+        my $code = $job->{error_code} || 'UNKNOWN_FAILURE';
+        my $error = $job->{error} || $job->{native_message} || 'No detail available';
+        push @details, "Status: failed with $code - $error";
+    } elsif ($state eq 'cancelled') {
+        push @details, 'Status: preview was cancelled.';
+    } else {
+        push @details, 'Status: ' . ($job->{stage} || $state);
+    }
+
+    push @details, 'Source: ' . (0 + ($job->{track_count} || 0)) . ' tracks.';
+    push @details, _ordering_detail($options);
+    push @details, _extension_detail($options, $job);
+
+    push @details, sprintf(
+        'Repeat windows: artist %d, album %d, track %d.',
+        0 + ($options->{artist_window} || 0),
+        0 + ($options->{album_window} || 0),
+        0 + ($options->{track_window} || 0),
+    );
+
+    if (($options->{extension_mode} || 'none') ne 'none'
+        && ref($job->{candidate_inventory}) eq 'HASH') {
+        my $inventory = $job->{candidate_inventory};
+        push @details, sprintf(
+            'Candidate inventory: %d LMS-matched Bliss rows, %d excluded non-LMS rows, cache %s.',
+            0 + ($inventory->{allowed_row_count} || 0),
+            0 + ($inventory->{unmatched_row_count} || 0),
+            $inventory->{cache_state} || 'unknown',
+        );
+    }
+
+    if ($options->{lastfm_enabled}) {
+        push @details, sprintf(
+            'Last.fm evidence: %s; track guidance %d%%, artist guidance %d%%.',
+            $job->{lastfm_state} || 'unknown',
+            0 + ($options->{lastfm_track_guidance_percent} || 0),
+            0 + ($options->{lastfm_artist_guidance_percent} || 0),
+        );
+    } else {
+        push @details, 'Last.fm evidence: disabled for this job.';
+    }
+
+    if (ref($job->{native_performance}) eq 'HASH') {
+        my $perf = $job->{native_performance};
+        push @details, sprintf(
+            'Native optimizer timing: %d ms total, database cache %s.',
+            0 + ($perf->{total_ms} || 0),
+            $perf->{database_cache} || 'unknown',
+        );
+    }
+
+    return \@details;
+}
+
+sub status_detail {
+    my $lines = status_detail_lines(shift);
+    return join(' ', @$lines);
+}
+sub _read_progress {
+    my $job = shift || {};
+    my $path = $job->{progress_path} || return;
+    my $payload = eval { read_file($path, binmode => ':raw') } || return;
+    my $progress = eval { _json()->decode($payload) } || return;
+    return unless ref($progress) eq 'HASH';
+    return unless ($progress->{program} || '') eq 'bliss-playlist-optimizer';
+    $job->{native_progress} = $progress;
+}
 sub _launch_optimizer {
     my ($job, $built, $semantic_bundle) = @_;
     _write_json($job->{semantic_path}, $semantic_bundle);
@@ -111,6 +259,13 @@ sub _launch_optimizer {
     open my $stderr_fh, '>', $job->{stderr_path}
         or die "Could not open optimizer log: $!";
 
+    my @params = (
+        $optimizer_binary, $job->{native_command}, '--request',
+        $job->{request_path}, '--timings', '--cache-dir', $library_cache_root,
+    );
+    push @params, '--progress', $job->{progress_path}
+        if $optimizer_supports_progress && $job->{progress_path};
+
     my $retie_stderr = !main::ISWINDOWS && tied(*STDERR) ? 1 : 0;
     untie *STDERR if $retie_stderr;
     my ($process, $launch_error);
@@ -121,9 +276,7 @@ sub _launch_optimizer {
                 stdout => $result_fh,
                 stderr => $stderr_fh,
             },
-            $optimizer_binary, $job->{native_command}, '--request',
-            $job->{request_path}, '--timings', '--cache-dir',
-            $library_cache_root,
+            @params,
         );
     };
     $launch_error = $@;
@@ -176,6 +329,7 @@ sub _start_preview_from_built {
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
     my $stderr_path = $dir . '/stderr.log';
+    my $progress_path = $dir . '/progress.json';
     my $lastfm_applies = $built->{options}->{lastfm_enabled}
         && $built->{options}->{extension_mode} ne 'none';
 
@@ -210,6 +364,7 @@ sub _start_preview_from_built {
         request_path => $request_path,
         result_path => $result_path,
         stderr_path => $stderr_path,
+        progress_path => $progress_path,
     };
     for my $key (qw(
         route_to_track route_output_skip_source_count route_player_id
@@ -482,12 +637,14 @@ sub _poll {
     return unless $job->{process};
 
     if ($job->{process}->alive) {
+        _read_progress($job);
         Slim::Utils::Timers::setTimer(
             undef, time() + 0.5, sub { _poll($job_id) },
         );
         return;
     }
 
+    _read_progress($job);
     my $exit = $job->{process}->exit_code;
     $job->{finished_at} = time();
     delete $job->{process};

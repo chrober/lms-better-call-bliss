@@ -60,8 +60,9 @@ sub initPlugin {
         }
     }
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
+    my $optimizer_supports_progress = _optimizerSupportsProgress($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init($optimizer_binary);
-    Plugins::BetterCallBliss::Jobs::init($optimizer_binary);
+    Plugins::BetterCallBliss::Jobs::init($optimizer_binary, $optimizer_supports_progress);
     Plugins::BetterCallBliss::ContextMenu::init();
 
     if (main::WEBUI) {
@@ -81,8 +82,28 @@ sub initPlugin {
         [0, 0, 1, \&jobCommand],
     );
     $initialized = 1;
-    $log->info('initialized optimizer=' . ($optimizer_binary || 'missing'));
+    $log->info('initialized optimizer=' . ($optimizer_binary || 'missing')
+        . ' progress=' . ($optimizer_supports_progress ? 'supported' : 'unsupported'));
     return 1;
+}
+
+sub _optimizerSupportsProgress {
+    my $binary = shift;
+    return 0 unless $binary && -x $binary;
+    my $quoted = $binary;
+    $quoted =~ s/"/\\"/g;
+    my $output = eval { qx("$quoted" version --json) } || '';
+    return 1 if $output =~ /"progress_sidecar"\s*:\s*true/;
+    my $version;
+    if ($output =~ /"version"\s*:\s*"(\d+)\.(\d+)\.(\d+)"/) {
+        $version = [$1, $2, $3];
+    } else {
+        return 0;
+    }
+    return 1 if $version->[0] > 0;
+    return 1 if $version->[0] == 0 && $version->[1] > 1;
+    return 1 if $version->[0] == 0 && $version->[1] == 1 && $version->[2] >= 3;
+    return 0;
 }
 
 sub _loadStrings {
@@ -182,6 +203,8 @@ sub _job_payload {
         state => $state,
         stage => $job->{stage} || '',
         status => $status,
+        status_detail => Plugins::BetterCallBliss::Jobs::status_detail($job),
+        status_detail_lines => Plugins::BetterCallBliss::Jobs::status_detail_lines($job),
         title => $job->{playlist_title} || 'Untitled source',
         mode => _job_mode_label($job),
         started_at => $started,
