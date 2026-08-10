@@ -237,6 +237,31 @@ sub status_detail {
     my $lines = status_detail_lines(shift);
     return join(' ', @$lines);
 }
+
+sub compact_status {
+    my $lines = status_detail_lines(shift);
+    my $status = @$lines ? ($lines->[0] || '') : '';
+    $status =~ s/^Status:\s*//;
+    $status =~ s/^native optimizer\s*-\s*//i;
+    return $status;
+}
+
+sub duration_text {
+    my $seconds = int(shift || 0);
+    $seconds = 0 if $seconds < 0;
+    my $hours = int($seconds / 3600);
+    my $minutes = int(($seconds % 3600) / 60);
+    my $secs = $seconds % 60;
+    return sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
+}
+
+sub start_text {
+    my $epoch = int(shift || 0);
+    return '' unless $epoch;
+    my ($sec, $min, $hour, $mday, $mon, $year) = localtime($epoch);
+    return sprintf('%d.%d.%04d %02d:%02d:%02d',
+        $mday, $mon + 1, $year + 1900, $hour, $min, $sec);
+}
 sub _read_progress {
     my $job = shift || {};
     my $path = $job->{progress_path} || return;

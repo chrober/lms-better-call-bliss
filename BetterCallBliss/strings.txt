@@ -4,11 +4,11 @@ PLUGIN_BETTERCALLBLISS_NAME
 
 PLUGIN_BETTERCALLBLISS_TAGLINE
 	EN	Playlist Breaking Bad? Better Call Bliss.
-	DE	Playlist Breaking Bad? Better Call Bliss.
+	DE	Wiedergabeliste Breaking Bad? Better Call Bliss.
 
 PLUGIN_BETTERCALLBLISS_DESC
-	EN	Playlist Breaking Bad? Better Call Bliss. Preview auditable, Bliss-powered playlist optimization.
-	DE	Playlist Breaking Bad? Better Call Bliss. Vorschau fuer nachvollziehbare, Bliss-basierte Playlist-Optimierung.
+	EN	Playlist Breaking Bad? Better Call Bliss. Bliss-powered playlist optimization.
+	DE	Wiedergabeliste Breaking Bad? Better Call Bliss. Bliss-basierte Wiedergabelisten-Optimierung.
 
 DEBUG_PLUGIN_BETTERCALLBLISS
 	EN	Better Call Bliss
@@ -20,11 +20,11 @@ PLUGIN_BETTERCALLBLISS_SETTINGS
 
 PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX
 	EN	Default optimized-copy suffix
-	DE	Standard-Suffix fuer optimierte Kopien
+	DE	Standard-Suffix für optimierte Kopien
 
 PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC
 	EN	Initial suffix used when a reviewed preview is saved as a new playlist.
-	DE	Anfaenglicher Suffix beim Speichern einer geprueften Vorschau als neue Playlist.
+	DE	Anfänglicher Suffix, der beim Speichern einer überprüften Vorschau als neue Wiedergabeliste verwendet wird.
 
 PLUGIN_BETTERCALLBLISS_RESTART_COUNT
 	EN	Route search restarts
@@ -32,31 +32,31 @@ PLUGIN_BETTERCALLBLISS_RESTART_COUNT
 
 PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC
 	EN	Deterministic base-route search effort used by new previews; each job can override it.
-	DE	Deterministischer Suchaufwand fuer die Basisroute neuer Vorschauen; pro Auftrag aenderbar.
+	DE	Deterministischer Suchaufwand für die Basisroute neuer Vorschauen; pro Vorgang änderbar.
 
 PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX
 	EN	Default extended-copy suffix
-	DE	Standard-Suffix fuer erweiterte Kopien
+	DE	Standard-Suffix für erweiterte Kopien
 
 PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX_DESC
 	EN	Initial suffix used when an automatic extension preview is saved.
-	DE	Anfaenglicher Suffix beim Speichern einer automatisch erweiterten Vorschau.
+	DE	Anfänglicher Suffix, der beim Speichern einer automatisch erweiterten Vorschau verwendet wird.
 
 PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET
 	EN	Default automatic bridge budget
-	DE	Standardbudget fuer automatische Bruecken
+	DE	Standardbudget für automatische Brücken
 
 PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET_DESC
 	EN	Maximum additions proposed by Extend automatically; each job can override it.
-	DE	Maximale Zahl zusaetzlicher Titel fuer automatische Erweiterung; pro Auftrag aenderbar.
+	DE	Maximale Anzahl zusätzlicher Titel für die automatische Erweiterung; pro Vorgang änderbar.
 
 PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT
 	EN	Default bridge trigger percentile (%)
-	DE	Standard-Perzentil fuer Bruecken (%)
+	DE	Standard-Perzentil für Brücken (%)
 
 PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC
 	EN	Only transitions above this frozen contextual percentile are considered; each job can override it.
-	DE	Nur Uebergaenge oberhalb dieses eingefrorenen Kontext-Perzentils werden beruecksichtigt; pro Auftrag aenderbar.
+	DE	Nur Übergänge oberhalb dieses eingefrorenen Kontext-Perzentils werden berücksichtigt; pro Vorgang änderbar.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED
 	EN	Use Last.fm guidance
@@ -64,23 +64,23 @@ PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC
 	EN	Uses LastMix track and artist similarity as bounded supporting evidence after Bliss qualification. Each job can override this default. Failures fall back to Bliss.
-	DE	Verwendet Titel- und Interpretenaehnlichkeit von LastMix als begrenzten Zusatzhinweis nach der Bliss-Pruefung. Pro Auftrag aenderbar; Fehler fallen auf Bliss zurueck.
+	DE	Verwendet Titel- und Interpretenähnlichkeit von LastMix als begrenzten Zusatzhinweis nach der Bliss-Prüfung. Pro Vorgang änderbar; Fehler fallen auf Bliss zurück.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE
 	EN	Similar-track guidance (%)
-	DE	Hinweisstaerke aehnlicher Titel (%)
+	DE	Hinweisstärke ähnlicher Titel (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC
 	EN	Bounded influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores track evidence. Default: 75.
-	DE	Begrenzter Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Pruefung bestehen. Null ignoriert Titelhinweise. Standard: 75.
+	DE	Begrenzter Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Null ignoriert Titelhinweise. Standard: 75.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE
 	EN	Similar-artist guidance (%)
-	DE	Hinweisstaerke aehnlicher Interpreten (%)
+	DE	Hinweisstärke ähnlicher Interpreten (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC
 	EN	Bounded influence of Last.fm artist.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores artist evidence. Default: 75.
-	DE	Begrenzter Einfluss von Last.fm-artist.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Pruefung bestehen. Null ignoriert Interpretenhinweise. Standard: 75.
+	DE	Begrenzter Einfluss von Last.fm-artist.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Null ignoriert Interpretenhinweise. Standard: 75.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE
 	EN	Requires the LastMix plugin to be installed and enabled.
@@ -92,15 +92,15 @@ PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED
 
 PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED_DESC
 	EN	Optional MBID-aware evidence. Future request failures will not fail optimization.
-	DE	Optionale MBID-basierte Hinweise. Kuenftige Fehler lassen die Optimierung nicht fehlschlagen.
+	DE	Optionale MBID-basierte Hinweise. Künftige Fehler lassen die Optimierung nicht fehlschlagen.
 
 PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS
 	EN	Semantic cache freshness, days [not connected yet]
-	DE	Aktualitaet des semantischen Cache in Tagen [noch nicht angebunden]
+	DE	Aktualität des semantischen Zwischenspeichers in Tagen [noch nicht angebunden]
 
 PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS_DESC
 	EN	Future provider results remain fresh for this many days.
-	DE	Kuenftige Provider-Ergebnisse gelten so viele Tage als aktuell.
+	DE	Künftige Provider-Ergebnisse gelten so viele Tage als aktuell.
 
 PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS
 	EN	Maximum stale evidence, days [not connected yet]
@@ -108,7 +108,7 @@ PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS
 
 PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS_DESC
 	EN	Future offline fallback may reuse cached evidence up to this age.
-	DE	Der kuenftige Offline-Rueckfall darf Cache-Daten bis zu diesem Alter verwenden.
+	DE	Der künftige Offline-Rückfall darf zwischengespeicherte Hinweise bis zu diesem Alter verwenden.
 
 PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS
 	EN	Report retention, days [not connected yet]
@@ -116,4 +116,4 @@ PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS
 
 PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC
 	EN	Stored for future persistent reports; results are currently session-only.
-	DE	Fuer kuenftige dauerhafte Berichte gespeichert; Ergebnisse existieren derzeit nur pro Sitzung.
+	DE	Für künftige dauerhafte Berichte gespeichert; Ergebnisse existieren derzeit nur pro Sitzung.
