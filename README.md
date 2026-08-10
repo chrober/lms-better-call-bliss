@@ -7,8 +7,8 @@
 **Better Call Bliss** is a Lyrion Music Server plugin that turns a saved
 playlist or a current player queue snapshot into a smoother listening journey.
 It can reorder the existing songs, insert suitable bridge tracks, preserve the
-original order while filling its gaps, grow a short seed playlist into a longer
-mix, or rebuild the upcoming part of a live queue. Every job is previewed before
+original order while filling its gaps, extend a short source list to a chosen
+length, or rebuild the upcoming part of a live queue. Every job is previewed before
 anything is saved or sent to a player, and artist, album, and track repeat rules
 remain hard constraints.
 
@@ -23,7 +23,7 @@ which is bundled with supported plugin packages.
 
 - Reorders every song in a curated playlist or queue snapshot for better transition flow.
 - Adds bridges automatically only where a transition is difficult.
-- Adds exactly a requested number of tracks or grows seeds to a target size.
+- Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
 - Uses dynamic Adaptive Bliss similarity, optional learned preferences,
   per-job variation, and optional Last.fm similar-track and similar-artist guidance.
@@ -40,7 +40,7 @@ which is bundled with supported plugin packages.
 Better Call Bliss deliberately builds on and credits the existing
 [lms-blissmixer](https://github.com/chrober/lms-blissmixer) feature
 **Create bliss mix** / **Bliss Mix erstellen**. That BlissMixer action already
-generates immediate Bliss-based mixes from seeds or queue context. Better Call
+generates immediate Bliss-based mixes from playlist, seed-list, or queue context. Better Call
 Bliss is a companion workflow around the same Bliss ecosystem: it previews
 auditable saved-playlist and player-queue transformations, exposes per-job
 constraints, and lets the user choose whether to save, overwrite, or send the
@@ -158,7 +158,7 @@ Better Call Bliss is under active development. The current implementation
 supports Adaptive scoring, optimized or preserved source order, saved-playlist
 and player-queue sources, playlist and queue outputs, reorder-only, automatic
 additions, exact-count additions, target/double track-count presets, and seed
-growth. Disabled controls
+extension. Disabled controls
 in the UI describe planned capabilities rather than silently pretending to
 work.
 
