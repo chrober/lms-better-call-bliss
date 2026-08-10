@@ -154,9 +154,8 @@ sub _job_mode_label {
     return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
     return 'Improve difficult transitions' if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
-    return 'Extend playlist' if $purpose eq 'extend_playlist';
-    return 'Grow from these seeds' if $purpose eq 'seed_growth'
-        || ($options->{extension_mode} || '') eq 'seed_growth';
+    return 'Extend playlist' if $purpose eq 'extend_playlist'
+        || ($options->{extension_mode} || '') eq 'fixed_source_extension';
     return 'Strict gap bridge placement';
 }
 
@@ -264,7 +263,7 @@ sub statusCommand {
     $request->addResult('ux_contract', 'extras-job-editor-v22');
     $request->addResult(
         'working_mode',
-        'per-job-adaptive/optimize-or-preserve/none-auto-exact-seed-growth/context-route-to-track/playlist-or-queue-output',
+        'per-job-adaptive/optimize-or-preserve/none-auto-extend/context-route-to-track/playlist-or-queue-output',
     );
     $request->setStatusDone();
 }

@@ -2,6 +2,8 @@
 [%- pwd_list = BLOCK -%]/ [% 'PLUGIN_BETTERCALLBLISS_NAME' | string %][% END -%]
 [% PROCESS pageheader.html %]
 
+<link rel="stylesheet" type="text/css" href="/material/html/css/classic-skin/mods.css">
+
 <style>
   .bea-section { margin: 1.2em 0; padding: 1em; border: 1px solid #aaa; }
   .bea-section legend { font-weight: bold; }
@@ -137,6 +139,10 @@
   </details>
 [% END %]
 
+<!-- Material Skin enables its built-in sliderInput_* controls only after it sees #settingsForm.
+     The real Better Call Bliss job form stays #bea-main-form; this empty marker just opts the Extras page into that enhancement. -->
+<form id="settingsForm" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post" class="bea-hidden"></form>
+
 <form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
@@ -202,7 +208,7 @@
           <option value="preserve_order"[% IF bettercallbliss_form.ordering_policy == 'preserve_order' %] selected[% END %]>Preserve source order and fill gaps [Working]</option>
         </select>
       </div>
-      <p class="bea-note">Optimize may move the existing tracks. Preserve keeps every source track as an immutable anchor in its current order and permits additions only inside the existing gaps.</p>
+      <p class="bea-note" id="ordering_policy_note"></p>
       <input type="hidden" name="extension_mode" id="extension_mode" value="[% bettercallbliss_form.extension_mode | html %]">
       <div class="bea-row">
         <label for="addition_purpose">Additional tracks</label>
@@ -210,7 +216,6 @@
           <option value="none"[% IF bettercallbliss_form.addition_purpose == 'none' %] selected[% END %]>No additions - only use the source tracks [Working]</option>
           <option value="automatic"[% IF bettercallbliss_form.addition_purpose == 'automatic' %] selected[% END %]>Improve difficult transitions when useful [Working]</option>
           <option value="extend_playlist"[% IF bettercallbliss_form.addition_purpose == 'extend_playlist' %] selected[% END %]>Extend playlist [Working]</option>
-          <option value="seed_growth"[% IF bettercallbliss_form.addition_purpose == 'seed_growth' %] selected[% END %]>Grow from these seeds [Working]</option>
           <option disabled>Advanced: strict gap bridge placement [Planned]</option>
           <option disabled>Reach a target duration [Planned]</option>
           <option disabled>Double playlist duration [Planned]</option>
@@ -227,23 +232,13 @@
       </div>
       <p class="bea-note" id="addition_amount_note"></p>
     [% END %]
-    <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without allowing additions would leave the result unchanged. Choose transition improvements, Extend playlist, or seed growth with a larger target.</div>
+    <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without allowing additions would leave the result unchanged. Choose transition improvements or Extend playlist with a non-zero target.</div>
   </fieldset>
 
-  <fieldset class="bea-section bea-mode-section" id="seed_growth_fields">
-    <legend id="seed_growth_legend">Grow from these seeds</legend>
-    <p class="bea-note" id="seed_growth_note">Every source song is kept exactly once and treated as evidence for the desired sound. Unlike Extend playlist, this is meant for a short seed list or mood board: Better Call Bliss first finds local analyzed tracks that fit the complete seed set, then either routes the whole expanded set freely or places additions around preserved source anchors.</p>
-    <div class="bea-row">
-      <label for="target_track_count">Final playlist size</label>
-      <input type="number" min="3" max="500" class="stdedit sliderInput_3_500_1" name="target_track_count" id="target_track_count" value="[% bettercallbliss_form.target_track_count %]" required>
-      <span class="bea-disabled" id="seed_growth_count">Choose a playlist to see the addition count.</span>
-    </div>
-    <div id="seed_growth_warning" class="bea-warning bea-hidden"></div>
-  </fieldset>
 
   <fieldset class="bea-section bea-mode-section" id="automatic_extension_fields">
     <legend>Automatic additions</legend>
-    <p class="bea-note">This is a repair strategy, not a target-length strategy. It inspects the source transitions and may add zero tracks when no gap is difficult enough or no eligible bridge genuinely improves the handover.</p>
+    <p class="bea-note" id="automatic_extension_note"></p>
     <div class="bea-row">
       <label for="max_added_tracks">Maximum additional tracks</label>
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="max_added_tracks" id="max_added_tracks" value="[% bettercallbliss_form.max_added_tracks %]" required>
@@ -265,7 +260,7 @@
       <input type="number" min="1" max="100" class="stdedit sliderInput_1_100_1" name="additional_track_count" id="additional_track_count" value="[% bettercallbliss_form.additional_track_count %]" required>
       <span class="bea-disabled" id="exact_count_limit">Choose a source to see the current limit.</span>
     </div>
-    <p class="bea-note">Extend playlist is not limited by the number of existing gaps. Use it when the source is already the playlist you want, just too short. With Optimize source order, originals and additions may be rerouted together; with Preserve source order, originals stay as anchors and additions are placed around them.</p>
+    <p class="bea-note" id="extend_playlist_note"></p>
     <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
   </fieldset>
 
@@ -382,6 +377,35 @@
 
 <script>
   (function () {
+    function requestMaterialSliderEnhancement() {
+      if (!window.parent || window.parent === window) return false;
+      try {
+        if (typeof window.parent.addSliders === 'function') {
+          return !!window.parent.addSliders(document);
+        }
+        if (typeof window.parent.iframeActionCheck === 'function') {
+          window.parent.iframeActionCheck();
+          return document.getElementsByClassName('msk-slider').length > 0;
+        }
+      } catch (ignore) {
+      }
+      return false;
+    }
+
+    function enableMaterialSliders(attempt) {
+      if (requestMaterialSliderEnhancement()) return;
+      if (attempt < 50) {
+        window.setTimeout(function () { enableMaterialSliders(attempt + 1); }, 100);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () { enableMaterialSliders(0); });
+    } else {
+      enableMaterialSliders(0);
+    }
+    window.addEventListener('load', function () { enableMaterialSliders(0); });
+
     var ordering = document.getElementById('ordering_policy');
     var playlist = document.getElementById('playlist_id');
     var sourceMode = document.getElementById('source_mode');
@@ -395,12 +419,15 @@
     var additionPurpose = document.getElementById('addition_purpose');
     var additionAmountMode = document.getElementById('addition_amount_mode');
     var additionAmountModeRow = document.getElementById('addition_amount_mode_row');
+    var orderingPolicyNote = document.getElementById('ordering_policy_note');
     var additionPurposeNote = document.getElementById('addition_purpose_note');
     var additionAmountNote = document.getElementById('addition_amount_note');
     var algorithm = document.getElementById('algorithm');
     var automaticFields = document.getElementById('automatic_extension_fields');
+    var automaticNote = document.getElementById('automatic_extension_note');
     var automaticInputs = automaticFields.querySelectorAll('input');
     var exactFields = document.getElementById('exact_count_fields');
+    var extendPlaylistNote = document.getElementById('extend_playlist_note');
     var exactInputs = exactFields.querySelectorAll('input');
     var exactCount = document.getElementById('additional_track_count');
     var exactLimit = document.getElementById('exact_count_limit');
@@ -412,11 +439,6 @@
     var targetWarning = document.getElementById('target_count_warning');
     var doubleFields = document.getElementById('double_count_fields');
     var doubleSummary = document.getElementById('double_count_summary');
-    var growthFields = document.getElementById('seed_growth_fields');
-    var growthInputs = growthFields.querySelectorAll('input');
-    var growthTarget = document.getElementById('target_track_count');
-    var growthCount = document.getElementById('seed_growth_count');
-    var growthWarning = document.getElementById('seed_growth_warning');
     var maximumAdditions = document.getElementById('max_added_tracks');
     var learnedPercentRow = document.getElementById('learned_percent_row');
     var restarts = document.getElementById('restart_count');
@@ -465,8 +487,11 @@
       if (mode === 'exact_count' || mode === 'target_count' || mode === 'double_count') {
         additionPurpose.value = 'extend_playlist';
         additionAmountMode.value = mode;
-      } else if (mode === 'automatic' || mode === 'seed_growth') {
+      } else if (mode === 'automatic') {
         additionPurpose.value = mode;
+      } else if (mode === 'fixed_source_extension') {
+        additionPurpose.value = 'extend_playlist';
+        additionAmountMode.value = 'target_count';
       } else {
         additionPurpose.value = 'none';
         additionAmountMode.value = 'exact_count';
@@ -476,28 +501,44 @@
     function syncExtensionModeFromAdditionControls() {
       if (!additionPurpose || !additionAmountMode) return extension.value;
       if (additionPurpose.value === 'extend_playlist') {
-        extension.value = 'seed_growth';
+        extension.value = 'fixed_source_extension';
       } else {
         extension.value = additionPurpose.value;
       }
       return extension.value;
     }
 
-    function updateAdditionNotes(purpose, mode) {
+    function updateAdditionNotes(purpose, mode, preserve) {
       if (!additionPurposeNote || !additionAmountNote) return;
+      if (orderingPolicyNote) {
+        orderingPolicyNote.textContent = preserve
+          ? 'Preserve source order keeps every source track in its current order. When additions are enabled, they can only be placed around those fixed anchors.'
+          : 'Optimize source order may move source tracks. The source membership is still kept, but Better Call Bliss can search for a smoother route.';
+      }
       var purposeNotes = {
-        none: 'No local tracks are inserted. With Optimize source order this is a pure reordering run; with Preserve source order it would be a no-op.',
-        automatic: 'Repair mode: keep the source membership as the main playlist and add bridges only where a transition looks difficult and an eligible local track improves it. It may add zero tracks. Use Extend playlist instead when you want a chosen number of additions.',
-        extend_playlist: 'Extension mode: use this when the source is already the playlist you want, just too short. Better Call Bliss adds the chosen amount from the local analyzed library; Optimize may reroute originals and additions together, while Preserve keeps originals as anchors. Use Grow from these seeds when the input is only a mood board.',
-        seed_growth: 'Seed mode: use this when the source songs are examples of a desired sound rather than a nearly finished playlist. Better Call Bliss searches for tracks that fit the complete seed set, then builds a fuller mix. Use Extend playlist when you mainly want the current playlist to become N tracks longer.'
+        none: {
+          optimize: 'Reorder only: Better Call Bliss uses exactly the source tracks and searches for a smoother order. No local tracks are added.',
+          preserve: 'This combination would leave the source unchanged: the order is preserved and no tracks are added. Choose a different addition mode or allow source-order optimization.'
+        },
+        automatic: {
+          optimize: 'Repair after reordering: first optimize the source-track order, then inspect the resulting handovers. A bridge is added only if it improves both sides of one specific gap. Similarity is gap-local, not playlist-wide; zero additions is a valid result.',
+          preserve: 'Repair the current order: keep the source tracks where they are and inspect their existing handovers. A bridge is added only if it improves both sides of one specific gap. Similarity is gap-local, not playlist-wide; zero additions is a valid result.'
+        },
+        extend_playlist: {
+          optimize: 'Extend this playlist by the chosen amount. Additions are selected because they fit the complete original source set as a fixed reference; then originals and additions may be reordered together for flow. Use Reach final track count when the source is a short seed list and you want a fuller mix.',
+          preserve: 'Extend this playlist by the chosen amount without moving the original tracks. Additions are selected because they fit the complete original source set as a fixed reference, then placed around the ordered anchors. This is not one bridge per gap.'
+        },
       };
       var amountNotes = {
-        exact_count: 'Adds exactly this many tracks to the source snapshot. This is a playlist-length request, not one bridge per existing gap.',
-        target_count: 'You enter the desired final number of tracks; Better Call Bliss calculates how many additions are needed.',
-        double_count: 'A shortcut for adding one track per source track, so the final result has exactly twice as many tracks.'
+        exact_count: 'Extend-only amount control: add exactly this many tracks to the source snapshot. This is a playlist-length request, not one bridge per existing gap.',
+        target_count: 'Extend-only amount control: enter the desired final track count and Better Call Bliss calculates how many additions are needed.',
+        double_count: 'Extend-only amount control: add one track per source track, so the final result has exactly twice as many tracks. This is still full-playlist extension, not one bridge per existing transition.'
       };
-      additionPurposeNote.textContent = purposeNotes[purpose] || '';
+      var orderKey = preserve ? 'preserve' : 'optimize';
+      additionPurposeNote.textContent = purposeNotes[purpose] ? purposeNotes[purpose][orderKey] : '';
       additionAmountNote.textContent = purpose === 'extend_playlist' ? (amountNotes[mode] || '') : '';
+      if (automaticNote) automaticNote.textContent = purposeNotes.automatic[orderKey];
+      if (extendPlaylistNote) extendPlaylistNote.textContent = purposeNotes.extend_playlist[orderKey];
     }
 
     initializeAdditionControls();
@@ -512,7 +553,6 @@
       var exact = extendPlaylist && amountMode === 'exact_count';
       var targetCount = extendPlaylist && amountMode === 'target_count';
       var doubleCount = extendPlaylist && amountMode === 'double_count';
-      var growth = extension.value === 'seed_growth' && !extendPlaylist;
       var additions = !noAdditions;
       var noneOption = additionPurpose ? additionPurpose.querySelector('option[value="none"]') : null;
       var currentSourceMode = sourceMode ? sourceMode.value : 'saved_playlist';
@@ -539,7 +579,6 @@
       var maximumTarget = 500;
       var requestedExact = parseInt(exactCount.value || '0', 10);
       var requestedBridgeTarget = parseInt(bridgeTarget.value || '0', 10);
-      var requestedTarget = parseInt(growthTarget.value || '0', 10);
       var zeroAutomaticBudget = automatic
         && parseInt(maximumAdditions.value || '0', 10) === 0;
       var invalidCombination = preserve
@@ -550,18 +589,11 @@
       var invalidTarget = targetCount && sourceCount > 0
         && (requestedBridgeTarget <= sourceCount || requestedBridgeTarget > maximumTarget);
       var invalidDouble = doubleCount && sourceCount > 0 && (2 * sourceCount > maximumTarget);
-      var invalidGrowth = growth && sourceCount > 0
-        && requestedTarget <= sourceCount;
-      if (extendPlaylist && sourceCount > 0) {
-        if (exact) growthTarget.value = sourceCount + (requestedExact > 0 ? requestedExact : 0);
-        if (targetCount) growthTarget.value = requestedBridgeTarget > 0 ? requestedBridgeTarget : sourceCount;
-        if (doubleCount) growthTarget.value = 2 * sourceCount;
-      }
 
       if (noneOption) noneOption.disabled = false;
       ordering.disabled = false;
       setVisible(additionAmountModeRow, additionPurpose && additionPurpose.value === 'extend_playlist');
-      updateAdditionNotes(additionPurpose ? additionPurpose.value : extension.value, extension.value);
+      updateAdditionNotes(additionPurpose ? additionPurpose.value : extension.value, extension.value, preserve);
       setVisible(savedPlaylistFields, currentSourceMode === 'saved_playlist');
       setVisible(playerQueueFields, currentSourceMode === 'player_queue');
       if (playlist) playlist.required = currentSourceMode === 'saved_playlist';
@@ -603,15 +635,7 @@
         ? sourceCount + ' source tracks + ' + sourceCount + ' additions = ' + (2 * sourceCount) + ' tracks.'
           + (invalidDouble ? ' This exceeds the current 500-track target limit.' : '')
         : 'Choose a source to see the calculated final size.';
-      growthCount.textContent = sourceCount > 0 && requestedTarget > sourceCount
-        ? sourceCount + ' seeds + ' + (requestedTarget - sourceCount)
-          + ' additions = ' + requestedTarget + ' tracks.'
-        : 'The target must be larger than the source snapshot.';
-      growthWarning.textContent = invalidGrowth
-        ? 'Choose a final size greater than the ' + sourceCount + ' source tracks.'
-        : '';
-      setVisible(growthWarning, invalidGrowth);
-      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble || invalidGrowth;
+      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble;
 
       var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
       setVisible(lastFmFields, additions);
@@ -632,8 +656,6 @@
       setVisible(targetFields, targetCount);
       setInputsReadOnly(targetInputs, !targetCount);
       setVisible(doubleFields, doubleCount);
-      setVisible(growthFields, growth);
-      setInputsReadOnly(growthInputs, !(growth || extendPlaylist));
       setVisible(learnedPercentRow, algorithm.value === 'adaptive');
     }
 
@@ -648,7 +670,6 @@
     maximumAdditions.addEventListener('input', synchronizeControls);
     exactCount.addEventListener('input', synchronizeControls);
     bridgeTarget.addEventListener('input', synchronizeControls);
-    growthTarget.addEventListener('input', synchronizeControls);
     if (lastFmEnabled) lastFmEnabled.addEventListener('change', synchronizeControls);
     synchronizeControls();
     window.setTimeout(synchronizeControls, 0);
@@ -681,21 +702,16 @@
       <div class="bea-info"><b>Preview cancelled.</b> No playlist or player queue was changed.</div>
       <p><input class="inputbutton" form="bea-main-form" type="submit" name="[% IF bettercallbliss_job.route_to_track %]run_route_to_track_preview[% ELSE %]run_preview[% END %]" value="Run read-only preview again"></p>
     [% ELSE %]
-      [% IF bettercallbliss_job.seed_growth_extension %]
-        [% IF bettercallbliss_job.extend_playlist_extension %]
-          <div class="bea-ok">Extended [% bettercallbliss_job.relevance_reference_track_count %] source tracks to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
-          <p class="bea-note">The original source set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
-        [% ELSE %]
-          <div class="bea-ok">Grew [% bettercallbliss_job.relevance_reference_track_count %] seeds to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
-          <p class="bea-note">The original seed set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
-        [% END %]
-        <p class="bea-note"><b>[% IF bettercallbliss_job.extend_playlist_extension %]Fixed-source relevance[% ELSE %]Fixed-seed relevance[% END %]:</b> best [% bettercallbliss_job.relevance_minimum %], average [% bettercallbliss_job.relevance_mean %], furthest [% bettercallbliss_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
+      [% IF bettercallbliss_job.fixed_source_extension %]
+        <div class="bea-ok">Extended [% bettercallbliss_job.relevance_reference_track_count %] source tracks to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
+        <p class="bea-note">The original source set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
+        <p class="bea-note"><b>Fixed-source relevance:</b> best [% bettercallbliss_job.relevance_minimum %], average [% bettercallbliss_job.relevance_mean %], furthest [% bettercallbliss_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
         <p class="bea-note"><b>Final route flow:</b> [% bettercallbliss_job.selected_strategy | html %]; transition sum [% bettercallbliss_job.route_transition_sum %], worst transition [% bettercallbliss_job.route_worst_transition %], objective [% bettercallbliss_job.route_objective %], arc error [% bettercallbliss_job.route_arc_error %].</p>
         <details>
           <summary>Verified acceptance checks</summary>
           <ul>
             <li>Exact target size reached.</li>
-            <li>Every original seed retained exactly once.</li>
+            <li>Every original source track retained exactly once.</li>
             <li>Every addition resolved from the current local LMS candidate inventory.</li>
             <li>Membership is unique, satisfying the track-repeat rule.</li>
             <li>Artist and album repeat windows are satisfied by the final route.</li>
@@ -716,8 +732,8 @@
       [% ELSE %]
         <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Objective [% bettercallbliss_job.objective %]; worst transition [% bettercallbliss_job.worst_transition %].</div>
       [% END %]
-      [% IF bettercallbliss_job.seed_growth_extension %]
-        <p class="bea-note">The complete seed-plus-addition membership was optimized together for transition flow.</p>
+      [% IF bettercallbliss_job.fixed_source_extension %]
+        <p class="bea-note">The complete source-plus-addition membership was optimized together for transition flow.</p>
       [% ELSIF bettercallbliss_job.preserve_order %]
         <p class="bea-ok"><b>Source order preserved.</b> Every original track remains in its original relative position; only added bridges occupy the gaps.</p>
       [% ELSIF bettercallbliss_job.bridge_extension %]
@@ -726,7 +742,7 @@
       <ol class="bea-order">
         [% FOREACH track = bettercallbliss_job.order %]
           <li>[% track.artist | html %] - [% track.title | html %]
-            [% IF track.bridge %]<b>[% IF bettercallbliss_job.extend_playlist_extension %][Added extension][% ELSIF bettercallbliss_job.seed_growth_extension %][Added from seed similarity][% ELSE %][Added bridge][% END %]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
+            [% IF track.bridge %]<b>[% IF bettercallbliss_job.fixed_source_extension %][Added extension][% ELSE %][Added bridge][% END %]</b>[% ELSE %]<span class="bea-disabled">(was #[% track.original_position %])</span>[% END %]
           </li>
         [% END %]
       </ol>
@@ -738,12 +754,12 @@
             [% bettercallbliss_job.semantic_stats.bliss_only %] Bliss-only.
           </p>
         [% END %]
-        <h4>[% IF bettercallbliss_job.seed_growth_extension %]Selected additions[% ELSE %]Additions and reasons[% END %]</h4>
+        <h4>[% IF bettercallbliss_job.fixed_source_extension %]Selected extension additions[% ELSE %]Additions and reasons[% END %]</h4>
         [% IF bettercallbliss_job.added_track_count %]
           <ul>
             [% FOREACH addition = bettercallbliss_job.additions %]
-              [% IF bettercallbliss_job.seed_growth_extension %]
-                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-seed Adaptive distance [% addition.relevance_distance %]; evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]); [% addition.semantic_summary | html %].</li>
+              [% IF bettercallbliss_job.fixed_source_extension %]
+                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-source Adaptive distance [% addition.relevance_distance %]; evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]); [% addition.semantic_summary | html %].</li>
               [% ELSE %]
                 <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
                 "[% addition.left | html %]" and "[% addition.right | html %]";
@@ -757,7 +773,7 @@
         [% ELSIF bettercallbliss_job.automatic_extension %]
           <p>No bridge met the trigger, acoustic-improvement, uniqueness, and repeat constraints. The optimized base order is still a valid result.</p>
         [% END %]
-        [% IF !bettercallbliss_job.seed_growth_extension %]<details>
+        [% IF !bettercallbliss_job.fixed_source_extension %]<details>
           <summary>Transition decisions</summary>
           <ul>
             [% FOREACH decision = bettercallbliss_job.gap_decisions %]

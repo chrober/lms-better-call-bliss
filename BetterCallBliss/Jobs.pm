@@ -254,7 +254,7 @@ sub _start_preview_from_built {
             ? " max_added=$effective->{max_added_tracks}"
                 . " trigger_percent=$effective->{trigger_percent}"
             : '')
-        . (($effective->{extension_mode} eq 'seed_growth'
+        . (($effective->{extension_mode} eq 'fixed_source_extension'
                 || $effective->{extension_mode} eq 'target_count'
                 || $effective->{extension_mode} eq 'double_count')
             ? " target_tracks=$effective->{target_track_count}"
@@ -606,12 +606,12 @@ sub _poll {
                 . " database_cache=" . ($native->{database_cache} || 'unknown')
             : '';
         if ($job->{options}->{extension_mode} ne 'none') {
-            my $seed_growth_summary = '';
-            if ($job->{options}->{extension_mode} eq 'seed_growth') {
+            my $fixed_source_extension_summary = '';
+            if ($job->{options}->{extension_mode} eq 'fixed_source_extension') {
                 my $preview = $job->{artifact}->{selection_preview} || {};
                 my $relevance = $preview->{relevance_summary} || {};
                 my $route = $preview->{route_summary} || {};
-                $seed_growth_summary = sprintf(
+                $fixed_source_extension_summary = sprintf(
                     ' relevance_min=%.4f relevance_mean=%.4f relevance_max=%.4f'
                         . ' route_worst=%.3f route_objective=%.3f proofs=passed',
                     0 + ($relevance->{minimum_distance} || 0),
@@ -634,7 +634,7 @@ sub _poll {
                     ' base_route_objective=%.3f',
                     $job->{artifact}->{selected_route_objective},
                 )
-                . $seed_growth_summary
+                . $fixed_source_extension_summary
             );
         } else {
             my $candidate = $selected eq 'adaptive-arc'

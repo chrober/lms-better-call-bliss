@@ -301,7 +301,7 @@ sub _build_sequence_request {
             if $options->{target_track_count} > 500;
         die 'Extend playlist target must exceed the source playlist size'
             if $options->{target_track_count} <= $source_count;
-        $options->{extension_mode} = 'seed_growth';
+        $options->{extension_mode} = 'fixed_source_extension';
     }
     my $exact_like_extension = $options->{extension_mode} eq 'exact_count'
         || $options->{extension_mode} eq 'target_count'
@@ -332,12 +332,10 @@ sub _build_sequence_request {
             . chr(10)
             if $options->{additional_track_count} > $maximum;
     }
-    if ($options->{extension_mode} eq 'seed_growth') {
-        my $target_label = (($options->{addition_purpose} || '') eq 'extend_playlist')
-            ? 'Extend playlist target' : 'Grow from these seeds target';
-        die $target_label . ' must exceed the source playlist size'
+    if ($options->{extension_mode} eq 'fixed_source_extension') {
+        die 'Extend playlist target must exceed the source playlist size'
             if $options->{target_track_count} <= $source_count;
-        die $target_label . ' must not exceed 500 tracks'
+        die 'Extend playlist target must not exceed 500 tracks'
             if $options->{target_track_count} > 500;
     }
 
@@ -440,7 +438,7 @@ sub _build_sequence_request {
                     ? JSON::XS::true : JSON::XS::false,
                 additional_track_count => _json_integer($options->{additional_track_count}),
             }
-            : $options->{extension_mode} eq 'seed_growth' ? {
+            : $options->{extension_mode} eq 'fixed_source_extension' ? {
                 mode => 'seed_growth',
                 shortlist_limit => _json_integer(256),
                 target_track_count => _json_integer($options->{target_track_count}),

@@ -173,9 +173,8 @@ sub _job_mode_label {
     return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
     return 'Improve difficult transitions' if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
-    return 'Extend playlist' if $purpose eq 'extend_playlist';
-    return 'Grow from these seeds' if $purpose eq 'seed_growth'
-        || ($options->{extension_mode} || '') eq 'seed_growth';
+    return 'Extend playlist' if $purpose eq 'extend_playlist'
+        || ($options->{extension_mode} || '') eq 'fixed_source_extension';
     return 'Strict gap bridge placement';
 }
 
@@ -358,10 +357,10 @@ sub _result_view {
                 if $job->{options}->{extension_mode} eq 'target_count';
             $view->{double_count_extension} = 1
                 if $job->{options}->{extension_mode} eq 'double_count';
-            $view->{seed_growth_extension} = 1
-                if $job->{options}->{extension_mode} eq 'seed_growth';
+            $view->{fixed_source_extension} = 1
+                if $job->{options}->{extension_mode} eq 'fixed_source_extension';
             $view->{extend_playlist_extension} = 1
-                if ($job->{options}->{addition_purpose} || '') eq 'extend_playlist';
+                if $job->{options}->{extension_mode} eq 'fixed_source_extension';
             $view->{base_route_objective} = sprintf(
                 '%.3f', $artifact->{selected_route_objective},
             );
@@ -374,7 +373,7 @@ sub _result_view {
                 0 + ($preview->{target_track_count} || 0);
             $view->{relevance_reference_track_count} =
                 0 + ($preview->{relevance_reference_track_count} || 0);
-            if ($job->{options}->{extension_mode} eq 'seed_growth') {
+            if ($job->{options}->{extension_mode} eq 'fixed_source_extension') {
                 my $relevance = $preview->{relevance_summary} || {};
                 my $route = $preview->{route_summary} || {};
                 $view->{relevance_minimum} = sprintf(
@@ -410,7 +409,7 @@ sub _result_view {
             my @additions;
             for my $addition (@{$job->{additions} || []}) {
                 my $label = $job->{labels}->{$addition->{track_id}} || {};
-                if ($job->{options}->{extension_mode} eq 'seed_growth') {
+                if ($job->{options}->{extension_mode} eq 'fixed_source_extension') {
                     push @additions, {
                         artist => $label->{artist} || 'Unknown Artist',
                         title => $label->{title} || $addition->{track_id},

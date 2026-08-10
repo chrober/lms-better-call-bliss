@@ -76,22 +76,27 @@ sub normalize {
 
     $options->{extension_mode} = $input->{extension_mode}
         if defined $input->{extension_mode};
-    die "Extension mode must be Reorder only, Extend automatically, Add exactly N tracks, Reach target track count, Double track count, or Grow from these seeds"
+    die "Extension mode must be Reorder only, Improve difficult transitions, Add exactly N tracks, Reach final track count, Double track count, or the internal fixed-source extension mode"
         unless $options->{extension_mode} eq 'none'
             || $options->{extension_mode} eq 'automatic'
             || $options->{extension_mode} eq 'exact_count'
             || $options->{extension_mode} eq 'target_count'
             || $options->{extension_mode} eq 'double_count'
-            || $options->{extension_mode} eq 'seed_growth';
+            || $options->{extension_mode} eq 'fixed_source_extension';
 
     my $addition_purpose_provided = defined $input->{addition_purpose};
     $options->{addition_purpose} = $input->{addition_purpose}
         if $addition_purpose_provided;
-    die "Additional tracks must be No additions, Improve difficult transitions, Extend playlist, or Grow from these seeds"
+    my $legacy_fixed_source_extension_purpose = 0;
+    if ($options->{addition_purpose} eq 'fixed_source_extension') {
+        $legacy_fixed_source_extension_purpose = 1;
+        $options->{addition_purpose} = 'extend_playlist';
+        $options->{addition_amount_mode} = 'target_count';
+    }
+    die "Additional tracks must be No additions, Improve difficult transitions, or Extend playlist"
         unless $options->{addition_purpose} eq 'none'
             || $options->{addition_purpose} eq 'automatic'
-            || $options->{addition_purpose} eq 'extend_playlist'
-            || $options->{addition_purpose} eq 'seed_growth';
+            || $options->{addition_purpose} eq 'extend_playlist';
     $options->{addition_amount_mode} = $input->{addition_amount_mode}
         if defined $input->{addition_amount_mode};
     die "Chosen amount must be Add exactly N tracks, Reach final track count, or Double track count"
@@ -104,18 +109,20 @@ sub normalize {
             || $options->{extension_mode} eq 'double_count') {
             $options->{addition_purpose} = 'none';
             $options->{addition_amount_mode} = $options->{extension_mode};
-        } elsif ($options->{extension_mode} eq 'automatic'
-            || $options->{extension_mode} eq 'seed_growth') {
+        } elsif ($options->{extension_mode} eq 'automatic') {
             $options->{addition_purpose} = $options->{extension_mode};
+        } elsif ($options->{extension_mode} eq 'fixed_source_extension') {
+            $legacy_fixed_source_extension_purpose = 1;
+            $options->{addition_purpose} = 'extend_playlist';
+            $options->{addition_amount_mode} = 'target_count';
         } else {
             $options->{addition_purpose} = 'none';
         }
     }
     if ($addition_purpose_provided) {
         if ($options->{addition_purpose} eq 'extend_playlist') {
-            $options->{extension_mode} = 'seed_growth';
+            $options->{extension_mode} = 'fixed_source_extension';
         } elsif ($options->{addition_purpose} eq 'automatic'
-            || $options->{addition_purpose} eq 'seed_growth'
             || $options->{addition_purpose} eq 'none') {
             $options->{extension_mode} = $options->{addition_purpose};
         }
@@ -185,6 +192,12 @@ sub normalize {
         $input, 'target_track_count', 3, 500,
         $options->{target_track_count},
     );
+    if ($legacy_fixed_source_extension_purpose) {
+        $options->{bridge_target_track_count} = $options->{target_track_count};
+        $options->{addition_purpose} = 'extend_playlist';
+        $options->{addition_amount_mode} = 'target_count';
+        $options->{extension_mode} = 'fixed_source_extension';
+    }
 
     die "Preserve source order requires an addition mode with a non-zero target"
         if $options->{ordering_policy} eq 'preserve_order'
