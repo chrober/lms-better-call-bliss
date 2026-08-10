@@ -80,9 +80,7 @@ sub resolve_bridge_preview {
     my $exact_like = $mode eq 'exact_count'
         || $mode eq 'target_count'
         || $mode eq 'double_count';
-    my $fixed_source_extension = $mode eq 'fixed_source_extension';
-    my $preview_mode = $exact_like ? 'exact_count'
-        : $fixed_source_extension ? 'seed_growth' : $mode;
+    my $preview_mode = $exact_like ? 'exact_count' : $mode;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong source-order policy')
         unless ($artifact->{ordering_policy} || '') eq $ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong addition mode')

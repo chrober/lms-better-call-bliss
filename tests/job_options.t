@@ -71,8 +71,8 @@ my $extend = Plugins::BetterCallBliss::JobOptions::normalize(
         bridge_target_track_count => '33',
     },
 );
-is($extend->{extension_mode}, 'seed_growth',
-    'extend playlist uses the native seed-growth extension');
+is($extend->{extension_mode}, 'fixed_source_extension',
+    'extend playlist uses the native fixed-source extension');
 is($extend->{bridge_target_track_count}, 33,
     'target track count input is normalized to an integer');
 

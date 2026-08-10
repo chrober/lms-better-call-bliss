@@ -439,7 +439,7 @@ sub _build_sequence_request {
                 additional_track_count => _json_integer($options->{additional_track_count}),
             }
             : $options->{extension_mode} eq 'fixed_source_extension' ? {
-                mode => 'seed_growth',
+                mode => 'fixed_source_extension',
                 shortlist_limit => _json_integer(256),
                 target_track_count => _json_integer($options->{target_track_count}),
             }
