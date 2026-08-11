@@ -77,14 +77,17 @@ sub resolve_bridge_preview {
     my $preview = $artifact->{selection_preview} || {};
     my $mode = $job->{options}->{extension_mode} || '';
     my $ordering = $job->{options}->{ordering_policy} || '';
+    my $destination_route = $mode eq 'destination_route';
     my $exact_like = $mode eq 'exact_count'
         || $mode eq 'target_count'
         || $mode eq 'double_count';
-    my $preview_mode = $exact_like ? 'exact_count' : $mode;
+    my $preview_mode = ($exact_like || $destination_route) ? 'exact_count' : $mode;
+    my $artifact_ordering = $destination_route ? 'queue_destination' : $ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong source-order policy')
-        unless ($artifact->{ordering_policy} || '') eq $ordering;
+        unless ($artifact->{ordering_policy} || '') eq $artifact_ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong addition mode')
-        unless (($mode eq 'automatic' || $exact_like || $mode eq 'fixed_source_extension')
+        unless (($mode eq 'automatic' || $exact_like || $destination_route
+                || $mode eq 'fixed_source_extension')
             && ($preview->{mode} || '') eq $preview_mode);
     _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
         if $exact_like
@@ -93,6 +96,20 @@ sub resolve_bridge_preview {
                     != $job->{options}->{additional_track_count});
     _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview omitted its feasibility state')
         if $exact_like && !exists $preview->{feasible};
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The destination-route preview omitted its feasibility state')
+        if $destination_route && !exists $preview->{feasible};
+    if ($destination_route && !$preview->{feasible}) {
+        my $requested = 0 + ($preview->{requested_added_tracks} || 0);
+        my $maximum = 0 + ($job->{options}->{route_max_intermediates} || 0);
+        _fail(
+            'DESTINATION_ROUTE_INFEASIBLE',
+            ($job->{options}->{route_length_policy} || '') eq 'exact'
+                ? 'Could not build a repeat-safe route with exactly ' . $requested
+                    . ' intermediate tracks. Try Automatic, a different count, or less restrictive repeat windows.'
+                : 'Could not build a repeat-safe route within the configured maximum of '
+                    . $maximum . ' intermediate tracks. Try a larger maximum or less restrictive repeat windows.',
+        );
+    }
     if ($exact_like && !$preview->{feasible}) {
         my $infeasibility = $preview->{infeasibility} || {};
         my $code = $infeasibility->{code} || 'EXACT_COUNT_INFEASIBLE';
@@ -191,6 +208,15 @@ sub resolve_bridge_preview {
     if ($mode eq 'automatic') {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The automatic preview exceeded its bridge budget')
             if @bridges > ($preview->{max_added_tracks} || 0);
+    } elsif ($destination_route) {
+        my $route_budget = ($job->{options}->{route_length_policy} || '') eq 'exact'
+            ? ($job->{options}->{route_exact_intermediates} || 0)
+            : ($job->{options}->{route_max_intermediates} || 0);
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The destination route exceeded its configured maximum')
+            if @bridges > $route_budget;
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The exact destination route changed its requested count')
+            if ($job->{options}->{route_length_policy} || '') eq 'exact'
+                && @bridges != ($job->{options}->{route_exact_intermediates} || 0);
     } elsif ($exact_like) {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
             unless defined $preview->{requested_added_tracks}

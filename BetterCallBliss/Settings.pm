@@ -22,8 +22,12 @@ sub prefs {
         output_suffix
         extended_suffix
         restart_count
+        variation_percent
         auto_bridge_budget
         auto_trigger_percent
+        route_length_policy
+        route_max_intermediates
+        route_exact_intermediates
         report_retention_days
         semantic_cache_days
         semantic_stale_days
@@ -53,8 +57,16 @@ sub _clamp {
 sub handler {
     my ($class, $client, $params) = @_;
     _clamp($params, 'pref_restart_count', 10, 500);
+    _clamp($params, 'pref_variation_percent', 0, 100);
     _clamp($params, 'pref_auto_bridge_budget', 0, 100);
     _clamp($params, 'pref_auto_trigger_percent', 0, 100);
+    _clamp($params, 'pref_route_max_intermediates', 0, 8);
+    _clamp($params, 'pref_route_exact_intermediates', 0, 8);
+    if (defined $params->{pref_route_length_policy}
+        && $params->{pref_route_length_policy} ne 'automatic'
+        && $params->{pref_route_length_policy} ne 'exact') {
+        $params->{pref_route_length_policy} = 'automatic';
+    }
     _clamp($params, 'pref_report_retention_days', 1, 3650);
     _clamp($params, 'pref_semantic_cache_days', 1, 365);
     _clamp($params, 'pref_semantic_stale_days', 1, 3650);

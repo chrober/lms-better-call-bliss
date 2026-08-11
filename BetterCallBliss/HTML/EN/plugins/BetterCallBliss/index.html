@@ -33,10 +33,14 @@
 </style>
 
 <h2>Playlist Breaking Bad? Better Call Bliss.</h2>
+[% IF bettercallbliss_quick_route %]
+<p>Building a destination-locked route with the saved <b>Bliss me there...</b> defaults. No queue entry is changed until you accept the preview.</p>
+[% ELSE %]
 <p>
   Configure one optimization job. Values initially come from BlissMixer, but
   edits apply only to this job and never change BlissMixer's global settings.
 </p>
+[% END %]
 
 [% IF bettercallbliss_error %]
   <div class="bea-error"><b>Operation failed:</b> [% bettercallbliss_error | html %]</div>
@@ -146,11 +150,28 @@
   </details>
 [% END %]
 
+[% IF bettercallbliss_quick_route && bettercallbliss_job %]
+  <div class="bea-info">
+    <b>Quick route:</b>
+    [% bettercallbliss_job.route_tail_label | html %] &rarr;
+    [% bettercallbliss_job.route_target_label | html %].
+    The optimizer uses [% bettercallbliss_job.route_source_context_count %] recent queue tracks as available acoustic/repeat context,
+    [% IF bettercallbliss_job.route_length_policy == 'automatic' %]chooses zero to [% bettercallbliss_job.route_max_intermediates %] intermediate tracks automatically[% ELSE %]uses exactly [% bettercallbliss_job.route_exact_intermediates %] intermediate tracks[% END %],
+    and snapshots the current BlissMixer and Last.fm settings into this job.
+    <a href="[% webroot %][% bettercallbliss_advanced_route_url | html %]">Open advanced options</a>.
+  </div>
+  <script>
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, document.title, '[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id | html %]');
+    }
+  </script>
+[% END %]
+
 <!-- Material Skin enables its built-in sliderInput_* controls only after it sees #settingsForm.
      The real Better Call Bliss job form stays #bea-main-form; this empty marker just opts the Extras page into that enhancement. -->
 <form id="settingsForm" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post" class="bea-hidden"></form>
 
-<form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post">
+<form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post"[% IF bettercallbliss_quick_route && bettercallbliss_job %] class="bea-hidden"[% END %]>
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
     [% IF bettercallbliss_form.source_mode == 'route_to_track' %]
@@ -166,8 +187,27 @@
       <input type="hidden" id="route_source_track_count" value="2">
       <select name="playlist_id" id="playlist_id" class="bea-hidden"><option value="" data-track-count="2" selected>Route anchors</option></select>
       <select name="ordering_policy" id="ordering_policy" class="bea-hidden"><option value="preserve_order" selected>Preserve source order</option></select>
-      <select name="extension_mode" id="extension_mode" class="bea-hidden"><option value="exact_count" selected>Add exactly N tracks</option></select>
-      <p class="bea-note">This first route-to-track slice uses the existing bridge engine: current queue tail -> bridge -> selected track. Set Exact additions to 1. Longer multi-hop routes need native multi-bridge gap support and remain on the roadmap.</p>
+      <select name="extension_mode" id="extension_mode" class="bea-hidden"><option value="destination_route" selected>Destination route</option></select>
+      <div class="bea-row">
+        <label for="route_length_policy">Intermediate tracks</label>
+        <select name="route_length_policy" id="route_length_policy">
+          <option value="automatic"[% IF bettercallbliss_form.route_length_policy == 'automatic' %] selected[% END %]>Choose automatically</option>
+          <option value="exact"[% IF bettercallbliss_form.route_length_policy == 'exact' %] selected[% END %]>Use an exact count</option>
+        </select>
+      </div>
+      <div class="bea-row" id="route_max_intermediates_row">
+        <label for="route_max_intermediates">Maximum intermediate tracks</label>
+        <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="route_max_intermediates" id="route_max_intermediates" value="[% bettercallbliss_form.route_max_intermediates %]" required>
+      </div>
+      <div class="bea-row" id="route_exact_intermediates_row">
+        <label for="route_exact_intermediates">Exact intermediate tracks</label>
+        <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="route_exact_intermediates" id="route_exact_intermediates" value="[% bettercallbliss_form.route_exact_intermediates %]" required>
+      </div>
+      <div class="bea-row">
+        <label for="trigger_percent">Transition quality target percentile (%)</label>
+        <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
+      </div>
+      <p class="bea-note">Automatic first chooses the shortest route that reaches this quality target. If none does, it still returns the smoothest repeat-safe route available within the configured intermediate-track budget and reports the achieved worst transition. Exact uses the requested number. Bliss evaluates each leg against the evolving recent queue context; Last.fm only supplies optional supporting evidence.</p>
     [% ELSE %]
       <div class="bea-row">
         <label for="source_mode">Input source</label>
@@ -243,6 +283,7 @@
   </fieldset>
 
 
+  [% UNLESS bettercallbliss_form.source_mode == 'route_to_track' %]
   <fieldset class="bea-section bea-mode-section" id="automatic_extension_fields">
     <legend>Automatic additions</legend>
     <p class="bea-note" id="automatic_extension_note"></p>
@@ -287,6 +328,8 @@
     <p class="bea-note">This preset asks for one added local track per source track, yielding exactly twice as many tracks.</p>
     <p class="bea-note" id="double_count_summary">Choose a source to see the calculated final size.</p>
   </fieldset>
+  [% END %]
+
 
   <fieldset class="bea-section" id="variation_fields">
     <legend>Variation</legend>
@@ -432,21 +475,26 @@
     var algorithm = document.getElementById('algorithm');
     var automaticFields = document.getElementById('automatic_extension_fields');
     var automaticNote = document.getElementById('automatic_extension_note');
-    var automaticInputs = automaticFields.querySelectorAll('input');
+    var automaticInputs = automaticFields ? automaticFields.querySelectorAll('input') : [];
     var exactFields = document.getElementById('exact_count_fields');
     var extendPlaylistNote = document.getElementById('extend_playlist_note');
-    var exactInputs = exactFields.querySelectorAll('input');
+    var exactInputs = exactFields ? exactFields.querySelectorAll('input') : [];
     var exactCount = document.getElementById('additional_track_count');
     var exactLimit = document.getElementById('exact_count_limit');
     var exactWarning = document.getElementById('exact_count_warning');
     var targetFields = document.getElementById('target_count_fields');
-    var targetInputs = targetFields.querySelectorAll('input');
+    var targetInputs = targetFields ? targetFields.querySelectorAll('input') : [];
     var bridgeTarget = document.getElementById('bridge_target_track_count');
     var targetLimit = document.getElementById('target_count_limit');
     var targetWarning = document.getElementById('target_count_warning');
     var doubleFields = document.getElementById('double_count_fields');
     var doubleSummary = document.getElementById('double_count_summary');
     var maximumAdditions = document.getElementById('max_added_tracks');
+    var routeLengthPolicy = document.getElementById('route_length_policy');
+    var routeMaximum = document.getElementById('route_max_intermediates');
+    var routeExact = document.getElementById('route_exact_intermediates');
+    var routeMaximumRow = document.getElementById('route_max_intermediates_row');
+    var routeExactRow = document.getElementById('route_exact_intermediates_row');
     var learnedPercentRow = document.getElementById('learned_percent_row');
     var restarts = document.getElementById('restart_count');
     var restartHelp = document.getElementById('restart_help');
@@ -551,6 +599,26 @@
     initializeAdditionControls();
 
     function synchronizeControls() {
+      var destinationRoute = sourceMode && sourceMode.value === 'route_to_track';
+      if (destinationRoute) {
+        var exactRoute = routeLengthPolicy && routeLengthPolicy.value === 'exact';
+        var maximumRouteTracks = parseInt(routeMaximum && routeMaximum.value || '0', 10);
+        var exactRouteTracks = parseInt(routeExact && routeExact.value || '0', 10);
+        var invalidRoute = maximumRouteTracks < 0 || maximumRouteTracks > 8
+          || (exactRoute && (exactRouteTracks < 0 || exactRouteTracks > 8));
+        setVisible(routeMaximumRow, !exactRoute);
+        setVisible(routeExactRow, exactRoute);
+        if (routeMaximum) routeMaximum.readOnly = exactRoute;
+        if (routeExact) routeExact.readOnly = !exactRoute;
+        submit.disabled = !capabilityReady || invalidRoute;
+        setVisible(lastFmFields, true);
+        var routeLastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
+        setReadOnlyWithSlider(lastFmTrackGuidance, routeLastFmInactive);
+        setReadOnlyWithSlider(lastFmArtistGuidance, routeLastFmInactive);
+        setVisible(learnedPercentRow, algorithm.value === 'adaptive');
+        setVisible(advancedSearch, false);
+        return;
+      }
       syncExtensionModeFromAdditionControls();
       var preserve = ordering.value === 'preserve_order';
       var noAdditions = extension.value === 'none';
@@ -587,7 +655,7 @@
       var requestedExact = parseInt(exactCount.value || '0', 10);
       var requestedBridgeTarget = parseInt(bridgeTarget.value || '0', 10);
       var zeroAutomaticBudget = automatic
-        && parseInt(maximumAdditions.value || '0', 10) === 0;
+        && parseInt(maximumAdditions && maximumAdditions.value || '0', 10) === 0;
       var invalidCombination = preserve
         && (noAdditions || zeroAutomaticBudget);
       var invalidExact = exact && sourceCount > 0
@@ -674,9 +742,12 @@
     if (additionPurpose) additionPurpose.addEventListener('change', synchronizeControls);
     if (additionAmountMode) additionAmountMode.addEventListener('change', synchronizeControls);
     algorithm.addEventListener('change', synchronizeControls);
-    maximumAdditions.addEventListener('input', synchronizeControls);
-    exactCount.addEventListener('input', synchronizeControls);
-    bridgeTarget.addEventListener('input', synchronizeControls);
+    if (maximumAdditions) maximumAdditions.addEventListener('input', synchronizeControls);
+    if (exactCount) exactCount.addEventListener('input', synchronizeControls);
+    if (bridgeTarget) bridgeTarget.addEventListener('input', synchronizeControls);
+    if (routeLengthPolicy) routeLengthPolicy.addEventListener('change', synchronizeControls);
+    if (routeMaximum) routeMaximum.addEventListener('input', synchronizeControls);
+    if (routeExact) routeExact.addEventListener('input', synchronizeControls);
     if (lastFmEnabled) lastFmEnabled.addEventListener('change', synchronizeControls);
     synchronizeControls();
     window.setTimeout(synchronizeControls, 0);
@@ -709,6 +780,12 @@
       <div class="bea-info"><b>Preview cancelled.</b> No playlist or player queue was changed.</div>
       <p><input class="inputbutton" form="bea-main-form" type="submit" name="[% IF bettercallbliss_job.route_to_track %]run_route_to_track_preview[% ELSE %]run_preview[% END %]" value="Run read-only preview again"></p>
     [% ELSE %]
+      [% IF bettercallbliss_job.route_to_track %]
+        <div class="bea-info">
+          Direct transition: [% bettercallbliss_job.route_direct_percent %]th percentile.
+          [% IF bettercallbliss_job.route_best_effort %]<b>The [% bettercallbliss_job.trigger_percent %]th-percentile quality target could not be reached. Better Call Bliss selected the smoothest repeat-safe route within the configured budget; its worst transition is at the [% bettercallbliss_job.route_achieved_percent %]th percentile[% IF bettercallbliss_job.added_track_count %], using [% bettercallbliss_job.added_track_count %] intermediate track[% IF bettercallbliss_job.added_track_count != 1 %]s[% END %][% ELSE %], so the direct destination remains the best available route[% END %].</b>[% ELSIF bettercallbliss_job.added_track_count %]The preview reaches the quality target with [% bettercallbliss_job.added_track_count %] intermediate track[% IF bettercallbliss_job.added_track_count != 1 %]s[% END %]; its worst transition is at the [% bettercallbliss_job.route_achieved_percent %]th percentile.[% ELSE %]The direct transition already meets the configured quality target, so no intermediate is needed.[% END %]
+        </div>
+      [% END %]
       [% IF bettercallbliss_job.fixed_source_extension %]
         <div class="bea-ok">Extended [% bettercallbliss_job.relevance_reference_track_count %] source tracks to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
         <p class="bea-note">The original source set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
@@ -739,6 +816,7 @@
       [% ELSE %]
         <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Objective [% bettercallbliss_job.objective %]; worst transition [% bettercallbliss_job.worst_transition %].</div>
       [% END %]
+
       [% IF bettercallbliss_job.fixed_source_extension %]
         <p class="bea-note">The complete source-plus-addition membership was optimized together for transition flow.</p>
       [% ELSIF bettercallbliss_job.preserve_order %]
@@ -816,6 +894,9 @@
           [% bettercallbliss_job.write_error | html %]
           [% IF bettercallbliss_job.output_mode == 'player_queue' %]The generated preview remains available; retry after checking the selected player.[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]No incomplete copy remains.[% END %]
         </div>
+        [% IF bettercallbliss_job.route_to_track %]
+          <p><a class="inputbutton" href="[% webroot %][% bettercallbliss_recalculate_route_url | html %]">Recalculate from the current queue tail</a></p>
+        [% END %]
         [% END %]
         <fieldset class="bea-section">
           <legend>Accept this preview</legend>
@@ -853,35 +934,43 @@
               <span class="bea-disabled">Sends the accepted preview to a selected player instead of saving a playlist.</span>
             </div>
             <div id="accept_player_queue_fields">
-              <div class="bea-row">
-                <label for="accept_queue_player_id">Player</label>
-                <select name="queue_player_id" id="accept_queue_player_id">
-                  <option value="">Choose a player...</option>
-                  [% FOREACH player = bettercallbliss_players %]
-                    <option value="[% player.id | html %]"[% IF bettercallbliss_job.queue_player_id == player.id %] selected[% END %]>[% player.name | html %][% UNLESS player.power %] (off)[% END %]</option>
-                  [% END %]
-                </select>
-              </div>
-              <div class="bea-row">
-                <label for="accept_queue_action">Queue action</label>
-                <select name="queue_action" id="accept_queue_action">
-                  <option value="replace"[% IF bettercallbliss_job.queue_action == 'replace' %] selected[% END %]>Replace queue</option>
-                  <option value="replace_upcoming"[% IF bettercallbliss_job.queue_action == 'replace_upcoming' %] selected[% END %]>Replace upcoming tracks</option>
-                  <option value="append"[% IF bettercallbliss_job.queue_action == 'append' %] selected[% END %]>Append to queue</option>
-                  <option value="play_next"[% IF bettercallbliss_job.queue_action == 'play_next' %] selected[% END %]>Play next</option>
-                </select>
-              </div>
-              <div class="bea-row">
-                <label for="accept_queue_start_playback">Start playback</label>
-                <input type="checkbox" name="queue_start_playback" id="accept_queue_start_playback" value="1"[% IF bettercallbliss_job.queue_start_playback %] checked[% END %]>
-              </div>
-              <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Replace upcoming tracks keeps the current queue item and playback state, removes only later queue entries, then appends the accepted result. When source and target are the same player, Better Call Bliss rechecks the live queue at send time and trims already-played preview items when it can still recognize the snapshot. Append adds the result at the end. Play next inserts it after the current song.</p>
+              [% IF bettercallbliss_job.route_to_track %]
+                <input type="hidden" name="queue_player_id" id="accept_queue_player_id" value="[% bettercallbliss_job.queue_player_id | html %]">
+                <input type="hidden" name="queue_action" id="accept_queue_action" value="append">
+                <input type="hidden" id="accept_queue_start_playback" value="0">
+                <p class="bea-note">Accepting appends the intermediate tracks and destination to <b>[% bettercallbliss_route_context.player_name | html %]</b>. The queue-tail anchor is not duplicated. If that tail changes first, Better Call Bliss refuses the stale preview and offers recalculation.</p>
+                <p><a href="[% webroot %][% bettercallbliss_recalculate_route_url | html %]">Recalculate from the current queue tail</a></p>
+              [% ELSE %]
+                <div class="bea-row">
+                  <label for="accept_queue_player_id">Player</label>
+                  <select name="queue_player_id" id="accept_queue_player_id">
+                    <option value="">Choose a player...</option>
+                    [% FOREACH player = bettercallbliss_players %]
+                      <option value="[% player.id | html %]"[% IF bettercallbliss_job.queue_player_id == player.id %] selected[% END %]>[% player.name | html %][% UNLESS player.power %] (off)[% END %]</option>
+                    [% END %]
+                  </select>
+                </div>
+                <div class="bea-row">
+                  <label for="accept_queue_action">Queue action</label>
+                  <select name="queue_action" id="accept_queue_action">
+                    <option value="replace"[% IF bettercallbliss_job.queue_action == 'replace' %] selected[% END %]>Replace queue</option>
+                    <option value="replace_upcoming"[% IF bettercallbliss_job.queue_action == 'replace_upcoming' %] selected[% END %]>Replace upcoming tracks</option>
+                    <option value="append"[% IF bettercallbliss_job.queue_action == 'append' %] selected[% END %]>Append to queue</option>
+                    <option value="play_next"[% IF bettercallbliss_job.queue_action == 'play_next' %] selected[% END %]>Play next</option>
+                  </select>
+                </div>
+                <div class="bea-row">
+                  <label for="accept_queue_start_playback">Start playback</label>
+                  <input type="checkbox" name="queue_start_playback" id="accept_queue_start_playback" value="1"[% IF bettercallbliss_job.queue_start_playback %] checked[% END %]>
+                </div>
+                <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Replace upcoming tracks keeps the current queue item and playback state, removes only later queue entries, then appends the accepted result. When source and target are the same player, Better Call Bliss rechecks the live queue at send time and trims already-played preview items when it can still recognize the snapshot. Append adds the result at the end. Play next inserts it after the current song.</p>
+              [% END %]
               <div id="accept_queue_output_warning" class="bea-warning bea-hidden">Choose a player before sending to a player queue.</div>
             </div>
             <p>
               [% UNLESS bettercallbliss_job.route_to_track %]<input class="inputbutton" id="accept_create_copy" type="submit" name="create_copy" value="Create optimized copy">[% END %]
               [% IF bettercallbliss_job.source_overwrite_supported %]<input class="inputbutton" id="accept_overwrite_source" type="submit" name="overwrite_source" value="Overwrite existing playlist">[% END %]
-              <input class="inputbutton" id="accept_send_to_queue" type="submit" name="send_to_queue" value="Send to player queue">
+              <input class="inputbutton" id="accept_send_to_queue" type="submit" name="send_to_queue" value="[% IF bettercallbliss_job.route_to_track %]Append route to queue[% ELSE %]Send to player queue[% END %]">
             </p>
           </form>
         </fieldset>
@@ -1187,7 +1276,7 @@
 
 <fieldset class="bea-section bea-disabled">
   <legend>Visible roadmap - not connected yet</legend>
-  <p>One-per-transition presets, duration-based target/double presets, multi-track gaps, explicit opening/closing additions, forest routing, optional ListenBrainz evidence, cancellation, persistent reports, saved per-job reports. Track-count target/double presets, player queue output targets, saved-playlist context shortcuts, the first Bliss me there route-to-track slice, Static routing, and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
+  <p>One-per-transition presets, duration-based target/double presets, multi-track gaps, explicit opening/closing additions, forest routing, optional ListenBrainz evidence, cancellation, persistent reports, saved per-job reports. Track-count target/double presets, player queue output targets, saved-playlist context shortcuts, the full Bliss me there destination-route workflow, Static routing, and Last.fm track/artist evidence through LastMix are connected and failure-tolerant.</p>
 </fieldset>
 
 [% PROCESS pagefooter.html %]

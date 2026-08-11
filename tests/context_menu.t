@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 17;
+use Test::More tests => 20;
 
 BEGIN {
     package Slim::Menu::PlaylistInfo;
@@ -56,10 +56,28 @@ my $track_item = Plugins::BetterCallBliss::ContextMenu::trackInfoHandler(
     TestClient->new, undef, TestTrack->new,
 );
 ok($track_item, 'track context item is created');
-is($track_item->{type}, 'text', 'track context uses generic weblink handling to avoid Material extra URL loss');
-ok(exists $track_item->{weblink}, 'track context exposes a weblink');
+is($track_item->{type}, 'text', 'track context invokes a non-browsing LMS action');
+ok(!exists $track_item->{weblink}, 'track context does not navigate to the Extras page');
 like($track_item->{title}, qr/Schlafzimmer/, 'track context title includes the player name');
-like($track_item->{weblink}, qr{source_mode=route_to_track}, 'track context preselects route-to-track mode');
-like($track_item->{weblink}, qr{route_player_id=aa%3Abb%3Acc%3Add%3Aee%3Aff}, 'track context freezes the route player');
-like($track_item->{weblink}, qr{route_target_track_id=456}, 'track context freezes the destination track');
-like($track_item->{weblink}, qr{player=aa%3Abb%3Acc%3Add%3Aee%3Aff}, 'track context preserves the active player for Material Extras rendering');
+ok($track_item->{jive}->{actions}->{go}, 'track context exposes a Jive go action');
+is($track_item->{jive}->{actions}->{go}->{player}, 0, 'direct action targets the selected player');
+is($track_item->{jive}->{actions}->{go}->{nextWindow}, 'parent', 'completed command returns to the existing context view');
+is_deeply(
+    $track_item->{jive}->{actions}->{go}->{cmd},
+    ['bettercallbliss', 'route_to'],
+    'direct action invokes the Better Call Bliss destination command',
+);
+is(
+    $track_item->{jive}->{actions}->{go}->{params}->{target_track_id},
+    456,
+    'direct action freezes the destination track',
+);
+ok(
+    !exists $track_item->{jive}->{actions}->{go}->{params}->{source_mode},
+    'direct action does not carry obsolete web-preview parameters',
+);
+like(
+    $track_item->{description},
+    qr/append/i,
+    'track context explains that the completed route is appended automatically',
+);
