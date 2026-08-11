@@ -58,6 +58,38 @@ PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC
 	EN	Only transitions above this frozen contextual percentile are considered; each job can override it.
 	DE	Nur Übergänge oberhalb dieses eingefrorenen Kontext-Perzentils werden berücksichtigt; pro Vorgang änderbar.
 
+PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT
+	EN	Default variation (%)
+	DE	Standardvariation (%)
+
+PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT_DESC
+	EN	Bounded reproducible variation used by new Extras jobs and Bliss me there previews. Zero always chooses the strict best-ranked result.
+	DE	Begrenzte reproduzierbare Variation für neue Extras-Vorgänge und Bliss-me-there-Vorschauen. Null wählt immer das streng bestplatzierte Ergebnis.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY
+	EN	Intermediate-track policy
+	DE	Regel für Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY_DESC
+	EN	Automatic chooses the shortest qualifying route; Exact always requests the configured number of intermediate tracks.
+	DE	Automatisch wählt die kürzeste passende Route; Exakt fordert immer die konfigurierte Anzahl von Zwischentiteln an.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES
+	EN	Maximum intermediate tracks
+	DE	Maximale Anzahl Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC
+	EN	Upper bound searched by Automatic Bliss me there routing. Zero permits only the direct destination.
+	DE	Obergrenze für die automatische Bliss-me-there-Routensuche. Null erlaubt nur das direkte Ziel.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES
+	EN	Exact intermediate tracks
+	DE	Exakte Anzahl Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES_DESC
+	EN	Number requested when the intermediate-track policy is Exact. It is independent from Automatic's maximum.
+	DE	Anzahl bei der Regel Exakt. Sie ist vom Maximum der automatischen Suche unabhängig.
+
 PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED
 	EN	Use Last.fm guidance
 	DE	Last.fm-Hinweise verwenden

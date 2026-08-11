@@ -94,23 +94,24 @@ sub trackInfoHandler {
     return unless $client && $track && !$track->remote && $track->can('id');
     my $player_id = _client_id($client);
     return unless length $player_id;
-    return _web_item(
-        'Bliss me there...',
-        'Preview a fluent bridge from the current queue tail to this track, then append the accepted route to the player queue.',
-        _link(
-            player => $player_id,
-            source_mode => 'route_to_track',
-            route_player_id => $player_id,
-            route_target_track_id => 0 + $track->id,
-            queue_player_id => $player_id,
-            queue_action => 'append',
-            output_mode => 'player_queue',
-            ordering_policy => 'preserve_order',
-            extension_mode => 'exact_count',
-            additional_track_count => 1,
-        ),
-        $client,
-    );
+    return {
+        name => 'Bliss me there...',
+        title => _title('Bliss me there...', $client),
+        description => 'Build and append a fluent route from the current queue tail to this track using the saved Bliss me there defaults.',
+        type => 'redirect',
+        favorites => 0,
+        jive => {
+            actions => {
+                go => {
+                    player => 0,
+                    cmd => ['bettercallbliss', 'route_to'],
+                    params => {
+                        target_track_id => 0 + $track->id,
+                    },
+                },
+            },
+        },
+    };
 }
 
 1;

@@ -19,6 +19,11 @@ sub defaults {
     $lastfm_artist_guidance = 75 unless defined $lastfm_artist_guidance;
     my $default_algorithm = $capability->{algorithm} || 'adaptive';
     $default_algorithm = 'adaptive' if $default_algorithm eq 'forest';
+    my $variation_percent = $plugin_prefs->get('variation_percent');
+    $variation_percent = 25 unless defined $variation_percent;
+    my $route_length_policy = $plugin_prefs->get('route_length_policy') || 'automatic';
+    $route_length_policy = 'automatic'
+        unless $route_length_policy eq 'automatic' || $route_length_policy eq 'exact';
     return {
         ordering_policy => 'optimize_order',
         extension_mode => 'none',
@@ -31,7 +36,7 @@ sub defaults {
         album_window => int($capability->{album_window}),
         track_window => int($capability->{track_window}),
         restart_count => int($plugin_prefs->get('restart_count') || 50),
-        variation_percent => 25,
+        variation_percent => int($variation_percent),
         generation_seed => '',
         generation_seed_supplied => 0,
         lastfm_enabled => $plugin_prefs->get('lastfm_enabled') ? 1 : 0,
@@ -39,6 +44,13 @@ sub defaults {
         lastfm_artist_guidance_percent => int($lastfm_artist_guidance),
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
+        route_length_policy => $route_length_policy,
+        route_max_intermediates => int(
+            $plugin_prefs->get('route_max_intermediates') // 4,
+        ),
+        route_exact_intermediates => int(
+            $plugin_prefs->get('route_exact_intermediates') // 2,
+        ),
         additional_track_count => 1,
         bridge_target_track_count => 25,
         target_track_count => 25,
@@ -76,14 +88,16 @@ sub normalize {
 
     $options->{extension_mode} = $input->{extension_mode}
         if defined $input->{extension_mode};
-    die "Extension mode must be Reorder only, Improve difficult transitions, Add exactly N tracks, Reach final track count, Double track count, or the internal fixed-source extension mode"
+    die "Extension mode must be Reorder only, Improve difficult transitions, Add exactly N tracks, Reach final track count, Double track count, destination route, or the internal fixed-source extension mode"
         unless $options->{extension_mode} eq 'none'
             || $options->{extension_mode} eq 'automatic'
             || $options->{extension_mode} eq 'exact_count'
             || $options->{extension_mode} eq 'target_count'
             || $options->{extension_mode} eq 'double_count'
+            || $options->{extension_mode} eq 'destination_route'
             || $options->{extension_mode} eq 'fixed_source_extension';
 
+    my $destination_route = $options->{extension_mode} eq 'destination_route';
     my $addition_purpose_provided = defined $input->{addition_purpose};
     $options->{addition_purpose} = $input->{addition_purpose}
         if $addition_purpose_provided;
@@ -119,7 +133,7 @@ sub normalize {
             $options->{addition_purpose} = 'none';
         }
     }
-    if ($addition_purpose_provided) {
+    if ($addition_purpose_provided && !$destination_route) {
         if ($options->{addition_purpose} eq 'extend_playlist') {
             $options->{extension_mode} = 'fixed_source_extension';
         } elsif ($options->{addition_purpose} eq 'automatic'
@@ -180,6 +194,20 @@ sub normalize {
     $options->{trigger_percent} = _integer(
         $input, 'trigger_percent', 0, 100, $options->{trigger_percent},
     );
+    $options->{route_length_policy} = $input->{route_length_policy}
+        if defined $input->{route_length_policy};
+    die "Bliss me there route length must be Automatic or Exact"
+        unless $options->{route_length_policy} eq 'automatic'
+            || $options->{route_length_policy} eq 'exact';
+    $options->{route_max_intermediates} = _integer(
+        $input, 'route_max_intermediates', 0, 8,
+        $options->{route_max_intermediates},
+    );
+    $options->{route_exact_intermediates} = _integer(
+        $input, 'route_exact_intermediates', 0, 8,
+        $options->{route_exact_intermediates},
+    );
+
     $options->{additional_track_count} = _integer(
         $input, 'additional_track_count', 1, 100,
         $options->{additional_track_count},
@@ -201,6 +229,7 @@ sub normalize {
 
     die "Preserve source order requires an addition mode with a non-zero target"
         if $options->{ordering_policy} eq 'preserve_order'
+            && $options->{extension_mode} ne 'destination_route'
             && ($options->{extension_mode} eq 'none'
                 || ($options->{extension_mode} eq 'automatic'
                     && $options->{max_added_tracks} == 0));

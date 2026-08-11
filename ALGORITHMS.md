@@ -1,8 +1,8 @@
 # Playlist optimization modes and options
 
-Better Call Bliss turns a saved playlist into a smoother listening experience. You decide whether existing songs may move, whether new songs may be added, and how much freedom the optimizer has. Better Call Bliss previews the result, and nothing is saved until you accept it.
+Better Call Bliss turns a saved playlist into a smoother listening experience. You decide whether existing songs may move, whether new songs may be added, and how much freedom the optimizer has. Playlist and queue-editor jobs preview the result, and nothing is changed until you accept it. The track-context **Bliss me there...** shortcut is intentionally different: it runs in the background and appends a successful route automatically.
 
-This document describes the current 0.15.1 implementation. **Working** means the choice is available in the Lyrion job editor. **Planned** means it is shown but cannot yet be selected.
+This document describes the current implementation. **Working** means the choice is available in the Lyrion job editor. **Planned** means it is shown but cannot yet be selected.
 
 ## Choose the result you want
 
@@ -14,7 +14,7 @@ This document describes the current 0.15.1 implementation. **Working** means the
 | Turn a tiny seed list into a full mix with the same general character | Additional tracks: [Extend playlist](#extend-playlist) + Chosen amount: Reach a final track count | Treat the input as examples of a desired sound. Better Call Bliss selects enough related local songs to reach the target size, then arranges originals and additions together. |
 | Get a different but still sensible result | [Increase Variation](#variation-and-reproducibility) | Search explores different good alternatives without relaxing its quality and repeat rules. |
 | Let related recordings and artists support addition choices | [Enable Last.fm guidance](#lastfm-track-and-artist-guidance) | Similar-track and similar-artist evidence help rank suitable additions; Bliss remains the acoustic quality check. |
-| Append a fluent path from the current queue to a chosen song | [Bliss me there...](#bliss-me-there) from a track context menu | The current queue tail and chosen track stay fixed; Better Call Bliss previews one bridge between them and appends only the new suffix after acceptance. |
+| Append a fluent path from the current queue to a chosen song | [Bliss me there...](#bliss-me-there) from a track context menu | The current queue tail and chosen track stay fixed. Better Call Bliss builds the route in the background and automatically appends its intermediates and destination when every check succeeds. |
 
 Three job choices work together:
 
@@ -33,7 +33,7 @@ Three job choices work together:
 | [No additions / reorder existing tracks only](#reorder-existing-tracks-only) | Working | You want a cleaner sequence without changing the track list. | No new tracks are added; no source tracks are removed. |
 | [Improve difficult transitions](#add-automatically) | Working | The playlist mostly works, but a few handovers are awkward. | Adds zero or more bridge tracks only where the frozen source route has difficult transitions. |
 | [Extend playlist](#extend-playlist) | Working | The playlist is already the thing you want, just too short. | Adds a chosen amount of local songs. Addition similarity is based on the complete original source set, not on one gap at a time; originals remain required members. |
-| [Bliss me there...](#bliss-me-there) | Working, first slice | A player queue is already running and you want to arrive at one selected track smoothly. | Previews a bridge from the current queue tail to the destination track and appends only the accepted suffix. |
+| [Bliss me there...](#bliss-me-there) | Working | A player queue already has a tail and you want to arrive at one selected local track smoothly. | Runs a destination-locked route in the background, rechecks the live queue tail, and automatically appends zero or more intermediates plus the destination. |
 | Add N bridge tracks per source transition | Planned | You want a strict "put the same number of bridges inside every existing gap" placement rule. | Future preset; different from Extend playlist because the number of additions is tied to each source transition. |
 | Duration target | Planned | You want "make this about 90 minutes" rather than "make this 30 tracks." | Future target unit; track-count targets already work through Extend playlist. |
 
@@ -48,14 +48,61 @@ Three job choices work together:
 
 ## How the pieces fit together
 
-The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, freezes the LMS-local candidate inventory, and optionally asks LastMix for Last.fm track and artist relationships. The native [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer) performs scoring and bounded search. Only the plugin writes a playlist, and only after the user accepts a completed Preview.
+The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, freezes the LMS-local candidate inventory, and optionally asks LastMix for Last.fm track and artist relationships. The native [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer) performs scoring and bounded search. Only the plugin writes playlists or player queues. Editor jobs require explicit acceptance; **Bliss me there...** automatically appends only after its background route and live-tail checks succeed.
 
 ## Bliss me there
 
-Use this from a local track's context menu when a player already has something in its queue and you want to arrive at the selected song smoothly. Better Call Bliss opens its editor with the selected player and destination track prefilled. The preview uses the current end of that player's queue as the left anchor and the selected track as the right anchor.
+Use this from a local track's context menu when a player already has something in its queue and you want to arrive at the selected song smoothly. The action closes the context menu and starts a background job with the saved **Bliss me there...** defaults. It does not open the Extras page and does not require a separate Accept button. A successful result is appended automatically; the job remains visible under **Running and recent previews** for status or error review.
 
-The connected first slice uses the same exact-count bridge engine as **Add exactly N tracks**. That means it currently supports one inserted bridge between the queue tail and the destination track. When you accept the preview with **Send to player queue**, the queue-tail anchor shown in the preview is skipped, so only the bridge and destination track are sent to the player queue. The deeper native destination-lock mode for longer fluent routes remains future work.
+The current queue tail is the fixed start and the selected song is the fixed destination. Recent local queue tracks before the tail are captured as acoustic and repeat context; they are not appended again. Better Call Bliss may place local analyzed tracks between the two anchors. When the job succeeds, only those intermediates and the destination are appended.
 
+**Choose automatically** first evaluates the direct tail-to-destination transition. If it already meets **Acceptable transition percentile**, only the destination is appended. Otherwise the optimizer tries one intermediate, then two, and so on up to **Maximum intermediate tracks**, keeping the shortest count for which every generated leg passes the acoustic and repeat gates. If no qualifying route exists within the maximum, the job fails and appends nothing; it never silently falls back to a transition it already judged unacceptable. **Use an exact count** instead succeeds only with precisely the requested number of intermediates.
+
+Transition percentiles normally use the frozen source route as their comparison distribution. A two-track source would provide only the endpoint transition itself, which cannot produce a meaningful percentile. In that case the optimizer builds the frozen comparison distribution from the analyzed local library. This prevents a very large acoustic distance from being misclassified as percentile zero merely because it was compared only with itself.
+
+The destination is explicit user intent, so it is not rejected merely because its artist or album occurs in recent queue history. Every generated intermediate remains unique and subject to the configured artist, album, and track windows. Last.fm similar-track and similar-artist evidence can rerank eligible local candidates, but Bliss supplies the acoustic gate. Variation explores a bounded top-quality set and the reported generation seed reproduces the choice.
+
+Before appending, Better Call Bliss compares the live queue tail with the captured tail. Normal playback advancing through existing queue entries does not invalidate the job, because the queue tail is unchanged. If another controller changes the end of the queue, the result is refused and nothing is appended. Existing queue entries are never removed or reordered by this action.
+
+#### Options for Bliss me there
+
+| Option | Range / default | Effect in this workflow |
+| --- | --- | --- |
+| Intermediate tracks | Automatic or Exact; saved plugin default | Automatic chooses the shortest acceptable count from zero through the maximum. Exact requires precisely the requested count. |
+| Maximum intermediate tracks | 0-8; default 4 | Upper bound used only by Automatic. Zero means direct-only. |
+| Exact intermediate tracks | 0-8; default 2 | Count used only by Exact. Zero explicitly requests the direct destination. |
+| Acceptable transition percentile | 0-100%; plugin default | Maximum contextual percentile permitted for every generated route leg. Lower is stricter. |
+| Musical context window | 1-50; inherited from BlissMixer | Controls how many recent captured queue/route tracks influence each directional acoustic score. |
+| Mixing strategy and learned blend | Inherited from BlissMixer | Uses Adaptive or Static scoring. A learned matrix remains optional. |
+| Artist, album, and track look-back | Inherited from BlissMixer | Hard constraints for generated intermediates; zero disables a window. The chosen destination itself remains fixed user intent. |
+| Variation and generation seed | 0-100%; default 25 | Reorders a bounded pool of qualified alternatives reproducibly. Zero keeps strict deterministic ranking. |
+| Last.fm track/artist guidance | Optional; defaults 75% each | Provides bounded supporting evidence for candidates related to the tail, destination, or captured context. Provider failure falls back to Bliss. |
+| Output | Automatic background append | The action is locked to the source player and appends only intermediates plus destination after route and live-tail validation. It never clears or replaces existing queue entries. |
+
+#### How the destination route is chosen
+
+~~~mermaid
+flowchart TD
+    A["Track context action"] --> B["Start background job with saved defaults"]
+    B --> C["Capture current queue tail<br/>and recent local context"]
+    C --> D["Lock selected destination"]
+    D --> E["Build Bliss and optional<br/>Last.fm candidate evidence"]
+    E --> F{"Automatic or Exact?"}
+    F -- Automatic --> G{"Direct leg acceptable?"}
+    G -- Yes --> K["Route contains destination only"]
+    G -- No --> H["Try 1..maximum intermediates"]
+    H --> I{"Shortest fully valid route found?"}
+    I -- Yes --> K
+    I -- No --> J["Fail job; append nothing"]
+    F -- Exact --> L["Search required intermediate count"]
+    L -- Found --> K
+    L -- Not found --> J
+    K --> M{"Live queue tail unchanged?"}
+    M -- Yes --> N["Append intermediates + destination"]
+    M -- No --> O["Fail stale job; append nothing"]
+~~~
+
+## Overall workflow
 
 ~~~mermaid
 flowchart TD
@@ -74,7 +121,7 @@ flowchart TD
     G --> R
     R --> V["Result artifact and proofs"]
     V --> Q["Read-only Preview"]
-    Q -->|"user accepts"| W["Lyrion playlist writer"]
+    Q -->|"user accepts"| W["Lyrion playlist or queue writer"]
 ~~~
 
 ## Playlist workflows
@@ -459,11 +506,11 @@ The workflow tables omit **Track look-back** because every current workflow alre
 
 Variation asks Better Call Bliss to explore different qualified answers. It does not change Bliss features, similarity matrices, repeat windows, or bridge acceptance gates.
 
-For movable routes, a generated or supplied seed changes the greedy restart paths. The percentage currently acts as an on/off switch for route diversity: zero uses a fixed baseline seed; any positive value uses the job's generation seed.
+For movable routes, a generated or supplied seed changes the greedy restart paths. Zero uses a fixed baseline seed; any positive value uses the job's generation seed.
 
 For Extend playlist, the percentage additionally controls membership sampling inside the quality pool. Higher values flatten the acoustic weighting and make lower-ranked qualified candidates more likely.
 
-Automatic bridge selection is otherwise deterministic after the base source route has been chosen. Preserve-order jobs may return the same result at different seeds because their anchors cannot move.
+For difficult-transition bridges and **Bliss me there...**, Variation reproducibly reorders a bounded pool of candidates that already passed the acoustic gate. It does not relax leg percentiles, uniqueness, repeat windows, or the fixed destination. A preserved source route can still return the same result when only one candidate qualifies.
 
 A recorded generation seed reproduces the same request and result across worker counts when the library, artifacts, and options are unchanged.
 

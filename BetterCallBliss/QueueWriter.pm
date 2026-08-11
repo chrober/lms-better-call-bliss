@@ -162,6 +162,24 @@ sub send_to_player {
         unless blessed($client);
     $client = $client->master if $client->can('master');
 
+    if ($job->{route_to_track}) {
+        my (undef, $live_count) = _current_queue_index($client);
+        _fail(
+            'ROUTE_PREVIEW_STALE',
+            'The player queue is now empty. Recalculate the route from the current queue.',
+        ) unless $live_count > 0;
+        my $live_tail = eval {
+            Slim::Player::Playlist::track($client, $live_count - 1, 1, 0)
+        };
+        my $live_tail_url = $live_tail ? $live_tail->url : undef;
+        _fail(
+            'ROUTE_PREVIEW_STALE',
+            'The player queue tail changed while this route was being reviewed. Recalculate Bliss me there from the new queue tail.',
+        ) unless defined $live_tail_url
+            && defined $job->{route_tail_url}
+            && $live_tail_url eq $job->{route_tail_url};
+    }
+
     my (undef, $urls) =
         Plugins::BetterCallBliss::PlaylistWriter::resolved_tracks_for_job($job);
     _fail('EMPTY_RESULT', 'The preview did not produce any tracks')
@@ -174,8 +192,9 @@ sub send_to_player {
         $urls = [@$urls[$skip .. $#$urls]];
     }
 
-    my $action = $options->{queue_action} || 'replace';
-    my $start = $options->{queue_start_playback} ? 1 : 0;
+    my $action = $job->{route_to_track}
+        ? 'append' : ($options->{queue_action} || 'replace');
+    my $start = $job->{route_to_track} ? 0 : ($options->{queue_start_playback} ? 1 : 0);
     my $command;
     my $queue_edit = {};
     my $reconcile = {};
