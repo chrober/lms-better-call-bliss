@@ -113,7 +113,7 @@ sub _edge {
 }
 
 sub prepare {
-    my ($enabled, $source_tracks, $callback) = @_;
+    my ($enabled, $source_tracks, $callback, $progress) = @_;
     return $callback->(_bundle('disabled', 0, 0, [], [])) unless $enabled;
     unless (available()) {
         $log->warn(
