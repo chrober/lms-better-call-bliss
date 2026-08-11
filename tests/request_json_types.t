@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 16;
+use Test::More tests => 26;
 use JSON::XS ();
 
 BEGIN {
@@ -73,6 +73,9 @@ BEGIN {
             additional_track_count => $additional_track_count,
             bridge_target_track_count => $bridge_target_track_count,
             target_track_count => '25',
+            route_length_policy => 'automatic',
+            route_max_intermediates => '4',
+            route_exact_intermediates => '2',
             output_mode => 'create_copy',
             output_name => '',
             output_name_generated => 0,
@@ -184,3 +187,33 @@ ok($double_request->{extension}->{allow_opening_track},
     'double-count enables an endpoint slot when internal gaps are insufficient');
 like($double_json, qr/"allow_opening_track"\s*:\s*true\b/,
     'double-count opening flag is serialized as JSON true');
+$Plugins::BetterCallBliss::JobOptions::extension_mode = 'destination_route';
+my $destination = Plugins::BetterCallBliss::RequestBuilder::build_sequence_request(
+    'Bliss me there test',
+    [TestTrack->new(42, '1999'), TestTrack->new(43, '1234')],
+    'preview-json-types-destination',
+    '/tmp/semantic-evidence.json',
+    {},
+);
+my $destination_json = JSON::XS->new->canonical->pretty->encode($destination->{request});
+my $destination_request = JSON::XS->new->decode($destination_json);
+is($destination_request->{route}->{ordering_policy}, 'queue_destination',
+    'destination route uses its first-class locked ordering policy');
+is($destination_request->{route}->{start_track_id}, 'lms-track-42',
+    'destination route locks the queue-tail source track');
+is($destination_request->{route}->{destination_track_id}, 'lms-track-43',
+    'destination route locks the selected target track');
+is($destination_request->{extension}->{mode}, 'destination_route',
+    'destination route uses the dedicated native extension mode');
+is($destination_request->{extension}->{destination_mode}, 'automatic',
+    'destination route carries the automatic length policy');
+is($destination_request->{extension}->{max_added_tracks}, 4,
+    'destination maximum is serialized as a JSON integer');
+is($destination_request->{extension}->{trigger_percentile}, 0.7,
+    'destination quality threshold is serialized as a JSON number');
+is($destination_request->{selection}->{variation_percent}, 25,
+    'destination route carries per-job variation');
+is($destination_request->{selection}->{generation_seed}, 123456,
+    'destination route carries its reproducible generation seed');
+unlike($destination_json, qr/"max_added_tracks"\s*:\s*"4"/,
+    'destination numeric fields are never serialized as strings');

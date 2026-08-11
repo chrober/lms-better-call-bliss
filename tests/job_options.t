@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 19;
+use Test::More tests => 29;
 
 BEGIN {
     package TestPrefs;
@@ -12,6 +12,10 @@ BEGIN {
         lastfm_track_guidance_percent => '75',
         lastfm_artist_guidance_percent => '75',
         restart_count => '80',
+        variation_percent => '35',
+        route_length_policy => 'exact',
+        route_max_intermediates => '6',
+        route_exact_intermediates => '3',
     );
     sub get { return $values{$_[1]} }
 
@@ -50,7 +54,14 @@ is($defaults->{lastfm_artist_guidance_percent}, 75,
 is($defaults->{max_added_tracks}, 12,
     'automatic addition budget default is read from plugin preferences');
 is($defaults->{trigger_percent}, 65,
-    'automatic trigger default is read from plugin preferences');
+    'automatic trigger default is read from plugin preferences');is($defaults->{variation_percent}, 35,
+    'variation default is read from plugin preferences');
+is($defaults->{route_length_policy}, 'exact',
+    'destination route policy is read from plugin preferences');
+is($defaults->{route_max_intermediates}, 6,
+    'destination automatic maximum is read from plugin preferences');
+is($defaults->{route_exact_intermediates}, 3,
+    'destination exact count is read from plugin preferences');
 
 my $legacy_exact = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,
@@ -91,6 +102,40 @@ is($queue->{queue_action}, 'play_next',
     'queue action is retained');
 is($queue->{queue_start_playback}, 1,
     'queue start playback is normalized to a boolean-ish integer');
+
+my $destination = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {
+        extension_mode => 'destination_route',
+        addition_purpose => 'none',
+        ordering_policy => 'preserve_order',
+        route_length_policy => 'exact',
+        route_max_intermediates => '5',
+        route_exact_intermediates => '2',
+    },
+);
+is($destination->{extension_mode}, 'destination_route',
+    'destination route is not remapped by the general addition-purpose control');
+is($destination->{route_length_policy}, 'exact',
+    'destination exact route policy is retained');
+is($destination->{route_max_intermediates}, 5,
+    'destination maximum is normalized to an integer');
+is($destination->{route_exact_intermediates}, 2,
+    'destination exact count is normalized to an integer');
+is($destination->{ordering_policy}, 'preserve_order',
+    'destination route keeps its source context order');
+
+my $independent_exact = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {
+        extension_mode => 'destination_route',
+        route_length_policy => 'exact',
+        route_max_intermediates => '2',
+        route_exact_intermediates => '3',
+    },
+);
+is($independent_exact->{route_exact_intermediates}, 3,
+    'destination exact count is independent from the automatic maximum');
 
 my $named = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

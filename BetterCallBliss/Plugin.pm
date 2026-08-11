@@ -38,8 +38,12 @@ sub initPlugin {
         output_suffix => 'Optimized',
         extended_suffix => 'Extended',
         restart_count => 50,
+        variation_percent => 25,
         auto_bridge_budget => 8,
         auto_trigger_percent => 70,
+        route_length_policy => 'automatic',
+        route_max_intermediates => 4,
+        route_exact_intermediates => 2,
         report_retention_days => 30,
         semantic_cache_days => 30,
         semantic_stale_days => 90,
@@ -75,6 +79,11 @@ sub initPlugin {
     Slim::Control::Request::addDispatch(
         ['bettercallbliss', 'status'],
         [0, 1, 0, \&statusCommand],
+    );
+
+    Slim::Control::Request::addDispatch(
+        ['bettercallbliss', 'route_to'],
+        [1, 0, 1, \&routeToCommand],
     );
 
     Slim::Control::Request::addDispatch(
@@ -231,6 +240,57 @@ sub _job_lists_payload {
     my @recent = grep { ($_->{state} || '') ne 'running' } @summaries;
     splice(@recent, 8) if @recent > 8;
     return (\@running, \@recent);
+}
+
+sub routeToCommand {
+    my $request = shift;
+    my $client = $request->client();
+    my $target_track_id = $request->getParam('target_track_id');
+    if (!$client || !defined $target_track_id || "$target_track_id" !~ /^\d+$/) {
+        $request->addResult('state', 'failed');
+        $request->addResult('error_code', 'INVALID_ROUTE_CONTEXT');
+        $request->addResult(
+            'error',
+            'Bliss me there requires a selected player and a local destination track',
+        );
+        $request->setStatusBadParams();
+        return;
+    }
+
+    my ($job, $error);
+    eval {
+        $job = Plugins::BetterCallBliss::Jobs::start_route_to_track_preview(
+            $client->id,
+            0 + $target_track_id,
+            {
+                quick_route => 1,
+                auto_apply => 1,
+            },
+        );
+    };
+    $error = $@;
+    if ($error || !$job) {
+        $error ||= 'Could not start Bliss me there';
+        $error =~ s/\s+/ /g;
+        $error = substr($error, 0, 500);
+        $log->error(
+            'stage=RouteToTrackStartFailed player=' . ($client->id || 'unknown')
+            . " target_track=$target_track_id message=$error"
+        );
+        $request->addResult('state', 'failed');
+        $request->addResult('error_code', 'ROUTE_START_FAILED');
+        $request->addResult('error', $error);
+        $request->setStatusBadParams();
+        return;
+    }
+
+    $request->addResult('state', 'running');
+    $request->addResult('job_id', $job->{id});
+    $request->addResult(
+        'message',
+        'Building a fluent route; it will be appended to the player queue when ready.',
+    );
+    $request->setStatusDone();
 }
 
 sub jobCommand {

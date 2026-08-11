@@ -2,6 +2,7 @@ package Plugins::BetterCallBliss::Web;
 
 use strict;
 use File::Basename qw(basename);
+use URI::Escape qw(uri_escape_utf8);
 use Slim::Schema;
 use Slim::Player::Client;
 use Slim::Player::Playlist;
@@ -125,9 +126,10 @@ sub _form_from_params {
     my ($params, $defaults) = @_;
     my $form = {%$defaults};
     for my $name (qw(
-        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
+        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
+        route_length_policy route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback
@@ -155,6 +157,7 @@ sub _form_from_job {
         $params{route_player_id} = $job->{route_player_id};
         $params{route_target_track_id} = $job->{route_target_track_id};
         $params{queue_player_id} = $options->{queue_player_id} || $job->{route_player_id};
+        $params{quick_route} = $job->{quick_route} ? 1 : 0;
     }
     my $form = _form_from_params(\%params, $defaults);
     $form->{output_name_generated} =
@@ -334,6 +337,10 @@ sub _result_view {
         route_player_id => $job->{route_player_id},
         route_tail_label => $job->{route_tail_label},
         route_target_label => $job->{route_target_label},
+        route_source_context_count => 0 + ($job->{route_source_context_count} || 0),
+        route_length_policy => $job->{options}->{route_length_policy},
+        route_max_intermediates => 0 + ($job->{options}->{route_max_intermediates} || 0),
+        route_exact_intermediates => 0 + ($job->{options}->{route_exact_intermediates} || 0),
     };
     if (($view->{mixing_strategy} || '') eq 'static') {
         $view->{mixing_note} = 'Static BlissMixer weights were used for every contextual distance.';
@@ -411,6 +418,17 @@ sub _result_view {
             $view->{trigger_percent} = int(
                 100 * ($artifact->{trigger_percentile} || 0) + 0.5
             );
+            if ($job->{route_to_track}) {
+                my $first_gap = ($artifact->{gaps} || [])->[0] || {};
+                $view->{route_direct_percent} = sprintf(
+                    '%.1f', 100 * ($first_gap->{direct_percentile} || 0),
+                );
+                $view->{route_fallback_direct} =
+                    ($job->{options}->{route_length_policy} || '') eq 'automatic'
+                    && ($first_gap->{direct_percentile} || 0)
+                        > ($artifact->{trigger_percentile} || 0)
+                    && !$view->{added_track_count} ? 1 : 0;
+            }
             $view->{semantic_mode} = $artifact->{semantic_mode};
             my @additions;
             for my $addition (@{$job->{additions} || []}) {
@@ -478,7 +496,12 @@ sub _result_view {
         my @order;
         my $position = 0;
         my %bridge = map { $_ => 1 } @{$job->{bridge_track_ids} || []};
-        for my $id (@{$job->{final_track_ids} || []}) {
+        my @display_ids = @{$job->{final_track_ids} || []};
+        if ($job->{route_to_track} && ($job->{route_output_skip_source_count} || 0) > 0) {
+            my $start = $job->{route_output_skip_source_count} - 1;
+            @display_ids = @display_ids[$start .. $#display_ids] if $start <= $#display_ids;
+        }
+        for my $id (@display_ids) {
             my $label = $job->{labels}->{$id} || {};
             push @order, {
                 position => ++$position,
@@ -515,7 +538,7 @@ sub handler {
         $form->{queue_action} ||= 'append';
         $form->{output_mode} = 'player_queue';
         $form->{ordering_policy} = 'preserve_order';
-        $form->{extension_mode} = 'exact_count';
+        $form->{extension_mode} = 'destination_route';
     }
     if (($params->{run_preview} || $params->{run_route_to_track_preview}) && $params->{lastfm_present}) {
         $form->{lastfm_enabled} = $params->{lastfm_enabled} ? 1 : 0;
@@ -573,7 +596,7 @@ sub handler {
         $error = $@;
         $error =~ s/\s+/ /g if $error;
         $error = undef if $job && ($job->{write_state} || '') eq 'failed';
-    } elsif ($params->{run_route_to_track_preview}
+    } elsif ($params->{quick_route} || $params->{run_route_to_track_preview}
         || ($params->{run_preview} && ($form->{source_mode} || '') eq 'route_to_track')) {
         eval {
             $job = Plugins::BetterCallBliss::Jobs::start_route_to_track_preview(
@@ -616,6 +639,20 @@ sub handler {
     $params->{bettercallbliss_playlists} = $playlists;
     $params->{bettercallbliss_players} = $players;
     $params->{bettercallbliss_form} = $form;
+    $params->{bettercallbliss_quick_route} = $job
+        ? ($job->{quick_route} ? 1 : 0) : ($form->{quick_route} ? 1 : 0);
+    if (($form->{source_mode} || '') eq 'route_to_track') {
+        my $player = uri_escape_utf8($form->{route_player_id} || '');
+        my $target = uri_escape_utf8($form->{route_target_track_id} || '');
+        my $base_route_url = $page
+            . '?player=' . $player
+            . '&source_mode=route_to_track&route_player_id=' . $player
+            . '&queue_player_id=' . $player
+            . '&route_target_track_id=' . $target;
+        $params->{bettercallbliss_advanced_route_url} = $base_route_url;
+        $params->{bettercallbliss_recalculate_route_url}
+            = $base_route_url . '&quick_route=1';
+    }
     $params->{bettercallbliss_route_context} = _route_context($form);
     $params->{bettercallbliss_defaults} = $defaults;
     $params->{bettercallbliss_capability} = $capability;

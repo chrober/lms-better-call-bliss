@@ -405,7 +405,12 @@ sub _build_sequence_request {
                 ? _json_integer($options->{lastfm_artist_guidance_percent}) : 0,
         },
         route => {
-            ordering_policy => $options->{ordering_policy},
+            ordering_policy => $options->{extension_mode} eq 'destination_route'
+                ? 'queue_destination' : $options->{ordering_policy},
+            ($options->{extension_mode} eq 'destination_route' ? (
+                start_track_id => $source_tracks->[-2]->{id},
+                destination_track_id => $source_tracks->[-1]->{id},
+            ) : ()),
             objective => 'bottleneck_then_sum',
             search => {
                 deterministic_seed => $options->{variation_percent} > 0
@@ -442,6 +447,23 @@ sub _build_sequence_request {
                 mode => 'fixed_source_extension',
                 shortlist_limit => _json_integer(256),
                 target_track_count => _json_integer($options->{target_track_count}),
+            }
+            : $options->{extension_mode} eq 'destination_route' ? {
+                mode => 'destination_route',
+                destination_mode => $options->{route_length_policy},
+                candidate_limit => _json_integer(8),
+                shortlist_limit => _json_integer(256),
+                max_added_tracks => _json_integer(
+                    $options->{route_length_policy} eq 'exact'
+                        ? $options->{route_exact_intermediates}
+                        : $options->{route_max_intermediates},
+                ),
+                trigger_percentile => $options->{trigger_percent} / 100,
+                ($options->{route_length_policy} eq 'exact' ? (
+                    additional_track_count => _json_integer(
+                        $options->{route_exact_intermediates},
+                    ),
+                ) : ()),
             }
             : {mode => 'none'},
         semantic_evidence => {

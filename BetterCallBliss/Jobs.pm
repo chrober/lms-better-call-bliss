@@ -15,8 +15,10 @@ use Slim::Utils::Timers;
 use Slim::Utils::Unicode;
 use Slim::Player::Client;
 use Slim::Player::Playlist;
+use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::LastFmEvidence;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
@@ -408,6 +410,15 @@ sub _start_preview_from_built {
     my $progress_path = $dir . '/progress.json';
     my $lastfm_applies = $built->{options}->{lastfm_enabled}
         && $built->{options}->{extension_mode} ne 'none';
+    my $lastfm_source_tracks = $built->{request}->{source_tracks};
+    my $lastfm_source_count = 0 + ($fields->{lastfm_source_track_count} || 0);
+    if ($lastfm_source_count > 0
+        && $lastfm_source_count < @{$lastfm_source_tracks}) {
+        my $first = @{$lastfm_source_tracks} - $lastfm_source_count;
+        $lastfm_source_tracks = [
+            @{$lastfm_source_tracks}[$first .. $#{$lastfm_source_tracks}]
+        ];
+    }
 
     my $playlist_title = defined $fields->{playlist_title}
         ? $fields->{playlist_title}
@@ -443,8 +454,9 @@ sub _start_preview_from_built {
         progress_path => $progress_path,
     };
     for my $key (qw(
-        route_to_track route_output_skip_source_count route_player_id
+        route_to_track quick_route auto_apply route_output_skip_source_count route_player_id
         route_target_track_id route_tail_track_id route_target_label route_tail_label
+        route_tail_url route_source_context_count route_queue_count
         source_mode source_player_id source_player_name source_queue_scope
         source_queue_count source_queue_current_index source_queue_active
         source_queue_start_index source_queue_track_urls source_queue_current_url
@@ -526,7 +538,7 @@ sub _start_preview_from_built {
     }
     my $prepare_ok = eval {
         Plugins::BetterCallBliss::LastFmEvidence::prepare(
-            $lastfm_applies, $built->{request}->{source_tracks}, sub {
+            $lastfm_applies, $lastfm_source_tracks, sub {
                 my $bundle = shift;
                 my $job = $jobs{$job_id} || return;
                 my $provider = ref($bundle->{providers}) eq 'ARRAY'
@@ -691,20 +703,49 @@ sub start_route_to_track_preview {
 
     my %route_options = (%{$options || {}});
     $route_options{ordering_policy} = 'preserve_order';
-    $route_options{extension_mode} = 'exact_count';
-    $route_options{additional_track_count} = defined $route_options{additional_track_count}
-        && "$route_options{additional_track_count}" =~ /^\d+$/
-        ? $route_options{additional_track_count} : 1;
+    $route_options{extension_mode} = 'destination_route';
+    delete $route_options{addition_purpose};
     $route_options{output_mode} = 'player_queue';
     $route_options{queue_player_id} = $player_id;
-    $route_options{queue_action} = $route_options{queue_action} || 'append';
+    $route_options{queue_action} = 'append';
+    $route_options{queue_start_playback} = 0;
+
+    my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+    my $normalized = Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, \%route_options,
+    );
+    my $context_limit = $normalized->{seed_limit};
+    $context_limit = $normalized->{artist_window}
+        if $normalized->{artist_window} > $context_limit;
+    $context_limit = $normalized->{album_window}
+        if $normalized->{album_window} > $context_limit;
+    $context_limit = $normalized->{track_window}
+        if $normalized->{track_window} > $context_limit;
+    $context_limit = 1 if $context_limit < 1;
+
+    my @context;
+    my $first = $count > $context_limit ? $count - $context_limit : 0;
+    for my $index ($first .. $count - 1) {
+        my $item = Slim::Player::Playlist::track($client, $index, 1, 0);
+        if (!$item || $item->remote || !$item->can('id')) {
+            @context = ();
+            next;
+        }
+        if ($item->id == $target->id) {
+            @context = ();
+            next;
+        }
+        push @context, $item;
+    }
+    die "Could not capture an analyzed local queue tail for destination routing"
+        unless @context && $context[-1]->id == $tail->id;
 
     my ($job_id, $dir, $semantic_path) = _new_job_context();
     my $tail_label = _track_label($tail);
     my $target_label = _track_label($target);
     my $title = "Bliss me there: $tail_label -> $target_label";
     my $built = Plugins::BetterCallBliss::RequestBuilder::build_sequence_request(
-        $title, [$tail, $target], $job_id, $semantic_path, \%route_options,
+        $title, [@context, $target], $job_id, $semantic_path, $normalized,
     );
     return _start_preview_from_built(
         $job_id, $dir, $semantic_path, $built,
@@ -714,10 +755,18 @@ sub start_route_to_track_preview {
             source_log => 'route_to_track player=' . ($client->id || $player_id)
                 . ' tail_track=' . $tail->id . ' target_track=' . $target->id,
             route_to_track => 1,
-            route_output_skip_source_count => 1,
+            quick_route => $route_options{quick_route} ? 1 : 0,
+            auto_apply => $route_options{auto_apply} ? 1 : 0,
+            route_output_skip_source_count => scalar @context,
             route_player_id => $client->id || $player_id,
             route_tail_track_id => 0 + $tail->id,
             route_target_track_id => 0 + $target->id,
+            route_tail_url => $tail->url,
+            route_source_context_count => scalar @context,
+            route_queue_count => 0 + $count,
+            lastfm_source_track_count =>
+                ($normalized->{seed_limit} + 1 < @context + 1)
+                    ? $normalized->{seed_limit} + 1 : @context + 1,
             route_tail_label => $tail_label,
             route_target_label => $target_label,
         },
@@ -903,6 +952,21 @@ sub _poll {
             );
         }
     }
+
+    if ($job->{state} eq 'completed' && $job->{auto_apply}) {
+        my $sent = eval { send_to_queue($job_id, {}); };
+        if ($sent) {
+            $job->{stage} = 'Completed and sent to player queue';
+        } else {
+            my $error = $@ || 'QUEUE_SEND_FAILED: Unknown automatic queue output failure';
+            $error =~ s/\s+/ /g;
+            $job->{stage} = 'Completed; queue send failed';
+            $log->error(
+                "job=$job_id stage=AutomaticQueueSendFailed message="
+                . substr($error, 0, 500)
+            );
+        }
+    }
 }
 
 sub get {
@@ -971,25 +1035,31 @@ sub _apply_output_options {
         $options->{output_name_generated} =
             length($options->{output_name} || '') ? 0 : 1;
     } elsif ($mode eq 'player_queue') {
-        my $player_id = exists $params->{queue_player_id}
-            ? $params->{queue_player_id} : $options->{queue_player_id};
+        my $player_id = $job->{route_to_track}
+            ? $job->{route_player_id}
+            : (exists $params->{queue_player_id}
+                ? $params->{queue_player_id} : $options->{queue_player_id});
         $player_id = '' unless defined $player_id;
         $player_id =~ s/^\s+|\s+$//g;
         die "PLAYER_REQUIRED: Choose a player for queue output\n"
             unless length $player_id;
         $options->{queue_player_id} = $player_id;
 
-        my $action = exists $params->{queue_action}
-            ? $params->{queue_action} : ($options->{queue_action} || 'replace');
+        my $action = $job->{route_to_track}
+            ? 'append'
+            : (exists $params->{queue_action}
+                ? $params->{queue_action} : ($options->{queue_action} || 'replace'));
         die "INVALID_QUEUE_ACTION: Queue action must be Replace queue, Replace upcoming tracks, Append to queue, or Play next\n"
             unless $action eq 'replace'
                 || $action eq 'replace_upcoming'
                 || $action eq 'append'
                 || $action eq 'play_next';
         $options->{queue_action} = $action;
-        $options->{queue_start_playback} = exists $params->{queue_start_playback}
-            ? ($params->{queue_start_playback} ? 1 : 0)
-            : ($options->{queue_start_playback} ? 1 : 0);
+        $options->{queue_start_playback} = $job->{route_to_track}
+            ? 0
+            : (exists $params->{queue_start_playback}
+                ? ($params->{queue_start_playback} ? 1 : 0)
+                : ($options->{queue_start_playback} ? 1 : 0));
     }
 }
 sub create_copy {
