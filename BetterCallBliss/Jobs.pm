@@ -247,7 +247,29 @@ sub _preview_workflow_total {
     # Compact live status is shown only after a preview job exists. Earlier
     # synchronous work such as source form handling and candidate-inventory
     # lookup must not consume visible step numbers.
-    return ($options->{extension_mode} || 'none') ne 'none' ? 4 : 3;
+    return ($options->{extension_mode} || 'none') ne 'none' ? 7 : 3;
+}
+
+sub _extension_optimizer_step {
+    my $job = shift || {};
+    my $stage = ref($job->{native_progress}) eq 'HASH'
+        ? ($job->{native_progress}->{stage} || '') : '';
+    return 2 if $stage eq 'route_search';
+    return 3 if $stage eq 'candidate_preparation'
+        || $stage eq 'frozen_reference'
+        || $stage eq 'gap_candidate_scoring'
+        || $stage eq 'extension_relevance_model'
+        || $stage eq 'extension_candidate_scoring'
+        || $stage eq 'extension_candidate_sorting'
+        || $stage eq 'extension_semantic_guidance'
+        || $stage eq 'extension_selection_pool';
+    return 4 if $stage eq 'bridge_selection'
+        || $stage eq 'extension_membership_selection';
+    return 5 if $stage eq 'extension_route_placement'
+        || $stage eq 'extension_route_search';
+    return 6 if $stage eq 'completed';
+    return 2 if $job->{process};
+    return 1;
 }
 
 sub _compact_status_step {
@@ -257,6 +279,7 @@ sub _compact_status_step {
     return ($total, $total) if $state eq 'completed' || $state eq 'cancelled';
     return ($total, $total) if $state eq 'failed';
     if ($state eq 'running') {
+        return (_extension_optimizer_step($job), $total) if $total == 7;
         return (2, $total) if $job->{process} || ref($job->{native_progress}) eq 'HASH';
         return (1, $total);
     }
