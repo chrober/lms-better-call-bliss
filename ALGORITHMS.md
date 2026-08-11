@@ -355,7 +355,7 @@ flowchart TD
 
 ## Similarity supplied by BlissMixer
 
-BlissMixer also already owns an immediate mix-generation action, **Create bliss mix** / **Bliss Mix erstellen**. Better Call Bliss credits that feature and treats it as related prior work: BlissMixer creates playable Bliss mixes directly, while Better Call Bliss focuses on previewable, auditable playlist and queue transformations before anything is saved or sent to a player.
+BlissMixer also already owns an immediate mix-generation action, **Create bliss mix**. Better Call Bliss credits that feature and treats it as related prior work: BlissMixer creates playable Bliss mixes directly from a selected track, artist, album, or genre, while Better Call Bliss focuses on previewable, auditable playlist and queue transformations before anything is saved or sent to a player.
 
 Similarity scoring is an input to the playlist workflows above, not Better Call Bliss's main feature. The algorithms and learned-matrix capability come from the [BlissMixer implementation and its algorithm guide](https://github.com/chrober/lms-blissmixer/blob/main/ALGORITHMS.md). Better Call Bliss depends on a compatible lms-blissmixer installation and reuses the shared native Bliss scoring core so both applications interpret the 23 Bliss audio features consistently.
 

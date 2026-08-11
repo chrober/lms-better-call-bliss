@@ -39,9 +39,9 @@ which is bundled with supported plugin packages.
 
 Better Call Bliss deliberately builds on and credits the existing
 [lms-blissmixer](https://github.com/chrober/lms-blissmixer) feature
-**Create bliss mix** / **Bliss Mix erstellen**. That BlissMixer action already
-generates immediate Bliss-based mixes from playlist, seed-list, or queue context. Better Call
-Bliss is a companion workflow around the same Bliss ecosystem: it previews
+**Create bliss mix**. That BlissMixer action already generates immediate
+Bliss-based mixes from a selected track, artist, album, or genre context. Better
+Call Bliss is a companion workflow around the same Bliss ecosystem: it previews
 auditable saved-playlist and player-queue transformations, exposes per-job
 constraints, and lets the user choose whether to save, overwrite, or send the
 accepted result to a player.

@@ -10,7 +10,7 @@ The plugin delegates acoustic scoring, route search, bridge selection, and fixed
 
 Better Call Bliss explicitly loads its own strings.txt during startup so development deployments from Cache/Plugins expose localized Extras captions and Settings labels even when LMS does not include that directory in its automatic string scan.
 
-Credit: lms-blissmixer already provides the **Create bliss mix** / **Bliss Mix erstellen** action for immediate Bliss-based mix generation. Better Call Bliss is intentionally a companion workflow, not a replacement for that feature: it adds auditable previews, per-job playlist and queue constraints, and explicit persistence choices around saved playlists and player queues.
+Credit: lms-blissmixer already provides the **Create bliss mix** action for immediate Bliss-based mix generation from a selected track, artist, album, or genre. Better Call Bliss is intentionally a companion workflow, not a replacement for that feature: it adds auditable previews, per-job playlist and queue constraints, and explicit persistence choices around saved playlists and player queues.
 
 The job editor labels ordering as **Source-track order**, asks for the **Additional tracks** purpose separately from **Chosen amount**, and labels Adaptive history as **Musical context window (previous tracks)**. It hides mode-specific sections when they are irrelevant, keeps their values for easy mode switching, uses BlissMixer-style slider-enhanced numeric inputs for bounded ranges where practical, places route-search attempts under Advanced, and rejects guaranteed no-op preserved combinations in both the page and server validator.
 
