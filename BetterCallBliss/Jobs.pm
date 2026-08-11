@@ -156,8 +156,11 @@ sub _running_phase_detail {
     my $native = _native_progress_detail($job);
     return $native if $native;
     if (!$job->{process}) {
-        return 'Status: collecting optional Last.fm track and artist evidence.'
-            if ($job->{lastfm_state} || '') eq 'preparing';
+        if (($job->{lastfm_state} || '') eq 'preparing') {
+            return 'Status: ' . $job->{lastfm_progress_message}
+                if length($job->{lastfm_progress_message} || '');
+            return 'Status: collecting optional Last.fm track and artist evidence.';
+        }
         return 'Status: preparing the optimizer request.';
     }
     return 'Status: native optimizer is selecting additions and searching the final route.'
@@ -501,6 +504,23 @@ sub _start_preview_from_built {
                         . " message=$job->{error}"
                     );
                 }
+            },
+            sub {
+                my $progress = shift || {};
+                my $job = $jobs{$job_id} || return;
+                my $total = 0 + ($progress->{total} || 0);
+                my $done = 0 + ($progress->{requests} || 0);
+                my $edges = 0 + ($progress->{edges} || 0);
+                my $successes = 0 + ($progress->{successes} || 0);
+                my $failures = 0 + ($progress->{failures} || 0);
+                my $message = $progress->{message}
+                    || 'Collecting Last.fm track and artist evidence';
+                if ($total) {
+                    $message .= " ($done/$total requests, $successes ok";
+                    $message .= ", $failures failed" if $failures;
+                    $message .= ", $edges edges)";
+                }
+                $job->{lastfm_progress_message} = $message;
             },
         );
         1;

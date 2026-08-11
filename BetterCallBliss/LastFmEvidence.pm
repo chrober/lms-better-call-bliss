@@ -153,7 +153,27 @@ sub prepare {
     @requests = (@track_requests, @artist_requests);
 
     my (@edges, %edge_keys, @errors);
+    my $total_requests = scalar @requests;
     my $stats = {requests => 0, failures => 0, successes => 0};
+    my $report_progress = sub {
+        return unless ref($progress) eq 'CODE';
+        my %extra = @_;
+        eval {
+            $progress->({
+                total => $total_requests,
+                requests => 0 + $stats->{requests},
+                successes => 0 + $stats->{successes},
+                failures => 0 + $stats->{failures},
+                edges => scalar(@edges),
+                %extra,
+            });
+            1;
+        };
+    };
+    $report_progress->(
+        phase => 'queued',
+        message => "Queued $total_requests Last.fm guidance requests",
+    );
     my $next;
     $next = sub {
         unless (@requests) {
@@ -178,6 +198,13 @@ sub prepare {
             : $source->{artist};
         my $method = $source->{kind} eq 'track'
             ? 'getSimilarTracks' : 'getSimilarArtists';
+        $report_progress->(
+            phase => 'requesting',
+            kind => $source->{kind},
+            method => $method,
+            label => $label,
+            message => "Last.fm $method for \"$label\"",
+        );
         main::DEBUGLOG && $log->is_debug && $log->debug(
             "Last.fm: $method for \"$label\""
         );
@@ -202,6 +229,13 @@ sub prepare {
                             );
                             @requests = ();
                         }
+                        $report_progress->(
+                            phase => 'failed',
+                            kind => $source->{kind},
+                            method => $method,
+                            label => $label,
+                            message => "Last.fm $method failed for \"$label\"",
+                        );
                         return $next->();
                     }
 
@@ -240,6 +274,14 @@ sub prepare {
                     main::DEBUGLOG && $log->is_debug && $log->debug(
                         "Last.fm: retained $rank similar tracks for \"$label\""
                     );
+                    $report_progress->(
+                        phase => 'received',
+                        kind => $source->{kind},
+                        method => $method,
+                        label => $label,
+                        retained => $rank,
+                        message => "Last.fm retained $rank similar tracks for \"$label\"",
+                    );
                     $next->();
                 }, {
                     artist => $source->{artist},
@@ -265,6 +307,13 @@ sub prepare {
                             );
                             @requests = ();
                         }
+                        $report_progress->(
+                            phase => 'failed',
+                            kind => $source->{kind},
+                            method => $method,
+                            label => $label,
+                            message => "Last.fm $method failed for \"$label\"",
+                        );
                         return $next->();
                     }
 
@@ -300,6 +349,14 @@ sub prepare {
                     main::DEBUGLOG && $log->is_debug && $log->debug(
                         "Last.fm: retained $rank similar artists for \"$label\""
                     );
+                    $report_progress->(
+                        phase => 'received',
+                        kind => $source->{kind},
+                        method => $method,
+                        label => $label,
+                        retained => $rank,
+                        message => "Last.fm retained $rank similar artists for \"$label\"",
+                    );
                     $next->();
                 }, {
                     artist => $source->{artist},
@@ -315,6 +372,13 @@ sub prepare {
             $stats->{failures}++;
             $log->warn(
                 "Last.fm dispatch error for \"$label\": $message"
+            );
+            $report_progress->(
+                phase => 'failed',
+                kind => $source->{kind},
+                method => $method,
+                label => $label,
+                message => "Last.fm dispatch failed for \"$label\"",
             );
             $next->();
         }
