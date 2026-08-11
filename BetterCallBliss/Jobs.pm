@@ -244,7 +244,10 @@ sub status_detail {
 sub _preview_workflow_total {
     my $job = shift || {};
     my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
-    return ($options->{extension_mode} || 'none') ne 'none' ? 6 : 4;
+    # Compact live status is shown only after a preview job exists. Earlier
+    # synchronous work such as source form handling and candidate-inventory
+    # lookup must not consume visible step numbers.
+    return ($options->{extension_mode} || 'none') ne 'none' ? 4 : 3;
 }
 
 sub _compact_status_step {
@@ -254,9 +257,7 @@ sub _compact_status_step {
     return ($total, $total) if $state eq 'completed' || $state eq 'cancelled';
     return ($total, $total) if $state eq 'failed';
     if ($state eq 'running') {
-        return $total == 6 ? (4, $total) : (2, $total)
-            if $job->{process} || ref($job->{native_progress}) eq 'HASH';
-        return (3, $total) if $total == 6;
+        return (2, $total) if $job->{process} || ref($job->{native_progress}) eq 'HASH';
         return (1, $total);
     }
     return (1, $total);
