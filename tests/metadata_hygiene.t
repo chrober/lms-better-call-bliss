@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 25;
+use Test::More tests => 30;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -67,6 +67,35 @@ my $extras = slurp(File::Spec->catfile(
     $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'index.html',
 ));
 my $plugin_module = slurp(File::Spec->catfile($plugin, 'Plugin.pm'));
+my $settings = slurp(File::Spec->catfile(
+    $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'settings',
+    'bettercallbliss.html',
+));
+like(
+    $settings,
+    qr/job-defaults-section-header.*?route-section-header.*?lastfm-section-header.*?roadmap-section-header/s,
+    'settings page groups preferences into collapsible sections',
+);
+like(
+    $settings,
+    qr/mskslider\..*?updateRouteLengthPolicy.*?route_max_intermediates.*?route_exact_intermediates/s,
+    'route policy disables both inapplicable inputs and Material sliders',
+);
+like(
+    $settings,
+    qr/updateLastFmGuidance.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent/s,
+    'Last.fm guidance inputs follow the provider enable checkbox',
+);
+like(
+    $plugin_module,
+    qr/lastfm_track_guidance_percent\s*=>\s*25,.*?lastfm_artist_guidance_percent\s*=>\s*25,/s,
+    'new installations default both Last.fm guidance controls to 25 percent',
+);
+like(
+    $plugin_module,
+    qr/preference_defaults_version.*?<\s*2.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent.*?set\(\$name,\s*25\).*?==\s*75/s,
+    'legacy untouched 75 percent guidance defaults migrate once to 25 percent',
+);
 like(
     $plugin_module,
     qr/\['bettercallbliss',\s*'route_to'\]\s*,\s*\[1,\s*0,\s*1,\s*\\&routeToCommand\]/s,

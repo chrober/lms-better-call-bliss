@@ -1,98 +1,201 @@
+<style>
+  .hidden {
+    display: none;
+  }
+  .shown-section,
+  .hidden-section {
+    cursor: pointer;
+  }
+  .shown-section:before {
+    font-family: monospace !important;
+    content: "\25BC\00a0";
+  }
+  .hidden-section:before {
+    font-family: monospace !important;
+    content: "\25B6\00a0";
+  }
+</style>
+
 [% PROCESS settings/header.html %]
 
 [% WRAPPER settingSection %]
-  <h3>Job defaults</h3>
-  <p>
-    Bliss scoring and repeat values are initialized from BlissMixer whenever
-    the Extras job editor opens. They can then be overridden for one job without
-    changing either plugin's global settings. The values below supply the
-    defaults for new jobs.
-  </p>
+  <b style="font-size:125%" id="job-defaults-section-header" class="shown-section" onclick="toggleSection('job-defaults-section')">Job defaults</b><br><br>
+  <div id="job-defaults-section">
+    <p>
+      Bliss scoring and repeat values are initialized from BlissMixer whenever
+      the Extras job editor opens. They can then be overridden for one job without
+      changing either plugin's global settings. The values below supply the
+      defaults for new jobs.
+    </p>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_RESTART_COUNT" desc="PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC" %]
-    <input type="number" min="10" max="500" class="stdedit sliderInput_10_500_1" name="pref_restart_count" id="restart_count" value="[% prefs.restart_count %]" size="6">
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_RESTART_COUNT" desc="PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC" %]
+      <input type="number" min="10" max="500" class="stdedit sliderInput_10_500_1" name="pref_restart_count" id="restart_count" value="[% prefs.restart_count %]" size="6">
+    [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT" desc="PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_variation_percent" id="variation_percent" value="[% prefs.variation_percent %]" size="6">
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT" desc="PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT_DESC" %]
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_variation_percent" id="variation_percent" value="[% prefs.variation_percent %]" size="6">
+    [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC" %]
-    <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC" %]
+      <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
+    [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX_DESC" %]
-    <input type="text" class="stdedit" name="pref_extended_suffix" id="extended_suffix" value="[% prefs.extended_suffix %]" size="30">
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX_DESC" %]
+      <input type="text" class="stdedit" name="pref_extended_suffix" id="extended_suffix" value="[% prefs.extended_suffix %]" size="30">
+    [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET" desc="PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_auto_bridge_budget" id="auto_bridge_budget" value="[% prefs.auto_bridge_budget %]" size="6">
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET" desc="PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET_DESC" %]
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_auto_bridge_budget" id="auto_bridge_budget" value="[% prefs.auto_bridge_budget %]" size="6">
+    [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT" desc="PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_auto_trigger_percent" id="auto_trigger_percent" value="[% prefs.auto_trigger_percent %]" size="6">
-  [% END %]
-[% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT" desc="PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC" %]
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_auto_trigger_percent" id="auto_trigger_percent" value="[% prefs.auto_trigger_percent %]" size="6">
+    [% END %]
+  </div>
 
-[% WRAPPER settingSection %]
-  <h3>Bliss me there...</h3>
-  <p>The track context action starts a read-only destination-route preview immediately. These defaults replace the full Extras editor for that quick action; every job still records the exact values it used.</p>
+  <br><hr style="opacity:0.4" class="sub-sep"><br>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY" desc="PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY_DESC" %]
-    <select class="stdedit" name="pref_route_length_policy" id="route_length_policy">
-      <option value="automatic"[% IF prefs.route_length_policy == 'automatic' %] selected[% END %]>Choose automatically</option>
-      <option value="exact"[% IF prefs.route_length_policy == 'exact' %] selected[% END %]>Use an exact count</option>
-    </select>
-  [% END %]
+  <b style="font-size:125%" id="route-section-header" class="hidden-section" onclick="toggleSection('route-section')">Bliss me there...</b><br><br>
+  <div id="route-section" class="hidden">
+    <p>The track context action starts a destination-route job immediately. These defaults replace the full Extras editor for that quick action; every job still records the exact values it used.</p>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES" desc="PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC" %]
-    <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_max_intermediates" id="route_max_intermediates" value="[% prefs.route_max_intermediates %]" size="6">
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY" desc="PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY_DESC" %]
+      <select class="stdedit" name="pref_route_length_policy" id="route_length_policy" onchange="updateRouteLengthPolicy()">
+        <option value="automatic"[% IF prefs.route_length_policy == 'automatic' %] selected[% END %]>Choose automatically</option>
+        <option value="exact"[% IF prefs.route_length_policy == 'exact' %] selected[% END %]>Use an exact count</option>
+      </select>
+    [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES" desc="PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES_DESC" %]
-    <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_exact_intermediates" id="route_exact_intermediates" value="[% prefs.route_exact_intermediates %]" size="6">
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES" desc="PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC" %]
+      <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_max_intermediates" id="route_max_intermediates" value="[% prefs.route_max_intermediates %]" size="6"[% UNLESS prefs.route_length_policy == 'automatic' %] disabled[% END %]>
+    [% END %]
 
-  <p>The difficult-transition percentile above is the quality target used by Automatic destination routing. Automatic first looks for the shortest route that meets it; if none does, it returns the smoothest repeat-safe route available within the maximum intermediate-track budget and reports the achieved result. Current BlissMixer scoring, context, and repeat settings plus the Last.fm settings below are captured when the action starts.</p>
-[% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES" desc="PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES_DESC" %]
+      <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_exact_intermediates" id="route_exact_intermediates" value="[% prefs.route_exact_intermediates %]" size="6"[% UNLESS prefs.route_length_policy == 'exact' %] disabled[% END %]>
+    [% END %]
 
-[% WRAPPER settingSection %]
-  <h3>Last.fm guidance</h3>
-  <p>Every job can override these defaults. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. The guidance values only influence candidates that have already passed the local-library, repeat, and Bliss acoustic checks.</p>
+    <p>The difficult-transition percentile in Job defaults is the quality target used by Automatic destination routing. Automatic first looks for the shortest route that meets it; if none does, it returns the smoothest repeat-safe route available within the maximum intermediate-track budget and reports the achieved result. Current BlissMixer scoring, context, and repeat settings plus the Last.fm settings below are captured when the action starts.</p>
+  </div>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC" %]
-    <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %] [% UNLESS lastmix_available %]disabled[% END %]>
-    [% UNLESS lastmix_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE" | string %]</div>[% END %]
-  [% END %]
+  <br><hr style="opacity:0.4" class="sub-sep"><br>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
-  [% END %]
+  <b style="font-size:125%" id="lastfm-section-header" class="hidden-section" onclick="toggleSection('lastfm-section')">Last.fm guidance</b><br><br>
+  <div id="lastfm-section" class="hidden">
+    <p>Every job can override these defaults. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. The guidance values only influence candidates that have already passed the local-library, repeat, and Bliss acoustic checks.</p>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC" %]
-    <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6" [% UNLESS lastmix_available %]disabled[% END %]>
-  [% END %]
-[% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC" %]
+      <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %] [% UNLESS lastmix_available %]disabled[% END %] onchange="updateLastFmGuidance()">
+      [% UNLESS lastmix_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE" | string %]</div>[% END %]
+    [% END %]
 
-[% WRAPPER settingSection %]
-  <h3>Stored for features that are not connected yet</h3>
-  <p>ListenBrainz, semantic cache retention, and durable reports remain roadmap settings.</p>
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC" %]
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6"[% UNLESS lastmix_available && prefs.lastfm_enabled %] disabled[% END %]>
+    [% END %]
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED_DESC" %]
-    <input type="checkbox" name="pref_listenbrainz_enabled" id="listenbrainz_enabled" value="1" [% IF prefs.listenbrainz_enabled %]checked="checked"[% END %]>
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC" %]
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6"[% UNLESS lastmix_available && prefs.lastfm_enabled %] disabled[% END %]>
+    [% END %]
+  </div>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS" desc="PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS_DESC" %]
-    <input type="number" min="1" max="365" class="stdedit" name="pref_semantic_cache_days" id="semantic_cache_days" value="[% prefs.semantic_cache_days %]" size="6">
-  [% END %]
+  <br><hr style="opacity:0.4" class="sub-sep"><br>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS" desc="PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS_DESC" %]
-    <input type="number" min="1" max="3650" class="stdedit" name="pref_semantic_stale_days" id="semantic_stale_days" value="[% prefs.semantic_stale_days %]" size="6">
-  [% END %]
+  <b style="font-size:125%" id="roadmap-section-header" class="hidden-section" onclick="toggleSection('roadmap-section')">Stored for features that are not connected yet</b><br><br>
+  <div id="roadmap-section" class="hidden">
+    <p>ListenBrainz, semantic cache retention, and durable reports remain roadmap settings.</p>
 
-  [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS" desc="PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC" %]
-    <input type="number" min="1" max="3650" class="stdedit" name="pref_report_retention_days" id="report_retention_days" value="[% prefs.report_retention_days %]" size="6">
-  [% END %]
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED_DESC" %]
+      <input type="checkbox" name="pref_listenbrainz_enabled" id="listenbrainz_enabled" value="1" [% IF prefs.listenbrainz_enabled %]checked="checked"[% END %]>
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS" desc="PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS_DESC" %]
+      <input type="number" min="1" max="365" class="stdedit" name="pref_semantic_cache_days" id="semantic_cache_days" value="[% prefs.semantic_cache_days %]" size="6">
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS" desc="PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS_DESC" %]
+      <input type="number" min="1" max="3650" class="stdedit" name="pref_semantic_stale_days" id="semantic_stale_days" value="[% prefs.semantic_stale_days %]" size="6">
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS" desc="PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC" %]
+      <input type="number" min="1" max="3650" class="stdedit" name="pref_report_retention_days" id="report_retention_days" value="[% prefs.report_retention_days %]" size="6">
+    [% END %]
+  </div>
 [% END %]
 
 [% PROCESS settings/footer.html %]
+
+<script type="text/javascript">
+  function toggleSection(id) {
+    var section = document.getElementById(id);
+    if (section) {
+      setSectionShown(id, section.className.split(' ').includes('hidden'));
+    }
+  }
+
+  function setSectionShown(id, show) {
+    var section = document.getElementById(id);
+    var header = document.getElementById(id + '-header');
+    if (!section || !header) return;
+    section.classList.remove('hidden');
+    header.classList.remove('shown-section');
+    header.classList.remove('hidden-section');
+    if (show) {
+      header.classList.add('shown-section');
+    } else {
+      section.classList.add('hidden');
+      header.classList.add('hidden-section');
+    }
+    try {
+      if (window.localStorage) {
+        window.localStorage.setItem('better-call-bliss::' + id, show);
+      }
+    } catch (e) { }
+  }
+
+  function setInputAndSliderEnabled(id, enabled) {
+    var input = document.getElementById(id);
+    var slider = document.getElementById('mskslider.' + id);
+    if (input) input.disabled = !enabled;
+    if (slider) slider.disabled = !enabled;
+  }
+
+  function updateRouteLengthPolicy() {
+    var policy = document.getElementById('route_length_policy');
+    var automatic = policy && policy.value === 'automatic';
+    setInputAndSliderEnabled('route_max_intermediates', automatic);
+    setInputAndSliderEnabled('route_exact_intermediates', !automatic);
+  }
+
+  function updateLastFmGuidance() {
+    var checkbox = document.getElementById('lastfm_enabled');
+    var enabled = checkbox && checkbox.checked && !checkbox.disabled;
+    setInputAndSliderEnabled('lastfm_track_guidance_percent', enabled);
+    setInputAndSliderEnabled('lastfm_artist_guidance_percent', enabled);
+  }
+
+  window.addEventListener('load', function () {
+    var defaults = {
+      'job-defaults-section': true,
+      'route-section': false,
+      'lastfm-section': false,
+      'roadmap-section': false
+    };
+    try {
+      Object.keys(defaults).forEach(function (id) {
+        var stored = window.localStorage
+          ? window.localStorage.getItem('better-call-bliss::' + id)
+          : null;
+        setSectionShown(id, stored === null ? defaults[id] : stored === 'true');
+      });
+    } catch (e) {
+      Object.keys(defaults).forEach(function (id) {
+        setSectionShown(id, defaults[id]);
+      });
+    }
+    updateRouteLengthPolicy();
+    updateLastFmGuidance();
+    window.setTimeout(function () {
+      updateRouteLengthPolicy();
+      updateLastFmGuidance();
+    }, 0);
+  });
+</script>

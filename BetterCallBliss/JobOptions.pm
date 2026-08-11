@@ -13,10 +13,10 @@ sub defaults {
     $trigger_percent = 70 unless defined $trigger_percent;
     my $lastfm_track_guidance =
         $plugin_prefs->get('lastfm_track_guidance_percent');
-    $lastfm_track_guidance = 75 unless defined $lastfm_track_guidance;
+    $lastfm_track_guidance = 25 unless defined $lastfm_track_guidance;
     my $lastfm_artist_guidance =
         $plugin_prefs->get('lastfm_artist_guidance_percent');
-    $lastfm_artist_guidance = 75 unless defined $lastfm_artist_guidance;
+    $lastfm_artist_guidance = 25 unless defined $lastfm_artist_guidance;
     my $default_algorithm = $capability->{algorithm} || 'adaptive';
     $default_algorithm = 'adaptive' if $default_algorithm eq 'forest';
     my $variation_percent = $plugin_prefs->get('variation_percent');

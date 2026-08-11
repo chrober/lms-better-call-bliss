@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 29;
+use Test::More tests => 31;
 
 BEGIN {
     package TestPrefs;
@@ -48,9 +48,9 @@ is($defaults->{restart_count}, 80,
 is($defaults->{lastfm_enabled}, 1,
     'Last.fm default is read from plugin preferences');
 is($defaults->{lastfm_track_guidance_percent}, 75,
-    'track guidance default is 75');
+    'explicit track-guidance preference is retained');
 is($defaults->{lastfm_artist_guidance_percent}, 75,
-    'artist guidance default is 75');
+    'explicit artist-guidance preference is retained');
 is($defaults->{max_added_tracks}, 12,
     'automatic addition budget default is read from plugin preferences');
 is($defaults->{trigger_percent}, 65,
@@ -62,6 +62,16 @@ is($defaults->{route_max_intermediates}, 6,
     'destination automatic maximum is read from plugin preferences');
 is($defaults->{route_exact_intermediates}, 3,
     'destination exact count is read from plugin preferences');
+
+my $saved_track_guidance = delete $TestPrefs::values{lastfm_track_guidance_percent};
+my $saved_artist_guidance = delete $TestPrefs::values{lastfm_artist_guidance_percent};
+my $fallback_defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
+is($fallback_defaults->{lastfm_track_guidance_percent}, 25,
+    'missing track-guidance preference falls back to 25');
+is($fallback_defaults->{lastfm_artist_guidance_percent}, 25,
+    'missing artist-guidance preference falls back to 25');
+$TestPrefs::values{lastfm_track_guidance_percent} = $saved_track_guidance;
+$TestPrefs::values{lastfm_artist_guidance_percent} = $saved_artist_guidance;
 
 my $legacy_exact = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

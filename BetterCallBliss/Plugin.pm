@@ -34,7 +34,10 @@ sub initPlugin {
     my $class = shift;
     return 1 if $initialized;
 
+    my $preference_defaults_version =
+        $prefs->get('preference_defaults_version') || 0;
     $prefs->init({
+        preference_defaults_version => 2,
         output_suffix => 'Optimized',
         extended_suffix => 'Extended',
         restart_count => 50,
@@ -48,10 +51,19 @@ sub initPlugin {
         semantic_cache_days => 30,
         semantic_stale_days => 90,
         lastfm_enabled => 0,
-        lastfm_track_guidance_percent => 75,
-        lastfm_artist_guidance_percent => 75,
+        lastfm_track_guidance_percent => 25,
+        lastfm_artist_guidance_percent => 25,
         listenbrainz_enabled => 0,
     });
+    if ($preference_defaults_version < 2) {
+        for my $name (qw(
+            lastfm_track_guidance_percent
+            lastfm_artist_guidance_percent
+        )) {
+            $prefs->set($name, 25) if ($prefs->get($name) || 0) == 75;
+        }
+        $prefs->set('preference_defaults_version', 2);
+    }
     my $dir = dirname(__FILE__);
     _loadStrings($dir);
     if (main::ISWINDOWS) {
