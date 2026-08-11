@@ -241,12 +241,36 @@ sub status_detail {
     return join(' ', @$lines);
 }
 
+sub _preview_workflow_total {
+    my $job = shift || {};
+    my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
+    return ($options->{extension_mode} || 'none') ne 'none' ? 6 : 4;
+}
+
+sub _compact_status_step {
+    my $job = shift || {};
+    my $total = _preview_workflow_total($job);
+    my $state = $job->{state} || '';
+    return ($total, $total) if $state eq 'completed' || $state eq 'cancelled';
+    return ($total, $total) if $state eq 'failed';
+    if ($state eq 'running') {
+        return $total == 6 ? (4, $total) : (2, $total)
+            if $job->{process} || ref($job->{native_progress}) eq 'HASH';
+        return (3, $total) if $total == 6;
+        return (1, $total);
+    }
+    return (1, $total);
+}
+
 sub compact_status {
-    my $lines = status_detail_lines(shift);
+    my $job = shift || {};
+    my $lines = status_detail_lines($job);
     my $status = @$lines ? ($lines->[0] || '') : '';
     $status =~ s/^Status:\s*//;
     $status =~ s/^native optimizer\s*-\s*//i;
-    return $status;
+    return $status if $status =~ /^\[\d+\/\d+\]\s/;
+    my ($step, $total) = _compact_status_step($job);
+    return "[$step/$total] $status";
 }
 
 sub duration_text {
