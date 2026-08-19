@@ -156,7 +156,7 @@
     [% bettercallbliss_job.route_tail_label | html %] &rarr;
     [% bettercallbliss_job.route_target_label | html %].
     The optimizer uses [% bettercallbliss_job.route_source_context_count %] recent queue tracks as available acoustic/repeat context,
-    [% IF bettercallbliss_job.route_length_policy == 'automatic' %]chooses zero to [% bettercallbliss_job.route_max_intermediates %] intermediate tracks automatically[% ELSE %]uses exactly [% bettercallbliss_job.route_exact_intermediates %] intermediate tracks[% END %],
+    [% IF bettercallbliss_job.route_length_policy == 'automatic' %]chooses [% bettercallbliss_job.route_min_intermediates %] to [% bettercallbliss_job.route_max_intermediates %] intermediate tracks automatically[% ELSE %]uses exactly [% bettercallbliss_job.route_exact_intermediates %] intermediate tracks[% END %],
     and snapshots the current BlissMixer and Last.fm settings into this job.
     <a href="[% webroot %][% bettercallbliss_advanced_route_url | html %]">Open advanced options</a>.
   </div>
@@ -195,6 +195,10 @@
           <option value="exact"[% IF bettercallbliss_form.route_length_policy == 'exact' %] selected[% END %]>Use an exact count</option>
         </select>
       </div>
+      <div class="bea-row" id="route_min_intermediates_row">
+        <label for="route_min_intermediates">Minimum intermediate tracks</label>
+        <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="route_min_intermediates" id="route_min_intermediates" value="[% bettercallbliss_form.route_min_intermediates %]" required>
+      </div>
       <div class="bea-row" id="route_max_intermediates_row">
         <label for="route_max_intermediates">Maximum intermediate tracks</label>
         <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="route_max_intermediates" id="route_max_intermediates" value="[% bettercallbliss_form.route_max_intermediates %]" required>
@@ -207,7 +211,7 @@
         <label for="trigger_percent">Transition quality target percentile (%)</label>
         <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
       </div>
-      <p class="bea-note">Automatic searches complete destination paths from the direct transition through the configured intermediate-track budget and chooses the shortest path that meets the adjacent target, or the smoothest bounded best effort. Exact uses the requested number with the same adjacent objective. Search effort controls breadth; Last.fm supplies optional supporting evidence.</p>
+      <p class="bea-note">Automatic searches complete destination paths between the configured minimum and maximum. It chooses the shortest permitted path that meets the adjacent target, or the smoothest permitted best effort. A minimum of zero allows the direct destination. Exact uses the requested number with the same adjacent objective. Search effort controls breadth; Last.fm supplies optional supporting evidence.</p>
     [% ELSE %]
       <div class="bea-row">
         <label for="source_mode">Input source</label>
@@ -491,9 +495,11 @@
     var doubleSummary = document.getElementById('double_count_summary');
     var maximumAdditions = document.getElementById('max_added_tracks');
     var routeLengthPolicy = document.getElementById('route_length_policy');
+    var routeMinimum = document.getElementById('route_min_intermediates');
     var routeMaximum = document.getElementById('route_max_intermediates');
     var routeExact = document.getElementById('route_exact_intermediates');
     var routeMaximumRow = document.getElementById('route_max_intermediates_row');
+    var routeMinimumRow = document.getElementById('route_min_intermediates_row');
     var routeExactRow = document.getElementById('route_exact_intermediates_row');
     var learnedPercentRow = document.getElementById('learned_percent_row');
     var restarts = document.getElementById('restart_count');
@@ -602,12 +608,17 @@
       var destinationRoute = sourceMode && sourceMode.value === 'route_to_track';
       if (destinationRoute) {
         var exactRoute = routeLengthPolicy && routeLengthPolicy.value === 'exact';
+        var minimumRouteTracks = parseInt(routeMinimum && routeMinimum.value || '0', 10);
         var maximumRouteTracks = parseInt(routeMaximum && routeMaximum.value || '0', 10);
         var exactRouteTracks = parseInt(routeExact && routeExact.value || '0', 10);
-        var invalidRoute = maximumRouteTracks < 0 || maximumRouteTracks > 8
+        var invalidRoute = minimumRouteTracks < 0 || minimumRouteTracks > 8
+          || maximumRouteTracks < 0 || maximumRouteTracks > 8
+          || (!exactRoute && minimumRouteTracks > maximumRouteTracks)
           || (exactRoute && (exactRouteTracks < 0 || exactRouteTracks > 8));
+        setVisible(routeMinimumRow, !exactRoute);
         setVisible(routeMaximumRow, !exactRoute);
         setVisible(routeExactRow, exactRoute);
+        if (routeMinimum) routeMinimum.readOnly = exactRoute;
         if (routeMaximum) routeMaximum.readOnly = exactRoute;
         if (routeExact) routeExact.readOnly = !exactRoute;
         submit.disabled = !capabilityReady || invalidRoute;
@@ -746,6 +757,7 @@
     if (exactCount) exactCount.addEventListener('input', synchronizeControls);
     if (bridgeTarget) bridgeTarget.addEventListener('input', synchronizeControls);
     if (routeLengthPolicy) routeLengthPolicy.addEventListener('change', synchronizeControls);
+    if (routeMinimum) routeMinimum.addEventListener('input', synchronizeControls);
     if (routeMaximum) routeMaximum.addEventListener('input', synchronizeControls);
     if (routeExact) routeExact.addEventListener('input', synchronizeControls);
     if (lastFmEnabled) lastFmEnabled.addEventListener('change', synchronizeControls);

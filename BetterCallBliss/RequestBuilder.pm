@@ -465,6 +465,11 @@ sub _build_sequence_request {
                         ? $options->{route_exact_intermediates}
                         : $options->{route_max_intermediates},
                 ),
+                ($options->{route_length_policy} eq 'automatic' ? (
+                    min_added_tracks => _json_integer(
+                        $options->{route_min_intermediates},
+                    ),
+                ) : ()),
                 trigger_percentile => $options->{trigger_percent} / 100,
                 ($options->{route_length_policy} eq 'exact' ? (
                     additional_track_count => _json_integer(

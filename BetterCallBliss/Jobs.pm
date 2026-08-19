@@ -127,6 +127,16 @@ sub _extension_detail {
     return 'Additional tracks: extend the playlist against the complete source '
         . 'set as the fixed reference.'
         if $mode eq 'fixed_source_extension';
+    return 'Destination route: choose between '
+        . (0 + ($options->{route_min_intermediates} || 0))
+        . ' and ' . (0 + ($options->{route_max_intermediates} || 0))
+        . ' intermediate tracks automatically.'
+        if $mode eq 'destination_route'
+            && ($options->{route_length_policy} || '') eq 'automatic';
+    return 'Destination route: use exactly '
+        . (0 + ($options->{route_exact_intermediates} || 0))
+        . ' intermediate tracks.'
+        if $mode eq 'destination_route';
     return 'Additional tracks: ' . $mode;
 }
 
@@ -484,7 +494,12 @@ sub _start_preview_from_built {
         . " variation=$effective->{variation_percent}"
         . " generation_seed=$effective->{generation_seed}"
         . ($effective->{extension_mode} eq 'destination_route'
-            ? " search_effort=$effective->{route_search_effort}" : '')
+            ? " search_effort=$effective->{route_search_effort}"
+                . " route_length_policy=$effective->{route_length_policy}"
+                . " route_min_intermediates=$effective->{route_min_intermediates}"
+                . " route_max_intermediates=$effective->{route_max_intermediates}"
+                . " route_exact_intermediates=$effective->{route_exact_intermediates}"
+            : '')
         . " lastfm=" . ($effective->{lastfm_enabled} ? 'enabled' : 'disabled')
         . " lastfm_track_guidance=$effective->{lastfm_track_guidance_percent}"
         . " lastfm_artist_guidance=$effective->{lastfm_artist_guidance_percent}"

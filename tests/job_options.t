@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 33;
+use Test::More tests => 36;
 
 BEGIN {
     package TestPrefs;
@@ -15,6 +15,7 @@ BEGIN {
         variation_percent => '35',
         route_length_policy => 'exact',
         route_search_effort => 'balanced',
+        route_min_intermediates => '2',
         route_max_intermediates => '6',
         route_exact_intermediates => '3',
     );
@@ -59,6 +60,8 @@ is($defaults->{trigger_percent}, 65,
     'variation default is read from plugin preferences');
 is($defaults->{route_length_policy}, 'exact',
     'destination route policy is read from plugin preferences');
+is($defaults->{route_min_intermediates}, 2,
+    'destination automatic minimum is read from plugin preferences');
 is($defaults->{route_max_intermediates}, 6,
     'destination automatic maximum is read from plugin preferences');
 is($defaults->{route_exact_intermediates}, 3,
@@ -152,6 +155,32 @@ my $independent_exact = Plugins::BetterCallBliss::JobOptions::normalize(
 );
 is($independent_exact->{route_exact_intermediates}, 3,
     'destination exact count is independent from the automatic maximum');
+
+my $automatic_minimum = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {
+        extension_mode => 'destination_route',
+        route_length_policy => 'automatic',
+        route_min_intermediates => '3',
+        route_max_intermediates => '5',
+    },
+);
+is($automatic_minimum->{route_min_intermediates}, 3,
+    'destination automatic minimum is normalized to an integer');
+
+eval {
+    Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability,
+        {
+            extension_mode => 'destination_route',
+            route_length_policy => 'automatic',
+            route_min_intermediates => '6',
+            route_max_intermediates => '5',
+        },
+    );
+};
+like($@, qr/must not exceed the maximum/,
+    'destination automatic minimum cannot exceed its maximum');
 
 my $named = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

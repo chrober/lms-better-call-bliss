@@ -27,6 +27,7 @@ sub prefs {
         auto_trigger_percent
         route_search_effort
         route_length_policy
+        route_min_intermediates
         route_max_intermediates
         route_exact_intermediates
         report_retention_days
@@ -61,8 +62,16 @@ sub handler {
     _clamp($params, 'pref_variation_percent', 0, 100);
     _clamp($params, 'pref_auto_bridge_budget', 0, 100);
     _clamp($params, 'pref_auto_trigger_percent', 0, 100);
+    _clamp($params, 'pref_route_min_intermediates', 0, 8);
     _clamp($params, 'pref_route_max_intermediates', 0, 8);
     _clamp($params, 'pref_route_exact_intermediates', 0, 8);
+    if (defined $params->{pref_route_min_intermediates}
+        && defined $params->{pref_route_max_intermediates}
+        && $params->{pref_route_min_intermediates}
+            > $params->{pref_route_max_intermediates}) {
+        $params->{pref_route_min_intermediates}
+            = $params->{pref_route_max_intermediates};
+    }
     if (defined $params->{pref_route_length_policy}
         && $params->{pref_route_length_policy} ne 'automatic'
         && $params->{pref_route_length_policy} ne 'exact') {

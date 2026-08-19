@@ -79,7 +79,7 @@ like(
 );
 like(
     $settings,
-    qr/mskslider\..*?updateRouteLengthPolicy.*?route_max_intermediates.*?route_exact_intermediates/s,
+    qr/mskslider\..*?updateRouteLengthPolicy.*?route_min_intermediates.*?route_max_intermediates.*?route_exact_intermediates/s,
     'route policy disables both inapplicable inputs and Material sliders',
 );
 like(

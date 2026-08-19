@@ -214,6 +214,9 @@ sub resolve_bridge_preview {
             : ($job->{options}->{route_max_intermediates} || 0);
         _fail('BRIDGE_ARTIFACT_INVALID', 'The destination route exceeded its configured maximum')
             if @bridges > $route_budget;
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The automatic destination route used fewer than its configured minimum')
+            if ($job->{options}->{route_length_policy} || '') eq 'automatic'
+                && @bridges < ($job->{options}->{route_min_intermediates} || 0);
         _fail('BRIDGE_ARTIFACT_INVALID', 'The exact destination route changed its requested count')
             if ($job->{options}->{route_length_policy} || '') eq 'exact'
                 && @bridges != ($job->{options}->{route_exact_intermediates} || 0);

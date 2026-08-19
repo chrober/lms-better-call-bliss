@@ -129,7 +129,7 @@ sub _form_from_params {
         source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
-        route_length_policy route_max_intermediates route_exact_intermediates
+        route_length_policy route_min_intermediates route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback
@@ -339,6 +339,7 @@ sub _result_view {
         route_target_label => $job->{route_target_label},
         route_source_context_count => 0 + ($job->{route_source_context_count} || 0),
         route_length_policy => $job->{options}->{route_length_policy},
+        route_min_intermediates => 0 + ($job->{options}->{route_min_intermediates} || 0),
         route_max_intermediates => 0 + ($job->{options}->{route_max_intermediates} || 0),
         route_exact_intermediates => 0 + ($job->{options}->{route_exact_intermediates} || 0),
     };

@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 29;
+use Test::More tests => 31;
 use JSON::XS ();
 
 BEGIN {
@@ -74,6 +74,7 @@ BEGIN {
             bridge_target_track_count => $bridge_target_track_count,
             target_track_count => '25',
             route_length_policy => 'automatic',
+            route_min_intermediates => '0',
             route_max_intermediates => '4',
             route_exact_intermediates => '2',
             route_search_effort => 'fast',
@@ -210,12 +211,14 @@ is($destination_request->{extension}->{destination_mode}, 'automatic',
     'destination route carries the automatic length policy');
 is($destination_request->{extension}->{max_added_tracks}, 4,
     'destination maximum is serialized as a JSON integer');
+is($destination_request->{extension}->{min_added_tracks}, 0,
+    'destination minimum is serialized as a JSON integer');
 is($destination_request->{extension}->{search_effort}, 'fast',
     'destination route carries its selected search effort');
 is($destination_request->{extension}->{candidate_limit}, 6,
     'Fast destination search uses the bounded candidate width');
 is($destination_request->{extension}->{shortlist_limit}, 128,
-    'Fast destination search uses the Raspberry Pi shortlist bound');
+    'Fast destination search uses the bounded shortlist');
 is($destination_request->{extension}->{trigger_percentile}, 0.7,
     'destination quality threshold is serialized as a JSON number');
 is($destination_request->{selection}->{variation_percent}, 25,
@@ -224,3 +227,5 @@ is($destination_request->{selection}->{generation_seed}, 123456,
     'destination route carries its reproducible generation seed');
 unlike($destination_json, qr/"max_added_tracks"\s*:\s*"4"/,
     'destination numeric fields are never serialized as strings');
+unlike($destination_json, qr/"min_added_tracks"\s*:\s*"0"/,
+    'destination minimum is never serialized as a string');

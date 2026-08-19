@@ -46,6 +46,7 @@ sub initPlugin {
         auto_trigger_percent => 70,
         route_length_policy => 'automatic',
         route_search_effort => 'fast',
+        route_min_intermediates => 0,
         route_max_intermediates => 4,
         route_exact_intermediates => 2,
         report_retention_days => 30,

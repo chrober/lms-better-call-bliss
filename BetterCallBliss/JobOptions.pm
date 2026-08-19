@@ -49,6 +49,9 @@ sub defaults {
         trigger_percent => int($trigger_percent),
         route_length_policy => $route_length_policy,
         route_search_effort => $route_search_effort,
+        route_min_intermediates => int(
+            $plugin_prefs->get('route_min_intermediates') // 0,
+        ),
         route_max_intermediates => int(
             $plugin_prefs->get('route_max_intermediates') // 4,
         ),
@@ -208,6 +211,10 @@ sub normalize {
     die "Bliss me there search effort must be Fast, Balanced, or Thorough"
         unless $options->{route_search_effort} =~ /^(?:fast|balanced|thorough)$/;
 
+    $options->{route_min_intermediates} = _integer(
+        $input, 'route_min_intermediates', 0, 8,
+        $options->{route_min_intermediates},
+    );
     $options->{route_max_intermediates} = _integer(
         $input, 'route_max_intermediates', 0, 8,
         $options->{route_max_intermediates},
@@ -216,6 +223,10 @@ sub normalize {
         $input, 'route_exact_intermediates', 0, 8,
         $options->{route_exact_intermediates},
     );
+    die 'Minimum intermediate tracks must not exceed the maximum'
+        if $options->{route_length_policy} eq 'automatic'
+            && $options->{route_min_intermediates}
+                > $options->{route_max_intermediates};
 
     $options->{additional_track_count} = _integer(
         $input, 'additional_track_count', 1, 100,

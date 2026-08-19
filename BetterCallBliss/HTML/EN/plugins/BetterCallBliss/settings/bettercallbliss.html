@@ -73,8 +73,13 @@
         <option value="thorough"[% IF prefs.route_search_effort == 'thorough' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_THOROUGH" | string %]</option>
       </select>
     [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_MIN_INTERMEDIATES" desc="PLUGIN_BETTERCALLBLISS_ROUTE_MIN_INTERMEDIATES_DESC" %]
+      <input type="number" min="0" max="[% prefs.route_max_intermediates %]" class="stdedit sliderInput_0_8_1" name="pref_route_min_intermediates" id="route_min_intermediates" value="[% prefs.route_min_intermediates %]" size="6"[% UNLESS prefs.route_length_policy == 'automatic' %] disabled[% END %]>
+    [% END %]
+
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES" desc="PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC" %]
-      <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_max_intermediates" id="route_max_intermediates" value="[% prefs.route_max_intermediates %]" size="6"[% UNLESS prefs.route_length_policy == 'automatic' %] disabled[% END %]>
+      <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_max_intermediates" id="route_max_intermediates" value="[% prefs.route_max_intermediates %]" size="6" onchange="updateRouteIntermediateBounds()"[% UNLESS prefs.route_length_policy == 'automatic' %] disabled[% END %]>
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES" desc="PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES_DESC" %]
@@ -168,8 +173,25 @@
   function updateRouteLengthPolicy() {
     var policy = document.getElementById('route_length_policy');
     var automatic = policy && policy.value === 'automatic';
+    setInputAndSliderEnabled('route_min_intermediates', automatic);
     setInputAndSliderEnabled('route_max_intermediates', automatic);
     setInputAndSliderEnabled('route_exact_intermediates', !automatic);
+    updateRouteIntermediateBounds();
+  }
+
+  function updateRouteIntermediateBounds() {
+    var minimum = document.getElementById('route_min_intermediates');
+    var maximum = document.getElementById('route_max_intermediates');
+    var minimumSlider = document.getElementById('mskslider.route_min_intermediates');
+    if (!minimum || !maximum) return;
+    var maximumValue = parseInt(maximum.value, 10);
+    if (isNaN(maximumValue)) maximumValue = 8;
+    minimum.max = maximumValue;
+    if (minimumSlider) minimumSlider.max = maximumValue;
+    if (parseInt(minimum.value, 10) > maximumValue) {
+      minimum.value = maximumValue;
+      if (minimumSlider) minimumSlider.value = maximumValue;
+    }
   }
 
   function updateLastFmGuidance() {

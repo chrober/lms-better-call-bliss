@@ -79,12 +79,12 @@ PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT
 	DE	Suchaufwand
 
 PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT_DESC
-	EN	Fast is tuned for Raspberry Pi latency. Balanced and Thorough search progressively wider candidate paths on more powerful servers; they do not relax the quality target or repeat rules.
-	DE	Schnell ist auf Raspberry-Pi-Latenz abgestimmt. Ausgewogen und Gründlich durchsuchen auf leistungsfähigeren Servern zunehmend mehr Kandidatenpfade; Qualitätsziel und Wiederholungsregeln bleiben unverändert.
+	EN	Fast searches a deliberately narrow candidate set. Balanced and Thorough progressively widen the search and may take longer; they do not relax the quality target or repeat rules.
+	DE	Schnell durchsucht bewusst eine begrenzte Kandidatenmenge. Ausgewogen und Gründlich erweitern die Suche schrittweise und können länger dauern; Qualitätsziel und Wiederholungsregeln bleiben unverändert.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_FAST
-	EN	Fast (Raspberry Pi)
-	DE	Schnell (Raspberry Pi)
+	EN	Fast
+	DE	Schnell
 
 PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_BALANCED
 	EN	Balanced
@@ -97,6 +97,14 @@ PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_THOROUGH
 PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES
 	EN	Maximum intermediate tracks
 	DE	Maximale Anzahl Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_ROUTE_MIN_INTERMEDIATES
+	EN	Minimum intermediate tracks
+	DE	Minimale Anzahl Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_ROUTE_MIN_INTERMEDIATES_DESC
+	EN	Automatic routing uses at least this many intermediate tracks, even when the direct transition already meets the measured target. It must not exceed the maximum.
+	DE	Die automatische Route verwendet mindestens so viele Zwischentitel, auch wenn der direkte Uebergang das gemessene Ziel bereits erreicht. Der Wert darf das Maximum nicht ueberschreiten.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC
 	EN	Upper bound searched by Automatic Bliss me there routing. The final route separately reports whether its actual adjacent transitions meet the target. Zero permits only the direct destination.
