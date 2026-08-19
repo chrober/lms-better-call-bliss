@@ -26,13 +26,15 @@ use Plugins::BetterCallBliss::QueueWriter;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $server_prefs = preferences('server');
-my ($optimizer_binary, $job_root, $library_cache_root, $optimizer_supports_progress);
+my ($optimizer_binary, $job_root, $library_cache_root,
+    $optimizer_supports_progress, $optimizer_supports_trusted_request);
 my %jobs;
 my $serial = 0;
 
 sub init {
     $optimizer_binary = shift;
     $optimizer_supports_progress = shift ? 1 : 0;
+    $optimizer_supports_trusted_request = shift ? 1 : 0;
     my $cache_root = ($server_prefs->get('cachedir') || Slim::Utils::Prefs::dir())
         . '/bettercallbliss';
     $job_root = $cache_root . '/jobs';
@@ -341,6 +343,7 @@ sub _launch_optimizer {
         $optimizer_binary, $job->{native_command}, '--request',
         $job->{request_path}, '--timings', '--cache-dir', $library_cache_root,
     );
+    push @params, '--trusted-request' if $optimizer_supports_trusted_request;
     push @params, '--progress', $job->{progress_path}
         if $optimizer_supports_progress && $job->{progress_path};
 

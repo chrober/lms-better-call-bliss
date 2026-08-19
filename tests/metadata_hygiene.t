@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 31;
+use Test::More tests => 33;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -110,6 +110,16 @@ like(
     'Bliss me there invokes a direct LMS command instead of opening Extras',
 );
 my $jobs = slurp(File::Spec->catfile($plugin, 'Jobs.pm'));
+like(
+    $plugin_module,
+    qr/my \$optimizer_supports_trusted_request\s*=\s*_optimizerSupportsTrustedRequest.*?Jobs::init\(.*?\$optimizer_supports_trusted_request/s,
+    'plugin enables trusted requests only after optimizer capability detection',
+);
+like(
+    $jobs,
+    qr/push \@params,\s*'--trusted-request'\s+if \$optimizer_supports_trusted_request/,
+    'optimizer launch adds the trusted flag only when the capability is advertised',
+);
 like(
     $jobs,
     qr/\$job->\{state\}\s+eq\s+'completed'\s+&&\s+\$job->\{auto_apply\}.*?send_to_queue\(\$job_id/s,

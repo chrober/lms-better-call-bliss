@@ -78,8 +78,14 @@ sub initPlugin {
     }
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
     my $optimizer_supports_progress = _optimizerSupportsProgress($optimizer_binary);
+    my $optimizer_supports_trusted_request =
+        _optimizerSupportsTrustedRequest($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init($optimizer_binary);
-    Plugins::BetterCallBliss::Jobs::init($optimizer_binary, $optimizer_supports_progress);
+    Plugins::BetterCallBliss::Jobs::init(
+        $optimizer_binary,
+        $optimizer_supports_progress,
+        $optimizer_supports_trusted_request,
+    );
     Plugins::BetterCallBliss::ContextMenu::init();
 
     if (main::WEBUI) {
@@ -105,7 +111,9 @@ sub initPlugin {
     );
     $initialized = 1;
     $log->info('initialized optimizer=' . ($optimizer_binary || 'missing')
-        . ' progress=' . ($optimizer_supports_progress ? 'supported' : 'unsupported'));
+        . ' progress=' . ($optimizer_supports_progress ? 'supported' : 'unsupported')
+        . ' trusted_request='
+        . ($optimizer_supports_trusted_request ? 'supported' : 'unsupported'));
     return 1;
 }
 
@@ -126,6 +134,15 @@ sub _optimizerSupportsProgress {
     return 1 if $version->[0] == 0 && $version->[1] > 1;
     return 1 if $version->[0] == 0 && $version->[1] == 1 && $version->[2] >= 3;
     return 0;
+}
+
+sub _optimizerSupportsTrustedRequest {
+    my $binary = shift;
+    return 0 unless $binary && -x $binary;
+    my $quoted = $binary;
+    $quoted =~ s/"/\\"/g;
+    my $output = eval { qx("$quoted" version --json) } || '';
+    return $output =~ /"trusted_request"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _loadStrings {
