@@ -29,8 +29,10 @@ which is bundled with supported plugin packages.
   per-job variation, and optional Last.fm similar-track and similar-artist guidance.
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the
   current-plus-upcoming queue segment as input.
-- Offers **Bliss me there...** on a local track: it builds a destination-locked
-  route in the background, then automatically appends it after a live-tail check.
+- Offers **Bliss me there...** on a local track: it builds a destination-locked  
+  adjacent path in the background, then automatically appends it after a  
+  live-tail check. Fast, Balanced, and Thorough search profiles let users trade  
+  Raspberry Pi-oriented latency for a wider search on more powerful servers.  
 - Shows a read-only preview and diagnostics before creating a verified copy,
   overwriting the source playlist, or sending the result to a player queue.
 - Can replace, append to, play next, or replace only the upcoming part of a

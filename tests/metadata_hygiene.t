@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 30;
+use Test::More tests => 31;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -45,6 +45,7 @@ for my $token (qw(
     PLUGIN_BETTERCALLBLISS_RESTART_COUNT
     PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT
     PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY
+    PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT
     PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES
     PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES
     PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE

@@ -66,6 +66,13 @@
       </select>
     [% END %]
 
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT" desc="PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT_DESC" %]
+      <select class="stdedit" name="pref_route_search_effort" id="route_search_effort">
+        <option value="fast"[% IF prefs.route_search_effort == 'fast' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_FAST" | string %]</option>
+        <option value="balanced"[% IF prefs.route_search_effort == 'balanced' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_BALANCED" | string %]</option>
+        <option value="thorough"[% IF prefs.route_search_effort == 'thorough' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_THOROUGH" | string %]</option>
+      </select>
+    [% END %]
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES" desc="PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC" %]
       <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_max_intermediates" id="route_max_intermediates" value="[% prefs.route_max_intermediates %]" size="6"[% UNLESS prefs.route_length_policy == 'automatic' %] disabled[% END %]>
     [% END %]
@@ -74,7 +81,7 @@
       <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_exact_intermediates" id="route_exact_intermediates" value="[% prefs.route_exact_intermediates %]" size="6"[% UNLESS prefs.route_length_policy == 'exact' %] disabled[% END %]>
     [% END %]
 
-    <p>The difficult-transition percentile in Job defaults is the quality target used by Automatic destination routing. Automatic first looks for the shortest route that meets it; if none does, it returns the smoothest repeat-safe route available within the maximum intermediate-track budget and reports the achieved result. Current BlissMixer scoring, context, and repeat settings plus the Last.fm settings below are captured when the action starts.</p>
+    <p>The difficult-transition percentile currently serves both as the direct-transition trigger and the maximum adjacent-percentile target for Automatic destination routing. The optimizer searches complete paths with the selected effort and reports whether the target was reached; Exact uses the same adjacent objective for its fixed count. Separate trigger and target controls are planned. Current BlissMixer scoring, context, and repeat settings plus the Last.fm settings below are captured when the action starts.</p>
   </div>
 
   <br><hr style="opacity:0.4" class="sub-sep"><br>

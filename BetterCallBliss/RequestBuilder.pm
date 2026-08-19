@@ -451,8 +451,15 @@ sub _build_sequence_request {
             : $options->{extension_mode} eq 'destination_route' ? {
                 mode => 'destination_route',
                 destination_mode => $options->{route_length_policy},
-                candidate_limit => _json_integer(8),
-                shortlist_limit => _json_integer(256),
+                search_effort => $options->{route_search_effort},
+                candidate_limit => _json_integer(
+                    $options->{route_search_effort} eq 'thorough' ? 16
+                        : $options->{route_search_effort} eq 'balanced' ? 8 : 6,
+                ),
+                shortlist_limit => _json_integer(
+                    $options->{route_search_effort} eq 'thorough' ? 512
+                        : $options->{route_search_effort} eq 'balanced' ? 256 : 128,
+                ),
                 max_added_tracks => _json_integer(
                     $options->{route_length_policy} eq 'exact'
                         ? $options->{route_exact_intermediates}

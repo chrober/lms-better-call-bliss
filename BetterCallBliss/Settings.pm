@@ -25,6 +25,7 @@ sub prefs {
         variation_percent
         auto_bridge_budget
         auto_trigger_percent
+        route_search_effort
         route_length_policy
         route_max_intermediates
         route_exact_intermediates
@@ -66,6 +67,12 @@ sub handler {
         && $params->{pref_route_length_policy} ne 'automatic'
         && $params->{pref_route_length_policy} ne 'exact') {
         $params->{pref_route_length_policy} = 'automatic';
+    }
+    if (defined $params->{pref_route_search_effort}
+        && $params->{pref_route_search_effort} ne 'fast'
+        && $params->{pref_route_search_effort} ne 'balanced'
+        && $params->{pref_route_search_effort} ne 'thorough') {
+        $params->{pref_route_search_effort} = 'fast';
     }
     _clamp($params, 'pref_report_retention_days', 1, 3650);
     _clamp($params, 'pref_semantic_cache_days', 1, 365);

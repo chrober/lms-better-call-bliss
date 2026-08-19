@@ -56,11 +56,11 @@ Use this from a local track's context menu when a player already has something i
 
 The current queue tail is the fixed start and the selected song is the fixed destination. Recent local queue tracks before the tail are captured as acoustic and repeat context; they are not appended again. Better Call Bliss may place local analyzed tracks between the two anchors. When the job succeeds, only those intermediates and the destination are appended.
 
-**Choose automatically** first evaluates the direct tail-to-destination transition. If it already meets **Transition quality target percentile**, only the destination is appended. Otherwise the optimizer tries one intermediate, then two, and so on up to **Maximum intermediate tracks**, keeping the shortest repeat-safe route whose every generated leg reaches that quality target. When none does, the target is not treated as a reason to withhold the result: the optimizer compares the direct route and every permitted intermediate count, then returns the repeat-safe route with the lowest achieved worst-leg percentile. The result explicitly reports that it is best-effort and shows the achieved percentile. **Use an exact count** instead remains all-or-nothing and succeeds only with precisely the requested number of intermediates.
+**Choose automatically** first measures the actual tail-to-destination edge. If that edge misses the target, a dedicated layered search builds complete paths with one intermediate, two, and so on up to **Maximum intermediate tracks**. It ranks paths by their worst neighboring Bliss distance and then by the sum of all neighboring distances. Automatic chooses the shortest path that genuinely meets the adjacent percentile target; if none does, it returns the smoothest repeat-safe best effort within the budget. **Use an exact count** runs the same adjacent path search for precisely the requested number of intermediates and remains all-or-nothing.  
 
-Transition percentiles normally use the frozen source route as their comparison distribution. A two-track source would provide only the endpoint transition itself, which cannot produce a meaningful percentile. In that case the optimizer builds the frozen comparison distribution from the analyzed local library. This prevents a very large acoustic distance from being misclassified as percentile zero merely because it was compared only with itself.
+Candidate discovery remains bounded: endpoint Last.fm evidence and the original tail-to-destination acoustic gap produce a local shortlist, then the layered search explores different complete paths through that graph. For every final adjacent `A -> B` edge, the optimizer ranks the fixed-matrix distance against `A -> every current LMS-local analyzed track` under the same matrix. The result identifies the learned-matrix or Static-weight role and hash, and reports every edge, the route sum, raw bottleneck, and worst adjacent percentile. Earlier queue-context edges are not included in this destination-path quality result.  
 
-The destination is explicit user intent, so it is not rejected merely because its artist or album occurs in recent queue history. Every generated intermediate remains unique and subject to the configured artist, album, and track windows. Last.fm similar-track and similar-artist evidence can rerank eligible local candidates, but Bliss supplies the acoustic quality objective. Variation explores a bounded top-quality set and the reported generation seed reproduces the choice.
+The destination is explicit user intent, so a conflict already present solely between recent immutable queue context and that destination does not reject the job. Every generated intermediate remains unique and is checked against the destination and all other tracks inside the configured artist, album, and track windows. Last.fm similar-track and similar-artist evidence supports candidate ranking, but Bliss remains the primary path-quality evidence. Variation is applied only among complete routes inside a narrow quality band, so it can change a reproducible choice without relaxing repeat rules or turning a clearly worse route into a candidate.  
 
 Before appending, Better Call Bliss compares the live queue tail with the captured tail. Normal playback advancing through existing queue entries does not invalidate the job, because the queue tail is unchanged. If another controller changes the end of the queue, the result is refused and nothing is appended. Existing queue entries are never removed or reordered by this action.
 
@@ -68,14 +68,15 @@ Before appending, Better Call Bliss compares the live queue tail with the captur
 
 | Option | Range / default | Effect in this workflow |
 | --- | --- | --- |
-| Intermediate tracks | Automatic or Exact; saved plugin default | Automatic chooses the shortest count that reaches the quality target, or the smoothest result within the budget when the target cannot be reached. Exact requires precisely the requested count. |
+| Intermediate tracks | Automatic or Exact; saved plugin default | Automatic chooses the shortest complete path that meets the adjacent target, or the smoothest bounded best effort. Exact requires precisely the requested count. Both use the same dedicated adjacent path search. |
+| Search effort | Fast; Balanced; Thorough; default Fast | Controls how many local candidates and partial paths are explored. Fast is tuned for Raspberry Pi latency; Balanced and Thorough trade more time and memory for a wider search. It never relaxes the quality target or repeat rules. |
 | Maximum intermediate tracks | 0-8; default 4 | Upper bound used only by Automatic. It is also the budget for the best-effort comparison. Zero means direct-only. |
 | Exact intermediate tracks | 0-8; default 2 | Count used only by Exact. Zero explicitly requests the direct destination. |
-| Transition quality target percentile | 0-100%; plugin default | Desired maximum contextual percentile for every generated route leg. Lower asks for smoother transitions, but Automatic still returns and reports the best route within its budget when the target is unreachable. |
-| Musical context window | 1-50; inherited from BlissMixer | Controls how many recent captured queue/route tracks influence each directional acoustic score. |
+| Transition quality target percentile | 0-100%; plugin default | Desired maximum source-relative percentile of the worst actual neighboring transition. The same value still decides whether the direct edge needs intervention; separate trigger and target controls remain planned. |
+| Musical context window | 1-50; inherited from BlissMixer | Helps build the bounded initial candidate evidence from recent queue context. It does not change the fixed pairwise adjacent objective or final destination-path report. |
 | Mixing strategy and learned blend | Inherited from BlissMixer | Uses Adaptive or Static scoring. A learned matrix remains optional. |
 | Artist, album, and track look-back | Inherited from BlissMixer | Hard constraints for generated intermediates; zero disables a window. The chosen destination itself remains fixed user intent. |
-| Variation and generation seed | 0-100%; default 25 | Reorders a bounded pool of qualified alternatives reproducibly. Zero keeps strict deterministic ranking. |
+| Variation and generation seed | 0-100%; default 25 | Chooses reproducibly among complete routes close to the best adjacent bottleneck and route sum. Zero keeps the strict deterministic winner. |
 | Last.fm track/artist guidance | Optional; defaults 25% each | Provides bounded supporting evidence for candidates related to the tail, destination, or captured context. Provider failure falls back to Bliss. |
 | Output | Automatic background append | The action is locked to the source player and appends only intermediates plus destination after route and live-tail validation. It never clears or replaces existing queue entries. |
 
@@ -88,18 +89,19 @@ flowchart TD
     C --> D["Lock selected destination"]
     D --> E["Build Bliss and optional<br/>Last.fm candidate evidence"]
     E --> F{"Automatic or Exact?"}
-    F -- Automatic --> G{"Direct leg acceptable?"}
+    F -- Automatic --> G{"Direct adjacent edge meets target?"}
     G -- Yes --> K["Route contains destination only"]
-    G -- No --> H["Try 1..maximum intermediates"]
-    H --> I{"Shortest fully valid route found?"}
-    I -- Yes --> K
-    I -- No --> P["Compare direct and every permitted count"]
-    P --> Q["Choose smoothest repeat-safe route<br/>and report target miss"]
-    Q --> K
-    F -- Exact --> L["Search required intermediate count"]
-    L -- Found --> K
+    G -- No --> H["Search every permitted count<br/>with selected effort"]
+    H --> I{"Any complete path meets target?"}
+    I -- Yes --> P["Choose shortest qualifying path"]
+    I -- No --> Q["Choose smoothest repeat-safe best effort"]
+    F -- Exact --> L["Search the required count<br/>with the same adjacent objective"]
     L -- Not found --> J["Fail job; append nothing"]
-    K --> M{"Live queue tail unchanged?"}
+    L -- Found --> R
+    K --> R["Report every destination-path edge<br/>with matching local reference"]
+    P --> R
+    Q --> R
+    R --> M{"Live queue tail unchanged?"}
     M -- Yes --> N["Append intermediates + destination"]
     M -- No --> O["Fail stale job; append nothing"]
 ~~~

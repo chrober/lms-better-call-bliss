@@ -71,16 +71,36 @@ PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY
 	DE	Regel für Zwischentitel
 
 PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY_DESC
-	EN	Automatic chooses the shortest route meeting the quality target, or the smoothest route within the budget when the target cannot be met. Exact always requests the configured number of intermediate tracks.
-	DE	Automatisch wählt die kürzeste Route, die das Qualitätsziel erreicht, oder andernfalls die flüssigste Route innerhalb des Budgets. Exakt fordert immer die konfigurierte Anzahl von Zwischentiteln an.
+	EN	Automatic searches complete adjacent paths and chooses the shortest one that meets the target, or the smoothest bounded best effort. Exact searches the configured count with the same adjacent objective.
+	DE	Automatisch durchsucht vollständige Pfade und wählt den kürzesten, der das Ziel für benachbarte Titel erreicht, oder den besten begrenzten Versuch. Exakt durchsucht die konfigurierte Anzahl mit demselben Ziel.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT
+	EN	Search effort
+	DE	Suchaufwand
+
+PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT_DESC
+	EN	Fast is tuned for Raspberry Pi latency. Balanced and Thorough search progressively wider candidate paths on more powerful servers; they do not relax the quality target or repeat rules.
+	DE	Schnell ist auf Raspberry-Pi-Latenz abgestimmt. Ausgewogen und Gründlich durchsuchen auf leistungsfähigeren Servern zunehmend mehr Kandidatenpfade; Qualitätsziel und Wiederholungsregeln bleiben unverändert.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_FAST
+	EN	Fast (Raspberry Pi)
+	DE	Schnell (Raspberry Pi)
+
+PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_BALANCED
+	EN	Balanced
+	DE	Ausgewogen
+
+PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_THOROUGH
+	EN	Thorough
+	DE	Gründlich
 
 PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES
 	EN	Maximum intermediate tracks
 	DE	Maximale Anzahl Zwischentitel
 
 PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC
-	EN	Upper bound searched by Automatic Bliss me there routing. When the quality target cannot be met, Automatic chooses the smoothest result within this budget. Zero permits only the direct destination.
-	DE	Obergrenze für die automatische Bliss-me-there-Routensuche. Kann das Qualitätsziel nicht erreicht werden, wird das flüssigste Ergebnis innerhalb dieses Budgets gewählt. Null erlaubt nur das direkte Ziel.
+	EN	Upper bound searched by Automatic Bliss me there routing. The final route separately reports whether its actual adjacent transitions meet the target. Zero permits only the direct destination.
+	DE	Obergrenze für die automatische Bliss-me-there-Routensuche. Die fertige Route meldet separat, ob ihre tatsächlich benachbarten Übergänge das Ziel erreichen. Null erlaubt nur das direkte Ziel.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES
 	EN	Exact intermediate tracks

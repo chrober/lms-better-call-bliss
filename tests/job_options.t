@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 31;
+use Test::More tests => 33;
 
 BEGIN {
     package TestPrefs;
@@ -14,6 +14,7 @@ BEGIN {
         restart_count => '80',
         variation_percent => '35',
         route_length_policy => 'exact',
+        route_search_effort => 'balanced',
         route_max_intermediates => '6',
         route_exact_intermediates => '3',
     );
@@ -62,6 +63,8 @@ is($defaults->{route_max_intermediates}, 6,
     'destination automatic maximum is read from plugin preferences');
 is($defaults->{route_exact_intermediates}, 3,
     'destination exact count is read from plugin preferences');
+is($defaults->{route_search_effort}, 'balanced',
+    'destination search effort is read from plugin preferences');
 
 my $saved_track_guidance = delete $TestPrefs::values{lastfm_track_guidance_percent};
 my $saved_artist_guidance = delete $TestPrefs::values{lastfm_artist_guidance_percent};
@@ -122,6 +125,7 @@ my $destination = Plugins::BetterCallBliss::JobOptions::normalize(
         route_length_policy => 'exact',
         route_max_intermediates => '5',
         route_exact_intermediates => '2',
+        route_search_effort => 'thorough',
     },
 );
 is($destination->{extension_mode}, 'destination_route',
@@ -132,6 +136,8 @@ is($destination->{route_max_intermediates}, 5,
     'destination maximum is normalized to an integer');
 is($destination->{route_exact_intermediates}, 2,
     'destination exact count is normalized to an integer');
+is($destination->{route_search_effort}, 'thorough',
+    'destination search effort is retained per job');
 is($destination->{ordering_policy}, 'preserve_order',
     'destination route keeps its source context order');
 

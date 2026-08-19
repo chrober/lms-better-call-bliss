@@ -24,6 +24,9 @@ sub defaults {
     my $route_length_policy = $plugin_prefs->get('route_length_policy') || 'automatic';
     $route_length_policy = 'automatic'
         unless $route_length_policy eq 'automatic' || $route_length_policy eq 'exact';
+    my $route_search_effort = $plugin_prefs->get('route_search_effort') || 'fast';
+    $route_search_effort = 'fast' unless $route_search_effort =~ /^(?:fast|balanced|thorough)$/;
+
     return {
         ordering_policy => 'optimize_order',
         extension_mode => 'none',
@@ -45,6 +48,7 @@ sub defaults {
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
         route_length_policy => $route_length_policy,
+        route_search_effort => $route_search_effort,
         route_max_intermediates => int(
             $plugin_prefs->get('route_max_intermediates') // 4,
         ),
@@ -199,6 +203,11 @@ sub normalize {
     die "Bliss me there route length must be Automatic or Exact"
         unless $options->{route_length_policy} eq 'automatic'
             || $options->{route_length_policy} eq 'exact';
+    $options->{route_search_effort} = $input->{route_search_effort}
+        if defined $input->{route_search_effort};
+    die "Bliss me there search effort must be Fast, Balanced, or Thorough"
+        unless $options->{route_search_effort} =~ /^(?:fast|balanced|thorough)$/;
+
     $options->{route_max_intermediates} = _integer(
         $input, 'route_max_intermediates', 0, 8,
         $options->{route_max_intermediates},

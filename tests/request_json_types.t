@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 26;
+use Test::More tests => 29;
 use JSON::XS ();
 
 BEGIN {
@@ -76,6 +76,7 @@ BEGIN {
             route_length_policy => 'automatic',
             route_max_intermediates => '4',
             route_exact_intermediates => '2',
+            route_search_effort => 'fast',
             output_mode => 'create_copy',
             output_name => '',
             output_name_generated => 0,
@@ -209,6 +210,12 @@ is($destination_request->{extension}->{destination_mode}, 'automatic',
     'destination route carries the automatic length policy');
 is($destination_request->{extension}->{max_added_tracks}, 4,
     'destination maximum is serialized as a JSON integer');
+is($destination_request->{extension}->{search_effort}, 'fast',
+    'destination route carries its selected search effort');
+is($destination_request->{extension}->{candidate_limit}, 6,
+    'Fast destination search uses the bounded candidate width');
+is($destination_request->{extension}->{shortlist_limit}, 128,
+    'Fast destination search uses the Raspberry Pi shortlist bound');
 is($destination_request->{extension}->{trigger_percentile}, 0.7,
     'destination quality threshold is serialized as a JSON number');
 is($destination_request->{selection}->{variation_percent}, 25,

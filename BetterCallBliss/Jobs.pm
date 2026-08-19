@@ -480,6 +480,8 @@ sub _start_preview_from_built {
         . " restarts=$effective->{restart_count}"
         . " variation=$effective->{variation_percent}"
         . " generation_seed=$effective->{generation_seed}"
+        . ($effective->{extension_mode} eq 'destination_route'
+            ? " search_effort=$effective->{route_search_effort}" : '')
         . " lastfm=" . ($effective->{lastfm_enabled} ? 'enabled' : 'disabled')
         . " lastfm_track_guidance=$effective->{lastfm_track_guidance_percent}"
         . " lastfm_artist_guidance=$effective->{lastfm_artist_guidance_percent}"
