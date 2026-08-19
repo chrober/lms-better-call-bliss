@@ -434,6 +434,30 @@ sub _result_view {
                 $view->{route_fallback_direct} =
                     $view->{route_best_effort}
                     && !$view->{added_track_count} ? 1 : 0;
+                my $model_selection =
+                    ($preview->{route_quality} || {})->{model_selection} || {};
+                my %direct_models = map {
+                    (($_->{matrix_role} || '') => $_)
+                } @{$model_selection->{direct_edge_models} || []};
+                if ($direct_models{'static-weights'}
+                    && $direct_models{'learned-matrix'}) {
+                    $view->{route_model_comparison} = 1;
+                    $view->{route_static_direct_percent} = sprintf(
+                        '%.1f',
+                        100 * ($direct_models{'static-weights'}
+                            ->{source_relative_percentile} || 0),
+                    );
+                    $view->{route_learned_direct_percent} = sprintf(
+                        '%.1f',
+                        100 * ($direct_models{'learned-matrix'}
+                            ->{source_relative_percentile} || 0),
+                    );
+                    $view->{route_selected_model_label} =
+                        ($model_selection->{selected_matrix_role} || '')
+                            eq 'learned-matrix'
+                        ? 'learned matrix'
+                        : 'static BlissMixer weights';
+                }
             }
             $view->{semantic_mode} = $artifact->{semantic_mode};
             my @additions;

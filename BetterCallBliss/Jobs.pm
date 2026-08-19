@@ -926,6 +926,29 @@ sub _poll {
             : '';
         if ($job->{options}->{extension_mode} ne 'none') {
             my $fixed_source_extension_summary = '';
+            my $destination_model_summary = '';
+            if ($job->{options}->{extension_mode} eq 'destination_route') {
+                my $model_selection =
+                    (($job->{artifact}->{selection_preview} || {})
+                        ->{route_quality} || {})->{model_selection} || {};
+                my %direct_models = map {
+                    (($_->{matrix_role} || '') => $_)
+                } @{$model_selection->{direct_edge_models} || []};
+                if (%direct_models) {
+                    $destination_model_summary = ' destination_model='
+                        . ($model_selection->{selected_matrix_role} || 'unknown');
+                    for my $role ('static-weights', 'learned-matrix') {
+                        next unless $direct_models{$role};
+                        (my $label = $role) =~ s/-/_/g;
+                        $destination_model_summary .= sprintf(
+                            ' %s_direct_percentile=%.1f',
+                            $label,
+                            100 * ($direct_models{$role}
+                                ->{source_relative_percentile} || 0),
+                        );
+                    }
+                }
+            }
             if ($job->{options}->{extension_mode} eq 'fixed_source_extension') {
                 my $preview = $job->{artifact}->{selection_preview} || {};
                 my $relevance = $preview->{relevance_summary} || {};
@@ -949,6 +972,7 @@ sub _poll {
                 . " strategy=$selected"
                 . " semantic_mode=$job->{artifact}->{semantic_mode}"
                 . " lastfm_state=$job->{lastfm_state}"
+                . $destination_model_summary
                 . sprintf(
                     ' base_route_objective=%.3f',
                     $job->{artifact}->{selected_route_objective},

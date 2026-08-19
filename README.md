@@ -31,7 +31,9 @@ which is bundled with supported plugin packages.
   current-plus-upcoming queue segment as input.
 - Offers **Bliss me there...** on a local track: it builds a destination-locked  
   adjacent path in the background, then automatically appends it after a  
-  live-tail check. Fast, Balanced, and Thorough profiles trade runtime for  
+  live-tail check. When learned and Static acoustic views disagree, the more  
+  cautious direct-edge verdict governs the complete path. Fast, Balanced, and  
+  Thorough profiles trade runtime for  
   breadth, from a deliberately bounded search to progressively wider searches.  
 - Shows a read-only preview and diagnostics before creating a verified copy,
   overwriting the source playlist, or sending the result to a player queue.

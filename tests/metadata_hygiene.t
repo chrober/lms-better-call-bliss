@@ -146,6 +146,16 @@ like(
     qr/route_achieved_percent.*?achieved_max_leg_percentile/s,
     'Web view maps the achieved worst-leg percentile',
 );
+like(
+    $web,
+    qr/route_model_comparison.*?static-weights.*?learned-matrix/s,
+    'Web view maps both acoustic views for destination-route diagnostics',
+);
+like(
+    $extras,
+    qr/Acoustic safety check:.*?more cautious.*?governed this route/s,
+    'destination-route result explains why the cautious acoustic view governed',
+);
 
 my @committed_binary_candidates;
 find(
