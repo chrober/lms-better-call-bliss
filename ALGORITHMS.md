@@ -1,6 +1,6 @@
 # Playlist optimization modes and options
 
-Better Call Bliss turns a saved playlist into a smoother listening experience. You decide whether existing songs may move, whether new songs may be added, and how much freedom the optimizer has. Playlist and queue-editor jobs preview the result, and nothing is changed until you accept it. The track-context **Bliss me there...** shortcut is intentionally different: it runs in the background and appends a successful route automatically.
+Better Call Bliss turns a saved playlist or player-queue snapshot into a smoother listening experience. You decide whether existing songs may move, whether new songs may be added, and how much freedom the optimizer has. Playlist and queue-editor jobs preview the result, and nothing is changed until you accept it. The track-context **Bliss me there...** shortcut is intentionally different: it runs in the background and appends a successful route automatically.
 
 This document describes the current implementation. **Working** means the choice is available in the Lyrion job editor. **Planned** means it is shown but cannot yet be selected.
 
@@ -92,7 +92,7 @@ flowchart TD
     E --> V["Compare learned and Static<br/>direct-edge risk when available"]
     V --> W["Use the more cautious view<br/>for discovery and path quality"]
     W --> F{"Automatic or Exact?"}
-    F -- Automatic --> G{"Direct adjacent edge meets target?"}
+    F -- Automatic --> G{"Minimum is zero and<br/>direct adjacent edge meets target?"}
     G -- Yes --> K["Route contains destination only"]
     G -- No --> H["Search every permitted count<br/>with selected effort"]
     H --> I{"Any complete path meets target?"}
@@ -495,7 +495,7 @@ flowchart TD
     D["Context tracks"] --> E["Calculate context mean"]
     C --> F["Score candidate to mean<br/>with fixed weights"]
     E --> F
-    F --> G["Route, bridge or growth<br/>decision uses that distance"]
+    F --> G["Route, bridge or extension<br/>decision uses that distance"]
 ~~~
 
 
@@ -517,7 +517,7 @@ For movable routes, a generated or supplied seed changes the greedy restart path
 
 For Extend playlist, the percentage additionally controls membership sampling inside the quality pool. Higher values flatten the acoustic weighting and make lower-ranked qualified candidates more likely.
 
-For difficult-transition bridges and **Bliss me there...**, Variation reproducibly reorders a bounded pool of candidates that already passed the acoustic gate. It does not relax leg percentiles, uniqueness, repeat windows, or the fixed destination. A preserved source route can still return the same result when only one candidate qualifies.
+For difficult-transition bridges, Variation reproducibly reorders a bounded pool of candidates that passed the acoustic gate. For **Bliss me there...**, it chooses among complete routes inside the current result's narrow quality band; this includes bounded best-effort routes when no permitted path reaches the requested target. It does not relax leg percentiles, uniqueness, repeat windows, or the fixed destination. A preserved source route can still return the same result when only one candidate qualifies.
 
 A recorded generation seed reproduces the same request and result across worker counts when the library, artifacts, and options are unchanged.
 
