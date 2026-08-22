@@ -20,6 +20,7 @@ use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::LastFmEvidence;
+use Plugins::BetterCallBliss::LogDiagnostics;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
 use Plugins::BetterCallBliss::QueueWriter;
@@ -423,7 +424,10 @@ sub _start_preview_from_built {
     my $progress_path = $dir . '/progress.json';
     my $lastfm_applies = $built->{options}->{lastfm_enabled}
         && $built->{options}->{extension_mode} ne 'none';
-    my $lastfm_source_tracks = $built->{request}->{source_tracks};
+    my $lastfm_source_tracks = [
+        @{$built->{request}->{history_tracks} || []},
+        @{$built->{request}->{source_tracks}},
+    ];
     my $lastfm_source_count = 0 + ($fields->{lastfm_source_track_count} || 0);
     if ($lastfm_source_count > 0
         && $lastfm_source_count < @{$lastfm_source_tracks}) {
@@ -448,6 +452,7 @@ sub _start_preview_from_built {
         source_track_ids => [
             map { $_->{id} } @{$built->{request}->{source_tracks}}
         ],
+        history_track_ids => $built->{history_track_ids} || [],
         labels => $built->{labels},
         original_positions => $built->{original_positions},
         track_urls => $built->{track_urls},
@@ -480,6 +485,12 @@ sub _start_preview_from_built {
     my $effective = $built->{options};
     my $initial_stage = $jobs{$job_id}->{stage};
     my $source_log = $fields->{source_log} || ('playlist_id=' . ($fields->{playlist_id} || 0));
+    if (main::INFOLOG) {
+        $log->info("job=$job_id $_")
+            for @{Plugins::BetterCallBliss::LogDiagnostics::start_info_lines(
+                $jobs{$job_id},
+            )};
+    }
     $log->info(
         "job=$job_id stage=$initial_stage $source_log"
         . " ordering=$effective->{ordering_policy}"
@@ -496,6 +507,8 @@ sub _start_preview_from_built {
         . ($effective->{extension_mode} eq 'destination_route'
             ? " search_effort=$effective->{route_search_effort}"
                 . " route_length_policy=$effective->{route_length_policy}"
+                . " route_direct_caution=$effective->{route_direct_caution}"
+                . " history_tracks=" . scalar(@{$built->{request}->{history_tracks} || []})
                 . " route_min_intermediates=$effective->{route_min_intermediates}"
                 . " route_max_intermediates=$effective->{route_max_intermediates}"
                 . " route_exact_intermediates=$effective->{route_exact_intermediates}"
@@ -543,6 +556,7 @@ sub _start_preview_from_built {
         my $capability = $built->{capability};
         $log->debug(
             "job=$job_id request tracks=" . scalar(@{$built->{request}->{source_tracks}})
+            . " history_tracks=" . scalar(@{$built->{request}->{history_tracks} || []})
             . " command=$native_command"
             . " ordering=$effective->{ordering_policy}"
             . " extension=$effective->{extension_mode}"
@@ -602,6 +616,7 @@ sub _start_preview_from_built {
                 }
                 $job->{lastfm_progress_message} = $message;
             },
+            {job_id => $job_id},
         );
         1;
     };
@@ -764,8 +779,10 @@ sub start_route_to_track_preview {
     my $tail_label = _track_label($tail);
     my $target_label = _track_label($target);
     my $title = "Bliss me there: $tail_label -> $target_label";
+    my @history = @context > 1 ? @context[0 .. $#context - 1] : ();
     my $built = Plugins::BetterCallBliss::RequestBuilder::build_sequence_request(
-        $title, [@context, $target], $job_id, $semantic_path, $normalized,
+        $title, [$tail, $target], $job_id, $semantic_path, $normalized,
+        \@history,
     );
     return _start_preview_from_built(
         $job_id, $dir, $semantic_path, $built,
@@ -777,7 +794,7 @@ sub start_route_to_track_preview {
             route_to_track => 1,
             quick_route => $route_options{quick_route} ? 1 : 0,
             auto_apply => $route_options{auto_apply} ? 1 : 0,
-            route_output_skip_source_count => scalar @context,
+            route_output_skip_source_count => 1,
             route_player_id => $client->id || $player_id,
             route_tail_track_id => 0 + $tail->id,
             route_target_track_id => 0 + $target->id,
@@ -937,7 +954,8 @@ sub _poll {
                 if (%direct_models) {
                     $destination_model_summary = ' destination_model='
                         . ($model_selection->{selected_matrix_role} || 'unknown');
-                    for my $role ('static-weights', 'learned-matrix') {
+                    for my $role ('adaptive-context', 'static-weights',
+                        'learned-matrix') {
                         next unless $direct_models{$role};
                         (my $label = $role) =~ s/-/_/g;
                         $destination_model_summary .= sprintf(
@@ -994,6 +1012,18 @@ sub _poll {
                     $candidate->{worst_transition},
                 )
             );
+        }
+        if (main::INFOLOG) {
+            $log->info("job=$job_id $_")
+                for @{Plugins::BetterCallBliss::LogDiagnostics::result_info_lines(
+                    $job,
+                )};
+        }
+        if (main::DEBUGLOG && $log->is_debug) {
+            $log->debug("job=$job_id $_")
+                for @{Plugins::BetterCallBliss::LogDiagnostics::result_debug_lines(
+                    $job,
+                )};
         }
     }
 
@@ -1164,6 +1194,13 @@ sub create_copy {
         . " playlist_id=$result->{playlist_id}"
         . " tracks=$result->{track_count}"
     );
+    $log->info(
+        "job=$job_id Output playlist created: \"$result->{title}\"; "
+        . "$result->{track_count} tracks; LMS playlist id $result->{playlist_id}."
+    ) if main::INFOLOG;
+    main::DEBUGLOG && $log->is_debug && $log->debug(
+        "job=$job_id Output playlist path: $result->{path}"
+    );
     return $result;
 }
 
@@ -1214,6 +1251,13 @@ sub overwrite_source {
         "job=$job_id stage=OverwrittenAndVerified"
         . " playlist_id=$result->{playlist_id}"
         . " tracks=$result->{track_count}"
+    );
+    $log->info(
+        "job=$job_id Source playlist overwritten and verified: \"$result->{title}\"; "
+        . "$result->{track_count} tracks; LMS playlist id $result->{playlist_id}."
+    ) if main::INFOLOG;
+    main::DEBUGLOG && $log->is_debug && $log->debug(
+        "job=$job_id Overwritten playlist path: $result->{path}"
     );
     return $result;
 }
@@ -1269,6 +1313,11 @@ sub send_to_queue {
         . " tracks=$result->{track_count}"
         . " start=$result->{started_playback}"
     );
+    $log->info(sprintf(
+        'job=%s Queue output completed: %s %d tracks on player %s; playback %s.',
+        $job_id, $result->{queue_action}, $result->{track_count},
+        $result->{player_id}, $result->{started_playback} ? 'started' : 'unchanged',
+    )) if main::INFOLOG;
     return $result;
 }
 

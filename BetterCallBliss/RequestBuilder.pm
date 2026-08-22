@@ -223,9 +223,10 @@ sub _queue_snapshot {
     };
 }
 sub _track_bundle {
-    my ($tracks, $capability, $error_prefix) = @_;
-    die "$error_prefix requires at least two local tracks"
-        unless ref($tracks) eq 'ARRAY' && @$tracks >= 2;
+    my ($tracks, $capability, $error_prefix, $minimum) = @_;
+    $minimum = 2 unless defined $minimum;
+    die "$error_prefix requires at least $minimum local tracks"
+        unless ref($tracks) eq 'ARRAY' && @$tracks >= $minimum;
 
     my (@source_tracks, %labels, %original_positions, %track_urls);
     my $position = 0;
@@ -279,7 +280,12 @@ sub _build_sequence_request {
         unless defined $options->{generation_seed};
 
     my ($source_tracks, $labels, $original_positions, $track_urls)
-        = _track_bundle($tracks, $capability, $error_prefix);
+        = _track_bundle($tracks, $capability, $error_prefix, 2);
+    my ($history_tracks, $history_labels, $history_positions, $history_urls)
+        = _track_bundle($args->{history_tracks} || [], $capability,
+            'Listening history', 0);
+    $labels = {%$history_labels, %$labels};
+    $track_urls = {%$history_urls, %$track_urls};
     my $source_count = scalar @$source_tracks;
     my $internal_gap_count = $source_count - 1;
     my $endpoint_capacity = 2;
@@ -353,6 +359,7 @@ sub _build_sequence_request {
         job_id => $job_id,
         artifacts => $artifacts,
         source_tracks => $source_tracks,
+        (@$history_tracks ? (history_tracks => $history_tracks) : ()),
         scoring => {
             algorithm => $options->{algorithm},
             adaptive => {
@@ -452,6 +459,9 @@ sub _build_sequence_request {
                 mode => 'destination_route',
                 destination_mode => $options->{route_length_policy},
                 search_effort => $options->{route_search_effort},
+                ($options->{route_length_policy} eq 'automatic' ? (
+                    direct_transition_caution => $options->{route_direct_caution},
+                ) : ()),
                 candidate_limit => _json_integer(
                     $options->{route_search_effort} eq 'thorough' ? 16
                         : $options->{route_search_effort} eq 'balanced' ? 8 : 6,
@@ -497,17 +507,19 @@ sub _build_sequence_request {
         original_positions => $original_positions,
         track_urls => $track_urls,
         capability => $capability,
+        history_track_ids => [map { $_->{id} } @$history_tracks],
         options => $options,
     };
 }
 
 sub build_sequence_request {
-    my ($title, $tracks, $job_id, $semantic_path, $job_input) = @_;
+    my ($title, $tracks, $job_id, $semantic_path, $job_input, $history_tracks) = @_;
     return _build_sequence_request({
         title => $title,
         tracks => $tracks,
         job_id => $job_id,
         semantic_path => $semantic_path,
+        history_tracks => $history_tracks,
         job_input => $job_input,
         error_prefix => $title || 'Source',
     });

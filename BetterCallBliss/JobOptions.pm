@@ -26,6 +26,9 @@ sub defaults {
         unless $route_length_policy eq 'automatic' || $route_length_policy eq 'exact';
     my $route_search_effort = $plugin_prefs->get('route_search_effort') || 'fast';
     $route_search_effort = 'fast' unless $route_search_effort =~ /^(?:fast|balanced|thorough)$/;
+    my $route_direct_caution = $plugin_prefs->get('route_direct_caution') || 'cautious';
+    $route_direct_caution = 'cautious'
+        unless $route_direct_caution =~ /^(?:normal|cautious)$/;
 
     return {
         ordering_policy => 'optimize_order',
@@ -48,6 +51,7 @@ sub defaults {
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
         route_length_policy => $route_length_policy,
+        route_direct_caution => $route_direct_caution,
         route_search_effort => $route_search_effort,
         route_min_intermediates => int(
             $plugin_prefs->get('route_min_intermediates') // 0,
@@ -206,6 +210,10 @@ sub normalize {
     die "Bliss me there route length must be Automatic or Exact"
         unless $options->{route_length_policy} eq 'automatic'
             || $options->{route_length_policy} eq 'exact';
+    $options->{route_direct_caution} = $input->{route_direct_caution}
+        if defined $input->{route_direct_caution};
+    die "Bliss me there automatic bridge caution must be Normal or Cautious"
+        unless $options->{route_direct_caution} =~ /^(?:normal|cautious)$/;
     $options->{route_search_effort} = $input->{route_search_effort}
         if defined $input->{route_search_effort};
     die "Bliss me there search effort must be Fast, Balanced, or Thorough"

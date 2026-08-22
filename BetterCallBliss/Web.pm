@@ -129,7 +129,7 @@ sub _form_from_params {
         source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
-        route_length_policy route_min_intermediates route_max_intermediates route_exact_intermediates
+        route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback
@@ -339,6 +339,7 @@ sub _result_view {
         route_target_label => $job->{route_target_label},
         route_source_context_count => 0 + ($job->{route_source_context_count} || 0),
         route_length_policy => $job->{options}->{route_length_policy},
+        route_direct_caution => $job->{options}->{route_direct_caution},
         route_min_intermediates => 0 + ($job->{options}->{route_min_intermediates} || 0),
         route_max_intermediates => 0 + ($job->{options}->{route_max_intermediates} || 0),
         route_exact_intermediates => 0 + ($job->{options}->{route_exact_intermediates} || 0),
@@ -439,7 +440,32 @@ sub _result_view {
                 my %direct_models = map {
                     (($_->{matrix_role} || '') => $_)
                 } @{$model_selection->{direct_edge_models} || []};
-                if ($direct_models{'static-weights'}
+                if ($direct_models{'adaptive-context'}) {
+                    $view->{route_adaptive_model_comparison} = 1;
+                    $view->{route_adaptive_direct_percent} = sprintf(
+                        '%.1f',
+                        100 * ($direct_models{'adaptive-context'}
+                            ->{source_relative_percentile} || 0),
+                    );
+                    $view->{route_adaptive_algorithm} =
+                        $model_selection->{adaptive_algorithm} || 'adaptive';
+                    if ($direct_models{'static-weights'}) {
+                        $view->{route_has_static_model} = 1;
+                        $view->{route_static_direct_percent} = sprintf(
+                            '%.1f',
+                            100 * ($direct_models{'static-weights'}
+                                ->{source_relative_percentile} || 0),
+                        );
+                    }
+                    if ($direct_models{'learned-matrix'}) {
+                        $view->{route_has_learned_model} = 1;
+                        $view->{route_learned_direct_percent} = sprintf(
+                            '%.1f',
+                            100 * ($direct_models{'learned-matrix'}
+                                ->{source_relative_percentile} || 0),
+                        );
+                    }
+                } elsif ($direct_models{'static-weights'}
                     && $direct_models{'learned-matrix'}) {
                     $view->{route_model_comparison} = 1;
                     $view->{route_static_direct_percent} = sprintf(

@@ -45,6 +45,7 @@ sub initPlugin {
         auto_bridge_budget => 8,
         auto_trigger_percent => 70,
         route_length_policy => 'automatic',
+        route_direct_caution => 'cautious',
         route_search_effort => 'fast',
         route_min_intermediates => 0,
         route_max_intermediates => 4,

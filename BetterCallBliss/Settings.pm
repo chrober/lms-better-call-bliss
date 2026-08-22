@@ -27,6 +27,7 @@ sub prefs {
         auto_trigger_percent
         route_search_effort
         route_length_policy
+        route_direct_caution
         route_min_intermediates
         route_max_intermediates
         route_exact_intermediates
@@ -82,6 +83,11 @@ sub handler {
         && $params->{pref_route_search_effort} ne 'balanced'
         && $params->{pref_route_search_effort} ne 'thorough') {
         $params->{pref_route_search_effort} = 'fast';
+    }
+    if (defined $params->{pref_route_direct_caution}
+        && $params->{pref_route_direct_caution} ne 'normal'
+        && $params->{pref_route_direct_caution} ne 'cautious') {
+        $params->{pref_route_direct_caution} = 'cautious';
     }
     _clamp($params, 'pref_report_retention_days', 1, 3650);
     _clamp($params, 'pref_semantic_cache_days', 1, 365);

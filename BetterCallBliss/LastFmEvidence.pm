@@ -113,11 +113,13 @@ sub _edge {
 }
 
 sub prepare {
-    my ($enabled, $source_tracks, $callback, $progress) = @_;
+    my ($enabled, $source_tracks, $callback, $progress, $context) = @_;
+    my $job_id = ref($context) eq 'HASH' ? $context->{job_id} : undef;
+    my $prefix = defined $job_id && length $job_id ? "job=$job_id " : '';
     return $callback->(_bundle('disabled', 0, 0, [], [])) unless $enabled;
     unless (available()) {
         $log->warn(
-            'Last.fm guidance requested but LastMix is unavailable; using Bliss only'
+            $prefix . 'Last.fm guidance requested but LastMix is unavailable; using Bliss only'
         );
         return $callback->(
             _bundle('unavailable', 0, 0, ['LASTMIX_UNAVAILABLE'], [])
@@ -179,10 +181,17 @@ sub prepare {
         unless (@requests) {
             my $state = $stats->{failures}
                 ? ($stats->{successes} ? 'partial' : 'failed') : 'fresh';
+            my $recording_edges = scalar grep {
+                (($_->{source} || {})->{kind} || '') eq 'recording'
+            } @edges;
+            my $artist_edges = scalar grep {
+                (($_->{source} || {})->{kind} || '') eq 'artist'
+            } @edges;
             $log->info(
-                'Last.fm evidence prepared requests=' . $stats->{requests}
+                $prefix . 'Last.fm evidence prepared requests=' . $stats->{requests}
                 . ' failures=' . $stats->{failures}
-                . ' edges=' . scalar(@edges)
+                . " recording_edges=$recording_edges"
+                . " artist_edges=$artist_edges"
                 . " state=$state"
             );
             return $callback->(_bundle(
@@ -206,7 +215,7 @@ sub prepare {
             message => "Last.fm $method for \"$label\"",
         );
         main::DEBUGLOG && $log->is_debug && $log->debug(
-            "Last.fm: $method for \"$label\""
+            $prefix . "Last.fm: $method for \"$label\""
         );
 
         my $request_ok = eval {
@@ -218,13 +227,13 @@ sub prepare {
                         _push_error(\@errors, $code);
                         $stats->{failures}++;
                         $log->warn(
-                            "Last.fm track error for \"$label\": "
+                            $prefix . "Last.fm track error for \"$label\": "
                             . (ref($result) eq 'HASH' && $result->{message}
                                 ? $result->{message} : $code)
                         );
                         if (_service_wide_error($raw_code) && @requests) {
                             $log->warn(
-                                "Last.fm service-wide error $raw_code; skipping "
+                                $prefix . "Last.fm service-wide error $raw_code; skipping "
                                 . scalar(@requests) . ' remaining requests'
                             );
                             @requests = ();
@@ -271,8 +280,8 @@ sub prepare {
                                 _valid_mbid($track->{mbid}) ? 1.0 : 0.85,
                         );
                     }
-                    main::DEBUGLOG && $log->is_debug && $log->debug(
-                        "Last.fm: retained $rank similar tracks for \"$label\""
+                    $log->info(
+                        $prefix . "Last.fm: retained $rank similar tracks for \"$label\""
                     );
                     $report_progress->(
                         phase => 'received',
@@ -296,13 +305,13 @@ sub prepare {
                         _push_error(\@errors, $code);
                         $stats->{failures}++;
                         $log->warn(
-                            "Last.fm artist error for \"$label\": "
+                            $prefix . "Last.fm artist error for \"$label\": "
                             . (ref($result) eq 'HASH' && $result->{message}
                                 ? $result->{message} : $code)
                         );
                         if (_service_wide_error($raw_code) && @requests) {
                             $log->warn(
-                                "Last.fm service-wide error $raw_code; skipping "
+                                $prefix . "Last.fm service-wide error $raw_code; skipping "
                                 . scalar(@requests) . ' remaining requests'
                             );
                             @requests = ();
@@ -346,8 +355,8 @@ sub prepare {
                             );
                         }
                     }
-                    main::DEBUGLOG && $log->is_debug && $log->debug(
-                        "Last.fm: retained $rank similar artists for \"$label\""
+                    $log->info(
+                        $prefix . "Last.fm: retained $rank similar artists for \"$label\""
                     );
                     $report_progress->(
                         phase => 'received',
@@ -371,7 +380,7 @@ sub prepare {
             _push_error(\@errors, 'LASTMIX_DISPATCH_FAILED');
             $stats->{failures}++;
             $log->warn(
-                "Last.fm dispatch error for \"$label\": $message"
+                $prefix . "Last.fm dispatch error for \"$label\": $message"
             );
             $report_progress->(
                 phase => 'failed',

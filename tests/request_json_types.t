@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 31;
+use Test::More tests => 38;
 use JSON::XS ();
 
 BEGIN {
@@ -74,6 +74,7 @@ BEGIN {
             bridge_target_track_count => $bridge_target_track_count,
             target_track_count => '25',
             route_length_policy => 'automatic',
+            route_direct_caution => 'cautious',
             route_min_intermediates => '0',
             route_max_intermediates => '4',
             route_exact_intermediates => '2',
@@ -196,6 +197,7 @@ my $destination = Plugins::BetterCallBliss::RequestBuilder::build_sequence_reque
     'preview-json-types-destination',
     '/tmp/semantic-evidence.json',
     {},
+    [TestTrack->new(42, '1999'), TestTrack->new(42, '1999')],
 );
 my $destination_json = JSON::XS->new->canonical->pretty->encode($destination->{request});
 my $destination_request = JSON::XS->new->decode($destination_json);
@@ -207,8 +209,22 @@ is($destination_request->{route}->{destination_track_id}, 'lms-track-43',
     'destination route locks the selected target track');
 is($destination_request->{extension}->{mode}, 'destination_route',
     'destination route uses the dedicated native extension mode');
+is($destination_request->{scoring}->{algorithm}, 'adaptive',
+    'destination route inherits the selected BlissMixer strategy');
+is($destination_request->{scoring}->{adaptive}->{seed_limit}, 3,
+    'destination route carries the BlissMixer adaptive context limit');
+is($destination_request->{scoring}->{adaptive}->{learned_percent}, 20,
+    'destination route carries the configured learned-matrix blend');
 is($destination_request->{extension}->{destination_mode}, 'automatic',
     'destination route carries the automatic length policy');
+is($destination_request->{extension}->{direct_transition_caution}, 'cautious',
+    'destination route carries the automatic direct-transition caution');
+is(scalar @{$destination_request->{source_tracks}}, 2,
+    'only the queue tail and destination are route members');
+is(scalar @{$destination_request->{history_tracks}}, 2,
+    'listening history is serialized separately from route members');
+is_deeply([map { $_->{id} } @{$destination_request->{history_tracks}}],
+    [qw(lms-track-42 lms-track-42)], 'repeated listening history remains intact');
 is($destination_request->{extension}->{max_added_tracks}, 4,
     'destination maximum is serialized as a JSON integer');
 is($destination_request->{extension}->{min_added_tracks}, 0,

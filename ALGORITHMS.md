@@ -50,85 +50,150 @@ Three job choices work together:
 
 The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, freezes the LMS-local candidate inventory, and optionally asks LastMix for Last.fm track and artist relationships. The native [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer) performs scoring and bounded search. Only the plugin writes playlists or player queues. Editor jobs require explicit acceptance; **Bliss me there...** automatically appends only after its background route and live-tail checks succeed.
 
+## Candidate discovery: which tracks influence the choice?
+
+"Candidate discovery" does not mean the same thing in every workflow. Better Call Bliss first decides **which tracks are allowed to be considered**, then each workflow decides **which source tracks the candidates should resemble**, and only afterwards decides **where selected tracks belong**. Keeping those steps separate makes the strategies much easier to understand.
+
+| Workflow | Tracks that may be chosen | Tracks used to discover or score them | Do selected additions become new discovery seeds? |
+| --- | --- | --- | --- |
+| [Reorder only](#reorder-existing-tracks-only) | Only source tracks not yet placed in the proposed route | Up to N already placed source tracks immediately before the next position | There are no additions. Each placed source track becomes part of the context for the next position. |
+| [Improve difficult transitions](#add-automatically) | Eligible local analyzed library tracks | The local gap `A -> B`, including up to N preceding route tracks ending in A; the complete original source set supplies the frozen percentile scale and Last.fm artist fallback, not the primary acoustic target | A selected bridge affects the context used when later gaps are evaluated, but it does not turn the workflow into whole-playlist growth. |
+| [Extend playlist](#extend-playlist) | Eligible local analyzed library tracks | Every original source track together as one fixed musical reference | No. All additions are selected against the unchanged original source set. They influence only the later placement or route search. |
+| [Bliss me there...](#bliss-me-there) | Eligible local analyzed library tracks | The fixed queue tail and destination drive acoustic shortlisting under the configured strategy. For Adaptive, a bounded suffix of analyzed history plus the tail constructs the per-run matrix; recent history and both endpoints can also provide Last.fm and repeat context. | No. Intermediates are chosen from one frozen shortlist. A partial path affects the next path leg and repeat checks, but does not recruit new candidates. |
+
+Here, N means **Musical context window**. "Eligible local analyzed library tracks" means the intersection of usable `bliss.db` rows and current local LMS tracks after source-track exclusions. Last.fm can support tracks already in that pool; it cannot add remote tracks or bypass Bliss and LMS membership checks.
+
+The diagrams below use four recurring stages:
+
+1. **Allowed pool:** which real local tracks may be considered at all.
+2. **Discovery reference:** which source tracks define what "suitable" means for this workflow.
+3. **Qualification and ranking:** Bliss distance, repeat rules, optional Last.fm support, and Variation.
+4. **Placement:** where the chosen membership is put in the result.
+
+The diagrams are orientation maps, not complete algorithm specifications. They show which tracks influence a choice and what may be produced; the prose below each diagram describes the exact gates, bounds, and fallback behavior.
+
+Inside a diagram, `A -> B -> C` is a playlist or queue in playback order. `+X` marks a track added by Better Call Bliss.
+
 ## Bliss me there
 
 Use this from a local track's context menu when a player already has something in its queue and you want to arrive at the selected song smoothly. The action closes the context menu and starts a background job with the saved **Bliss me there...** defaults. It does not open the Extras page and does not require a separate Accept button. A successful result is appended automatically; the job remains visible under **Running and recent previews** for status or error review.
 
-The current queue tail is the fixed start and the selected song is the fixed destination. Recent local queue tracks before the tail are captured as acoustic and repeat context; they are not appended again. Better Call Bliss may place local analyzed tracks between the two anchors. When the job succeeds, only those intermediates and the destination are appended.
+The current queue tail is the fixed start and the selected song is the fixed destination. Recent local queue tracks before the tail are captured separately as immutable listening history: they provide Adaptive acoustic context, repeat context, and optional Last.fm evidence, but they are not route members, acoustic path endpoints, or output tracks. Repeats already present in that history are therefore tolerated. Better Call Bliss may place local analyzed tracks between the two anchors. When the job succeeds, only those intermediates and the destination are appended.
 
-**Choose automatically** first measures the actual tail-to-destination edge. With a minimum of zero, it may use that direct edge when it meets the target. When Adaptive and a learned matrix are available, Better Call Bliss checks that jump through both the learned view and the current Static BlissMixer weights. The view that considers the direct jump more difficult governs the complete route. This protects against a specialized learned matrix declaring a musically abrupt jump safe merely because it is close along the dimensions that matrix emphasizes. Otherwise, a dedicated layered search builds complete paths from **Minimum intermediate tracks** through **Maximum intermediate tracks**. It ranks paths by their worst neighboring Bliss distance and then by the sum of all neighboring distances. Automatic chooses the shortest permitted path that genuinely meets the adjacent percentile target; if none does, it returns the smoothest repeat-safe permitted best effort. **Use an exact count** runs the same adjacent path search for precisely the requested number of intermediates and remains all-or-nothing.  
+**Choose automatically** first measures the actual tail-to-destination edge under the configured BlissMixer strategy. Static uses the current Static feature weights. Adaptive builds one contextual matrix from the bounded recent analyzed history plus the queue tail, applies the configured learned-matrix blend, and uses the same learned/Static fallback rules as BlissMixer. **Normal** caution may use the direct edge when the minimum is zero and that governing view meets the target. **Cautious** additionally compares available Static and learned-only measurements and starts a bridge search when a secondary view disagrees with the governing view by at least 25 percentile points. It then uses the worst available whole-path verdict for acceptance and ranking, so a route cannot win merely because one model overlooks an abrupt change. A dedicated layered search covers every permitted count from **Minimum intermediate tracks** through **Maximum intermediate tracks**. Automatic chooses the shortest path that meets the adjacent target across the applicable model view or views; if none does, it returns their smoothest repeat-safe bounded best effort. If disagreement itself triggered a Cautious search and the maximum is non-zero, that best effort contains at least one bridge whenever a repeat-safe bridge route exists. **Use an exact count** runs the same adjacent path search for precisely the requested number of intermediates and remains all-or-nothing.  
 
-Candidate discovery remains bounded: endpoint Last.fm evidence and the original tail-to-destination acoustic gap produce a local shortlist under the governing acoustic view, then the layered search explores different complete paths through that graph. For every final adjacent `A -> B` edge, the optimizer ranks the fixed-matrix distance against `A -> every current LMS-local analyzed track` under the same matrix. The result identifies the governing learned-matrix or Static-weight role and hash, records the direct-edge verdict from both views when both exist, and reports every edge, the route sum, raw bottleneck, and worst adjacent percentile. Earlier queue-context edges are not included in this destination-path quality result.  
+Candidate discovery is frozen before the layered path search begins. The acoustic prefilter compares every eligible candidate C with both endpoints: `tail -> C` and `C -> destination`. It deliberately retains candidates close to the tail, candidates close to the destination, and candidates with the best balanced two-leg result. Optional Last.fm matches from the endpoints and a bounded suffix of recent history reserve some places in that shortlist. The search then combines only those shortlisted tracks into complete paths. A chosen intermediate affects the next path edge and repeat checks, but does not expand the pool or trigger another library-wide discovery round.  
 
-The destination is explicit user intent, so a conflict already present solely between recent immutable queue context and that destination does not reject the job. Every generated intermediate remains unique and is checked against the destination and all other tracks inside the configured artist, album, and track windows. Last.fm similar-track and similar-artist evidence supports candidate ranking, but Bliss remains the primary path-quality evidence. Variation is applied only among complete routes inside a narrow quality band, so it can change a reproducible choice without relaxing repeat rules or turning a clearly worse route into a candidate.  
+For every final adjacent `A -> B` edge, the optimizer ranks its fixed-matrix distance against `A -> every current LMS-local analyzed track` under the same matrix. That whole local reference population turns the raw edge distance into a source-relative percentile; it is not another candidate pool. The result identifies the governing Adaptive-context or Static role and hash, records the effective Adaptive algorithm, seed identities, configured learned share, fallback reason, available direct-edge model verdicts, and every final edge, route sum, raw bottleneck, and worst adjacent percentile. Under Cautious it reports and applies distinct Static and learned-only whole-route measurements as well. Earlier listening-history edges are not included in this destination-path quality result.  
 
-Before appending, Better Call Bliss compares the live queue tail with the captured tail. Normal playback advancing through existing queue entries does not invalidate the job, because the queue tail is unchanged. If another controller changes the end of the queue, the result is refused and nothing is appended. Existing queue entries are never removed or reordered by this action.
+The destination is explicit user intent, so a conflict already present solely between immutable listening history and that destination does not reject the job. Existing history may contain repeated tracks, artists, or albums. Every newly generated intermediate remains unique and is checked against the destination, route members, and history inside the configured artist, album, and track windows. Last.fm similar-track and similar-artist evidence supports candidate ranking, but Bliss remains the primary path-quality evidence. Variation is applied only among complete routes inside a narrow quality band, so it can change a reproducible choice without relaxing repeat rules or turning a clearly worse route into a candidate.  
+
+#### Candidate discovery for Bliss me there
+
+"Eligible" does not yet mean "similar." Better Call Bliss first intersects local audio tracks in the current LMS catalog with non-ignored `TracksV2` rows having the same exact Bliss file identity. From that intersection, the optimizer removes the queue tail, the destination, and tracks with the same normalized artist-and-title identity as either endpoint. The result is the eligible pool described more generally under [Candidate library for all addition modes](#candidate-library-for-all-addition-modes).
+
+Earlier listening history is not removed wholesale at this stage because it is context, not route membership. The configured repeat windows later prevent a newly chosen intermediate from repeating a recent track, artist, or album where applicable. Last.fm evidence can support the ranking of an eligible local track but cannot make an ineligible, remote, unanalyzed, ignored, or stale Bliss row usable.
+
+~~~mermaid
+flowchart LR
+    L["Local LMS audio tracks<br/>A, B, X, Y, Z, ..."] --> I["Keep exact usable<br/>matches in bliss.db"]
+    I --> E["Eligible pool after removing<br/>A, B and matching identities"]
+    Q["Current queue<br/>... -> H -> A (tail)"] --> F["Find a route to B"]
+    D["Selected destination<br/>B"] --> F
+    E --> F
+    M["Optional Last.fm<br/>ranking support only"] -.-> F
+    F --> R["Queue after append<br/>... -> H -> A -> +X -> +Y -> B"]
+~~~
+
+#### How Bliss similarity becomes a path
+
+The current implementation does **not** interpolate a straight line from A's feature vector to B's feature vector and then look for songs near evenly spaced points. It performs a bounded graph search through real tracks that are actually available in the frozen shortlist.
+
+Every track has a 23-value Bliss feature vector. A fixed matrix `M` turns the difference between two vectors into an adjacent-track distance, conceptually `sqrt((x - y)^T M (x - y))`. A smaller distance means the two recordings are more similar under that view of tempo, timbre, loudness, chroma, and the other Bliss dimensions.
+
+**Bliss me there... does not learn or fit a matrix from A and B.** In particular, the destination B never teaches the optimizer what should count as similar. The configured strategy determines the governing view:
+
+- **Static view:** the optimizer mechanically constructs a diagonal 23-by-23 matrix from the Static feature weights captured from BlissMixer. It may reconstruct this matrix when the job starts, but it does not derive it from the source or destination.
+- **Adaptive-context view:** the optimizer takes the last analyzed tracks from immutable history and then A, capped by BlissMixer's **Musical context window**. With two or more seeds it derives the same variance matrix as BlissMixer and blends the optional learned matrix by **Learned-matrix blend**. With one seed it uses the learned matrix when available. With too little context and no learned matrix, or when variance cannot be calculated and no learned fallback exists, it uses the current Static matrix.
+- **Learned-only view:** when a learned artifact exists, Cautious mode can measure it separately as diagnostic and safety evidence. It was produced earlier by the learning workflow; this run never retrains or modifies it.
+
+This is the same Adaptive selection and fallback contract used by BlissMixer:
+
+1. One seed plus a learned matrix uses the learned matrix.
+2. Two or more seeds without a learned matrix use seed variance.
+3. Two or more seeds with a learned matrix blend learned and variance matrices at the configured percentage.
+4. A failed variance calculation falls back to learned when available, otherwise to Static.
+5. One seed without a learned matrix falls back to Static.
+
+The resulting per-run Adaptive matrix is then **frozen** while candidate paths are explored. Newly considered intermediates do not become new matrix seeds, and the optimizer does not create imaginary target points between A and B. Freezing makes the costs of `A -> X`, `X -> Y`, and `Y -> B` directly comparable and keeps large-library route search bounded. The result records its role, hash, effective algorithm, seeds, blend, and fallback details so the decision remains auditable.
+
+The acoustic prefilter reduces a large library without assuming that one song must resemble both endpoints perfectly. It reserves candidates closest to A, candidates closest to B, and candidates with the best balanced pair of `distance(A, C)` and `distance(C, B)`. Optional Last.fm-supported tracks can reserve some additional shortlist positions, but their Bliss edge distances still govern the path.
+
+The route itself is built one position at a time, but it is **not greedy**:
+
+1. At the first layer, the optimizer considers partial paths such as `A -> X`, `A -> Y`, and `A -> Z`.
+2. At the next layer, every retained partial path is extended with unused shortlisted tracks, producing alternatives such as `A -> X -> Y` and `A -> Z -> X`.
+3. Repeat-window violations and paths that cannot approach B competitively are discarded. Search effort controls how many next choices per partial path and how many partial paths survive each layer.
+4. When the requested layer is complete, B is appended and the real adjacent edges of every retained complete path are measured.
+
+Complete paths are ordered primarily by their **worst adjacent jump**, then by their total adjacent distance. Last.fm support and deterministic identity ordering resolve later comparisons. Variation may choose reproducibly among complete routes in a narrow band around the acoustic winner; it does not make a poor edge acceptable.
+
+~~~mermaid
+flowchart LR
+    S["Frozen shortlist<br/>X, Y, Z, ..."] --> G["Grow several partial paths<br/>A -> X; A -> Y; A -> Z"]
+    G --> P1["A -> X -> B"]
+    G --> P2["A -> Y -> Z -> B"]
+    G --> P3["A -> X -> Z -> B"]
+    P1 --> C["Prefer the smallest worst jump,<br/>then the smallest total distance"]
+    P2 --> C
+    P3 --> C
+    C --> R["Chosen path<br/>A -> +Y -> +Z -> B"]
+~~~
 
 #### Options for Bliss me there
 
 | Option | Range / default | Effect in this workflow |
 | --- | --- | --- |
 | Intermediate tracks | Automatic or Exact; saved plugin default | Automatic chooses the shortest complete path that meets the adjacent target, or the smoothest bounded best effort. Exact requires precisely the requested count. Both use the same dedicated adjacent path search. |
+| Automatic bridge caution | Normal or Cautious; default Cautious | Used only by Automatic. Normal trusts the configured governing strategy. Cautious also searches on strong disagreement with available Static or learned-only views and requires candidate paths to hold up under every distinct available view. |
 | Search effort | Fast; Balanced; Thorough; default Fast | Controls how many local candidates and partial paths are explored. Fast deliberately bounds the search; Balanced and Thorough trade more time and memory for a wider search. It never relaxes the quality target or repeat rules. |
 | Minimum intermediate tracks | 0-8; default 0 | Lower bound used only by Automatic. Zero allows a direct transition; a positive value forces Automatic to insert at least that many tracks. It must not exceed the maximum. |
 | Maximum intermediate tracks | 0-8; default 4 | Upper bound used only by Automatic. It is also the budget for the best-effort comparison. Zero means direct-only. |
 | Exact intermediate tracks | 0-8; default 2 | Count used only by Exact. Zero explicitly requests the direct destination. |
 | Transition quality target percentile | 0-100%; plugin default | Desired maximum source-relative percentile of the worst actual neighboring transition. The same value still decides whether the direct edge needs intervention; separate trigger and target controls remain planned. |
-| Musical context window | 1-50; inherited from BlissMixer | Helps build the bounded initial candidate evidence from recent queue context. It does not change the fixed pairwise adjacent objective or final destination-path report. |
-| Mixing strategy and learned blend | Inherited from BlissMixer | Uses Adaptive or Static scoring. A learned matrix remains optional. |
+| Musical context window | 1-50; inherited from BlissMixer | Caps the recent analyzed history plus queue tail used to construct the per-run Adaptive matrix. It also bounds recent context that can contribute Last.fm evidence. Longer repeat windows can require more immutable history. |
+| Mixing strategy | Inherited from BlissMixer | Static uses the current feature weights. Adaptive constructs a variance/learned blend from recent analyzed context and follows BlissMixer's learned/Static fallback rules. The chosen matrix stays fixed during this route search. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixer | Learned share of the Adaptive matrix when at least two seed tracks allow a variance matrix. Zero means pure variance; 100 means pure learned. The learned matrix is optional. |
 | Artist, album, and track look-back | Inherited from BlissMixer | Hard constraints for generated intermediates; zero disables a window. The chosen destination itself remains fixed user intent. |
 | Variation and generation seed | 0-100%; default 25 | Chooses reproducibly among complete routes close to the best adjacent bottleneck and route sum. Zero keeps the strict deterministic winner. |
 | Last.fm track/artist guidance | Optional; defaults 25% each | Provides bounded supporting evidence for candidates related to the tail, destination, or captured context. Provider failure falls back to Bliss. |
 | Output | Automatic background append | The action is locked to the source player and appends only intermediates plus destination after route and live-tail validation. It never clears or replaces existing queue entries. |
 
-#### How the destination route is chosen
+
+#### How the bridge count and final route are chosen
 
 ~~~mermaid
 flowchart TD
-    A["Track context action"] --> B["Start background job with saved defaults"]
-    B --> C["Capture current queue tail<br/>and recent local context"]
-    C --> D["Lock selected destination"]
-    D --> E["Build Bliss and optional<br/>Last.fm candidate evidence"]
-    E --> V["Compare learned and Static<br/>direct-edge risk when available"]
-    V --> W["Use the more cautious view<br/>for discovery and path quality"]
-    W --> F{"Automatic or Exact?"}
-    F -- Automatic --> G{"Minimum is zero and<br/>direct adjacent edge meets target?"}
-    G -- Yes --> K["Route contains destination only"]
-    G -- No --> H["Search every permitted count<br/>with selected effort"]
-    H --> I{"Any complete path meets target?"}
-    I -- Yes --> P["Choose shortest qualifying path"]
-    I -- No --> Q["Choose smoothest repeat-safe best effort"]
-    F -- Exact --> L["Search the required count<br/>with the same adjacent objective"]
-    L -- Not found --> J["Fail job; append nothing"]
-    L -- Found --> R
-    K --> R["Report every destination-path edge<br/>with matching local reference"]
-    P --> R
-    Q --> R
-    R --> M{"Live queue tail unchanged?"}
-    M -- Yes --> N["Append intermediates + destination"]
-    M -- No --> O["Fail stale job; append nothing"]
+    S["Candidate shortlist"] --> M{"Bridge-count rule"}
+    M -- Automatic --> A["Find the shortest<br/>acceptable route"]
+    M -- Exact --> E["Find a route with exactly<br/>the requested bridge count"]
+    A --> V["Validate route and<br/>current queue tail"]
+    E --> V
+    V -- Valid --> O["Append to queue<br/>... -> A -> +X -> B"]
+    V -- Invalid --> F["Append nothing"]
 ~~~
+
+Before appending, Better Call Bliss compares the live queue tail with the captured tail. Normal playback advancing through existing queue entries does not invalidate the job, because the queue tail is unchanged. If another controller changes the end of the queue, the result is refused and nothing is appended. Existing queue entries are never removed or reordered by this action.
 
 ## Overall workflow
 
 ~~~mermaid
-flowchart TD
-    P["Saved Lyrion playlist<br/>original source tracks"] --> O["Per-job ordering,<br/>extension, scoring,<br/>repeat and variation options"]
-    DB[("bliss.db<br/>23 features per analyzed track")] --> I["Intersect Bliss rows with<br/>current local LMS library"]
-    M["optional learned_matrix.json<br/>personalized Adaptive blend"] --> N
-    O --> N["Native optimizer request"]
-    I --> N
-    L["Optional LastMix<br/>track and artist relationships"] --> N
-    N --> S["Choose source route<br/>or preserve anchors"]
-    S --> X{"Additional-track purpose"}
-    X -- None --> R["Final route"]
-    X -- Improve difficult transitions --> B["Gap-specific bridge search"]
-    X -- Extend playlist --> G["Complete-source relevance search<br/>then final route search"]
-    B --> R
-    G --> R
-    R --> V["Result artifact and proofs"]
-    V --> Q["Read-only Preview"]
-    Q -->|"user accepts"| W["Lyrion playlist or queue writer"]
+flowchart LR
+    P["Source playlist or queue<br/>A -> B -> C"] --> J["Optimization job"]
+    C["Eligible library tracks<br/>X, Y, Z, ..."] -.-> J
+    O["Selected options"] --> J
+    J --> V["Read-only preview<br/>A -> +X -> B -> C"]
+    V -->|"user accepts"| W["Saved playlist or player queue"]
 ~~~
 
 ## Playlist workflows
@@ -157,7 +222,13 @@ The result may start with any song. It may also build gently toward a livelier s
 
 #### How the order is chosen
 
-For every proposed position after the first, the optimizer compares each possible next song with up to **Musical context window** immediately preceding songs in that proposed route. At the start only one preceding song may exist; farther into the playlist the full window is available. The first song has no incoming transition and therefore no similarity score.
+The candidate pool is exactly the source membership. For every proposed position after the first, the optimizer takes every source song not yet used in that attempted route and compares it with up to **Musical context window** immediately preceding songs. At the start only one preceding song may exist; farther into the playlist the full window is available. The first song has no incoming transition and therefore no similarity score. The rest of the LMS library and Last.fm are not candidate inputs in this workflow.
+
+~~~mermaid
+flowchart LR
+    S["Source playlist<br/>A -> B -> C -> D"] --> O["Reorder source tracks only"]
+    O --> R["Result playlist<br/>C -> A -> D -> B"]
+~~~
 
 The search evaluates:
 
@@ -181,20 +252,6 @@ In parallel, an energy-aware search favors a broad rise from approximately 0.25 
 - its primary objective is no more than 8% worse; and
 - its energy-arc error is at least 10% better.
 
-~~~mermaid
-flowchart TD
-    A["Fixed playlist membership"] --> B["Original, reverse and<br/>seeded greedy starts"]
-    B --> C["Compare every possible next song<br/>with the preceding context"]
-    C --> D["Reverse sections and relocate songs<br/>until no local move improves the route"]
-    D --> E{"Artist and album<br/>windows satisfied?"}
-    E -- No --> X["Reject attempt"]
-    E -- Yes --> F["Measure total distance<br/>and worst transition"]
-    F --> G["Best transition route"]
-    B --> H["Parallel energy-aware search"]
-    H --> I{"Within 8% transition cost<br/>and at least 10% better arc?"}
-    I -- Yes --> J["Use energy-aware route"]
-    I -- No --> G
-~~~
 
 ### Preserve source order and fill gaps
 
@@ -206,16 +263,26 @@ For example, A -> B -> C can become A -> X -> B -> Y -> C, but never B -> A -> C
 
 Preserve is an ordering policy used with **Improve difficult transitions** or **Extend playlist**. The chosen addition workflow supplies its remaining controls.
 
+Preserve does not define a candidate-discovery method by itself. It fixes the source route that another addition strategy sees. **Improve difficult transitions** therefore discovers candidates separately for the fixed gaps `A -> B`, `B -> C`, and so on. **Extend playlist** still discovers its complete added membership against all original source tracks together, then places only that already selected membership around the anchors.
+
+~~~mermaid
+flowchart LR
+    S["Source playlist<br/>A -> B -> C"] --> P["Preserve A, B and C<br/>as ordered anchors"]
+    G["Improve:<br/>examine local gaps"] --> P
+    E["Extend:<br/>use all originals together"] --> P
+    P --> R["Possible result<br/>A -> +X -> B -> +Y -> C"]
+~~~
+
 | Option | Range / default | Effect with preserved anchors |
 | --- | --- | --- |
 | Source-track order | Preserve | Keeps every original track as an immutable ordered anchor. |
-| Musical context window | 1-50; inherited from BlissMixer | Controls the preceding context used for direct gaps and both legs of an inserted bridge. |
+| Musical context window | 1-50; inherited from BlissMixer | Controls local bridge scoring and final placement. Extend membership discovery still uses every original source track together. |
 | Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
 | Artist look-back | 0-10,000; inherited | Applied to the source-anchor pre-check and final route. Zero disables it. |
 | Album look-back | 0-10,000; inherited | Applied to the source-anchor pre-check and final route. Zero disables it. |
 | Use Last.fm guidance | Inherited; optional | Asks LastMix for track and artist relationships. Failures transparently use Bliss alone. |
-| Similar-track guidance | 0-100%; default 25 | Bounded influence of recording-level evidence from the neighboring source tracks. Zero ignores it. |
-| Similar-artist guidance | 0-100%; default 25 | Bounded influence of endpoint-local artist evidence, with the complete original artist set as fallback. Zero ignores it. |
+| Similar-track guidance | 0-100%; default 25 | Uses neighboring source recordings for difficult gaps, or the complete original source set for Extend membership. Zero ignores it. |
+| Similar-artist guidance | 0-100%; default 25 | Uses endpoint-local artists with collection fallback for difficult gaps, or the complete original source set for Extend membership. Zero ignores it. |
 | Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
 
 #### How the anchors are protected
@@ -228,7 +295,7 @@ Additional route-search attempts have no effect because the anchors cannot move.
 
 ### Candidate library for all addition modes
 
-When Better Call Bliss adds music, it chooses only analyzed songs that Lyrion currently knows as local tracks. A stale Bliss database row cannot become a playlist entry merely because its acoustic data still exists.
+When Better Call Bliss adds music, it chooses only analyzed songs that Lyrion currently knows as local tracks. A stale Bliss database row cannot become a playlist entry merely because its acoustic data still exists. This stage defines the allowed universe; it does not yet decide whether a track resembles a local gap, a complete source set, or a destination path.
 
 #### How eligible candidates are frozen
 
@@ -238,6 +305,14 @@ Before search, the plugin intersects usable rows in bliss.db with the current lo
 - another file with the same normalized artist-and-title identity as a source.
 
 The remaining tracks form a checksum-protected candidate inventory for this job. Uniqueness and repeat rules are checked again during search, when the native result is resolved back to LMS tracks, and before persistence.
+
+~~~mermaid
+flowchart LR
+    L["LMS library<br/>A, B, C, X, Y"] --> I["Keep tracks with<br/>matching Bliss rows"]
+    B["bliss.db<br/>A, B, X, Y, Z"] --> I
+    I --> P["After removing source A, B<br/>eligible additions: X, Y"]
+    F["Optional Last.fm<br/>ranking support only"] -.-> P
+~~~
 
 ### Add automatically
 
@@ -278,6 +353,8 @@ An original gap is eligible only when its direct distance is above **Bridge trig
 
 #### How candidates are chosen for one gap
 
+Candidate discovery starts again for each transition in the selected-or-preserved source-only route. The local endpoints and preceding route context determine acoustic suitability. The complete source set does **not** become a single acoustic mood-board input here; it is used to build the common percentile scale and, only when endpoint-local Last.fm evidence is empty, to supply collection-level artist fallback.
+
 For a gap A -> B, optional Last.fm evidence has this order of strength:
 
 1. **Track-similar to both A and B:** recording evidence agrees on both sides of the gap.
@@ -290,7 +367,9 @@ The plugin asks LastMix about every distinct track and artist in the original pl
 
 Last.fm never replaces the candidate library. Every candidate still comes from the frozen intersection of usable Bliss rows and current local LMS tracks. If the pool contains more than 256 tracks, up to 32 strongest semantic matches are reserved while acoustic shortlisting fills the remaining positions. Bliss then evaluates both legs, repeat safety, and improvement. Rejected candidates stay rejected regardless of Last.fm evidence.
 
-Among candidates that pass those checks, the two job percentages provide a bounded ranking adjustment. Evidence strength uses Last.fm's match score when present, otherwise its result rank, and is reduced for uncertain identity matches. Support from both recordings is stronger than support from one; collection-level artist evidence is weaker than endpoint-local artist evidence. The combined adjustment is capped at ten percentile points. Therefore 100% means maximum permitted guidance, not "let Last.fm choose," while 0% completely ignores that evidence type.
+All per-gap shortlists are prepared from the frozen source-only route before any bridge is inserted. During left-to-right selection, shortlisted candidates are scored again against the evolving route. An earlier bridge can therefore change a later candidate's final contextual score, but cannot add new candidates to that later gap's shortlist.
+
+Among candidates that pass those checks, the two job percentages provide a bounded adjustment to the acoustic worst-leg and detour rankings. Evidence strength uses Last.fm's match score when present, otherwise its result rank, and is reduced for uncertain identity matches. Support from both recordings is stronger than support from one; collection-level artist evidence is weaker than endpoint-local artist evidence. The combined adjustment is capped at ten percentile points. Therefore 100% means maximum permitted guidance, not "let Last.fm choose," while 0% completely ignores that evidence type.
 
 #### How a bridge is tested
 
@@ -320,7 +399,7 @@ Admissible candidates rank by semantic evidence first, then by the better worst 
 
 #### How automatic insertion proceeds
 
-Original gaps are processed from left to right. A bridge selected earlier becomes part of the preceding context used to score later bridge candidates.
+The source-only gaps of the frozen base route are processed from left to right. A bridge selected earlier becomes part of the preceding context used to score later shortlisted candidates. It does not cause Last.fm to be queried again, rebuild a later shortlist, change the complete-source fallback, or import candidates outside the frozen eligible pool.
 
 The best admissible candidate is inserted only if its local objective improves on the direct gap:
 
@@ -330,29 +409,20 @@ The best admissible candidate is inserted only if its local objective improves o
 Processing stops at **Maximum additional tracks**. A gap below the trigger, a depleted budget, a repeat conflict, failed acoustic gates, or no genuine improvement remains unchanged.
 
 ~~~mermaid
-flowchart TD
-    A["Selected or preserved source route"] --> B["Build frozen source-based<br/>distance distribution"]
-    B --> C["Inspect original gaps<br/>from left to right"]
-    C --> D{"Direct gap above trigger?"}
-    D -- No --> N["Leave gap unchanged"]
-    D -- Yes --> E["Choose endpoint-local,<br/>collection fallback or<br/>Bliss-only pool"]
-    E --> F["Shortlist at most 256 tracks"]
-    F --> G["Score context-ending-A -> C"]
-    G --> H["Insert C into context<br/>and score -> B"]
-    H --> I{"Unique, repeat-safe,<br/>both gates pass and<br/>local objective improves?"}
-    I -- No --> N
-    I -- Yes --> J["Insert best bridge"]
-    J --> K{"Budget or gaps exhausted?"}
-    N --> K
-    K -- No --> C
-    K -- Yes --> R["Return result and decisions"]
+flowchart LR
+    P["Current playlist segment<br/>W -> X -> A -> B"] --> G["Improve local gap A -> B"]
+    C["Eligible tracks<br/>C, D, E, ..."] --> G
+    S["Whole source set<br/>scale and fallback only"] -.-> G
+    G --> R["Possible result<br/>W -> X -> A -> +C -> B"]
 ~~~
 
 ### Extend playlist
 
 Use **Extend playlist** when the playlist should become larger by a chosen amount. This is the everyday "please add N more songs" workflow: if you ask for 20 additions, Better Call Bliss tries to add 20 local analyzed songs. It is not capped by the number of gaps between the source tracks.
 
-For addition similarity, Extend playlist uses a complete-source-set membership model. Every original track is retained exactly once and the complete source set stays the fixed musical reference while additions are selected. In other words, added tracks are chosen because they fit the original playlist or seed list as a whole, not because they bridge one specific A -> B gap. Newly selected songs do not pull the next choices away from the original taste.
+For addition similarity, Extend playlist uses a complete-source-set membership model. Every original track is retained exactly once and all original tracks together form one fixed acoustic relevance context while additions are selected. Source order does not change that membership reference: Optimize and Preserve initially discover the same candidates from the same source set. They differ only after membership selection, when the tracks are arranged.
+
+Each eligible library track receives one relevance distance to that complete source context. It is not tested as a bridge between a particular pair. Newly selected songs do not become new relevance inputs, so candidate 1 cannot pull candidate 2 toward a new style. Optional Last.fm track and artist relationships from every original source track can support ranking inside the Bliss-qualified pool, but do not replace that acoustic relevance result.
 
 Use **Add exactly N tracks** or **Double the track count** when the source is already an existing playlist and you know how many songs it should gain. Use **Reach a final track count** when you want to expand a short seed list, mood board, or queue snapshot to a chosen size. After membership is chosen, **Source-track order** decides placement: Optimize may route the enlarged set freely, while Preserve keeps the original songs as ordered anchors and places additions around them when the repeat windows can be satisfied.
 
@@ -361,6 +431,8 @@ The **Chosen amount** selector has three count-based variants:
 - **Add exactly N tracks:** final size is `S + N`.
 - **Reach a final track count:** final size is the entered target `T`; additions are `T - S`.
 - **Double the track count:** final size is `2S`; additions are `S`.
+
+These variants use exactly the same candidate-discovery and ranking process. They differ only in the number of additions requested.
 
 Duration-based targets remain future work. Advanced strict gap-bridge placement is a separate planned mode, because it answers a different question: "put bridge routes inside source gaps" rather than "make this playlist larger."
 
@@ -386,24 +458,20 @@ Duration-based targets remain future work. Advanced strict gap-bridge placement 
 
 #### How Extend playlist chooses additions
 
-Extend playlist uses the native fixed-source extension request for membership selection. The former separate target-size mode was removed because it duplicated **Reach a final track count**. The optimizer ranks current LMS-local Bliss candidates against one fixed Adaptive context built from the complete source set. All originals are evidence, while selected additions are not fed back as new evidence. Repeat-window capacity is applied during membership selection, and every selected addition must still resolve to the current LMS library before the result can be accepted.
+Extend playlist uses the native fixed-source extension request for membership selection. The former separate target-size mode was removed because it duplicated **Reach a final track count**. The optimizer ranks current LMS-local Bliss candidates against one fixed whole-source acoustic context using the effective Bliss scoring configuration. All originals are evidence, while selected additions are not fed back as new evidence. Repeat-window capacity is applied during membership selection, and every selected addition must still resolve to the current LMS library before the result can be accepted.
+
+When Variation or Last.fm guidance is active, only a bounded top-quality acoustic pool is diversified or semantically adjusted first. Candidates below that pool remain ordered acoustic fallbacks for satisfying repeat-window capacity; Last.fm cannot pull an acoustically distant track into the preferred pool. Artist and album capacity is checked while the requested membership is assembled. Only after the exact membership exists does route placement begin.
 
 This means Extend playlist behaves like users expect from an extension feature: the chosen count is a real count request. It can still fail, but failures should be about real constraints such as insufficient repeat-safe local candidates, missing Bliss analysis, or a target larger than the supported 500-track request limit - not merely because the original playlist has too few internal gaps.
 
 ~~~mermaid
-flowchart TD
-    A["Source playlist or queue snapshot"] --> B["Calculate requested final size"]
-    B --> C["Build fixed source-set relevance reference"]
-    C --> D["Rank current LMS-local Bliss candidates"]
-    D --> E["Apply uniqueness and repeat-window capacity"]
-    E --> F{"Enough additions found?"}
-    F -- No --> X["Fail without partial output"]
-    F -- Yes --> G["Combine originals and additions"]
-    G --> H{"Source-track order"}
-    H -- Optimize --> I["Route complete extended set freely"]
-    H -- Preserve --> J["Keep originals as ordered anchors<br/>and place additions around them"]
-    I --> R["Read-only preview"]
-    J --> R
+flowchart LR
+    S["Source playlist<br/>A -> B -> C"] --> C["Choose N additions<br/>against A + B + C"]
+    L["Eligible tracks<br/>X, Y, Z, ..."] --> C
+    F["Optional Last.fm"] -.-> C
+    C --> M["Chosen membership<br/>A, B, C, +X, +Y"]
+    M --> P["Preserve result<br/>A -> +X -> B -> +Y -> C"]
+    M --> O["Optimize result<br/>+Y -> B -> A -> +X -> C"]
 ~~~
 
 
@@ -411,7 +479,9 @@ flowchart TD
 
 BlissMixer also already owns an immediate mix-generation action, **Create bliss mix**. Better Call Bliss credits that feature and treats it as related prior work: BlissMixer creates playable Bliss mixes directly from a selected track, artist, album, or genre, while Better Call Bliss focuses on previewable, auditable playlist and queue transformations before anything is saved or sent to a player.
 
-Similarity scoring is an input to the playlist workflows above, not Better Call Bliss's main feature. The algorithms and learned-matrix capability come from the [BlissMixer implementation and its algorithm guide](https://github.com/chrober/lms-blissmixer/blob/main/ALGORITHMS.md). Better Call Bliss depends on a compatible lms-blissmixer installation and reuses the shared native Bliss scoring core so both applications interpret the 23 Bliss audio features consistently.
+Similarity scoring is an input to the playlist workflows above, not Better Call Bliss's main feature. The workflow chooses the candidate and the tracks that form its comparison context first; Adaptive or Static then measures the candidate against exactly those inputs. A mixing strategy does not independently scan the library, choose gap endpoints, turn an added song into a seed, or decide where a selected song is placed.
+
+The algorithms and learned-matrix capability come from the [BlissMixer implementation and its algorithm guide](https://github.com/chrober/lms-blissmixer/blob/main/ALGORITHMS.md). Better Call Bliss depends on a compatible lms-blissmixer installation and reuses the shared native Bliss scoring core so both applications interpret the 23 Bliss audio features consistently.
 
 **Adaptive dynamic weighting** and **Static weighted distance** are connected in Better Call Bliss. Extended Isolation Forest remains a BlissMixer capability for now; its Better Call Bliss option is visible but disabled until native playlist-routing semantics are implemented.
 

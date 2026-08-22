@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 35;
+use Test::More tests => 36;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -44,6 +44,7 @@ for my $token (qw(
     PLUGIN_BETTERCALLBLISS_SETTINGS
     PLUGIN_BETTERCALLBLISS_RESTART_COUNT
     PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT
+    PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION
     PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY
     PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT
     PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES
@@ -79,7 +80,7 @@ like(
 );
 like(
     $settings,
-    qr/mskslider\..*?updateRouteLengthPolicy.*?route_min_intermediates.*?route_max_intermediates.*?route_exact_intermediates/s,
+    qr/mskslider\..*?updateRouteLengthPolicy.*?route_min_intermediates.*?route_max_intermediates.*?route_exact_intermediates.*?route_direct_caution/s,
     'route policy disables both inapplicable inputs and Material sliders',
 );
 like(

@@ -195,6 +195,13 @@
           <option value="exact"[% IF bettercallbliss_form.route_length_policy == 'exact' %] selected[% END %]>Use an exact count</option>
         </select>
       </div>
+      <div class="bea-row" id="route_direct_caution_row">
+        <label for="route_direct_caution">Automatic bridge caution</label>
+        <select name="route_direct_caution" id="route_direct_caution">
+          <option value="normal"[% IF bettercallbliss_form.route_direct_caution == 'normal' %] selected[% END %]>Normal</option>
+          <option value="cautious"[% IF bettercallbliss_form.route_direct_caution == 'cautious' %] selected[% END %]>Cautious</option>
+        </select>
+      </div>
       <div class="bea-row" id="route_min_intermediates_row">
         <label for="route_min_intermediates">Minimum intermediate tracks</label>
         <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="route_min_intermediates" id="route_min_intermediates" value="[% bettercallbliss_form.route_min_intermediates %]" required>
@@ -211,7 +218,7 @@
         <label for="trigger_percent">Transition quality target percentile (%)</label>
         <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
       </div>
-      <p class="bea-note">Automatic searches complete destination paths between the configured minimum and maximum. It chooses the shortest permitted path that meets the adjacent target, or the smoothest permitted best effort. A minimum of zero allows the direct destination. Exact uses the requested number with the same adjacent objective. Search effort controls breadth; Last.fm supplies optional supporting evidence.</p>
+      <p class="bea-note">Automatic searches complete destination paths between the configured minimum and maximum. It chooses the shortest permitted path that meets the adjacent target, or the smoothest permitted best effort. A minimum of zero allows the direct destination. Cautious also searches when available acoustic models strongly disagree about accepting the direct transition, and judges candidate paths across those models. Exact uses the requested number with the same adjacent objective. Search effort controls breadth; Last.fm supplies optional supporting evidence.</p>
     [% ELSE %]
       <div class="bea-row">
         <label for="source_mode">Input source</label>
@@ -496,6 +503,8 @@
     var maximumAdditions = document.getElementById('max_added_tracks');
     var routeLengthPolicy = document.getElementById('route_length_policy');
     var routeMinimum = document.getElementById('route_min_intermediates');
+    var routeDirectCaution = document.getElementById('route_direct_caution');
+    var routeDirectCautionRow = document.getElementById('route_direct_caution_row');
     var routeMaximum = document.getElementById('route_max_intermediates');
     var routeExact = document.getElementById('route_exact_intermediates');
     var routeMaximumRow = document.getElementById('route_max_intermediates_row');
@@ -618,6 +627,8 @@
         setVisible(routeMinimumRow, !exactRoute);
         setVisible(routeMaximumRow, !exactRoute);
         setVisible(routeExactRow, exactRoute);
+        setVisible(routeDirectCautionRow, !exactRoute);
+        if (routeDirectCaution) routeDirectCaution.disabled = exactRoute;
         if (routeMinimum) routeMinimum.readOnly = exactRoute;
         if (routeMaximum) routeMaximum.readOnly = exactRoute;
         if (routeExact) routeExact.readOnly = !exactRoute;
@@ -796,7 +807,7 @@
         <div class="bea-info">
           Direct transition: [% bettercallbliss_job.route_direct_percent %]th percentile.
           [% IF bettercallbliss_job.route_best_effort %]<b>The [% bettercallbliss_job.trigger_percent %]th-percentile adjacent quality target could not be reached. Better Call Bliss selected the smoothest repeat-safe route found within the configured budget; its measured worst neighboring transition is at the [% bettercallbliss_job.route_achieved_percent %]th percentile[% IF bettercallbliss_job.added_track_count %], using [% bettercallbliss_job.added_track_count %] intermediate track[% IF bettercallbliss_job.added_track_count != 1 %]s[% END %][% ELSE %], with the direct destination as the selected route[% END %].</b>[% ELSIF bettercallbliss_job.added_track_count %]The preview reaches the measured adjacent quality target with [% bettercallbliss_job.added_track_count %] intermediate track[% IF bettercallbliss_job.added_track_count != 1 %]s[% END %]; its worst neighboring transition is at the [% bettercallbliss_job.route_achieved_percent %]th percentile.[% ELSE %]The measured direct transition already meets the adjacent quality target, so no intermediate is needed.[% END %]
-          [% IF bettercallbliss_job.route_model_comparison %]<br><span class="bea-note">Acoustic safety check: static BlissMixer weights rated the direct jump at the [% bettercallbliss_job.route_static_direct_percent %]th percentile; the learned matrix rated it at the [% bettercallbliss_job.route_learned_direct_percent %]th percentile. The more cautious [% bettercallbliss_job.route_selected_model_label %] view governed this route.</span>[% END %]
+          [% IF bettercallbliss_job.route_adaptive_model_comparison %]<br><span class="bea-note">Acoustic model check: the configured adaptive context ([% bettercallbliss_job.route_adaptive_algorithm | html %]) rated the direct jump at the [% bettercallbliss_job.route_adaptive_direct_percent %]th percentile and governed this route[% IF bettercallbliss_job.route_has_static_model %]; current static BlissMixer weights rated it at the [% bettercallbliss_job.route_static_direct_percent %]th percentile[% END %][% IF bettercallbliss_job.route_has_learned_model %]; the learned matrix alone rated it at the [% bettercallbliss_job.route_learned_direct_percent %]th percentile[% END %].</span>[% ELSIF bettercallbliss_job.route_model_comparison %]<br><span class="bea-note">Acoustic safety check: static BlissMixer weights rated the direct jump at the [% bettercallbliss_job.route_static_direct_percent %]th percentile; the learned matrix rated it at the [% bettercallbliss_job.route_learned_direct_percent %]th percentile. The [% bettercallbliss_job.route_selected_model_label %] view governed this route.</span>[% END %]
         </div>
       [% END %]
       [% IF bettercallbliss_job.fixed_source_extension %]

@@ -31,10 +31,11 @@ which is bundled with supported plugin packages.
   current-plus-upcoming queue segment as input.
 - Offers **Bliss me there...** on a local track: it builds a destination-locked  
   adjacent path in the background, then automatically appends it after a  
-  live-tail check. When learned and Static acoustic views disagree, the more  
-  cautious direct-edge verdict governs the complete path. Fast, Balanced, and  
-  Thorough profiles trade runtime for  
-  breadth, from a deliberately bounded search to progressively wider searches.  
+  live-tail check. Recent queue entries are immutable history rather than route  
+  members, so legitimate repeats already heard do not invalidate the request.  
+  Normal or Cautious automatic bridge handling controls how learned/Static  
+  disagreement affects direct acceptance and whole-route ranking. Fast, Balanced,  
+  and Thorough trade runtime for progressively wider searches.  
 - Shows a read-only preview and diagnostics before creating a verified copy,
   overwriting the source playlist, or sending the result to a player queue.
 - Can replace, append to, play next, or replace only the upcoming part of a
@@ -96,6 +97,34 @@ scoring and do not fail the optimization job.
 When a live player is used as both source and target, **Replace upcoming tracks**
 keeps the currently playing song untouched and updates only the queue tail. All
 unsupported combinations are visibly marked or rejected before persistence.
+
+## Logging and diagnostics
+
+Lyrion exposes the plugin log category `plugin.bettercallbliss`. Its output is
+grouped by the stable `job=<id>` prefix so one preview can be followed from the
+user action through provider collection, native optimization, review, and final
+playlist or queue output.
+
+At **Information** level, Better Call Bliss reports the source and destination,
+effective mixing and repeat settings, immutable history and route members,
+Last.fm request health,
+selected additions and their evidence type, the audible final route, acoustic
+quality, native runtime, and verified output. This is intended to explain what
+the job did without enumerating the candidate library.
+
+At **Debug** level it additionally reports request/result/progress artifact
+paths, stable LMS identities and URLs, native stage timings, detailed Last.fm
+evidence for each selected addition, and every adjacent **Bliss me there...**
+leg. When learned and Static acoustic models are both available, the governing
+measurement and the other model's measurement are shown separately for every
+final leg. Under Normal caution the second view is advisory. Under Cautious it
+participates in route acceptance and ranking.
+
+The native optimizer publishes these secondary measurements in
+`selection_preview.route_quality.secondary_models` and records configured
+caution, disagreement magnitude, and whether it triggered a search. Older artifacts
+without that optional field remain supported; Better Call Bliss simply omits
+the secondary comparison.
 
 ## Release and publishing workflow
 

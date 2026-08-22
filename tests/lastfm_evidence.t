@@ -1,16 +1,17 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 16;
+use Test::More tests => 19;
 
 BEGIN {
     package main;
     sub DEBUGLOG () { 0 }
 
     package TestLogger;
+    our @info;
     sub is_debug { return 0 }
     sub debug { }
-    sub info { }
+    sub info { push @info, $_[1] }
     sub warn { }
 
     package Slim::Utils::Log;
@@ -94,6 +95,7 @@ Plugins::BetterCallBliss::LastFmEvidence::prepare(
         artist_mbids => [],
     }],
     sub { $track_evidence = shift },
+    undef, {job_id => 'preview-log-test'},
 );
 is($track_evidence->{providers}->[0]->{request_count}, 2,
     'one source track produces one track and one artist request');
@@ -109,6 +111,16 @@ is($recording_edge->{candidate}->{title}, 'Similar Source Song',
     'similar track title is retained for local candidate matching');
 is($recording_edge->{raw_score}, 0.90,
     'Last.fm track match score is retained');
+my $track_log = join "\n", @TestLogger::info;
+like($track_log,
+    qr/job=preview-log-test Last\.fm: retained 1 similar tracks for "Source Artist - Source Song"/,
+    'successful similar-track collection is correlated at information level');
+like($track_log,
+    qr/job=preview-log-test Last\.fm: retained 1 similar artists for "Source Artist"/,
+    'successful similar-artist collection is correlated at information level');
+like($track_log,
+    qr/job=preview-log-test Last\.fm evidence prepared requests=2 failures=0 recording_edges=1 artist_edges=2 state=fresh/,
+    'provider summary distinguishes recording and artist evidence edges');
 
 my @three_artists = (
     @two_artists,

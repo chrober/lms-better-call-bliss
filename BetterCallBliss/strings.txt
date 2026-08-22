@@ -74,6 +74,22 @@ PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY_DESC
 	EN	Automatic searches complete adjacent paths and chooses the shortest one that meets the target, or the smoothest bounded best effort. Exact searches the configured count with the same adjacent objective.
 	DE	Automatisch durchsucht vollständige Pfade und wählt den kürzesten, der das Ziel für benachbarte Titel erreicht, oder den besten begrenzten Versuch. Exakt durchsucht die konfigurierte Anzahl mit demselben Ziel.
 
+PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION
+	EN	Automatic bridge caution
+	DE	Vorsicht bei automatischen Bruecken
+
+PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION_DESC
+	EN	Normal accepts a direct transition whenever it meets the configured percentile. Cautious also searches for bridges when available acoustic models strongly disagree and judges candidate paths across those models.
+	DE	Normal akzeptiert einen direkten Uebergang, sobald er das konfigurierte Perzentil erreicht. Vorsichtig sucht auch bei starker Uneinigkeit der verfuegbaren Akustikmodelle nach Bruecken und bewertet Kandidatenpfade mit diesen Modellen.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_CAUTION_NORMAL
+	EN	Normal
+	DE	Normal
+
+PLUGIN_BETTERCALLBLISS_ROUTE_CAUTION_CAUTIOUS
+	EN	Cautious
+	DE	Vorsichtig
+
 PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT
 	EN	Search effort
 	DE	Suchaufwand

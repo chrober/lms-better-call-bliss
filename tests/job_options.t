@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 36;
+use Test::More tests => 38;
 
 BEGIN {
     package TestPrefs;
@@ -14,6 +14,7 @@ BEGIN {
         restart_count => '80',
         variation_percent => '35',
         route_length_policy => 'exact',
+        route_direct_caution => 'normal',
         route_search_effort => 'balanced',
         route_min_intermediates => '2',
         route_max_intermediates => '6',
@@ -60,6 +61,8 @@ is($defaults->{trigger_percent}, 65,
     'variation default is read from plugin preferences');
 is($defaults->{route_length_policy}, 'exact',
     'destination route policy is read from plugin preferences');
+is($defaults->{route_direct_caution}, 'normal',
+    'destination automatic caution is read from plugin preferences');
 is($defaults->{route_min_intermediates}, 2,
     'destination automatic minimum is read from plugin preferences');
 is($defaults->{route_max_intermediates}, 6,
@@ -128,6 +131,7 @@ my $destination = Plugins::BetterCallBliss::JobOptions::normalize(
         route_length_policy => 'exact',
         route_max_intermediates => '5',
         route_exact_intermediates => '2',
+        route_direct_caution => 'cautious',
         route_search_effort => 'thorough',
     },
 );
@@ -141,6 +145,8 @@ is($destination->{route_exact_intermediates}, 2,
     'destination exact count is normalized to an integer');
 is($destination->{route_search_effort}, 'thorough',
     'destination search effort is retained per job');
+is($destination->{route_direct_caution}, 'cautious',
+    'destination automatic caution is retained per job');
 is($destination->{ordering_policy}, 'preserve_order',
     'destination route keeps its source context order');
 
