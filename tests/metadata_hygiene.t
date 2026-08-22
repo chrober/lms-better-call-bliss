@@ -154,8 +154,8 @@ like(
 );
 like(
     $extras,
-    qr/Acoustic safety check:.*?more cautious.*?governed this route/s,
-    'destination-route result explains why the cautious acoustic view governed',
+    qr/Acoustic model check:.*?configured adaptive context.*?governed this route/s,
+    'destination-route result explains that the configured adaptive context governed',
 );
 
 my @committed_binary_candidates;
