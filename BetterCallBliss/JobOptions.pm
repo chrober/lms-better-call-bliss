@@ -50,6 +50,7 @@ sub defaults {
         lastfm_artist_guidance_percent => int($lastfm_artist_guidance),
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
+        gap_context_mode => 'rolling',
         route_length_policy => $route_length_policy,
         route_direct_caution => $route_direct_caution,
         route_search_effort => $route_search_effort,
@@ -207,6 +208,11 @@ sub normalize {
     );
     $options->{route_length_policy} = $input->{route_length_policy}
         if defined $input->{route_length_policy};
+    $options->{gap_context_mode} = $input->{gap_context_mode}
+        if defined $input->{gap_context_mode};
+    die "Gap context must follow the evolving route or freeze adaptive weights per source gap"
+        unless $options->{gap_context_mode} eq 'rolling'
+            || $options->{gap_context_mode} eq 'frozen';
     die "Bliss me there route length must be Automatic or Exact"
         unless $options->{route_length_policy} eq 'automatic'
             || $options->{route_length_policy} eq 'exact';

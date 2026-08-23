@@ -354,6 +354,9 @@ sub _build_sequence_request {
     $artifacts->{learned_matrix} = {path => $capability->{matrix}}
         if $capability->{matrix_available};
 
+    my %adaptive_gap_context = $options->{algorithm} eq 'adaptive'
+        ? (gap_context_mode => $options->{gap_context_mode}) : ();
+
     my $request = {
         schema_version => 1,
         job_id => $job_id,
@@ -432,6 +435,7 @@ sub _build_sequence_request {
         },
         extension => $options->{extension_mode} eq 'automatic' ? {
                 mode => 'automatic',
+                %adaptive_gap_context,
                 candidate_limit => _json_integer(5),
                 shortlist_limit => _json_integer(256),
                 max_added_tracks => _json_integer($options->{max_added_tracks}),
@@ -439,6 +443,7 @@ sub _build_sequence_request {
             }
             : $exact_like_extension ? {
                 mode => 'exact_count',
+                %adaptive_gap_context,
                 candidate_limit => _json_integer(5),
                 shortlist_limit => _json_integer(256),
                 max_tracks_per_gap => _json_integer(1),

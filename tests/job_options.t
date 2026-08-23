@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 38;
+use Test::More tests => 40;
 
 BEGIN {
     package TestPrefs;
@@ -57,7 +57,10 @@ is($defaults->{lastfm_artist_guidance_percent}, 75,
 is($defaults->{max_added_tracks}, 12,
     'automatic addition budget default is read from plugin preferences');
 is($defaults->{trigger_percent}, 65,
-    'automatic trigger default is read from plugin preferences');is($defaults->{variation_percent}, 35,
+    'automatic trigger default is read from plugin preferences');
+is($defaults->{gap_context_mode}, 'rolling',
+    'rolling adaptive gap context remains the compatibility default');
+is($defaults->{variation_percent}, 35,
     'variation default is read from plugin preferences');
 is($defaults->{route_length_policy}, 'exact',
     'destination route policy is read from plugin preferences');
@@ -92,6 +95,16 @@ is($legacy_exact->{addition_amount_mode}, 'exact_count',
     'legacy exact-count extension maps to the amount selector');
 is($legacy_exact->{additional_track_count}, 7,
     'additional count is normalized to an integer');
+
+my $frozen_gap = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {
+        addition_purpose => 'automatic',
+        gap_context_mode => 'frozen',
+    },
+);
+is($frozen_gap->{gap_context_mode}, 'frozen',
+    'frozen per-gap adaptive context is accepted per job');
 
 my $extend = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

@@ -21,6 +21,18 @@ sub _action_name {
     return 'Extend playlist';
 }
 
+sub _artifact {
+    my $job = shift;
+    return ref($job->{artifact}) eq 'HASH' ? $job->{artifact} : {};
+}
+
+sub _scoring_provenance {
+    my $job = shift;
+    my $artifact = _artifact($job);
+    return ref($artifact->{scoring_provenance}) eq 'HASH'
+        ? $artifact->{scoring_provenance} : {};
+}
+
 sub _source_description {
     my $job = shift;
     if ($job->{route_to_track}) {
@@ -153,6 +165,12 @@ sub start_info_lines {
                 ? ', ' . ($options->{route_direct_caution} || 'normal') . ' direct-transition caution' : '',
         ) : $mode;
     push @lines, "Job mode: $ordering; additional tracks: $addition.";
+    push @lines, sprintf(
+        'Adaptive gap context: %s.',
+        ($options->{gap_context_mode} || 'rolling') eq 'frozen'
+            ? 'freeze weights once per original source gap'
+            : 'follow the evolving route and recalculate weights after additions',
+    ) if $mode eq 'automatic' && ($options->{algorithm} || '') eq 'adaptive';
     if (ref($job->{candidate_inventory}) eq 'HASH') {
         push @lines, sprintf(
             'Candidate inventory: %d local LMS-matched Bliss rows; %d non-LMS rows excluded; cache %s.',
@@ -183,7 +201,7 @@ sub start_info_lines {
 
 sub _provider_lines {
     my $job = shift;
-    my $artifact = ref($job->{artifact}) eq 'HASH' ? $job->{artifact} : {};
+    my $artifact = _artifact($job);
     my @providers = @{ref($artifact->{provider_states}) eq 'ARRAY'
         ? $artifact->{provider_states} : []};
     return ('Last.fm evidence: ' . ($job->{lastfm_state} || 'unknown') . '.')
@@ -277,7 +295,7 @@ sub result_info_lines {
         0 + ($job->{final_track_count} || 0),
         0 + ($job->{added_track_count} || 0),
     ));
-    my $artifact = ref($job->{artifact}) eq 'HASH' ? $job->{artifact} : {};
+    my $artifact = _artifact($job);
     push @lines, sprintf(
         'Optimizer result: strategy %s; %d usable library tracks; %d eligible candidates; %d reference observations; semantic mode %s.',
         $artifact->{selected_strategy} || 'unknown',
@@ -286,6 +304,18 @@ sub result_info_lines {
         0 + ($artifact->{frozen_reference_count} || 0),
         $artifact->{semantic_mode} || 'not applicable',
     );
+    my $provenance = _scoring_provenance($job);
+    if (%$provenance) {
+        push @lines, sprintf(
+            'Scoring provenance: context %s; seeds %s; configured %s with learned share %d%%; effective base share %d%%; learned matrix %s.',
+            $provenance->{context_policy} || 'unknown',
+            $provenance->{seed_policy} || 'unknown',
+            $provenance->{configured_algorithm} || 'unknown',
+            0 + ($provenance->{configured_learned_percent} || 0),
+            0 + ($provenance->{effective_base_learned_percent} || 0),
+            $provenance->{learned_matrix_available} ? 'available' : 'not available',
+        );
+    }
     if (ref($job->{native_performance}) eq 'HASH') {
         push @lines, sprintf(
             'Native optimizer performance: %d ms total; database cache %s.',
@@ -362,7 +392,15 @@ sub result_debug_lines {
     push @lines, _track_lines($job, 'Selected route details',
         _display_route_ids($job), undef, 1);
 
-    my $artifact = ref($job->{artifact}) eq 'HASH' ? $job->{artifact} : {};
+    my $artifact = _artifact($job);
+    my $provenance = _scoring_provenance($job);
+    push @lines, sprintf(
+        'Scoring provenance details: context=%s gap_context=%s base_matrix=%s fallback=%s.',
+        $provenance->{context_policy} || 'unknown',
+        $provenance->{gap_context_mode} || 'not-applicable',
+        $provenance->{base_matrix_sha256} || 'unknown',
+        $provenance->{fallback_policy} || 'unknown',
+    ) if %$provenance;
     for my $gap (@{ref($artifact->{gaps}) eq 'ARRAY' ? $artifact->{gaps} : []}) {
         my $triggering = !defined $gap->{triggering} ? 'not-applicable'
             : $gap->{triggering} ? 'yes' : 'no';

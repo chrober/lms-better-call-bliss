@@ -130,7 +130,7 @@ sub _form_from_params {
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
-        lastfm_track_guidance_percent lastfm_artist_guidance_percent
+        lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback
     )) {
@@ -343,6 +343,7 @@ sub _result_view {
         route_min_intermediates => 0 + ($job->{options}->{route_min_intermediates} || 0),
         route_max_intermediates => 0 + ($job->{options}->{route_max_intermediates} || 0),
         route_exact_intermediates => 0 + ($job->{options}->{route_exact_intermediates} || 0),
+        gap_context_mode => $job->{options}->{gap_context_mode} || 'rolling',
     };
     if (($view->{mixing_strategy} || '') eq 'static') {
         $view->{mixing_note} = 'Static BlissMixer weights were used for every contextual distance.';
@@ -357,6 +358,34 @@ sub _result_view {
         $view->{error} = $job->{error};
     } elsif ($job->{state} eq 'completed') {
         my $artifact = $job->{artifact};
+        my $provenance = ref($artifact->{scoring_provenance}) eq 'HASH'
+            ? $artifact->{scoring_provenance} : {};
+        if (%$provenance) {
+            my %context_labels = (
+                'fixed-static-weight-context' =>
+                    'One fixed Static feature-weight view',
+                'rolling-recent-track-context' =>
+                    'Adaptive weights followed the evolving route',
+                'rolling-evolving-gap-context' =>
+                    'Adaptive weights followed the evolving route',
+                'frozen-per-source-gap-context' =>
+                    'Adaptive weights were frozen separately for each original source gap',
+                'frozen-destination-route-context' =>
+                    'One Adaptive view was frozen for the destination route',
+                'fixed-source-relevance-then-rolling-route-context' =>
+                    'The source set fixed relevance; Adaptive routing followed the evolving route',
+            );
+            $view->{scoring_context_policy} =
+                $context_labels{$provenance->{context_policy}}
+                    || $provenance->{context_policy} || 'unknown';
+            $view->{scoring_seed_policy} = $provenance->{seed_policy} || 'unknown';
+            $view->{scoring_gap_context_mode} =
+                $provenance->{gap_context_mode} || '';
+            $view->{scoring_configured_blend} =
+                0 + ($provenance->{configured_learned_percent} || 0);
+            $view->{scoring_effective_blend} =
+                0 + ($provenance->{effective_base_learned_percent} || 0);
+        }
         my $selected = $artifact->{selected_strategy} || 'adaptive';
         $view->{selected_strategy} = $selected;
         if ($job->{options}->{extension_mode} ne 'none') {

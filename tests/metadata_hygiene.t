@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 36;
+use Test::More tests => 38;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -68,6 +68,16 @@ is_deeply(
 my $extras = slurp(File::Spec->catfile(
     $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'index.html',
 ));
+like(
+    $extras,
+    qr/<select name="gap_context_mode".*?value="rolling".*?value="frozen"/s,
+    'Extras offers rolling and frozen adaptive gap-context policies',
+);
+like(
+    $extras,
+    qr/setVisible\(gapContextModeRow, automatic && algorithm\.value === 'adaptive'\).*?gapContextMode\.disabled = false/s,
+    'gap-context control is shown only when relevant but remains submitted so its value survives strategy changes',
+);
 my $plugin_module = slurp(File::Spec->catfile($plugin, 'Plugin.pm'));
 my $settings = slurp(File::Spec->catfile(
     $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'settings',

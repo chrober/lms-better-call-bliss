@@ -308,6 +308,14 @@
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.trigger_percent %]</span>
     </div>
+    <div class="bea-row" id="gap_context_mode_row">
+      <label for="gap_context_mode">Adaptive gap context</label>
+      <select name="gap_context_mode" id="gap_context_mode">
+        <option value="rolling"[% IF bettercallbliss_form.gap_context_mode == 'rolling' %] selected[% END %]>Follow the evolving route</option>
+        <option value="frozen"[% IF bettercallbliss_form.gap_context_mode == 'frozen' %] selected[% END %]>Freeze weights per source gap</option>
+      </select>
+    </div>
+    <p class="bea-note" id="gap_context_mode_note">Follow the evolving route recalculates Adaptive weights after an addition becomes part of the route. Freeze weights per source gap derives them once from the preceding route ending at the original left-hand song, then keeps those weights for every leg inserted before the original right-hand song. Inserted songs still update the context average and repeat checks.</p>
     <p class="bea-note">Only transitions above this percentile are considered. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.</p>
   </fieldset>
 
@@ -484,6 +492,9 @@
     var additionPurposeNote = document.getElementById('addition_purpose_note');
     var additionAmountNote = document.getElementById('addition_amount_note');
     var algorithm = document.getElementById('algorithm');
+    var gapContextMode = document.getElementById('gap_context_mode');
+    var gapContextModeRow = document.getElementById('gap_context_mode_row');
+    var gapContextModeNote = document.getElementById('gap_context_mode_note');
     var automaticFields = document.getElementById('automatic_extension_fields');
     var automaticNote = document.getElementById('automatic_extension_note');
     var automaticInputs = automaticFields ? automaticFields.querySelectorAll('input') : [];
@@ -637,6 +648,9 @@
         var routeLastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
         setReadOnlyWithSlider(lastFmTrackGuidance, routeLastFmInactive);
         setReadOnlyWithSlider(lastFmArtistGuidance, routeLastFmInactive);
+        setVisible(gapContextModeRow, false);
+        setVisible(gapContextModeNote, false);
+        if (gapContextMode) gapContextMode.disabled = true;
         setVisible(learnedPercentRow, algorithm.value === 'adaptive');
         setVisible(advancedSearch, false);
         return;
@@ -753,6 +767,9 @@
       setVisible(targetFields, targetCount);
       setInputsReadOnly(targetInputs, !targetCount);
       setVisible(doubleFields, doubleCount);
+      setVisible(gapContextModeRow, automatic && algorithm.value === 'adaptive');
+      setVisible(gapContextModeNote, automatic && algorithm.value === 'adaptive');
+      if (gapContextMode) gapContextMode.disabled = false;
       setVisible(learnedPercentRow, algorithm.value === 'adaptive');
     }
 
@@ -789,6 +806,7 @@
     [% END %]
     <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
     [% IF bettercallbliss_job.mixing_note %]<p class="bea-note"><b>Mixing:</b> [% bettercallbliss_job.mixing_strategy | html %] (BlissMixer current setting: [% bettercallbliss_job.blissmixer_strategy | html %]). [% bettercallbliss_job.mixing_note | html %]</p>[% END %]
+    [% IF bettercallbliss_job.scoring_context_policy %]<p class="bea-note"><b>Scoring context:</b> [% bettercallbliss_job.scoring_context_policy | html %]. Seeds: [% bettercallbliss_job.scoring_seed_policy | html %]. Configured learned share [% bettercallbliss_job.scoring_configured_blend %]%; effective base share [% bettercallbliss_job.scoring_effective_blend %]%.</p>[% END %]
     [% IF bettercallbliss_job.state == 'running' %]
       <p id="bea-live-refresh-hint">Waiting for the preview result. This status updates in place; your scroll position is preserved.</p>
       <p><a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id %]#bea-preview-result">Load full result now</a></p>

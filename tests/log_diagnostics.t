@@ -94,6 +94,16 @@ my $job = {
         eligible_candidate_count => 64125,
         frozen_reference_count => 64125,
         semantic_mode => 'semantic-assisted',
+        scoring_provenance => {
+            context_policy => 'frozen-destination-route-context',
+            seed_policy => 'recent immutable listening history plus the locked queue tail',
+            configured_algorithm => 'adaptive',
+            configured_learned_percent => 20,
+            effective_base_learned_percent => 20,
+            learned_matrix_available => 1,
+            base_matrix_sha256 => ('a' x 64),
+            fallback_policy => 'BlissMixer-compatible fallback',
+        },
         gaps => [{
             position => 1,
             left_track_id => 'tail',
@@ -248,9 +258,15 @@ $legacy->{artifact}->{selection_preview} = {
     route_quality => {%{$job->{artifact}->{selection_preview}->{route_quality}}},
 };
 delete $legacy->{artifact}->{selection_preview}->{route_quality}->{secondary_models};
+delete $legacy->{artifact}->{scoring_provenance};
 my $legacy_result = eval {
     Plugins::BetterCallBliss::LogDiagnostics::result_info_lines($legacy)
 };
 ok($legacy_result, 'plugin logging remains compatible with an older optimizer artifact');
+
+like($result, qr/Scoring provenance: context frozen-destination-route-context.*configured adaptive.*learned matrix available/,
+    'information log reports generalized scoring provenance');
+like($debug, qr/Scoring provenance details: context=frozen-destination-route-context.*base_matrix=a{64}/,
+    'debug log reports matrix identity and fallback provenance');
 
 done_testing();

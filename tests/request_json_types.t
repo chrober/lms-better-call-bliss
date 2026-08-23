@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 38;
+use Test::More tests => 40;
 use JSON::XS ();
 
 BEGIN {
@@ -49,13 +49,14 @@ BEGIN {
 
     package Plugins::BetterCallBliss::JobOptions;
     our $extension_mode = 'exact_count';
+    our $algorithm = 'adaptive';
     our $additional_track_count = '1';
     our $bridge_target_track_count = '25';
     sub normalize {
         return {
             ordering_policy => 'preserve_order',
             extension_mode => $extension_mode,
-            algorithm => 'adaptive',
+            algorithm => $algorithm,
             seed_limit => '3',
             learned_percent => '20',
             artist_window => '5',
@@ -70,6 +71,7 @@ BEGIN {
             lastfm_artist_guidance_percent => '75',
             max_added_tracks => '8',
             trigger_percent => '70',
+            gap_context_mode => 'frozen',
             additional_track_count => $additional_track_count,
             bridge_target_track_count => $bridge_target_track_count,
             target_track_count => '25',
@@ -129,6 +131,8 @@ Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(
 my $json = JSON::XS->new->canonical->pretty->encode($built->{request});
 my $request = JSON::XS->new->decode($json);
 
+is($request->{extension}->{gap_context_mode}, 'frozen',
+    'adaptive gap context is serialized as a string enum');
 is($request->{extension}->{shortlist_limit}, 256, 'shortlist is numeric');
 like(
     $json,
@@ -172,6 +176,14 @@ like(
     'digit-only album names remain JSON strings',
 );
 
+$Plugins::BetterCallBliss::JobOptions::algorithm = 'static';
+$Plugins::BetterCallBliss::JobOptions::extension_mode = 'automatic';
+my $static = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+    7, 'preview-json-types-static', '/tmp/semantic-evidence.json', {},
+);
+ok(!exists $static->{request}->{extension}->{gap_context_mode},
+    'Static requests omit the Adaptive-only gap-context policy');
+$Plugins::BetterCallBliss::JobOptions::algorithm = 'adaptive';
 $Plugins::BetterCallBliss::JobOptions::extension_mode = 'double_count';
 $Plugins::BetterCallBliss::JobOptions::additional_track_count = '1';
 $Plugins::BetterCallBliss::JobOptions::bridge_target_track_count = '25';

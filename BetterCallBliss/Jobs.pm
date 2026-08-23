@@ -529,6 +529,7 @@ sub _start_preview_from_built {
         . ($effective->{extension_mode} eq 'automatic'
             ? " max_added=$effective->{max_added_tracks}"
                 . " trigger_percent=$effective->{trigger_percent}"
+                . " gap_context=$effective->{gap_context_mode}"
             : '')
         . (($effective->{extension_mode} eq 'fixed_source_extension'
                 || $effective->{extension_mode} eq 'target_count'

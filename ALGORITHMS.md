@@ -57,7 +57,7 @@ The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, free
 | Workflow | Tracks that may be chosen | Tracks used to discover or score them | Do selected additions become new discovery seeds? |
 | --- | --- | --- | --- |
 | [Reorder only](#reorder-existing-tracks-only) | Only source tracks not yet placed in the proposed route | Up to N already placed source tracks immediately before the next position | There are no additions. Each placed source track becomes part of the context for the next position. |
-| [Improve difficult transitions](#add-automatically) | Eligible local analyzed library tracks | The local gap `A -> B`, including up to N preceding route tracks ending in A; the complete original source set supplies the frozen percentile scale and Last.fm artist fallback, not the primary acoustic target | A selected bridge affects the context used when later gaps are evaluated, but it does not turn the workflow into whole-playlist growth. |
+| [Improve difficult transitions](#add-automatically) | Eligible local analyzed library tracks | The local gap `A -> B`, including up to N preceding route tracks ending in A; the complete original source set supplies the frozen percentile scale and Last.fm artist fallback, not the primary acoustic target | The per-job Adaptive gap-context choice decides whether inserted tracks may recalculate feature weights inside a gap. A selected bridge still affects the context used for later gaps, but it does not turn the workflow into whole-playlist growth. |
 | [Extend playlist](#extend-playlist) | Eligible local analyzed library tracks | Every original source track together as one fixed musical reference | No. All additions are selected against the unchanged original source set. They influence only the later placement or route search. |
 | [Bliss me there...](#bliss-me-there) | Eligible local analyzed library tracks | The fixed queue tail and destination drive acoustic shortlisting under the configured strategy. For Adaptive, a bounded suffix of analyzed history plus the tail constructs the per-run matrix; recent history and both endpoints can also provide Last.fm and repeat context. | No. Intermediates are chosen from one frozen shortlist. A partial path affects the next path leg and repeat checks, but does not recruit new candidates. |
 
@@ -331,6 +331,7 @@ If the original transition is already fine, or no candidate improves it safely, 
 | Source-track order | Optimize by default | Either optimizes the originals before gap repair or preserves them as anchors. |
 | Musical context window | 1-50; inherited from BlissMixer | Controls the preceding context for direct gaps and both candidate legs. |
 | Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
+| Adaptive gap context | Follow the evolving route (default), or Freeze weights per source gap | Adaptive only. Rolling recalculates feature weights after an inserted track enters the context. Frozen derives one matrix from the preceding route ending at the original left anchor and reuses it for every leg inside that source gap. |
 | Artist look-back | 0-10,000; inherited | Rejects tentative and final routes with artists too close together. Zero disables it. |
 | Album look-back | 0-10,000; inherited | Rejects tentative and final routes with albums too close together. Zero disables it. |
 | Additional route-search attempts | 0-500; default 50 | Applies only when source order is Optimize. |
@@ -367,18 +368,25 @@ The plugin asks LastMix about every distinct track and artist in the original pl
 
 Last.fm never replaces the candidate library. Every candidate still comes from the frozen intersection of usable Bliss rows and current local LMS tracks. If the pool contains more than 256 tracks, up to 32 strongest semantic matches are reserved while acoustic shortlisting fills the remaining positions. Bliss then evaluates both legs, repeat safety, and improvement. Rejected candidates stay rejected regardless of Last.fm evidence.
 
-All per-gap shortlists are prepared from the frozen source-only route before any bridge is inserted. During left-to-right selection, shortlisted candidates are scored again against the evolving route. An earlier bridge can therefore change a later candidate's final contextual score, but cannot add new candidates to that later gap's shortlist.
+All per-gap shortlists are prepared from the frozen source-only route before any bridge is inserted. During left-to-right selection, shortlisted candidates are scored again against the evolving route. An earlier bridge can therefore change a later gap's preceding tracks and final contextual score, but cannot add new candidates to that later gap's shortlist. Inside the current gap, **Adaptive gap context** controls whether those evolving tracks also cause the feature-weight matrix itself to be recalculated.  
 
 Among candidates that pass those checks, the two job percentages provide a bounded adjustment to the acoustic worst-leg and detour rankings. Evidence strength uses Last.fm's match score when present, otherwise its result rank, and is reduced for uncertain identity matches. Support from both recordings is stronger than support from one; collection-level artist evidence is weaker than endpoint-local artist evidence. The combined adjustment is capped at ten percentile points. Therefore 100% means maximum permitted guidance, not "let Last.fm choose," while 0% completely ignores that evidence type.
 
 #### How a bridge is tested
 
-For C inserted between A and B:
+For C inserted between A and B, the track context always evolves:  
 
-- **Left leg:** compare C with up to N preceding tracks ending in A.
-- **Right leg:** insert C, then compare B with the updated preceding context ending in C.
+- **Left leg:** compare C with up to N preceding tracks ending in A.  
+- **Right leg:** insert C, then compare B with the updated preceding context ending in C.  
 
-N is **Musical context window**. With N = 3 and a route ending W -> X -> A -> B, the left context is W, X, A and the candidate is C. For the second leg the context becomes X, A, C and the candidate is B. W drops out of the window.
+N is **Musical context window**. With N = 3 and a route ending W -> X -> A -> B, the left context is W, X, A and the candidate is C. For the second leg the context becomes X, A, C and the candidate is B. W drops out of the window.  
+
+The option changes how Adaptive turns those context tracks into feature weights:  
+
+- **Follow the evolving route:** the left leg derives its Adaptive matrix from W, X, A. After C is inserted, the right leg derives another matrix from X, A, C. Both the context average and the feature weights evolve.  
+- **Freeze weights per source gap:** the matrix is derived once from W, X, A and reused for both legs. The right leg still uses the updated context average X, A, C, and C still participates in repeat checks; only the feature weights remain fixed. If a native request places several tracks in the same original gap, that one matrix governs all of its legs.  
+
+Static scoring has one configured matrix already, so the selector is hidden for Static jobs. The optimizer records the selected context policy, seed policy, configured and effective learned shares, learned-matrix availability, base matrix identity, and fallback policy in every route or bridge result. Better Call Bliss shows a concise summary and writes fuller details at information/debug log levels.  
 
 ~~~mermaid
 flowchart LR
