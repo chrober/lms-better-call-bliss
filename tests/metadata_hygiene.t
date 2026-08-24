@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 42;
+use Test::More tests => 45;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -92,10 +92,27 @@ like(
     'gap-context control is shown only when relevant but remains submitted so its value survives strategy changes',
 );
 my $plugin_module = slurp(File::Spec->catfile($plugin, 'Plugin.pm'));
+my $defaults_module = slurp(File::Spec->catfile($plugin, 'Defaults.pm'));
+my $settings_module = slurp(File::Spec->catfile($plugin, 'Settings.pm'));
 my $settings = slurp(File::Spec->catfile(
     $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'settings',
     'bettercallbliss.html',
 ));
+like(
+    $plugin_module,
+    qr/use Plugins::BetterCallBliss::Defaults.*?preference_defaults.*?ensure_preference_defaults/s,
+    'plugin initializes settings from the shared Better Call Bliss default table',
+);
+like(
+    $defaults_module,
+    qr/route_min_intermediates\s*=>\s*0,.*?route_max_intermediates\s*=>\s*4,.*?route_exact_intermediates\s*=>\s*2,/s,
+    'shared defaults include concrete destination-route slider values',
+);
+like(
+    $settings_module,
+    qr/ensure_preference_defaults\(\$prefs\).*?\$params->\{prefs\}->\{\$name\}\s*=\s*\$prefs->get\(\$name\)/s,
+    'settings page backfills and renders missing defaults before Material sliders are built',
+);
 like(
     $settings,
     qr/job-defaults-section-header.*?route-section-header.*?lastfm-section-header.*?roadmap-section-header/s,

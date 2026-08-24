@@ -4,6 +4,10 @@ use strict;
 use base qw(Slim::Web::Settings);
 use Slim::Utils::Prefs;
 use Slim::Utils::PluginManager;
+use Plugins::BetterCallBliss::Defaults qw(
+    ensure_preference_defaults
+    preference_names
+);
 
 my $prefs = preferences('plugin.bettercallbliss');
 
@@ -43,6 +47,11 @@ sub prefs {
 
 sub beforeRender {
     my ($class, $params) = @_;
+    ensure_preference_defaults($prefs);
+    $params->{prefs} ||= {};
+    for my $name (preference_names()) {
+        $params->{prefs}->{$name} = $prefs->get($name);
+    }
     $params->{lastmix_available} = Slim::Utils::PluginManager->isEnabled(
         'Plugins::LastMix::Plugin'
     ) ? 1 : 0;

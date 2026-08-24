@@ -15,6 +15,10 @@ use Slim::Utils::Strings;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::ContextMenu;
+use Plugins::BetterCallBliss::Defaults qw(
+    preference_defaults
+    ensure_preference_defaults
+);
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::Web;
 
@@ -36,28 +40,8 @@ sub initPlugin {
 
     my $preference_defaults_version =
         $prefs->get('preference_defaults_version') || 0;
-    $prefs->init({
-        preference_defaults_version => 2,
-        output_suffix => 'Optimized',
-        extended_suffix => 'Extended',
-        restart_count => 50,
-        variation_percent => 25,
-        auto_bridge_budget => 8,
-        auto_trigger_percent => 70,
-        route_length_policy => 'automatic',
-        route_direct_caution => 'cautious',
-        route_search_effort => 'fast',
-        route_min_intermediates => 0,
-        route_max_intermediates => 4,
-        route_exact_intermediates => 2,
-        report_retention_days => 30,
-        semantic_cache_days => 30,
-        semantic_stale_days => 90,
-        lastfm_enabled => 0,
-        lastfm_track_guidance_percent => 25,
-        lastfm_artist_guidance_percent => 25,
-        listenbrainz_enabled => 0,
-    });
+    $prefs->init(preference_defaults());
+    ensure_preference_defaults($prefs);
     if ($preference_defaults_version < 2) {
         for my $name (qw(
             lastfm_track_guidance_percent
