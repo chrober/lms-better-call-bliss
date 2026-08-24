@@ -22,9 +22,9 @@ sub queue_action {
 sub action_name {
     my $source = normalize_source(shift);
     return unless defined $source;
-    return 'Bliss me there... from here!' if $source eq 'now_playing';
-    return 'Bliss me there... from here... and back again!' if $source eq 'round_trip';
-    return 'Bliss me there...';
+    return 'Bliss me there...' if $source eq 'now_playing';
+    return 'Bliss me there... and back again!' if $source eq 'round_trip';
+    return 'Bliss me there... when we\'re through!';
 }
 
 1;

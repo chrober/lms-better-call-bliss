@@ -24,17 +24,19 @@ is(Plugins::BetterCallBliss::RouteMode::queue_action('round_trip'), 'play_next',
     'round-trip routes can only insert before the upcoming queue');
 ok(!defined Plugins::BetterCallBliss::RouteMode::queue_action('other'),
     'unknown source has no queue action');
-is(Plugins::BetterCallBliss::RouteMode::action_name('queue_end'), 'Bliss me there...',
-    'queue-end action keeps its concise menu name');
+is(Plugins::BetterCallBliss::RouteMode::action_name('queue_end'),
+    'Bliss me there... when we\'re through!',
+    'queue-end action has a distinct deferred menu name');
 is(Plugins::BetterCallBliss::RouteMode::action_name('now_playing'),
-    'Bliss me there... from here!',
-    'now-playing action has a distinct menu name');
+    'Bliss me there...',
+    'now-playing action has the concise primary menu name');
 is(Plugins::BetterCallBliss::RouteMode::action_name('round_trip'),
-    'Bliss me there... from here... and back again!',
+    'Bliss me there... and back again!',
     'round-trip action has a distinct menu name');
 ok(!defined Plugins::BetterCallBliss::RouteMode::action_name('other'),
     'unknown source has no action name');
 is(Plugins::BetterCallBliss::RouteMode::queue_action(), 'append',
     'legacy jobs without a source remain append-only');
-is(Plugins::BetterCallBliss::RouteMode::action_name(), 'Bliss me there...',
-    'legacy jobs retain the original action name');
+is(Plugins::BetterCallBliss::RouteMode::action_name(),
+    'Bliss me there... when we\'re through!',
+    'legacy jobs retain queue-end semantics under the new label');

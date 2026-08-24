@@ -199,7 +199,11 @@ my $job = {
 
 my $start = join "\n",
     @{Plugins::BetterCallBliss::LogDiagnostics::start_info_lines($job)};
-like($start, qr/User action: Bliss me there/, 'information log names the user action');
+like(
+    $start,
+    qr/User action: Bliss me there\.\.\. when we're through!(?:\n|$)/,
+    'information log names the queue-end action',
+);
 
 my $now_playing_start = join "\n",
     @{Plugins::BetterCallBliss::LogDiagnostics::start_info_lines({
@@ -208,7 +212,7 @@ my $now_playing_start = join "\n",
     })};
 like(
     $now_playing_start,
-    qr/User action: Bliss me there\.\.\. from here!(?:\n|$)/,
+    qr/User action: Bliss me there\.\.\.(?:\n|$)/,
     'information log distinguishes the now-playing context action',
 );
 my $round_trip_start = join "\n",
@@ -217,7 +221,7 @@ my $round_trip_start = join "\n",
         route_source => 'round_trip',
         route_rejoin_label => 'Queue Artist - Rejoin Song',
     })};
-like($round_trip_start, qr/User action: Bliss me there\.\.\. from here\.\.\. and back again!/,
+like($round_trip_start, qr/User action: Bliss me there\.\.\. and back again!/,
     'information log distinguishes the round-trip context action');
 like($round_trip_start, qr/Target Artist - Destination Song -> Queue Artist - Rejoin Song/,
     'round-trip source diagnostics identify waypoint and rejoin anchors');

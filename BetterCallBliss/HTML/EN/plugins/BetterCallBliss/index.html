@@ -177,7 +177,7 @@
     [% IF bettercallbliss_form.source_mode == 'route_to_track' %]
       <input type="hidden" name="source_mode" id="source_mode" value="route_to_track">
       <div class="bea-info">
-        <b>[% IF bettercallbliss_route_context.route_source == 'round_trip' %]Bliss me there... from here... and back again![% ELSIF bettercallbliss_route_context.route_source == 'now_playing' %]Bliss me there... from here![% ELSE %]Bliss me there...[% END %]</b><br>
+        <b>[% IF bettercallbliss_route_context.route_source == 'round_trip' %]Bliss me there... and back again![% ELSIF bettercallbliss_route_context.route_source == 'now_playing' %]Bliss me there...[% ELSE %]Bliss me there... when we're through![% END %]</b><br>
         Build a preview route from [% IF bettercallbliss_route_context.route_source == 'now_playing' || bettercallbliss_route_context.route_source == 'round_trip' %]the currently playing song on[% ELSE %]the current end of[% END %] <b>[% bettercallbliss_route_context.player_name | html %]</b>'s queue to
         <b>[% bettercallbliss_route_context.target_label | html %]</b>.
         The source song is used only as the left anchor; Better Call Bliss sends only the generated route body to the player queue. [% IF bettercallbliss_route_context.route_source == 'round_trip' %]The selected track becomes a mandatory waypoint, after which the route rejoins the unchanged upcoming queue.[% ELSIF bettercallbliss_route_context.route_source == 'now_playing' %]The current song is kept and its upcoming queue is replaced.[% ELSE %]The existing queue is kept and the route is appended.[% END %]
@@ -944,7 +944,7 @@
         <fieldset class="bea-section">
           <legend>Accept this preview</legend>
           [% IF bettercallbliss_job.route_to_track %]
-          <p class="bea-note"><b>[% IF bettercallbliss_job.route_source == 'round_trip' %]Bliss me there... from here... and back again![% ELSIF bettercallbliss_job.route_source == 'now_playing' %]Bliss me there... from here![% ELSE %]Bliss me there...[% END %]</b> sends only the generated route body to the selected player queue. Captured queue anchors are not sent again.</p>
+          <p class="bea-note"><b>[% IF bettercallbliss_job.route_source == 'round_trip' %]Bliss me there... and back again![% ELSIF bettercallbliss_job.route_source == 'now_playing' %]Bliss me there...[% ELSE %]Bliss me there... when we're through![% END %]</b> sends only the generated route body to the selected player queue. Captured queue anchors are not sent again.</p>
         [% ELSE %]
           <p class="bea-note">The generated order above is reusable. Pick the output target now; changing these fields does not rerun the optimizer.</p>
         [% END %]

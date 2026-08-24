@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 39;
+use Test::More tests => 40;
 
 BEGIN {
     package Slim::Menu::PlaylistInfo;
@@ -75,8 +75,10 @@ is(
 is(
     $track_item->{jive}->{actions}->{go}->{params}->{route_source},
     'queue_end',
-    'standard destination action explicitly starts at the queue end',
+    'deferred destination action explicitly starts at the queue end',
 );
+is($track_item->{name}, 'Bliss me there... when we\'re through!',
+    'queue-end action explains that it runs after the existing queue');
 ok(
     !exists $track_item->{jive}->{actions}->{go}->{params}->{source_mode},
     'direct action does not carry obsolete web-preview parameters',
@@ -93,8 +95,8 @@ my $now_item = Plugins::BetterCallBliss::ContextMenu::trackNowPlayingInfoHandler
 ok($now_item, 'now-playing track context item is created alongside the standard action');
 is(
     $now_item->{name},
-    'Bliss me there... from here!',
-    'now-playing action has an explicit source label',
+    'Bliss me there...',
+    'now-playing action owns the concise primary label',
 );
 like($now_item->{title}, qr/Schlafzimmer/, 'now-playing title includes the player name');
 ok($now_item->{jive}->{actions}->{go}, 'now-playing context exposes a Jive go action');
@@ -128,7 +130,7 @@ my $round_item = Plugins::BetterCallBliss::ContextMenu::trackRoundTripInfoHandle
     TestClient->new, undef, TestTrack->new,
 );
 ok($round_item, 'round-trip track context item is created alongside both direct routes');
-is($round_item->{name}, 'Bliss me there... from here... and back again!',
+is($round_item->{name}, 'Bliss me there... and back again!',
     'round-trip action has its own menu label');
 like($round_item->{title}, qr/Schlafzimmer/, 'round-trip title includes the player name');
 ok($round_item->{jive}->{actions}->{go}, 'round-trip context exposes a Jive go action');

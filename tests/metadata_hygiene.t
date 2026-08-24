@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 54;
+use Test::More tests => 55;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -152,13 +152,18 @@ like(
 );
 like(
     $context_menu,
-    qr/bettercallbliss_route_to_now_playing.*?after\s*=>\s*'bettercallbliss_route_to'/s,
-    'now-playing route is a sibling track action immediately after the queue-end action',
+    qr/bettercallbliss_route_to_now_playing.*?before\s*=>\s*'favorites'/s,
+    'now-playing route is the first sibling track action',
 );
 like(
     $context_menu,
     qr/bettercallbliss_route_round_trip.*?after\s*=>\s*'bettercallbliss_route_to_now_playing'/s,
-    'round-trip route is the third sibling track action',
+    'round-trip route is the second sibling track action',
+);
+like(
+    $context_menu,
+    qr/bettercallbliss_route_to.*?after\s*=>\s*'bettercallbliss_route_round_trip'/s,
+    'queue-end route is the third sibling track action',
 );
 like(
     $context_menu,

@@ -178,8 +178,8 @@ sub send_to_player {
         _fail(
             'ROUTE_PREVIEW_STALE',
             $route_source eq 'round_trip'
-                ? 'The source player is no longer playing or paused. Run Bliss me there and back again once more.'
-                : 'The source player is no longer playing or paused. Choose Bliss me there... from here! once more.',
+                ? 'The source player is no longer playing or paused. Choose Bliss me there... and back again! once more.'
+                : 'The source player is no longer playing or paused. Choose Bliss me there... once more.',
         ) if ($route_source eq 'now_playing' || $route_source eq 'round_trip')
             && $playmode ne 'play' && $playmode ne 'pause';
         my $live_start_index = $route_source eq 'now_playing'
@@ -190,10 +190,10 @@ sub send_to_player {
         };
         my $live_start_url = $live_start ? $live_start->url : undef;
         my $stale_message = $route_source eq 'round_trip'
-            ? 'The currently playing song changed while this excursion was being built. Run Bliss me there and back again once more.'
+            ? 'The currently playing song changed while this excursion was being built. Choose Bliss me there... and back again! once more.'
             : $route_source eq 'now_playing'
-            ? 'The currently playing song changed while this route was being built. Choose Bliss me there... from here! once more.'
-            : 'The player queue end changed while this route was being built. Run Bliss me there again from the new queue end.';
+            ? 'The currently playing song changed while this route was being built. Choose Bliss me there... once more.'
+            : 'The player queue end changed while this route was being built. Choose Bliss me there... when we\'re through! once more.';
         _fail(
             'ROUTE_PREVIEW_STALE',
             $stale_message,
@@ -211,7 +211,7 @@ sub send_to_player {
             my $live_rejoin_url = $live_rejoin ? $live_rejoin->url : undef;
             _fail(
                 'ROUTE_PREVIEW_STALE',
-                'The first upcoming queue track changed while this excursion was being built. Run Bliss me there and back again once more.',
+                'The first upcoming queue track changed while this excursion was being built. Choose Bliss me there... and back again! once more.',
             ) unless defined $live_rejoin_url
                 && defined $job->{route_rejoin_url}
                 && $live_rejoin_url eq $job->{route_rejoin_url};

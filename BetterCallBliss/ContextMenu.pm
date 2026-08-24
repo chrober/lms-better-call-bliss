@@ -17,14 +17,8 @@ sub init {
         ),
     );
     Slim::Menu::TrackInfo->registerInfoProvider(
-        bettercallbliss_route_to => (
-            before => 'favorites',
-            func => \&trackInfoHandler,
-        ),
-    );
-    Slim::Menu::TrackInfo->registerInfoProvider(
         bettercallbliss_route_to_now_playing => (
-            after => 'bettercallbliss_route_to',
+            before => 'favorites',
             func => \&trackNowPlayingInfoHandler,
         ),
     );
@@ -32,6 +26,12 @@ sub init {
         bettercallbliss_route_round_trip => (
             after => 'bettercallbliss_route_to_now_playing',
             func => \&trackRoundTripInfoHandler,
+        ),
+    );
+    Slim::Menu::TrackInfo->registerInfoProvider(
+        bettercallbliss_route_to => (
+            after => 'bettercallbliss_route_round_trip',
+            func => \&trackInfoHandler,
         ),
     );
     $registered = 1;
@@ -139,7 +139,7 @@ sub trackInfoHandler {
     return _route_item(
         $client,
         $track,
-        'Bliss me there...',
+        'Bliss me there... when we\'re through!',
         'Build a fluent route from the current queue end to this track and append it using the saved Bliss me there defaults.',
         'queue_end',
     );
@@ -150,7 +150,7 @@ sub trackNowPlayingInfoHandler {
     return _route_item(
         $client,
         $track,
-        'Bliss me there... from here!',
+        'Bliss me there...',
         'Keep the currently playing song and replace the upcoming queue with a fluent route to this track using the saved Bliss me there defaults.',
         'now_playing',
     );
@@ -161,7 +161,7 @@ sub trackRoundTripInfoHandler {
     return _route_item(
         $client,
         $track,
-        'Bliss me there... from here... and back again!',
+        'Bliss me there... and back again!',
         'Insert a fluent excursion from the currently playing song through this track and back to the existing upcoming queue.',
         'round_trip',
     );
