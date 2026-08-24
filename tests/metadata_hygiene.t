@@ -129,7 +129,7 @@ like(
     'Last.fm guidance inputs follow the provider enable checkbox',
 );
 like(
-    $plugin_module,
+    $defaults_module,
     qr/lastfm_track_guidance_percent\s*=>\s*25,.*?lastfm_artist_guidance_percent\s*=>\s*25,/s,
     'new installations default both Last.fm guidance controls to 25 percent',
 );
