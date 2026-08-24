@@ -457,6 +457,11 @@ sub _result_view {
                 $view->{route_quality_target_met} =
                     $preview->{quality_target_met} ? 1 : 0;
                 $view->{route_best_effort} = $preview->{best_effort} ? 1 : 0;
+                $view->{route_best_effort_reason} =
+                    $preview->{best_effort_reason} || '';
+                $view->{route_no_beneficial_bridge} =
+                    ($preview->{best_effort_reason} || '')
+                        eq 'no-beneficial-bridge-over-direct' ? 1 : 0;
                 $view->{route_achieved_percent} = sprintf(
                     '%.1f',
                     100 * ($preview->{achieved_max_leg_percentile} || 0),

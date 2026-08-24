@@ -51,12 +51,12 @@ PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET_DESC
 	DE	Maximale Anzahl zusätzlicher Titel für die automatische Erweiterung; pro Vorgang änderbar.
 
 PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT
-	EN	Default bridge trigger percentile (%)
-	DE	Standard-Perzentil für Brücken (%)
+	EN	Default transition-quality threshold (percentile)
+	DE	Standardgrenze für Übergangsqualität (Perzentil)
 
 PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC
-	EN	Only transitions above this frozen contextual percentile are considered; each job can override it.
-	DE	Nur Übergänge oberhalb dieses eingefrorenen Kontext-Perzentils werden berücksichtigt; pro Vorgang änderbar.
+	EN	A distance rank within the job's comparison population, not a similarity percentage. Lower values are stricter and cause more bridge searches: 30 means that no more than about 30% of comparable alternatives may be acoustically closer. Bliss me there uses the local analyzed library; playlist-gap improvement uses the frozen source-playlist scale. Each job can override it.
+	DE	Ein Distanzrang innerhalb der Vergleichsmenge des Vorgangs, keine Ähnlichkeit in Prozent. Niedrigere Werte sind strenger und lösen mehr Brückensuchen aus: 30 bedeutet, dass höchstens ungefähr 30 % der vergleichbaren Alternativen akustisch näher liegen dürfen. Bliss me there verwendet die lokal analysierte Bibliothek; die Verbesserung von Playlist-Lücken verwendet die eingefrorene Skala der Quell-Playlist. Pro Vorgang änderbar.
 
 PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT
 	EN	Default variation (%)
@@ -76,11 +76,11 @@ PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY_DESC
 
 PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION
 	EN	Automatic bridge caution
-	DE	Vorsicht bei automatischen Bruecken
+	DE	Vorsicht bei automatischen Brücken
 
 PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION_DESC
 	EN	Normal accepts a direct transition whenever it meets the configured percentile. Cautious also searches for bridges when available acoustic models strongly disagree and judges candidate paths across those models.
-	DE	Normal akzeptiert einen direkten Uebergang, sobald er das konfigurierte Perzentil erreicht. Vorsichtig sucht auch bei starker Uneinigkeit der verfuegbaren Akustikmodelle nach Bruecken und bewertet Kandidatenpfade mit diesen Modellen.
+	DE	Normal akzeptiert einen direkten Übergang, sobald er das konfigurierte Perzentil erreicht. Vorsichtig sucht auch bei starker Uneinigkeit der verfügbaren Akustikmodelle nach Brücken und bewertet Kandidatenpfade mit diesen Modellen.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_CAUTION_NORMAL
 	EN	Normal
@@ -120,7 +120,7 @@ PLUGIN_BETTERCALLBLISS_ROUTE_MIN_INTERMEDIATES
 
 PLUGIN_BETTERCALLBLISS_ROUTE_MIN_INTERMEDIATES_DESC
 	EN	Automatic routing uses at least this many intermediate tracks, even when the direct transition already meets the measured target. It must not exceed the maximum.
-	DE	Die automatische Route verwendet mindestens so viele Zwischentitel, auch wenn der direkte Uebergang das gemessene Ziel bereits erreicht. Der Wert darf das Maximum nicht ueberschreiten.
+	DE	Die automatische Route verwendet mindestens so viele Zwischentitel, auch wenn der direkte Übergang das gemessene Ziel bereits erreicht. Der Wert darf das Maximum nicht überschreiten.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC
 	EN	Upper bound searched by Automatic Bliss me there routing. The final route separately reports whether its actual adjacent transitions meet the target. Zero permits only the direct destination.

@@ -284,6 +284,19 @@ sub _destination_quality_lines {
                 : '; it did not affect selection',
         );
     }
+    if (($selection->{direct_transition_caution} || 'normal') eq 'cautious'
+        && defined $preview->{achieved_max_leg_percentile}) {
+        push @lines, sprintf(
+            'Cautious consensus result: worst available-model adjacent percentile %.1f%%; %s.',
+            100 * ($preview->{achieved_max_leg_percentile} || 0),
+            $preview->{quality_target_met} ? 'target met' : 'target missed',
+        );
+    }
+    if (($preview->{best_effort_reason} || '')
+        eq 'no-beneficial-bridge-over-direct') {
+        push @lines,
+            'No beneficial bridge was found: every searched repeat-safe bridge path improved the cautious direct result by less than one percentile point, or made it worse; the direct destination was retained.';
+    }
     return @lines;
 }
 

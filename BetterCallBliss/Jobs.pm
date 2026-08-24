@@ -1014,6 +1014,19 @@ sub _poll {
                 )
             );
         }
+        if ($job->{options}->{extension_mode} eq 'destination_route') {
+            my $preview = $job->{artifact}->{selection_preview} || {};
+            if ($preview->{best_effort}) {
+                $log->warn(sprintf(
+                    'job=%s stage=CompletedBestEffort reason=%s target_percentile=%.1f achieved_consensus_percentile=%.1f added=%d',
+                    $job_id,
+                    $preview->{best_effort_reason} || 'quality-target-not-reached',
+                    100 * ($job->{artifact}->{trigger_percentile} || 0),
+                    100 * ($preview->{achieved_max_leg_percentile} || 0),
+                    0 + ($preview->{added_track_count} || 0),
+                ));
+            }
+        }
         if (main::INFOLOG) {
             $log->info("job=$job_id $_")
                 for @{Plugins::BetterCallBliss::LogDiagnostics::result_info_lines(

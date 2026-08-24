@@ -93,7 +93,7 @@
       <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_exact_intermediates" id="route_exact_intermediates" value="[% prefs.route_exact_intermediates %]" size="6"[% UNLESS prefs.route_length_policy == 'exact' %] disabled[% END %]>
     [% END %]
 
-    <p>The difficult-transition percentile currently serves both as the direct-transition trigger and the maximum adjacent-percentile target for Automatic destination routing. The optimizer searches complete paths with the selected effort and reports whether the target was reached; Exact uses the same adjacent objective for its fixed count. Separate trigger and target controls are planned. Current BlissMixer scoring, context, and repeat settings plus the Last.fm settings below are captured when the action starts.</p>
+    <p>The transition-quality threshold is a distance rank, not a similarity percentage. Lower values are stricter: they cause more direct transitions to be searched and require better neighboring legs in Automatic destination routes. At 30, for example, a leg is acceptable only when no more than about 30% of the relevant comparison population is acoustically closer. Cautious mode may search even below the threshold when acoustic models strongly disagree. If no route reaches the target, a bridge is used only when it improves the cautious direct result by at least one percentile point; otherwise the direct destination is retained and reported. Exact uses the same adjacent-path objective for its fixed count. Current BlissMixer scoring, context, and repeat settings plus the Last.fm settings below are captured when the action starts.</p>
   </div>
 
   <br><hr style="opacity:0.4" class="sub-sep"><br>

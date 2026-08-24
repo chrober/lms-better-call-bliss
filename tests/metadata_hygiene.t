@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 38;
+use Test::More tests => 40;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -156,6 +156,16 @@ like(
     $web,
     qr/route_achieved_percent.*?achieved_max_leg_percentile/s,
     'Web view maps the achieved worst-leg percentile',
+);
+like(
+    $web,
+    qr/route_no_beneficial_bridge.*?no-beneficial-bridge-over-direct/s,
+    'Web view maps the explicit no-beneficial-bridge outcome',
+);
+like(
+    $extras,
+    qr/route_no_beneficial_bridge.*?retained the direct destination/s,
+    'Extras explains why an unhelpful bridge was not inserted',
 );
 like(
     $web,

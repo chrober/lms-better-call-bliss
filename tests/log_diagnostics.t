@@ -135,6 +135,7 @@ my $job = {
                 structural_upper_bound => 4,
             },
             quality_target_met => 1,
+            achieved_max_leg_percentile => 0.55,
             route_quality => {
                 matrix_role => 'adaptive-context',
                 adjacent_worst_percentile => 0.42,
@@ -235,6 +236,8 @@ like($result, qr/disagreement 27\.0%; caution cautious; disagreement-triggered s
     'information log explains why cautious automatic routing searched');
 like($result, qr/Consensus secondary-model measurement: static-weights.*55\.0%.*included in cautious route acceptance/,
     'information log explains that both acoustic views constrained cautious selection');
+like($result, qr/Cautious consensus result: worst available-model adjacent percentile 55\.0%; target met/,
+    'information log summarizes the consensus percentile that controls acceptance');
 like($result, qr/Selected route \(3\):.*Tail Song.*Bridge Song.*Destination Song/s,
     'destination logging omits earlier context and lists only the audible route');
 unlike($result, qr/Context Song/, 'earlier queue context is absent from the audible route');
@@ -268,5 +271,31 @@ like($result, qr/Scoring provenance: context frozen-destination-route-context.*c
     'information log reports generalized scoring provenance');
 like($debug, qr/Scoring provenance details: context=frozen-destination-route-context.*base_matrix=a{64}/,
     'debug log reports matrix identity and fallback provenance');
+
+my $direct_best_effort = {
+    %$job,
+    added_track_count => 0,
+    final_track_count => 2,
+    final_track_ids => [qw(tail target)],
+    artifact => {
+        %{$job->{artifact}},
+        selection_preview => {
+            %{$job->{artifact}->{selection_preview}},
+            quality_target_met => 0,
+            achieved_max_leg_percentile => 0.90,
+            best_effort => 1,
+            best_effort_reason => 'no-beneficial-bridge-over-direct',
+        },
+    },
+};
+my $direct_best_effort_result = join "\n",
+    @{Plugins::BetterCallBliss::LogDiagnostics::result_info_lines(
+        $direct_best_effort,
+    )};
+like(
+    $direct_best_effort_result,
+    qr/No beneficial bridge was found:.*direct destination was retained/,
+    'information log explicitly explains a direct best-effort fallback',
+);
 
 done_testing();
