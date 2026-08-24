@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 40;
+use Test::More tests => 42;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -63,6 +63,19 @@ is_deeply(
     [sort grep { $token_count{$_} > 1 } keys %token_count],
     [],
     'strings.txt contains no duplicate localization tokens',
+);
+
+like(
+    $strings,
+    qr/PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC.*?Difficult-transition repair.*?automatic destination routing/s,
+    'shared percentile preference names both workflows that consume it',
+);
+
+my $algorithms = slurp(File::Spec->catfile($root, 'ALGORITHMS.md'));
+like(
+    $algorithms,
+    qr/## Understanding transition-quality percentiles.*?## Bliss me there/s,
+    'shared percentile explanation appears before workflow-specific sections',
 );
 
 my $extras = slurp(File::Spec->catfile(

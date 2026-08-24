@@ -74,6 +74,31 @@ The diagrams are orientation maps, not complete algorithm specifications. They s
 
 Inside a diagram, `A -> B -> C` is a playlist or queue in playback order. `+X` marks a track added by Better Call Bliss.
 
+## Understanding transition-quality percentiles
+
+Better Call Bliss uses the shared **Transition-quality threshold percentile** in two automatic workflows: **Improve difficult transitions** uses it to decide which existing playlist gaps deserve examination, while **Bliss me there... / Choose automatically** uses it as the neighboring-leg quality target for a destination route. The setting does not control **Reorder only**, **Extend playlist**, or the number of intermediates in an exact-count destination route.  
+
+The percentage is a **rank of acoustic distance**, not “percent similar.” A result at the 30th percentile means that roughly 30% of the relevant comparison distances are smaller - acoustically closer - while roughly 70% are equal or larger. Lower values therefore mean a closer, stricter transition. Lowering the configured threshold moves the decision boundary left: more transitions are searched, and an automatically accepted result must clear a stricter boundary.  
+
+| Workflow | Reference population | How the threshold is used |
+| --- | --- | --- |
+| [Improve difficult transitions](#add-automatically) | One frozen distribution of contextual distances built from the original source playlist | An original gap above the threshold is examined for a useful bridge. A gap at or below it remains unchanged. |
+| [Bliss me there... / Choose automatically](#bliss-me-there) | For each route leg `A -> B`, the fixed-matrix distance from A to every eligible local analyzed library track | A direct transition or complete path meets the target only when its worst neighboring leg is at or below the threshold. Cautious mode may still search below it when acoustic models strongly disagree. |
+
+~~~mermaid
+flowchart LR
+    P0["0th<br/>closest"] --> P30["30th<br/>strict"] --> P50["50th"] --> P70["70th<br/>configured boundary"] --> P90["90th"] --> P100["100th<br/>furthest"]
+    P70 -. "lower the setting: boundary moves left; more searches" .-> P30
+    A["At or below the boundary<br/>automatic workflow may accept or leave unchanged"] --- P50
+    S["Above the boundary<br/>automatic workflow searches for an improvement"] --- P90
+    classDef accepted fill:#d9ead3,stroke:#38761d,color:#000;
+    classDef searched fill:#fce5cd,stroke:#b45f06,color:#000;
+    class P0,P30,P50,P70,A accepted;
+    class P90,P100,S searched;
+~~~
+
+The percentile number is shared, but its comparison population is deliberately workflow-specific. It therefore expresses the same **lower-is-stricter rank concept**, not an identical global acoustic cutoff across every job.  
+
 ## Bliss me there
 
 Use this from a local track's context menu when a player already has something in its queue and you want to arrive at the selected song smoothly. The action closes the context menu and starts a background job with the saved **Bliss me there...** defaults. It does not open the Extras page and does not require a separate Accept button. A successful result is appended automatically; the job remains visible under **Running and recent previews** for status or error review.
@@ -84,25 +109,7 @@ The current queue tail is the fixed start and the selected song is the fixed des
 
 Candidate discovery is frozen before the layered path search begins. The acoustic prefilter compares every eligible candidate C with both endpoints: `tail -> C` and `C -> destination`. It deliberately retains candidates close to the tail, candidates close to the destination, and candidates with the best balanced two-leg result. Optional Last.fm matches from the endpoints and a bounded suffix of recent history reserve some places in that shortlist. The search then combines only those shortlisted tracks into complete paths. A chosen intermediate affects the next path edge and repeat checks, but does not expand the pool or trigger another library-wide discovery round.  
 
-For every final adjacent `A -> B` edge, the optimizer ranks its fixed-matrix distance against `A -> every current LMS-local analyzed track` under the same matrix. That whole local reference population turns the raw edge distance into a source-relative percentile; it is not another candidate pool. The result identifies the governing Adaptive-context or Static role and hash, records the effective Adaptive algorithm, seed identities, configured learned share, fallback reason, available direct-edge model verdicts, and every final edge, route sum, raw bottleneck, and worst adjacent percentile. Under Cautious it reports and applies distinct Static and learned-only whole-route measurements as well. Earlier listening-history edges are not included in this destination-path quality result.  
-
-#### What the transition-quality percentile means
-
-The percentage is a **rank of acoustic distance**, not “percent similar.” For a route leg `A -> B`, a 30th-percentile result means that about 30% of the eligible local analyzed library is acoustically closer to A than B is under the same matrix. Lower values therefore mean a closer and stricter transition. A configured threshold of 70 accepts a direct leg at or below 70 and normally searches for bridges above 70. Lowering the threshold moves that boundary left: more direct transitions are searched, and every accepted automatic route must have a better worst neighboring leg. Cautious mode can additionally search below the boundary when its acoustic models strongly disagree.  
-
-~~~mermaid
-flowchart LR
-    P0["0th<br/>closest"] --> P30["30th<br/>strict"] --> P50["50th"] --> P70["70th<br/>configured boundary"] --> P90["90th"] --> P100["100th<br/>furthest"]
-    P70 -. "lower the setting: boundary moves left; more searches" .-> P30
-    A["At or below the boundary<br/>direct may be accepted"] --- P50
-    S["Above the boundary<br/>search for a better path"] --- P90
-    classDef accepted fill:#d9ead3,stroke:#38761d,color:#000;
-    classDef searched fill:#fce5cd,stroke:#b45f06,color:#000;
-    class P0,P30,P50,P70,A accepted;
-    class P90,P100,S searched;
-~~~
-
-The reference population depends on the workflow. **Bliss me there...** compares each `A -> B` leg with `A -> every eligible local analyzed library track`. **Improve difficult transitions** uses one frozen scale derived from contextual distances within the original source playlist, so different gaps remain comparable inside that job. In both cases, lowering the value is stricter and tends to request more intervention.  
+For every final adjacent `A -> B` edge, the optimizer ranks its fixed-matrix distance against `A -> every current LMS-local analyzed track` under the same matrix. That whole local reference population turns the raw edge distance into the destination-routing percentile described under [Understanding transition-quality percentiles](#understanding-transition-quality-percentiles); it is not another candidate pool. The result identifies the governing Adaptive-context or Static role and hash, records the effective Adaptive algorithm, seed identities, configured learned share, fallback reason, available direct-edge model verdicts, and every final edge, route sum, raw bottleneck, and worst adjacent percentile. Under Cautious it reports and applies distinct Static and learned-only whole-route measurements as well. Earlier listening-history edges are not included in this destination-path quality result.  
 
 The destination is explicit user intent, so a conflict already present solely between immutable listening history and that destination does not reject the job. Existing history may contain repeated tracks, artists, or albums. Every newly generated intermediate remains unique and is checked against the destination, route members, and history inside the configured artist, album, and track windows. Last.fm similar-track and similar-artist evidence supports candidate ranking, but Bliss remains the primary path-quality evidence. Variation is applied only among complete routes inside a narrow quality band, so it can change a reproducible choice without relaxing repeat rules or turning a clearly worse route into a candidate.  
 
@@ -178,7 +185,7 @@ flowchart LR
 | Minimum intermediate tracks | 0-8; default 0 | Lower bound used only by Automatic. Zero allows a direct transition; a positive value forces Automatic to insert at least that many tracks. It must not exceed the maximum. |
 | Maximum intermediate tracks | 0-8; default 4 | Upper bound used only by Automatic. It is also the budget for the best-effort comparison. Zero means direct-only. |
 | Exact intermediate tracks | 0-8; default 2 | Count used only by Exact. Zero explicitly requests the direct destination. |
-| Transition-quality threshold percentile | 0-100%; plugin default 70 | Library-relative distance rank, not percentage similarity. Lower is stricter: a value of 30 permits a neighboring leg only when no more than about 30% of eligible local analyzed tracks are closer to its left endpoint. It also makes more direct transitions trigger a search. Cautious may search below the threshold when models disagree. |
+| [Transition-quality threshold percentile](#understanding-transition-quality-percentiles) | 0-100%; plugin default 70 | Used only by Automatic. It is a library-relative distance rank, not percentage similarity. Lower is stricter and makes more direct transitions trigger a search. Cautious may search below the threshold when models disagree. |
 | Musical context window | 1-50; inherited from BlissMixer | Caps the recent analyzed history plus queue tail used to construct the per-run Adaptive matrix. It also bounds recent context that can contribute Last.fm evidence. Longer repeat windows can require more immutable history. |
 | Mixing strategy | Inherited from BlissMixer | Static uses the current feature weights. Adaptive constructs a variance/learned blend from recent analyzed context and follows BlissMixer's learned/Static fallback rules. The chosen matrix stays fixed during this route search. |
 | Learned-matrix blend | 0-100%; inherited from BlissMixer | Learned share of the Adaptive matrix when at least two seed tracks allow a variance matrix. Zero means pure variance; 100 means pure learned. The learned matrix is optional. |
@@ -359,7 +366,7 @@ If the original transition is already fine, or no candidate improves it safely, 
 | Similar-track guidance | 0-100%; default 25 | Bounded support from tracks related to A, B, or both. Zero ignores recording evidence. |
 | Similar-artist guidance | 0-100%; default 25 | Bounded support from related endpoint artists or, when no local evidence exists, the original artist collection. Zero ignores artist evidence. |
 | Maximum additional tracks | 0-100; default 8 | Stops insertion after this many bridges. |
-| Bridge trigger percentile | 0-100%; default 70 | Considers only original gaps above this point on the frozen reference scale. |
+| [Bridge trigger percentile](#understanding-transition-quality-percentiles) | 0-100%; default 70 | Considers only original gaps above this point on the frozen source-playlist reference scale. |
 | Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
 
 #### How difficult gaps are recognized
@@ -368,7 +375,7 @@ Raw similarity distances from different parts of a playlist are not directly com
 
 At every position in the selected source route, it scores original source songs that are not in that position's context against that context. The sorted source-to-context distances become the job's scale. A percentile means "how this distance compares with many alternatives drawn from the original playlist." It is not percentage similarity, and the reference is not built from the complete music library.
 
-An original gap is eligible only when its direct distance is above **Bridge trigger percentile**.
+An original gap is eligible only when its direct distance is above **Bridge trigger percentile**. See [Understanding transition-quality percentiles](#understanding-transition-quality-percentiles) for how this shared lower-is-stricter setting differs from the destination-routing reference scale.
 
 #### How candidates are chosen for one gap
 

@@ -55,8 +55,8 @@ PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT
 	DE	Standardgrenze für Übergangsqualität (Perzentil)
 
 PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC
-	EN	A distance rank within the job's comparison population, not a similarity percentage. Lower values are stricter and cause more bridge searches: 30 means that no more than about 30% of comparable alternatives may be acoustically closer. Bliss me there uses the local analyzed library; playlist-gap improvement uses the frozen source-playlist scale. Each job can override it.
-	DE	Ein Distanzrang innerhalb der Vergleichsmenge des Vorgangs, keine Ähnlichkeit in Prozent. Niedrigere Werte sind strenger und lösen mehr Brückensuchen aus: 30 bedeutet, dass höchstens ungefähr 30 % der vergleichbaren Alternativen akustisch näher liegen dürfen. Bliss me there verwendet die lokal analysierte Bibliothek; die Verbesserung von Playlist-Lücken verwendet die eingefrorene Skala der Quell-Playlist. Pro Vorgang änderbar.
+	EN	A distance rank within the job's comparison population, not a similarity percentage. Lower values are stricter and cause more searches. Difficult-transition repair uses it as a gap trigger on the frozen source-playlist scale; automatic destination routing uses it as the neighboring-leg target against the local analyzed library. It does not control reordering, full-playlist extension, or exact-count destination routing. Each applicable job can override it.
+	DE	Ein Distanzrang innerhalb der Vergleichsmenge des Vorgangs, keine Ähnlichkeit in Prozent. Niedrigere Werte sind strenger und lösen mehr Suchen aus. Die Reparatur schwieriger Übergänge verwendet ihn als Lücken-Auslöser auf der eingefrorenen Skala der Quell-Playlist; die automatische Zielrouten-Suche verwendet ihn als Zielwert für benachbarte Titel gegenüber der lokal analysierten Bibliothek. Er steuert weder die Neuordnung noch die Erweiterung der gesamten Playlist noch Zielrouten mit einer exakten Titelanzahl. Jeder zutreffende Vorgang kann ihn überschreiben.
 
 PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT
 	EN	Default variation (%)
