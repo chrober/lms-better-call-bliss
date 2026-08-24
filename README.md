@@ -29,10 +29,14 @@ which is bundled with supported plugin packages.
   per-job variation, and optional Last.fm similar-track and similar-artist guidance.
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the
   current-plus-upcoming queue segment as input.
-- Offers **Bliss me there...** on a local track: it builds a destination-locked  
-  adjacent path in the background, then automatically appends it after a  
-  live-tail check. Recent queue entries are immutable history rather than route  
-  members, so legitimate repeats already heard do not invalidate the request.  
+- Offers three destination shortcuts on a local track. **Bliss me there...** builds  
+  from the queue end and appends its route. **Bliss me there... from here!**  
+  keeps the current song and playback state while replacing only the upcoming  
+  queue with a route to the destination. **Bliss me there... from here... and back again!**  
+  inserts an excursion from the current song through the selected track and back  
+  to the unchanged upcoming queue. All three validate their captured live anchors  
+  before changing the queue. Recent entries are immutable history rather than  
+  route members, so legitimate repeats already heard do not invalidate the request.  
   Normal or Cautious automatic bridge handling controls how learned/Static  
   disagreement affects direct acceptance and whole-route ranking. Fast, Balanced,  
   and Thorough trade runtime for progressively wider searches.  

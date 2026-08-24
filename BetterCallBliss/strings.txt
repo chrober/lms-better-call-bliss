@@ -119,20 +119,20 @@ PLUGIN_BETTERCALLBLISS_ROUTE_MIN_INTERMEDIATES
 	DE	Minimale Anzahl Zwischentitel
 
 PLUGIN_BETTERCALLBLISS_ROUTE_MIN_INTERMEDIATES_DESC
-	EN	Automatic routing uses at least this many intermediate tracks, even when the direct transition already meets the measured target. It must not exceed the maximum.
-	DE	Die automatische Route verwendet mindestens so viele Zwischentitel, auch wenn der direkte Übergang das gemessene Ziel bereits erreicht. Der Wert darf das Maximum nicht überschreiten.
+	EN	Automatic routing uses at least this many intermediate tracks, even when the unbridged route already meets the measured target. It must not exceed the maximum. For and back again, this is one total shared across both legs.
+	DE	Die automatische Route verwendet mindestens so viele Zwischentitel, auch wenn die Route ohne Brücken das gemessene Ziel bereits erreicht. Der Wert darf das Maximum nicht überschreiten. Bei „...und wieder zurück“ ist dies eine gemeinsame Gesamtzahl für beide Teilstrecken.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_MAX_INTERMEDIATES_DESC
-	EN	Upper bound searched by Automatic Bliss me there routing. The final route separately reports whether its actual adjacent transitions meet the target. Zero permits only the direct destination.
-	DE	Obergrenze für die automatische Bliss-me-there-Routensuche. Die fertige Route meldet separat, ob ihre tatsächlich benachbarten Übergänge das Ziel erreichen. Null erlaubt nur das direkte Ziel.
+	EN	Upper bound searched by Automatic Bliss me there routing. The final route separately reports whether its actual adjacent transitions meet the target. Zero permits no bridge tracks. For and back again, this is one total shared across both legs.
+	DE	Obergrenze für die automatische Bliss-me-there-Routensuche. Die fertige Route meldet separat, ob ihre tatsächlich benachbarten Übergänge das Ziel erreichen. Null erlaubt keine Zwischentitel. Bei „...und wieder zurück“ ist dies eine gemeinsame Gesamtzahl für beide Teilstrecken.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES
 	EN	Exact intermediate tracks
 	DE	Exakte Anzahl Zwischentitel
 
 PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES_DESC
-	EN	Number requested when the intermediate-track policy is Exact. It is independent from Automatic's maximum.
-	DE	Anzahl bei der Regel Exakt. Sie ist vom Maximum der automatischen Suche unabhängig.
+	EN	Total number requested when the intermediate-track policy is Exact. It is independent from Automatic's maximum. For and back again, the optimizer distributes this total between both legs.
+	DE	Gesamtzahl bei der Regel Exakt. Sie ist vom Maximum der automatischen Suche unabhängig. Bei „...und wieder zurück“ verteilt der Optimierer diese Gesamtzahl auf beide Teilstrecken.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED
 	EN	Use Last.fm guidance
@@ -147,16 +147,16 @@ PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE
 	DE	Hinweisstärke ähnlicher Titel (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC
-	EN	Bounded influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores track evidence. Default: 75.
-	DE	Begrenzter Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Null ignoriert Titelhinweise. Standard: 75.
+	EN	Bounded influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores track evidence. Default: 25.
+	DE	Begrenzter Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Null ignoriert Titelhinweise. Standard: 25.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE
 	EN	Similar-artist guidance (%)
 	DE	Hinweisstärke ähnlicher Interpreten (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC
-	EN	Bounded influence of Last.fm artist.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores artist evidence. Default: 75.
-	DE	Begrenzter Einfluss von Last.fm-artist.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Null ignoriert Interpretenhinweise. Standard: 75.
+	EN	Bounded influence of Last.fm artist.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores artist evidence. Default: 25.
+	DE	Begrenzter Einfluss von Last.fm-artist.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Null ignoriert Interpretenhinweise. Standard: 25.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE
 	EN	Requires the LastMix plugin to be installed and enabled.

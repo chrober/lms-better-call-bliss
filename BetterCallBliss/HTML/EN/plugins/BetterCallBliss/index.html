@@ -34,7 +34,7 @@
 
 <h2>Playlist Breaking Bad? Better Call Bliss.</h2>
 [% IF bettercallbliss_quick_route %]
-<p>Building a destination-locked route with the saved <b>Bliss me there...</b> defaults. No queue entry is changed until you accept the preview.</p>
+<p>Building a destination-locked route with the saved <b>Bliss me there...</b> defaults. The queue is changed only after the completed route passes its live-source check.</p>
 [% ELSE %]
 <p>
   Configure one optimization job. Values initially come from BlissMixer, but
@@ -153,8 +153,8 @@
 [% IF bettercallbliss_quick_route && bettercallbliss_job %]
   <div class="bea-info">
     <b>Quick route:</b>
-    [% bettercallbliss_job.route_tail_label | html %] &rarr;
-    [% bettercallbliss_job.route_target_label | html %].
+    [% bettercallbliss_job.route_start_label | html %] &rarr;
+    [% bettercallbliss_job.route_target_label | html %][% IF bettercallbliss_job.route_source == 'round_trip' %] &rarr; [% bettercallbliss_job.route_rejoin_label | html %][% END %].
     The optimizer uses [% bettercallbliss_job.route_source_context_count %] recent queue tracks as available acoustic/repeat context,
     [% IF bettercallbliss_job.route_length_policy == 'automatic' %]chooses [% bettercallbliss_job.route_min_intermediates %] to [% bettercallbliss_job.route_max_intermediates %] intermediate tracks automatically[% ELSE %]uses exactly [% bettercallbliss_job.route_exact_intermediates %] intermediate tracks[% END %],
     and snapshots the current BlissMixer and Last.fm settings into this job.
@@ -177,15 +177,16 @@
     [% IF bettercallbliss_form.source_mode == 'route_to_track' %]
       <input type="hidden" name="source_mode" id="source_mode" value="route_to_track">
       <div class="bea-info">
-        <b>Bliss me there...</b><br>
-        Build a preview route from the current tail of <b>[% bettercallbliss_route_context.player_name | html %]</b>'s queue to
+        <b>[% IF bettercallbliss_route_context.route_source == 'round_trip' %]Bliss me there... from here... and back again![% ELSIF bettercallbliss_route_context.route_source == 'now_playing' %]Bliss me there... from here![% ELSE %]Bliss me there...[% END %]</b><br>
+        Build a preview route from [% IF bettercallbliss_route_context.route_source == 'now_playing' || bettercallbliss_route_context.route_source == 'round_trip' %]the currently playing song on[% ELSE %]the current end of[% END %] <b>[% bettercallbliss_route_context.player_name | html %]</b>'s queue to
         <b>[% bettercallbliss_route_context.target_label | html %]</b>.
-        The queue tail is used only as the left anchor; when accepted, Better Call Bliss sends only the generated suffix to the player queue.
+        The source song is used only as the left anchor; Better Call Bliss sends only the generated route body to the player queue. [% IF bettercallbliss_route_context.route_source == 'round_trip' %]The selected track becomes a mandatory waypoint, after which the route rejoins the unchanged upcoming queue.[% ELSIF bettercallbliss_route_context.route_source == 'now_playing' %]The current song is kept and its upcoming queue is replaced.[% ELSE %]The existing queue is kept and the route is appended.[% END %]
       </div>
       <input type="hidden" name="route_player_id" id="route_player_id" value="[% bettercallbliss_form.route_player_id | html %]">
       <input type="hidden" name="route_target_track_id" id="route_target_track_id" value="[% bettercallbliss_form.route_target_track_id | html %]">
-      <input type="hidden" id="route_source_track_count" value="2">
-      <select name="playlist_id" id="playlist_id" class="bea-hidden"><option value="" data-track-count="2" selected>Route anchors</option></select>
+      <input type="hidden" name="route_source" id="route_source" value="[% bettercallbliss_form.route_source | html %]">
+      <input type="hidden" id="route_source_track_count" value="[% IF bettercallbliss_form.route_source == 'round_trip' %]3[% ELSE %]2[% END %]">
+      <select name="playlist_id" id="playlist_id" class="bea-hidden"><option value="" data-track-count="[% IF bettercallbliss_form.route_source == 'round_trip' %]3[% ELSE %]2[% END %]" selected>Route anchors</option></select>
       <select name="ordering_policy" id="ordering_policy" class="bea-hidden"><option value="preserve_order" selected>Preserve source order</option></select>
       <select name="extension_mode" id="extension_mode" class="bea-hidden"><option value="destination_route" selected>Destination route</option></select>
       <div class="bea-row">
@@ -937,13 +938,13 @@
           [% IF bettercallbliss_job.output_mode == 'player_queue' %]The generated preview remains available; retry after checking the selected player.[% ELSIF bettercallbliss_job.output_mode == 'overwrite_source' %]The source playlist was restored if file replacement had already started.[% ELSE %]No incomplete copy remains.[% END %]
         </div>
         [% IF bettercallbliss_job.route_to_track %]
-          <p><a class="inputbutton" href="[% webroot %][% bettercallbliss_recalculate_route_url | html %]">Recalculate from the current queue tail</a></p>
+          <p><a class="inputbutton" href="[% webroot %][% bettercallbliss_recalculate_route_url | html %]">Recalculate from [% IF bettercallbliss_job.route_source == 'now_playing' || bettercallbliss_job.route_source == 'round_trip' %]the currently playing song[% ELSE %]the current queue end[% END %]</a></p>
         [% END %]
         [% END %]
         <fieldset class="bea-section">
           <legend>Accept this preview</legend>
           [% IF bettercallbliss_job.route_to_track %]
-          <p class="bea-note"><b>Bliss me there...</b> sends only the generated route suffix to the selected player queue. The first displayed source track is the current queue-tail anchor and is not appended again.</p>
+          <p class="bea-note"><b>[% IF bettercallbliss_job.route_source == 'round_trip' %]Bliss me there... from here... and back again![% ELSIF bettercallbliss_job.route_source == 'now_playing' %]Bliss me there... from here![% ELSE %]Bliss me there...[% END %]</b> sends only the generated route body to the selected player queue. Captured queue anchors are not sent again.</p>
         [% ELSE %]
           <p class="bea-note">The generated order above is reusable. Pick the output target now; changing these fields does not rerun the optimizer.</p>
         [% END %]
@@ -978,10 +979,10 @@
             <div id="accept_player_queue_fields">
               [% IF bettercallbliss_job.route_to_track %]
                 <input type="hidden" name="queue_player_id" id="accept_queue_player_id" value="[% bettercallbliss_job.queue_player_id | html %]">
-                <input type="hidden" name="queue_action" id="accept_queue_action" value="append">
+                <input type="hidden" name="queue_action" id="accept_queue_action" value="[% bettercallbliss_job.route_queue_action | html %]">
                 <input type="hidden" id="accept_queue_start_playback" value="0">
-                <p class="bea-note">Accepting appends the intermediate tracks and destination to <b>[% bettercallbliss_route_context.player_name | html %]</b>. The queue-tail anchor is not duplicated. If that tail changes first, Better Call Bliss refuses the stale preview and offers recalculation.</p>
-                <p><a href="[% webroot %][% bettercallbliss_recalculate_route_url | html %]">Recalculate from the current queue tail</a></p>
+                <p class="bea-note">Accepting [% IF bettercallbliss_job.route_source == 'round_trip' %]inserts the excursion before the unchanged upcoming queue[% ELSIF bettercallbliss_job.route_source == 'now_playing' %]keeps the current song and replaces its upcoming queue[% ELSE %]appends to the existing queue[% END %] on <b>[% bettercallbliss_route_context.player_name | html %]</b>. Queue anchors are not duplicated. If the captured [% IF bettercallbliss_job.route_source == 'round_trip' %]current song or first upcoming track[% ELSIF bettercallbliss_job.route_source == 'now_playing' %]current song[% ELSE %]queue end[% END %] changes first, Better Call Bliss refuses the stale preview and offers recalculation.</p>
+                <p><a href="[% webroot %][% bettercallbliss_recalculate_route_url | html %]">Recalculate from [% IF bettercallbliss_job.route_source == 'now_playing' || bettercallbliss_job.route_source == 'round_trip' %]the currently playing song[% ELSE %]the current queue end[% END %]</a></p>
               [% ELSE %]
                 <div class="bea-row">
                   <label for="accept_queue_player_id">Player</label>
@@ -1012,7 +1013,7 @@
             <p>
               [% UNLESS bettercallbliss_job.route_to_track %]<input class="inputbutton" id="accept_create_copy" type="submit" name="create_copy" value="Create optimized copy">[% END %]
               [% IF bettercallbliss_job.source_overwrite_supported %]<input class="inputbutton" id="accept_overwrite_source" type="submit" name="overwrite_source" value="Overwrite existing playlist">[% END %]
-              <input class="inputbutton" id="accept_send_to_queue" type="submit" name="send_to_queue" value="[% IF bettercallbliss_job.route_to_track %]Append route to queue[% ELSE %]Send to player queue[% END %]">
+              <input class="inputbutton" id="accept_send_to_queue" type="submit" name="send_to_queue" value="[% IF bettercallbliss_job.route_to_track %][% IF bettercallbliss_job.route_source == 'round_trip' %]Insert excursion before upcoming queue[% ELSIF bettercallbliss_job.route_source == 'now_playing' %]Replace upcoming queue with route[% ELSE %]Append route to queue[% END %][% ELSE %]Send to player queue[% END %]">
             </p>
           </form>
         </fieldset>

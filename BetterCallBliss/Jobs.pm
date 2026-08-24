@@ -15,6 +15,7 @@ use Slim::Utils::Timers;
 use Slim::Utils::Unicode;
 use Slim::Player::Client;
 use Slim::Player::Playlist;
+use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
@@ -24,6 +25,7 @@ use Plugins::BetterCallBliss::LogDiagnostics;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
 use Plugins::BetterCallBliss::QueueWriter;
+use Plugins::BetterCallBliss::RouteMode;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $server_prefs = preferences('server');
@@ -472,9 +474,12 @@ sub _start_preview_from_built {
         progress_path => $progress_path,
     };
     for my $key (qw(
-        route_to_track quick_route auto_apply route_output_skip_source_count route_player_id
-        route_target_track_id route_tail_track_id route_target_label route_tail_label
-        route_tail_url route_source_context_count route_queue_count
+        route_to_track quick_route auto_apply route_output_skip_source_count
+        route_output_skip_suffix_count route_player_id
+        route_source route_target_track_id route_start_track_id
+        route_target_label route_start_label route_start_url
+        route_rejoin_track_id route_rejoin_label route_rejoin_url
+        route_source_context_count
         source_mode source_player_id source_player_name source_queue_scope
         source_queue_count source_queue_current_index source_queue_active
         source_queue_start_index source_queue_track_urls source_queue_current_url
@@ -725,25 +730,60 @@ sub start_route_to_track_preview {
     my $count = eval { Slim::Player::Playlist::count($client) } || 0;
     die "The selected player queue is empty; play or queue a source track first"
         unless $count > 0;
-    my $tail = Slim::Player::Playlist::track($client, $count - 1, 1, 0);
-    die "Could not resolve the current queue tail to a local LMS track"
-        unless $tail && !$tail->remote && $tail->can('id');
+
+    my %route_options = (%{$options || {}});
+    my $route_source = Plugins::BetterCallBliss::RouteMode::normalize_source(
+        $route_options{route_source},
+    );
+    die "Unknown Bliss me there route source"
+        unless defined $route_source;
+    my $source_index = $count - 1;
+    if ($route_source eq 'now_playing' || $route_source eq 'round_trip') {
+        my $playmode = eval { Slim::Player::Source::playmode($client) } || '';
+        die "The selected player is not currently playing or paused"
+            unless $playmode eq 'play' || $playmode eq 'pause';
+        $source_index = eval { Slim::Player::Source::playingSongIndex($client) };
+        die "Could not determine the currently playing queue position"
+            unless defined $source_index && "$source_index" =~ /^\d+$/
+                && $source_index >= 0 && $source_index < $count;
+    }
+    my $start = Slim::Player::Playlist::track($client, $source_index, 1, 0);
+    my $source_description = $route_source eq 'now_playing'
+            || $route_source eq 'round_trip'
+        ? 'currently playing song' : 'current queue end';
+    die "Could not resolve the $source_description to a local LMS track"
+        unless $start && !$start->remote && $start->can('id');
 
     die "Choose a destination track"
         unless defined $target_track_id && "$target_track_id" =~ /^\d+$/;
     my $target = Slim::Schema->find('Track', int($target_track_id));
     die "Destination track was not found in the LMS library"
         unless $target && !$target->remote && $target->can('id');
-    die "The selected destination is already the current queue tail"
-        if $tail->id == $target->id;
+    die "The selected destination is already the $source_description"
+        if $start->id == $target->id;
 
-    my %route_options = (%{$options || {}});
+    my $rejoin;
+    if ($route_source eq 'round_trip') {
+        die "Bliss me there and back again requires an upcoming queue track"
+            unless $source_index + 1 < $count;
+        $rejoin = Slim::Player::Playlist::track(
+            $client, $source_index + 1, 1, 0,
+        );
+        die "Could not resolve the first upcoming queue track to a local LMS track"
+            unless $rejoin && !$rejoin->remote && $rejoin->can('id');
+        die "The selected destination is already the first upcoming queue track"
+            if $target->id == $rejoin->id;
+    }
+
     $route_options{ordering_policy} = 'preserve_order';
     $route_options{extension_mode} = 'destination_route';
     delete $route_options{addition_purpose};
     $route_options{output_mode} = 'player_queue';
     $route_options{queue_player_id} = $player_id;
-    $route_options{queue_action} = 'append';
+    my $queue_action = Plugins::BetterCallBliss::RouteMode::queue_action(
+        $route_source,
+    );
+    $route_options{queue_action} = $queue_action;
     $route_options{queue_start_playback} = 0;
 
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
@@ -760,8 +800,9 @@ sub start_route_to_track_preview {
     $context_limit = 1 if $context_limit < 1;
 
     my @context;
-    my $first = $count > $context_limit ? $count - $context_limit : 0;
-    for my $index ($first .. $count - 1) {
+    my $first = $source_index + 1 > $context_limit
+        ? $source_index + 1 - $context_limit : 0;
+    for my $index ($first .. $source_index) {
         my $item = Slim::Player::Playlist::track($client, $index, 1, 0);
         if (!$item || $item->remote || !$item->can('id')) {
             @context = ();
@@ -773,17 +814,22 @@ sub start_route_to_track_preview {
         }
         push @context, $item;
     }
-    die "Could not capture an analyzed local queue tail for destination routing"
-        unless @context && $context[-1]->id == $tail->id;
+    die "Could not capture an analyzed local route start for destination routing"
+        unless @context && $context[-1]->id == $start->id;
 
     my ($job_id, $dir, $semantic_path) = _new_job_context();
-    my $tail_label = _track_label($tail);
+    my $start_label = _track_label($start);
     my $target_label = _track_label($target);
-    my $title = "Bliss me there: $tail_label -> $target_label";
+    my $rejoin_label = _track_label($rejoin);
+    my $title = Plugins::BetterCallBliss::RouteMode::action_name($route_source)
+        . ": $start_label -> $target_label"
+        . ($rejoin ? " -> $rejoin_label" : '');
     my @history = @context > 1 ? @context[0 .. $#context - 1] : ();
+    my @route_tracks = ($start, $target);
+    push @route_tracks, $rejoin if $rejoin;
     my $built = Plugins::BetterCallBliss::RequestBuilder::build_sequence_request(
-        $title, [$tail, $target], $job_id, $semantic_path, $normalized,
-        \@history,
+        $title, \@route_tracks, $job_id, $semantic_path, $normalized,
+        \@history, $rejoin ? 1 : 0,
     );
     return _start_preview_from_built(
         $job_id, $dir, $semantic_path, $built,
@@ -791,21 +837,31 @@ sub start_route_to_track_preview {
             playlist_id => 0,
             playlist_title => $title,
             source_log => 'route_to_track player=' . ($client->id || $player_id)
-                . ' tail_track=' . $tail->id . ' target_track=' . $target->id,
+                . " route_source=$route_source start_track=" . $start->id
+                . ' target_track=' . $target->id
+                . ($rejoin ? ' rejoin_track=' . $rejoin->id : ''),
             route_to_track => 1,
             quick_route => $route_options{quick_route} ? 1 : 0,
             auto_apply => $route_options{auto_apply} ? 1 : 0,
             route_output_skip_source_count => 1,
+            route_output_skip_suffix_count => $rejoin ? 1 : 0,
             route_player_id => $client->id || $player_id,
-            route_tail_track_id => 0 + $tail->id,
+            route_source => $route_source,
+            route_start_track_id => 0 + $start->id,
             route_target_track_id => 0 + $target->id,
-            route_tail_url => $tail->url,
+            route_start_url => $start->url,
+            ($rejoin ? (
+                route_rejoin_track_id => 0 + $rejoin->id,
+                route_rejoin_url => $rejoin->url,
+                route_rejoin_label => $rejoin_label,
+            ) : ()),
             route_source_context_count => scalar @context,
-            route_queue_count => 0 + $count,
             lastfm_source_track_count =>
-                ($normalized->{seed_limit} + 1 < @context + 1)
-                    ? $normalized->{seed_limit} + 1 : @context + 1,
-            route_tail_label => $tail_label,
+                ($normalized->{seed_limit} + ($rejoin ? 2 : 1)
+                    < @context + ($rejoin ? 2 : 1))
+                    ? $normalized->{seed_limit} + ($rejoin ? 2 : 1)
+                    : @context + ($rejoin ? 2 : 1),
+            route_start_label => $start_label,
             route_target_label => $target_label,
         },
     );
@@ -1134,7 +1190,9 @@ sub _apply_output_options {
         $options->{queue_player_id} = $player_id;
 
         my $action = $job->{route_to_track}
-            ? 'append'
+            ? Plugins::BetterCallBliss::RouteMode::queue_action(
+                $job->{route_source},
+            )
             : (exists $params->{queue_action}
                 ? $params->{queue_action} : ($options->{queue_action} || 'replace'));
         die "INVALID_QUEUE_ACTION: Queue action must be Replace queue, Replace upcoming tracks, Append to queue, or Play next\n"

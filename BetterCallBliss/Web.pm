@@ -19,6 +19,7 @@ use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::LastFmEvidence;
 use Plugins::BetterCallBliss::PlaylistWriter;
+use Plugins::BetterCallBliss::RouteMode;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $plugin_prefs = preferences('plugin.bettercallbliss');
@@ -101,6 +102,9 @@ sub _route_context {
     return {
         player_id => $form->{route_player_id} || $form->{queue_player_id} || '',
         player_name => _player_name($form->{route_player_id} || $form->{queue_player_id}),
+        route_source => Plugins::BetterCallBliss::RouteMode::normalize_source(
+            $form->{route_source},
+        ) || 'queue_end',
         target_track_id => $form->{route_target_track_id},
         target_label => _track_label($form->{route_target_track_id}),
     };
@@ -126,7 +130,7 @@ sub _form_from_params {
     my ($params, $defaults) = @_;
     my $form = {%$defaults};
     for my $name (qw(
-        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
+        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
@@ -156,6 +160,7 @@ sub _form_from_job {
         $params{source_mode} = 'route_to_track';
         $params{route_player_id} = $job->{route_player_id};
         $params{route_target_track_id} = $job->{route_target_track_id};
+        $params{route_source} = $job->{route_source} || 'queue_end';
         $params{queue_player_id} = $options->{queue_player_id} || $job->{route_player_id};
         $params{quick_route} = $job->{quick_route} ? 1 : 0;
     }
@@ -172,7 +177,9 @@ sub _job_mode_label {
     my $job = shift || {};
     my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
     my $purpose = $options->{addition_purpose} || '';
-    return 'Bliss me there...' if $job->{route_to_track};
+    return Plugins::BetterCallBliss::RouteMode::action_name(
+        $job->{route_source},
+    ) if $job->{route_to_track};
     return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
     return 'Improve difficult transitions' if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
@@ -335,8 +342,13 @@ sub _result_view {
         source_queue_active => $job->{source_queue_active} ? 1 : 0,
         source_overwrite_supported => ($job->{playlist_id} || 0) > 0 && !$job->{route_to_track} ? 1 : 0,
         route_player_id => $job->{route_player_id},
-        route_tail_label => $job->{route_tail_label},
+        route_source => $job->{route_source} || 'queue_end',
+        route_queue_action => Plugins::BetterCallBliss::RouteMode::queue_action(
+            $job->{route_source},
+        ) || 'append',
+        route_start_label => $job->{route_start_label},
         route_target_label => $job->{route_target_label},
+        route_rejoin_label => $job->{route_rejoin_label},
         route_source_context_count => 0 + ($job->{route_source_context_count} || 0),
         route_length_policy => $job->{options}->{route_length_policy},
         route_direct_caution => $job->{options}->{route_direct_caution},
@@ -624,8 +636,14 @@ sub handler {
         if (!$form->{route_player_id} && $client) {
             $form->{route_player_id} = eval { $client->id } || '';
         }
+        $form->{route_source} =
+            Plugins::BetterCallBliss::RouteMode::normalize_source(
+                $form->{route_source},
+            ) || 'queue_end';
         $form->{queue_player_id} ||= $form->{route_player_id};
-        $form->{queue_action} ||= 'append';
+        $form->{queue_action} = Plugins::BetterCallBliss::RouteMode::queue_action(
+            $form->{route_source},
+        );
         $form->{output_mode} = 'player_queue';
         $form->{ordering_policy} = 'preserve_order';
         $form->{extension_mode} = 'destination_route';
@@ -734,10 +752,12 @@ sub handler {
     if (($form->{source_mode} || '') eq 'route_to_track') {
         my $player = uri_escape_utf8($form->{route_player_id} || '');
         my $target = uri_escape_utf8($form->{route_target_track_id} || '');
+        my $route_source = uri_escape_utf8($form->{route_source} || 'queue_end');
         my $base_route_url = $page
             . '?player=' . $player
             . '&source_mode=route_to_track&route_player_id=' . $player
             . '&queue_player_id=' . $player
+            . '&route_source=' . $route_source
             . '&route_target_track_id=' . $target;
         $params->{bettercallbliss_advanced_route_url} = $base_route_url;
         $params->{bettercallbliss_recalculate_route_url}

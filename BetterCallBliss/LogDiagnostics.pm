@@ -1,6 +1,7 @@
 package Plugins::BetterCallBliss::LogDiagnostics;
 
 use strict;
+use Plugins::BetterCallBliss::RouteMode;
 
 use constant INFO_TRACK_LIMIT => 100;
 
@@ -14,7 +15,9 @@ sub _label {
 
 sub _action_name {
     my $job = shift;
-    return 'Bliss me there...' if $job->{route_to_track};
+    return Plugins::BetterCallBliss::RouteMode::action_name(
+        $job->{route_source},
+    ) if $job->{route_to_track};
     my $mode = ($job->{options} || {})->{extension_mode} || 'none';
     return 'Reorder playlist' if $mode eq 'none';
     return 'Improve difficult transitions' if $mode eq 'automatic';
@@ -36,13 +39,23 @@ sub _scoring_provenance {
 sub _source_description {
     my $job = shift;
     if ($job->{route_to_track}) {
-        return sprintf(
-            'player queue %s; %d context tracks; %s -> %s',
+        my $description = sprintf(
+            'player queue %s; route source %s; %d context tracks; %s -> %s',
             $job->{route_player_id} || 'unknown',
+            ($job->{route_source} || 'queue_end') eq 'queue_end'
+                ? 'queue end'
+                : ($job->{route_source} || '') eq 'round_trip'
+                    ? 'now playing with queue rejoin'
+                    : 'now playing',
             0 + ($job->{route_source_context_count} || $job->{track_count} || 0),
-            $job->{route_tail_label} || _label($job, $job->{route_tail_track_id}),
+            $job->{route_start_label} || _label($job, $job->{route_start_track_id}),
             $job->{route_target_label} || _label($job, $job->{route_target_track_id}),
         );
+        $description .= ' -> '
+            . ($job->{route_rejoin_label}
+                || _label($job, $job->{route_rejoin_track_id}))
+            if ($job->{route_source} || '') eq 'round_trip';
+        return $description;
     }
     if (($job->{source_mode} || '') eq 'player_queue') {
         return sprintf(

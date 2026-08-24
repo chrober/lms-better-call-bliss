@@ -270,6 +270,7 @@ sub _build_sequence_request {
     my $title = $args->{title};
     my $playlist = $args->{playlist};
     my $error_prefix = $args->{error_prefix} || 'Source';
+    my $route_rejoins_queue = $args->{route_rejoins_queue} ? 1 : 0;
 
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     die join('; ', @{$capability->{problems}}) unless $capability->{ready};
@@ -281,6 +282,8 @@ sub _build_sequence_request {
 
     my ($source_tracks, $labels, $original_positions, $track_urls)
         = _track_bundle($tracks, $capability, $error_prefix, 2);
+    die "$error_prefix requires start, waypoint, and rejoin tracks"
+        if $route_rejoins_queue && @$source_tracks < 3;
     my ($history_tracks, $history_labels, $history_positions, $history_urls)
         = _track_bundle($args->{history_tracks} || [], $capability,
             'Listening history', 0);
@@ -418,8 +421,15 @@ sub _build_sequence_request {
             ordering_policy => $options->{extension_mode} eq 'destination_route'
                 ? 'queue_destination' : $options->{ordering_policy},
             ($options->{extension_mode} eq 'destination_route' ? (
-                start_track_id => $source_tracks->[-2]->{id},
-                destination_track_id => $source_tracks->[-1]->{id},
+                start_track_id => $source_tracks->[
+                    $route_rejoins_queue ? -3 : -2
+                ]->{id},
+                destination_track_id => $source_tracks->[
+                    $route_rejoins_queue ? -2 : -1
+                ]->{id},
+                ($route_rejoins_queue ? (
+                    rejoin_track_id => $source_tracks->[-1]->{id},
+                ) : ()),
             ) : ()),
             objective => 'bottleneck_then_sum',
             search => {
@@ -518,13 +528,15 @@ sub _build_sequence_request {
 }
 
 sub build_sequence_request {
-    my ($title, $tracks, $job_id, $semantic_path, $job_input, $history_tracks) = @_;
+    my ($title, $tracks, $job_id, $semantic_path, $job_input, $history_tracks,
+        $route_rejoins_queue) = @_;
     return _build_sequence_request({
         title => $title,
         tracks => $tracks,
         job_id => $job_id,
         semantic_path => $semantic_path,
         history_tracks => $history_tracks,
+        route_rejoins_queue => $route_rejoins_queue,
         job_input => $job_input,
         error_prefix => $title || 'Source',
     });

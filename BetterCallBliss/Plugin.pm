@@ -20,6 +20,7 @@ use Plugins::BetterCallBliss::Defaults qw(
     ensure_preference_defaults
 );
 use Plugins::BetterCallBliss::Jobs;
+use Plugins::BetterCallBliss::RouteMode;
 use Plugins::BetterCallBliss::Web;
 
 my $log = Slim::Utils::Log->addLogCategory({
@@ -196,7 +197,9 @@ sub _job_mode_label {
     my $job = shift || {};
     my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
     my $purpose = $options->{addition_purpose} || '';
-    return 'Bliss me there...' if $job->{route_to_track};
+    return Plugins::BetterCallBliss::RouteMode::action_name(
+        $job->{route_source},
+    ) if $job->{route_to_track};
     return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
     return 'Improve difficult transitions' if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
@@ -262,12 +265,25 @@ sub routeToCommand {
     my $request = shift;
     my $client = $request->client();
     my $target_track_id = $request->getParam('target_track_id');
+    my $route_source = Plugins::BetterCallBliss::RouteMode::normalize_source(
+        $request->getParam('route_source'),
+    );
     if (!$client || !defined $target_track_id || "$target_track_id" !~ /^\d+$/) {
         $request->addResult('state', 'failed');
         $request->addResult('error_code', 'INVALID_ROUTE_CONTEXT');
         $request->addResult(
             'error',
             'Bliss me there requires a selected player and a local destination track',
+        );
+        $request->setStatusBadParams();
+        return;
+    }
+    if (!defined $route_source) {
+        $request->addResult('state', 'failed');
+        $request->addResult('error_code', 'INVALID_ROUTE_SOURCE');
+        $request->addResult(
+            'error',
+            'Bliss me there received an unknown route source',
         );
         $request->setStatusBadParams();
         return;
@@ -281,12 +297,14 @@ sub routeToCommand {
             {
                 quick_route => 1,
                 auto_apply => 1,
+                route_source => $route_source,
             },
         );
     };
     $error = $@;
     if ($error || !$job) {
         $error ||= 'Could not start Bliss me there';
+        $error =~ s/\s+at\s+\S+\s+line\s+\d+\.?\s*$//;
         $error =~ s/\s+/ /g;
         $error = substr($error, 0, 500);
         $log->error(
@@ -296,7 +314,8 @@ sub routeToCommand {
         $request->addResult('state', 'failed');
         $request->addResult('error_code', 'ROUTE_START_FAILED');
         $request->addResult('error', $error);
-        $request->setStatusBadParams();
+        $request->addResult('message', $error);
+        $request->setStatusDone();
         return;
     }
 
@@ -304,7 +323,11 @@ sub routeToCommand {
     $request->addResult('job_id', $job->{id});
     $request->addResult(
         'message',
-        'Building a fluent route; it will be appended to the player queue when ready.',
+        $route_source eq 'round_trip'
+            ? 'Building an excursion through the selected track and back to the upcoming queue; it will be inserted after the current song when ready.'
+        : $route_source eq 'now_playing'
+            ? 'Building a fluent route from the currently playing song; it will replace the upcoming queue when ready.'
+            : 'Building a fluent route from the queue end; it will be appended when ready.',
     );
     $request->setStatusDone();
 }

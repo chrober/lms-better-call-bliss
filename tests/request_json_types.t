@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 40;
+use Test::More tests => 44;
 use JSON::XS ();
 
 BEGIN {
@@ -257,3 +257,28 @@ unlike($destination_json, qr/"max_added_tracks"\s*:\s*"4"/,
     'destination numeric fields are never serialized as strings');
 unlike($destination_json, qr/"min_added_tracks"\s*:\s*"0"/,
     'destination minimum is never serialized as a string');
+
+my $round_trip = Plugins::BetterCallBliss::RequestBuilder::build_sequence_request(
+    'Bliss me there and back again test',
+    [
+        TestTrack->new(42, '1999'),
+        TestTrack->new(43, '1234'),
+        TestTrack->new(44, '2001'),
+    ],
+    'preview-json-types-round-trip',
+    '/tmp/semantic-evidence.json',
+    {},
+    [TestTrack->new(41, '1984')],
+    1,
+);
+my $round_request = JSON::XS->new->decode(
+    JSON::XS->new->canonical->encode($round_trip->{request}),
+);
+is($round_request->{route}->{start_track_id}, 'lms-track-42',
+    'round-trip route locks the currently playing start');
+is($round_request->{route}->{destination_track_id}, 'lms-track-43',
+    'round-trip route locks the selected waypoint');
+is($round_request->{route}->{rejoin_track_id}, 'lms-track-44',
+    'round-trip route locks the first upcoming rejoin track');
+is(scalar @{$round_request->{source_tracks}}, 3,
+    'round-trip request contains exactly its three audible anchors');

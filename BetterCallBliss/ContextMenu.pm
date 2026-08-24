@@ -22,6 +22,18 @@ sub init {
             func => \&trackInfoHandler,
         ),
     );
+    Slim::Menu::TrackInfo->registerInfoProvider(
+        bettercallbliss_route_to_now_playing => (
+            after => 'bettercallbliss_route_to',
+            func => \&trackNowPlayingInfoHandler,
+        ),
+    );
+    Slim::Menu::TrackInfo->registerInfoProvider(
+        bettercallbliss_route_round_trip => (
+            after => 'bettercallbliss_route_to_now_playing',
+            func => \&trackRoundTripInfoHandler,
+        ),
+    );
     $registered = 1;
 }
 
@@ -29,6 +41,12 @@ sub shutdown {
     return unless $registered;
     Slim::Menu::PlaylistInfo->deregisterInfoProvider('bettercallbliss_playlist');
     Slim::Menu::TrackInfo->deregisterInfoProvider('bettercallbliss_route_to');
+    Slim::Menu::TrackInfo->deregisterInfoProvider(
+        'bettercallbliss_route_to_now_playing',
+    );
+    Slim::Menu::TrackInfo->deregisterInfoProvider(
+        'bettercallbliss_route_round_trip',
+    );
     $registered = 0;
 }
 
@@ -89,15 +107,15 @@ sub playlistInfoHandler {
     );
 }
 
-sub trackInfoHandler {
-    my ($client, $url, $track) = @_;
+sub _route_item {
+    my ($client, $track, $name, $description, $route_source) = @_;
     return unless $client && $track && !$track->remote && $track->can('id');
     my $player_id = _client_id($client);
     return unless length $player_id;
     return {
-        name => 'Bliss me there...',
-        title => _title('Bliss me there...', $client),
-        description => 'Build and append a fluent route from the current queue tail to this track using the saved Bliss me there defaults.',
+        name => $name,
+        title => _title($name, $client),
+        description => $description,
         type => 'text',
         favorites => 0,
         jive => {
@@ -107,12 +125,46 @@ sub trackInfoHandler {
                     cmd => ['bettercallbliss', 'route_to'],
                     params => {
                         target_track_id => 0 + $track->id,
+                        route_source => $route_source,
                     },
                     nextWindow => 'parent',
                 },
             },
         },
     };
+}
+
+sub trackInfoHandler {
+    my ($client, $url, $track) = @_;
+    return _route_item(
+        $client,
+        $track,
+        'Bliss me there...',
+        'Build a fluent route from the current queue end to this track and append it using the saved Bliss me there defaults.',
+        'queue_end',
+    );
+}
+
+sub trackNowPlayingInfoHandler {
+    my ($client, $url, $track) = @_;
+    return _route_item(
+        $client,
+        $track,
+        'Bliss me there... from here!',
+        'Keep the currently playing song and replace the upcoming queue with a fluent route to this track using the saved Bliss me there defaults.',
+        'now_playing',
+    );
+}
+
+sub trackRoundTripInfoHandler {
+    my ($client, $url, $track) = @_;
+    return _route_item(
+        $client,
+        $track,
+        'Bliss me there... from here... and back again!',
+        'Insert a fluent excursion from the currently playing song through this track and back to the existing upcoming queue.',
+        'round_trip',
+    );
 }
 
 1;

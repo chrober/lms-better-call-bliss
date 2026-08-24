@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 20;
+use Test::More tests => 39;
 
 BEGIN {
     package Slim::Menu::PlaylistInfo;
@@ -72,6 +72,11 @@ is(
     456,
     'direct action freezes the destination track',
 );
+is(
+    $track_item->{jive}->{actions}->{go}->{params}->{route_source},
+    'queue_end',
+    'standard destination action explicitly starts at the queue end',
+);
 ok(
     !exists $track_item->{jive}->{actions}->{go}->{params}->{source_mode},
     'direct action does not carry obsolete web-preview parameters',
@@ -81,3 +86,59 @@ like(
     qr/append/i,
     'track context explains that the completed route is appended automatically',
 );
+
+my $now_item = Plugins::BetterCallBliss::ContextMenu::trackNowPlayingInfoHandler(
+    TestClient->new, undef, TestTrack->new,
+);
+ok($now_item, 'now-playing track context item is created alongside the standard action');
+is(
+    $now_item->{name},
+    'Bliss me there... from here!',
+    'now-playing action has an explicit source label',
+);
+like($now_item->{title}, qr/Schlafzimmer/, 'now-playing title includes the player name');
+ok($now_item->{jive}->{actions}->{go}, 'now-playing context exposes a Jive go action');
+is_deeply(
+    $now_item->{jive}->{actions}->{go}->{cmd},
+    ['bettercallbliss', 'route_to'],
+    'both destination actions share the route command',
+);
+is(
+    $now_item->{jive}->{actions}->{go}->{params}->{target_track_id},
+    456,
+    'now-playing action freezes the same destination track',
+);
+is(
+    $now_item->{jive}->{actions}->{go}->{params}->{route_source},
+    'now_playing',
+    'now-playing action selects the current song as route source',
+);
+is(
+    $now_item->{jive}->{actions}->{go}->{nextWindow},
+    'parent',
+    'now-playing command returns to the existing context view',
+);
+like(
+    $now_item->{description},
+    qr/replace the upcoming queue/i,
+    'now-playing action discloses its queue replacement behavior',
+);
+
+my $round_item = Plugins::BetterCallBliss::ContextMenu::trackRoundTripInfoHandler(
+    TestClient->new, undef, TestTrack->new,
+);
+ok($round_item, 'round-trip track context item is created alongside both direct routes');
+is($round_item->{name}, 'Bliss me there... from here... and back again!',
+    'round-trip action has its own menu label');
+like($round_item->{title}, qr/Schlafzimmer/, 'round-trip title includes the player name');
+ok($round_item->{jive}->{actions}->{go}, 'round-trip context exposes a Jive go action');
+is_deeply($round_item->{jive}->{actions}->{go}->{cmd},
+    ['bettercallbliss', 'route_to'], 'round-trip action shares the route command');
+is($round_item->{jive}->{actions}->{go}->{params}->{target_track_id}, 456,
+    'round-trip action freezes the selected waypoint');
+is($round_item->{jive}->{actions}->{go}->{params}->{route_source}, 'round_trip',
+    'round-trip action selects current-to-upcoming excursion semantics');
+is($round_item->{jive}->{actions}->{go}->{nextWindow}, 'parent',
+    'round-trip command returns to the existing context view');
+like($round_item->{description}, qr/back to the existing upcoming queue/i,
+    'round-trip action explains that the existing queue is preserved');

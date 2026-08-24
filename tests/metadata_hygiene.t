@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 45;
+use Test::More tests => 54;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -150,7 +150,47 @@ like(
     qr/cmd\s*=>\s*\['bettercallbliss',\s*'route_to'\]/,
     'Bliss me there invokes a direct LMS command instead of opening Extras',
 );
+like(
+    $context_menu,
+    qr/bettercallbliss_route_to_now_playing.*?after\s*=>\s*'bettercallbliss_route_to'/s,
+    'now-playing route is a sibling track action immediately after the queue-end action',
+);
+like(
+    $context_menu,
+    qr/bettercallbliss_route_round_trip.*?after\s*=>\s*'bettercallbliss_route_to_now_playing'/s,
+    'round-trip route is the third sibling track action',
+);
+like(
+    $context_menu,
+    qr/'queue_end'.*?'now_playing'/s,
+    'the one-way context actions submit distinct route sources',
+);
 my $jobs = slurp(File::Spec->catfile($plugin, 'Jobs.pm'));
+like(
+    $jobs,
+    qr/playingSongIndex\(\$client\).*?for my \$index \(\$first \.\. \$source_index\)/s,
+    'now-playing capture excludes queued tracks after the selected route start',
+);
+my $route_mode = slurp(File::Spec->catfile($plugin, 'RouteMode.pm'));
+like(
+    $route_mode,
+    qr/now_playing.*?replace_upcoming.*?append/s,
+    'one shared route-mode contract locks source selection to queue mutation',
+);
+like($route_mode, qr/round_trip.*?play_next/s,
+    'round-trip source is centrally locked to non-destructive play-next insertion');
+like($jobs, qr/route_output_skip_suffix_count.*?route_rejoin_url/s,
+    'round-trip jobs preserve a locked rejoin anchor outside the inserted body');
+unlike(
+    $jobs,
+    qr/The selected destination is already present in the upcoming queue/,
+    'a round-trip waypoint may also occur later in the queue that remains preserved',
+);
+like(
+    $plugin_module,
+    qr/ROUTE_START_FAILED.*?addResult\('message',\s*\$error\).*?setStatusDone/s,
+    'route precondition failures return a visible action message instead of JSON-RPC bad params',
+);
 like(
     $plugin_module,
     qr/my \$optimizer_supports_trusted_request\s*=\s*_optimizerSupportsTrustedRequest.*?Jobs::init\(.*?\$optimizer_supports_trusted_request/s,

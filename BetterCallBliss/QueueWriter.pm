@@ -7,6 +7,7 @@ use Slim::Player::Playlist;
 use Slim::Player::Source;
 use Slim::Utils::Log;
 use Plugins::BetterCallBliss::PlaylistWriter;
+use Plugins::BetterCallBliss::RouteMode;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 
@@ -163,21 +164,58 @@ sub send_to_player {
     $client = $client->master if $client->can('master');
 
     if ($job->{route_to_track}) {
-        my (undef, $live_count) = _current_queue_index($client);
+        my ($live_current, $live_count) = _current_queue_index($client);
         _fail(
             'ROUTE_PREVIEW_STALE',
             'The player queue is now empty. Recalculate the route from the current queue.',
         ) unless $live_count > 0;
-        my $live_tail = eval {
-            Slim::Player::Playlist::track($client, $live_count - 1, 1, 0)
-        };
-        my $live_tail_url = $live_tail ? $live_tail->url : undef;
+        my $route_source = Plugins::BetterCallBliss::RouteMode::normalize_source(
+            $job->{route_source},
+        );
+        _fail('INVALID_ROUTE_SOURCE', 'Unknown destination-route source')
+            unless defined $route_source;
+        my $playmode = eval { Slim::Player::Source::playmode($client) } || '';
         _fail(
             'ROUTE_PREVIEW_STALE',
-            'The player queue tail changed while this route was being reviewed. Recalculate Bliss me there from the new queue tail.',
-        ) unless defined $live_tail_url
-            && defined $job->{route_tail_url}
-            && $live_tail_url eq $job->{route_tail_url};
+            $route_source eq 'round_trip'
+                ? 'The source player is no longer playing or paused. Run Bliss me there and back again once more.'
+                : 'The source player is no longer playing or paused. Choose Bliss me there... from here! once more.',
+        ) if ($route_source eq 'now_playing' || $route_source eq 'round_trip')
+            && $playmode ne 'play' && $playmode ne 'pause';
+        my $live_start_index = $route_source eq 'now_playing'
+                || $route_source eq 'round_trip'
+            ? $live_current : $live_count - 1;
+        my $live_start = eval {
+            Slim::Player::Playlist::track($client, $live_start_index, 1, 0)
+        };
+        my $live_start_url = $live_start ? $live_start->url : undef;
+        my $stale_message = $route_source eq 'round_trip'
+            ? 'The currently playing song changed while this excursion was being built. Run Bliss me there and back again once more.'
+            : $route_source eq 'now_playing'
+            ? 'The currently playing song changed while this route was being built. Choose Bliss me there... from here! once more.'
+            : 'The player queue end changed while this route was being built. Run Bliss me there again from the new queue end.';
+        _fail(
+            'ROUTE_PREVIEW_STALE',
+            $stale_message,
+        ) unless defined $live_start_url
+            && defined $job->{route_start_url}
+            && $live_start_url eq $job->{route_start_url};
+        if ($route_source eq 'round_trip') {
+            my $live_rejoin = $live_current + 1 < $live_count
+                ? eval {
+                    Slim::Player::Playlist::track(
+                        $client, $live_current + 1, 1, 0,
+                    )
+                }
+                : undef;
+            my $live_rejoin_url = $live_rejoin ? $live_rejoin->url : undef;
+            _fail(
+                'ROUTE_PREVIEW_STALE',
+                'The first upcoming queue track changed while this excursion was being built. Run Bliss me there and back again once more.',
+            ) unless defined $live_rejoin_url
+                && defined $job->{route_rejoin_url}
+                && $live_rejoin_url eq $job->{route_rejoin_url};
+        }
     }
 
     my (undef, $urls) =
@@ -191,9 +229,16 @@ sub send_to_player {
             if $skip >= @$urls;
         $urls = [@$urls[$skip .. $#$urls]];
     }
+    my $skip_suffix = 0 + ($job->{route_output_skip_suffix_count} || 0);
+    if ($skip_suffix > 0) {
+        _fail('EMPTY_RESULT', 'The generated excursion contains no tracks to insert')
+            if $skip_suffix >= @$urls;
+        $urls = [@$urls[0 .. $#$urls - $skip_suffix]];
+    }
 
     my $action = $job->{route_to_track}
-        ? 'append' : ($options->{queue_action} || 'replace');
+        ? Plugins::BetterCallBliss::RouteMode::queue_action($job->{route_source})
+        : ($options->{queue_action} || 'replace');
     my $start = $job->{route_to_track} ? 0 : ($options->{queue_start_playback} ? 1 : 0);
     my $command;
     my $queue_edit = {};
@@ -229,6 +274,7 @@ sub send_to_player {
         . ' to player=' . ($client->id || $player_id)
         . " action=$action start=$start tracks=" . scalar(@$urls)
         . ($skip ? " skipped_source_anchors=$skip" : '')
+        . ($skip_suffix ? " skipped_rejoin_anchors=$skip_suffix" : '')
         . ($reconcile->{reconciled_same_player}
             ? " reconciled_same_player=1 trimmed_preview_prefix="
                 . (0 + ($reconcile->{trimmed_preview_prefix} || 0))

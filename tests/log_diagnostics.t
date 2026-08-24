@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use Test::More;
+use lib "$FindBin::Bin/..";
 
 require "$FindBin::Bin/../BetterCallBliss/LogDiagnostics.pm";
 
@@ -10,7 +11,7 @@ my $job = {
     route_to_track => 1,
     route_player_id => 'aa:bb:cc:dd:ee:ff',
     route_source_context_count => 2,
-    route_tail_label => 'Seed Artist - Tail Song',
+    route_start_label => 'Seed Artist - Tail Song',
     route_target_label => 'Target Artist - Destination Song',
     route_output_skip_source_count => 1,
     track_count => 2,
@@ -199,6 +200,27 @@ my $job = {
 my $start = join "\n",
     @{Plugins::BetterCallBliss::LogDiagnostics::start_info_lines($job)};
 like($start, qr/User action: Bliss me there/, 'information log names the user action');
+
+my $now_playing_start = join "\n",
+    @{Plugins::BetterCallBliss::LogDiagnostics::start_info_lines({
+        %$job,
+        route_source => 'now_playing',
+    })};
+like(
+    $now_playing_start,
+    qr/User action: Bliss me there\.\.\. from here!(?:\n|$)/,
+    'information log distinguishes the now-playing context action',
+);
+my $round_trip_start = join "\n",
+    @{Plugins::BetterCallBliss::LogDiagnostics::start_info_lines({
+        %$job,
+        route_source => 'round_trip',
+        route_rejoin_label => 'Queue Artist - Rejoin Song',
+    })};
+like($round_trip_start, qr/User action: Bliss me there\.\.\. from here\.\.\. and back again!/,
+    'information log distinguishes the round-trip context action');
+like($round_trip_start, qr/Target Artist - Destination Song -> Queue Artist - Rejoin Song/,
+    'round-trip source diagnostics identify waypoint and rejoin anchors');
 like($start, qr/Seed Artist - Tail Song.*Target Artist - Destination Song/,
     'information log identifies both destination-route endpoints');
 like($start, qr/Mixing strategy: adaptive.*learned matrix available/,
