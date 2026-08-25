@@ -32,6 +32,7 @@ my $log = Slim::Utils::Log->addLogCategory({
 my $prefs = preferences('plugin.bettercallbliss');
 my $initialized = 0;
 my $optimizer_binary;
+my %optimizer_version_output;
 
 sub getDisplayName { return 'PLUGIN_BETTERCALLBLISS_NAME'; }
 
@@ -67,7 +68,12 @@ sub initPlugin {
     my $optimizer_supports_progress = _optimizerSupportsProgress($optimizer_binary);
     my $optimizer_supports_trusted_request =
         _optimizerSupportsTrustedRequest($optimizer_binary);
-    Plugins::BetterCallBliss::BlissCompatibility::init($optimizer_binary);
+    my $optimizer_supports_genre_policy =
+        _optimizerSupportsGenrePolicy($optimizer_binary);
+    Plugins::BetterCallBliss::BlissCompatibility::init(
+        $optimizer_binary,
+        $optimizer_supports_genre_policy,
+    );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
         $optimizer_supports_progress,
@@ -100,16 +106,15 @@ sub initPlugin {
     $log->info('initialized optimizer=' . ($optimizer_binary || 'missing')
         . ' progress=' . ($optimizer_supports_progress ? 'supported' : 'unsupported')
         . ' trusted_request='
-        . ($optimizer_supports_trusted_request ? 'supported' : 'unsupported'));
+        . ($optimizer_supports_trusted_request ? 'supported' : 'unsupported')
+        . ' genre_policy='
+        . ($optimizer_supports_genre_policy ? 'supported' : 'unsupported'));
     return 1;
 }
 
 sub _optimizerSupportsProgress {
     my $binary = shift;
-    return 0 unless $binary && -x $binary;
-    my $quoted = $binary;
-    $quoted =~ s/"/\\"/g;
-    my $output = eval { qx("$quoted" version --json) } || '';
+    my $output = _optimizerVersionOutput($binary);
     return 1 if $output =~ /"progress_sidecar"\s*:\s*true/;
     my $version;
     if ($output =~ /"version"\s*:\s*"(\d+)\.(\d+)\.(\d+)"/) {
@@ -125,11 +130,25 @@ sub _optimizerSupportsProgress {
 
 sub _optimizerSupportsTrustedRequest {
     my $binary = shift;
+    my $output = _optimizerVersionOutput($binary);
+    return $output =~ /"trusted_request"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerSupportsGenrePolicy {
+    my $binary = shift;
+    my $output = _optimizerVersionOutput($binary);
+    return $output =~ /"genre_policy"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerVersionOutput {
+    my $binary = shift;
     return 0 unless $binary && -x $binary;
+    return $optimizer_version_output{$binary}
+        if exists $optimizer_version_output{$binary};
     my $quoted = $binary;
     $quoted =~ s/"/\\"/g;
-    my $output = eval { qx("$quoted" version --json) } || '';
-    return $output =~ /"trusted_request"\s*:\s*true/ ? 1 : 0;
+    return $optimizer_version_output{$binary} =
+        eval { qx("$quoted" version --json) } || '';
 }
 
 sub _loadStrings {

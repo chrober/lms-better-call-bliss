@@ -521,6 +521,12 @@ sub _start_preview_from_built {
         . " lastfm=" . ($effective->{lastfm_enabled} ? 'enabled' : 'disabled')
         . " lastfm_track_guidance=$effective->{lastfm_track_guidance_percent}"
         . " lastfm_artist_guidance=$effective->{lastfm_artist_guidance_percent}"
+        . ' filter_genres=' . ($built->{capability}->{filter_genres} ? 1 : 0)
+        . ' filter_xmas=' . ($built->{capability}->{filter_xmas} ? 1 : 0)
+        . ' exclude_christmas=' . ($built->{capability}->{exclude_christmas} ? 1 : 0)
+        . ' genre_groups=' . scalar(@{$built->{capability}->{genre_groups} || []})
+        . ' match_all_genres=' . ($built->{capability}->{match_all_genres} ? 1 : 0)
+        . ' use_track_genre=' . ($built->{capability}->{use_track_genre} ? 1 : 0)
         . ($effective->{extension_mode} ne 'none'
             ? ' shortlist_limit='
                 . $built->{request}->{extension}->{shortlist_limit}

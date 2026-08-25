@@ -178,6 +178,19 @@ sub start_info_lines {
                 ? ', ' . ($options->{route_direct_caution} || 'normal') . ' direct-transition caution' : '',
         ) : $mode;
     push @lines, "Job mode: $ordering; additional tracks: $addition.";
+    if ($capability->{filter_genres} || $capability->{filter_xmas}) {
+        push @lines, sprintf(
+            'BlissMixer genre policy: genre restriction %s with %d configured groups; match all source genres %s; per-track genre groups %s; Christmas exclusion %s.',
+            $capability->{filter_genres} ? 'enabled' : 'disabled',
+            scalar @{ref($capability->{genre_groups}) eq 'ARRAY'
+                ? $capability->{genre_groups} : []},
+            $capability->{match_all_genres} ? 'enabled' : 'disabled',
+            $capability->{use_track_genre} ? 'enabled' : 'disabled',
+            !$capability->{filter_xmas} ? 'disabled'
+                : $capability->{exclude_christmas} ? 'active'
+                : 'configured but inactive during December',
+        );
+    }
     push @lines, sprintf(
         'Adaptive gap context: %s.',
         ($options->{gap_context_mode} || 'rolling') eq 'frozen'
@@ -322,6 +335,16 @@ sub result_info_lines {
         0 + ($job->{added_track_count} || 0),
     ));
     my $artifact = _artifact($job);
+    if (ref($artifact->{genre_filter}) eq 'HASH') {
+        my $genre = $artifact->{genre_filter};
+        push @lines, sprintf(
+            'Genre filtering: %d candidates excluded by BlissMixer genre groups; %d Christmas candidates excluded; %d acceptable genres derived from %d source reference tracks.',
+            0 + ($genre->{genre_excluded_count} || 0),
+            0 + ($genre->{christmas_excluded_count} || 0),
+            0 + ($genre->{acceptable_genre_count} || 0),
+            0 + ($genre->{reference_track_count} || 0),
+        );
+    }
     push @lines, sprintf(
         'Optimizer result: strategy %s; %d usable library tracks; %d eligible candidates; %d reference observations; semantic mode %s.',
         $artifact->{selected_strategy} || 'unknown',

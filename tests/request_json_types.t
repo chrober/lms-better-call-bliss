@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 44;
+use Test::More;
 use JSON::XS ();
 
 BEGIN {
@@ -33,6 +33,15 @@ BEGIN {
             track_window => '100',
             use_adaptive_weights => 1,
             use_forest => 0,
+            filter_genres => 1,
+            filter_xmas => 1,
+            exclude_christmas => 1,
+            genre_groups => [
+                ['Rock', 'Hard Rock'],
+                ['Jazz*'],
+            ],
+            match_all_genres => 0,
+            use_track_genre => 1,
             static_weight_sliders => {
                 tempo => '25',
                 timbre => '25',
@@ -148,6 +157,24 @@ is($request->{selection}->{lastfm_track_guidance_percent}, 75,
     'track guidance is a JSON integer');
 is($request->{selection}->{lastfm_artist_guidance_percent}, 75,
     'artist guidance is a JSON integer');
+ok(JSON::XS::is_bool($request->{candidate_policy}->{genre}->{restrict_genres}),
+    'genre restriction is serialized as a JSON boolean');
+ok($request->{candidate_policy}->{genre}->{restrict_genres},
+    'enabled BlissMixer genre restriction is carried into every request');
+ok(JSON::XS::is_bool($request->{candidate_policy}->{genre}->{exclude_christmas}),
+    'Christmas exclusion is serialized as a JSON boolean');
+ok($request->{candidate_policy}->{genre}->{exclude_christmas},
+    'effective BlissMixer Christmas exclusion is carried into every request');
+is_deeply($request->{candidate_policy}->{genre}->{genre_groups},
+    [['Rock', 'Hard Rock'], ['Jazz*']],
+    'configured BlissMixer genre groups and glob patterns are preserved');
+ok(!$request->{candidate_policy}->{genre}->{match_all_genres},
+    'match-all genre mode is carried as false');
+ok($request->{candidate_policy}->{genre}->{use_track_genre},
+    'per-track genre mode is carried as true');
+ok(JSON::XS::is_bool(
+        $request->{scoring}->{captured_blissmixer_preferences}->{filter_xmas}),
+    'captured configured Christmas preference remains a JSON boolean');
 ok(
     JSON::XS::is_bool($request->{extension}->{allow_opening_track}),
     'opening flag remains a JSON boolean',
@@ -282,3 +309,5 @@ is($round_request->{route}->{rejoin_track_id}, 'lms-track-44',
     'round-trip route locks the first upcoming rejoin track');
 is(scalar @{$round_request->{source_tracks}}, 3,
     'round-trip request contains exactly its three audible anchors');
+
+done_testing();

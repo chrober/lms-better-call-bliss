@@ -32,7 +32,15 @@ my $job = {
         bridge => 'file:///bridge.flac',
         target => 'file:///target.flac',
     },
-    capability => {matrix_available => 1},
+    capability => {
+        matrix_available => 1,
+        filter_genres => 1,
+        filter_xmas => 1,
+        exclude_christmas => 1,
+        genre_groups => [['Rock', 'Hard Rock'], ['Jazz*']],
+        match_all_genres => 0,
+        use_track_genre => 1,
+    },
     candidate_inventory => {
         allowed_row_count => 64128,
         unmatched_row_count => 1,
@@ -95,6 +103,17 @@ my $job = {
         eligible_candidate_count => 64125,
         frozen_reference_count => 64125,
         semantic_mode => 'semantic-assisted',
+        genre_filter => {
+            restrict_genres => 1,
+            exclude_christmas => 1,
+            match_all_genres => 0,
+            use_track_genre => 1,
+            configured_group_count => 2,
+            reference_track_count => 2,
+            acceptable_genre_count => 3,
+            genre_excluded_count => 912,
+            christmas_excluded_count => 4,
+        },
         scoring_provenance => {
             context_policy => 'frozen-destination-route-context',
             seed_policy => 'recent immutable listening history plus the locked queue tail',
@@ -235,6 +254,8 @@ like($start, qr/destination route \(automatic, 0-4 intermediate tracks, fast eff
     'information log explains destination length, effort, and target settings');
 like($start, qr/64128 local LMS-matched Bliss rows; 1 non-LMS rows excluded; cache memory/,
     'information log summarizes the frozen candidate inventory');
+like($start, qr/BlissMixer genre policy: genre restriction enabled with 2 configured groups.*Christmas exclusion active/,
+    'information log reports the captured BlissMixer genre policy');
 like($start, qr/Immutable listening history \(1\):.*Context Artist/s,
     'information log lists immutable listening history separately');
 like($start, qr/Route members \(2\):.*Seed Artist.*Target Artist/s,
@@ -246,6 +267,8 @@ like($result, qr/Semantic provider: last\.fm; state fresh; 4 requests, 0 failure
     'information log reports provider health');
 like($result, qr/strategy adaptive; 64128 usable library tracks; 64125 eligible candidates.*semantic mode semantic-assisted/,
     'information log reports native inventory and semantic statistics');
+like($result, qr/Genre filtering: 912 candidates excluded by BlissMixer genre groups; 4 Christmas candidates excluded; 3 acceptable genres derived from 2 source reference tracks/,
+    'information log reports native genre rejection statistics');
 like($result, qr/Native optimizer performance: 1488 ms total; database cache hit/,
     'information log reports native runtime and cache state');
 like($result, qr/235 states evaluated, 91 retained; maximum additions found 4/,

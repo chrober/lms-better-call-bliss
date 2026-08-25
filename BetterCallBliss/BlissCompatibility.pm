@@ -9,14 +9,32 @@ use Slim::Utils::Prefs;
 my $bliss_prefs = preferences('plugin.blissmixer');
 my $server_prefs = preferences('server');
 my $optimizer_binary;
+my $optimizer_supports_genre_policy;
 
-sub init { $optimizer_binary = shift; }
+sub init {
+    $optimizer_binary = shift;
+    $optimizer_supports_genre_policy = shift ? 1 : 0;
+}
 
 sub _int_pref {
     my ($name, $fallback) = @_;
     my $value = $bliss_prefs->get($name);
     $value = $fallback unless defined $value;
     return int($value);
+}
+
+sub _genre_groups {
+    my $configured = $bliss_prefs->get('genre_groups') || '';
+    my @groups;
+    for my $line (split /\n/, $configured) {
+        my @patterns;
+        for my $pattern (split /;/, $line) {
+            $pattern =~ s/^\s+|\s+$//g;
+            push @patterns, $pattern if length $pattern;
+        }
+        push @groups, \@patterns if @patterns;
+    }
+    return \@groups;
 }
 
 sub _strategy_from_prefs {
@@ -65,12 +83,18 @@ sub snapshot {
     push @problems, 'bliss-playlist-optimizer is not installed'
         unless $optimizer_binary && -x $optimizer_binary;
     push @problems,
+        'the installed bliss-playlist-optimizer does not support BlissMixer genre settings'
+        if $optimizer_binary && -x $optimizer_binary
+            && !$optimizer_supports_genre_policy;
+    push @problems,
         'an LMS library scan is updating the catalog; preview will resume when it finishes'
         if $scanning;
     push @problems, 'the LMS music folder is not configured' unless $music_root;
 
     my $strategy = _strategy_from_prefs();
     my $static_weights = _static_slider_weights();
+    my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
+    my $month = (localtime())[4] + 1;
 
     return {
         ready             => @problems ? 0 : 1,
@@ -93,6 +117,12 @@ sub snapshot {
         use_forest        => _int_pref('use_forest', 0) ? 1 : 0,
         static_weight_sliders => $static_weights->{raw},
         feature_weights   => $static_weights->{expanded},
+        filter_genres     => _int_pref('filter_genres', 0) ? 1 : 0,
+        filter_xmas       => $filter_xmas,
+        exclude_christmas => $filter_xmas && $month != 12 ? 1 : 0,
+        genre_groups      => _genre_groups(),
+        match_all_genres  => _int_pref('match_all_genres', 0) ? 1 : 0,
+        use_track_genre   => _int_pref('use_track_genre', 0) ? 1 : 0,
     };
 }
 

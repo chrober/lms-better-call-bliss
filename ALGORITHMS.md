@@ -63,7 +63,7 @@ The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, free
 | [Extend playlist](#extend-playlist) | Eligible local analyzed library tracks | Every original source track together as one fixed musical reference | No. All additions are selected against the unchanged original source set. They influence only the later placement or route search. |
 | [Bliss me there...](#bliss-me-there) | Eligible local analyzed library tracks | For a one-way route, the chosen start and destination drive one acoustic shortlist. For **and back again**, the current song, selected waypoint, and first upcoming rejoin define two gap-specific shortlists: start-to-waypoint and waypoint-to-rejoin. For Adaptive, a bounded analyzed queue prefix ending at the start constructs the frozen per-run matrix; this context and all locked anchors can also provide Last.fm and repeat evidence. | No. Intermediates are chosen from the frozen shortlist for their leg. An outward path is carried into return-leg evaluation, so uniqueness and repeat windows apply across the complete excursion, but chosen tracks do not recruit new candidates. |
 
-Here, N means **Musical context window**. "Eligible local analyzed library tracks" means the intersection of usable `bliss.db` rows and current local LMS tracks after source-track exclusions. Last.fm can support tracks already in that pool; it cannot add remote tracks or bypass Bliss and LMS membership checks.
+Here, N means **Musical context window**. "Eligible local analyzed library tracks" means the intersection of usable `bliss.db` rows and current local LMS tracks after source-track exclusions and the captured BlissMixer genre policy. Last.fm can support tracks already in that pool; it cannot add remote tracks or bypass Bliss, LMS membership, or genre checks.  
 
 The diagrams below use four recurring stages:
 
@@ -345,13 +345,18 @@ Before search, the plugin intersects usable rows in bliss.db with the current lo
 - every source file already in the playlist; and
 - another file with the same normalized artist-and-title identity as a source.
 
-The remaining tracks form a checksum-protected candidate inventory for this job. Uniqueness and repeat rules are checked again during search, when the native result is resolved back to LMS tracks, and before persistence.
+It then applies the current BlissMixer genre settings to every possible **new** track. Genre-group restriction, group glob patterns, **Match all genres**, and **Use track genre** follow BlissMixer's behavior. Source tracks—and immutable recent listening history for a destination shortcut—identify the acceptable groups. When no reference track belongs to a configured group, candidates belonging to configured groups are excluded while BlissMixer's implicit “other genres” remain together. An untagged candidate remains eligible.  
+
+BlissMixer's **Filter Christmas music** switch is a separate hard candidate filter outside December, even when general genre restriction is disabled. During December the configured switch is deliberately inactive, matching BlissMixer. Existing source tracks, listening history, mandatory destinations, waypoints, and queue-rejoin anchors are never removed: genre settings constrain music chosen by Better Call Bliss, not the user's input.  
+
+The remaining tracks form a checksum-protected candidate inventory for this job. Uniqueness and repeat rules are checked again during search, when the native result is resolved back to LMS tracks, and before persistence. The completed preview and information log report separate counts for candidates rejected by genre groups and by the Christmas filter.  
 
 ~~~mermaid
 flowchart LR
     L["LMS library<br/>A, B, C, X, Y"] --> I["Keep tracks with<br/>matching Bliss rows"]
     B["bliss.db<br/>A, B, X, Y, Z"] --> I
-    I --> P["After removing source A, B<br/>eligible additions: X, Y"]
+    I --> G["Apply captured BlissMixer<br/>genre and Christmas policy"]
+    G --> P["After removing source A, B<br/>eligible additions: X, Y"]
     F["Optional Last.fm<br/>ranking support only"] -.-> P
 ~~~
 

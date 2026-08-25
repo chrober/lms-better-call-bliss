@@ -370,6 +370,18 @@ sub _result_view {
         $view->{error} = $job->{error};
     } elsif ($job->{state} eq 'completed') {
         my $artifact = $job->{artifact};
+        if (ref($artifact->{genre_filter}) eq 'HASH') {
+            my $genre = $artifact->{genre_filter};
+            $view->{genre_filter_active} = 1;
+            $view->{genre_filter_restrict} = $genre->{restrict_genres} ? 1 : 0;
+            $view->{genre_filter_christmas} = $genre->{exclude_christmas} ? 1 : 0;
+            $view->{genre_filter_excluded} =
+                0 + ($genre->{genre_excluded_count} || 0);
+            $view->{genre_filter_christmas_excluded} =
+                0 + ($genre->{christmas_excluded_count} || 0);
+            $view->{genre_filter_acceptable} =
+                0 + ($genre->{acceptable_genre_count} || 0);
+        }
         my $provenance = ref($artifact->{scoring_provenance}) eq 'HASH'
             ? $artifact->{scoring_provenance} : {};
         if (%$provenance) {

@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 55;
+use Test::More tests => 59;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -200,6 +200,28 @@ like(
     $plugin_module,
     qr/my \$optimizer_supports_trusted_request\s*=\s*_optimizerSupportsTrustedRequest.*?Jobs::init\(.*?\$optimizer_supports_trusted_request/s,
     'plugin enables trusted requests only after optimizer capability detection',
+);
+like(
+    $plugin_module,
+    qr/my \$optimizer_supports_genre_policy\s*=\s*_optimizerSupportsGenrePolicy.*?BlissCompatibility::init\(.*?\$optimizer_supports_genre_policy/s,
+    'plugin requires explicit optimizer support for the genre-policy contract',
+);
+my $compatibility = slurp(File::Spec->catfile($plugin, 'BlissCompatibility.pm'));
+like(
+    $compatibility,
+    qr/filter_genres.*?filter_xmas.*?exclude_christmas.*?genre_groups.*?match_all_genres.*?use_track_genre/s,
+    'Bliss compatibility captures every relevant BlissMixer genre preference',
+);
+my $request_builder = slurp(File::Spec->catfile($plugin, 'RequestBuilder.pm'));
+like(
+    $request_builder,
+    qr/candidate_policy\s*=>\s*\{\s*genre\s*=>.*?restrict_genres.*?exclude_christmas.*?genre_groups.*?match_all_genres.*?use_track_genre/s,
+    'the shared request builder applies one genre policy to all feature modes',
+);
+like(
+    $extras,
+    qr/BlissMixer genre policy:.*?genre_filter_excluded.*?genre_filter_christmas_excluded/s,
+    'completed previews expose genre-filtering results',
 );
 like(
     $jobs,

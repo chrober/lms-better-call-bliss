@@ -104,7 +104,17 @@ sub normalize_request_types {
     );
     _normalize_booleans(
         $request->{scoring}->{captured_blissmixer_preferences},
-        qw(use_adaptive_weights use_forest),
+        qw(
+            use_adaptive_weights use_forest filter_genres filter_xmas
+            match_all_genres use_track_genre
+        ),
+    );
+    _normalize_booleans(
+        $request->{candidate_policy}->{genre},
+        qw(
+            restrict_genres exclude_christmas match_all_genres
+            use_track_genre
+        ),
     );
     _normalize_integers(
         $request->{selection},
@@ -384,6 +394,15 @@ sub _build_sequence_request {
                     ? JSON::XS::true : JSON::XS::false,
                 use_forest => $capability->{use_forest}
                     ? JSON::XS::true : JSON::XS::false,
+                filter_genres => $capability->{filter_genres}
+                    ? JSON::XS::true : JSON::XS::false,
+                filter_xmas => $capability->{filter_xmas}
+                    ? JSON::XS::true : JSON::XS::false,
+                genre_groups => $capability->{genre_groups} || [],
+                match_all_genres => $capability->{match_all_genres}
+                    ? JSON::XS::true : JSON::XS::false,
+                use_track_genre => $capability->{use_track_genre}
+                    ? JSON::XS::true : JSON::XS::false,
                 num_seed_tracks => _json_integer($capability->{seed_limit}),
                 learned_blend => _json_integer($capability->{learned_percent}),
                 no_repeat_artist => _json_integer($capability->{artist_window}),
@@ -401,6 +420,19 @@ sub _build_sequence_request {
                 weight_chroma => _json_integer(
                     $capability->{static_weight_sliders}->{chroma},
                 ),
+            },
+        },
+        candidate_policy => {
+            genre => {
+                restrict_genres => $capability->{filter_genres}
+                    ? JSON::XS::true : JSON::XS::false,
+                exclude_christmas => $capability->{exclude_christmas}
+                    ? JSON::XS::true : JSON::XS::false,
+                genre_groups => $capability->{genre_groups} || [],
+                match_all_genres => $capability->{match_all_genres}
+                    ? JSON::XS::true : JSON::XS::false,
+                use_track_genre => $capability->{use_track_genre}
+                    ? JSON::XS::true : JSON::XS::false,
             },
         },
         selection => {
