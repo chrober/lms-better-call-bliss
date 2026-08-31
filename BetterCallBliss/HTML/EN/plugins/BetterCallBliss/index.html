@@ -138,7 +138,12 @@
     <summary>Diagnostics: Bliss library membership audit ([% bettercallbliss_candidate_inventory.unmatched_row_count %] excluded rows)</summary>
     <p>
       [% bettercallbliss_candidate_inventory.allowed_row_count %] usable Bliss rows
-      match current local LMS tracks.
+      are eligible in candidate library
+      "[% bettercallbliss_candidate_inventory.candidate_library_name | html %]".
+      [% IF bettercallbliss_candidate_inventory.virtual_library_excluded_bliss_row_count %]
+        [% bettercallbliss_candidate_inventory.virtual_library_excluded_bliss_row_count %]
+        additional LMS-matched Bliss rows are outside that library view.
+      [% END %]
       [% bettercallbliss_candidate_inventory.unmatched_row_count %] usable Bliss rows
       are excluded from bridge searches because they do not resolve to the
       current LMS library.
@@ -291,6 +296,15 @@
       </div>
       <p class="bea-note" id="addition_amount_note"></p>
     [% END %]
+    <div class="bea-row" id="candidate_library_row">
+      <label for="candidate_library_id">Candidate library</label>
+      <select name="candidate_library_id" id="candidate_library_id" data-material-autoselect="[% bettercallbliss_material_library_autoselect %]">
+        [% FOREACH library = bettercallbliss_candidate_libraries %]
+          <option value="[% library.id | html %]"[% IF bettercallbliss_form.candidate_library_id == library.id %] selected[% END %]>[% library.name | html %][% IF library.id %] ([% library.count %] tracks)[% END %]</option>
+        [% END %]
+      </select>
+    </div>
+    <p class="bea-note" id="candidate_library_note">Newly added tracks must belong to this Lyrion library view. Source tracks, listening history, the selected destination, and queue-rejoin anchors remain valid even when they are outside it. The initial selection follows the active Material Skin library when available, then the library assigned to the active player.</p>
     <div id="mode_combination_warning" class="bea-warning bea-hidden">Preserving the source order without allowing additions would leave the result unchanged. Choose transition improvements or Extend playlist with a non-zero target.</div>
   </fieldset>
 
@@ -532,7 +546,47 @@
     var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
     var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
     var submit = document.getElementById('run_preview');
+    var candidateLibrary = document.getElementById('candidate_library_id');
+    var candidateLibraryRow = document.getElementById('candidate_library_row');
+    var candidateLibraryNote = document.getElementById('candidate_library_note');
     var capabilityReady = !submit.disabled;
+
+    function materialCandidateLibraryId() {
+      try {
+        if (document.bus && document.bus.$store && document.bus.$store.state) {
+          return document.bus.$store.state.library;
+        }
+      } catch (ignoreBus) {
+      }
+      try {
+        return window.localStorage
+          ? window.localStorage.getItem('lms-material::library')
+          : null;
+      } catch (ignoreStorage) {
+      }
+      return null;
+    }
+
+    function selectMaterialCandidateLibrary(attempt) {
+      if (!candidateLibrary
+          || candidateLibrary.getAttribute('data-material-autoselect') !== '1') return;
+      var id = materialCandidateLibraryId();
+      if (id === '0' || id === '-1') id = '';
+      if (id !== null && typeof id !== 'undefined') {
+        for (var index = 0; index < candidateLibrary.options.length; index++) {
+          if (candidateLibrary.options[index].value === String(id)) {
+            candidateLibrary.value = String(id);
+            candidateLibrary.setAttribute('data-material-autoselect', '0');
+            return;
+          }
+        }
+      }
+      if (attempt < 20) {
+        window.setTimeout(function () {
+          selectMaterialCandidateLibrary(attempt + 1);
+        }, 100);
+      }
+    }
     function setVisible(element, visible) {
       if (!element) return;
       element.classList.toggle('bea-hidden', !visible);
@@ -624,6 +678,7 @@
     }
 
     initializeAdditionControls();
+    selectMaterialCandidateLibrary(0);
 
     function synchronizeControls() {
       var destinationRoute = sourceMode && sourceMode.value === 'route_to_track';
@@ -646,6 +701,8 @@
         if (routeExact) routeExact.readOnly = !exactRoute;
         submit.disabled = !capabilityReady || invalidRoute;
         setVisible(lastFmFields, true);
+        setVisible(candidateLibraryRow, true);
+        setVisible(candidateLibraryNote, true);
         var routeLastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
         setReadOnlyWithSlider(lastFmTrackGuidance, routeLastFmInactive);
         setReadOnlyWithSlider(lastFmArtistGuidance, routeLastFmInactive);
@@ -751,6 +808,8 @@
 
       var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
       setVisible(lastFmFields, additions);
+      setVisible(candidateLibraryRow, additions);
+      setVisible(candidateLibraryNote, additions);
       setReadOnlyWithSlider(lastFmTrackGuidance, lastFmInactive);
       setReadOnlyWithSlider(lastFmArtistGuidance, lastFmInactive);
 
@@ -806,6 +865,7 @@
       <p class="bea-note">Preview runs are read-only and do not change playlists or player queues.</p>
     [% END %]
     <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
+    [% IF bettercallbliss_job.extension_mode != 'none' %]<p class="bea-note"><b>Candidate library:</b> [% bettercallbliss_job.candidate_library_name | html %]. Only newly generated tracks were restricted to this frozen Lyrion library membership.</p>[% END %]
     [% IF bettercallbliss_job.mixing_note %]<p class="bea-note"><b>Mixing:</b> [% bettercallbliss_job.mixing_strategy | html %] (BlissMixer current setting: [% bettercallbliss_job.blissmixer_strategy | html %]). [% bettercallbliss_job.mixing_note | html %]</p>[% END %]
     [% IF bettercallbliss_job.genre_filter_active %]<p class="bea-note"><b>BlissMixer genre policy:</b> [% IF bettercallbliss_job.genre_filter_restrict %][% bettercallbliss_job.genre_filter_acceptable %] source-compatible genres were accepted; [% bettercallbliss_job.genre_filter_excluded %] otherwise eligible candidates were excluded[% ELSE %]genre-group restriction was disabled[% END %]. [% IF bettercallbliss_job.genre_filter_christmas %][% bettercallbliss_job.genre_filter_christmas_excluded %] Christmas candidates were excluded.[% ELSE %]Christmas exclusion was inactive.[% END %]</p>[% END %]
     [% IF bettercallbliss_job.scoring_context_policy %]<p class="bea-note"><b>Scoring context:</b> [% bettercallbliss_job.scoring_context_policy | html %]. Seeds: [% bettercallbliss_job.scoring_seed_policy | html %]. Configured learned share [% bettercallbliss_job.scoring_configured_blend %]%; effective base share [% bettercallbliss_job.scoring_effective_blend %]%.</p>[% END %]

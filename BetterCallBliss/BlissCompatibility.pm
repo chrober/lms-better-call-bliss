@@ -10,10 +10,12 @@ my $bliss_prefs = preferences('plugin.blissmixer');
 my $server_prefs = preferences('server');
 my $optimizer_binary;
 my $optimizer_supports_genre_policy;
+my $optimizer_supports_candidate_library_scope;
 
 sub init {
     $optimizer_binary = shift;
     $optimizer_supports_genre_policy = shift ? 1 : 0;
+    $optimizer_supports_candidate_library_scope = shift ? 1 : 0;
 }
 
 sub _int_pref {
@@ -86,6 +88,10 @@ sub snapshot {
         'the installed bliss-playlist-optimizer does not support BlissMixer genre settings'
         if $optimizer_binary && -x $optimizer_binary
             && !$optimizer_supports_genre_policy;
+    push @problems,
+        'the installed bliss-playlist-optimizer does not support candidate-library scoping'
+        if $optimizer_binary && -x $optimizer_binary
+            && !$optimizer_supports_candidate_library_scope;
     push @problems,
         'an LMS library scan is updating the catalog; preview will resume when it finishes'
         if $scanning;

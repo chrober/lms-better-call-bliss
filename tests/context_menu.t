@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 40;
+use Test::More tests => 42;
 
 BEGIN {
     package Slim::Menu::PlaylistInfo;
@@ -40,7 +40,8 @@ require Plugins::BetterCallBliss::ContextMenu;
 }
 
 my $playlist_item = Plugins::BetterCallBliss::ContextMenu::playlistInfoHandler(
-    TestClient->new, undef, TestPlaylist->new,
+    TestClient->new, undef, TestPlaylist->new, undef, undef,
+    {library_id => '4d2ba37f'},
 );
 ok($playlist_item, 'playlist context item is created');
 is($playlist_item->{type}, 'text', 'playlist context uses generic weblink handling to avoid Material extra URL loss');
@@ -51,9 +52,12 @@ like($playlist_item->{weblink}, qr{^plugins/BetterCallBliss/index\.html\?}, 'pla
 like($playlist_item->{weblink}, qr{playlist_id=123}, 'playlist context preselects the playlist');
 like($playlist_item->{weblink}, qr{source_mode=saved_playlist}, 'playlist context preselects saved playlist mode');
 like($playlist_item->{weblink}, qr{player=aa%3Abb%3Acc%3Add%3Aee%3Aff}, 'playlist context preserves the active player for Material Extras rendering');
+like($playlist_item->{weblink}, qr{candidate_library_id=4d2ba37f},
+    'playlist context freezes the active virtual library');
 
 my $track_item = Plugins::BetterCallBliss::ContextMenu::trackInfoHandler(
-    TestClient->new, undef, TestTrack->new,
+    TestClient->new, undef, TestTrack->new, undef, undef,
+    {library_id => '4d2ba37f'},
 );
 ok($track_item, 'track context item is created');
 is($track_item->{type}, 'text', 'track context invokes a non-browsing LMS action');
@@ -77,6 +81,8 @@ is(
     'queue_end',
     'deferred destination action explicitly starts at the queue end',
 );
+is($track_item->{jive}->{actions}->{go}->{params}->{candidate_library_id},
+    '4d2ba37f', 'direct destination action freezes the active virtual library');
 is($track_item->{name}, 'Bliss me there... when we\'re through!',
     'queue-end action explains that it runs after the existing queue');
 ok(

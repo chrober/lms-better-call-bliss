@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 59;
+use Test::More tests => 65;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -206,6 +206,11 @@ like(
     qr/my \$optimizer_supports_genre_policy\s*=\s*_optimizerSupportsGenrePolicy.*?BlissCompatibility::init\(.*?\$optimizer_supports_genre_policy/s,
     'plugin requires explicit optimizer support for the genre-policy contract',
 );
+like(
+    $plugin_module,
+    qr/my \$optimizer_supports_candidate_library_scope\s*=\s*_optimizerSupportsCandidateLibraryScope.*?BlissCompatibility::init\(.*?\$optimizer_supports_candidate_library_scope/s,
+    'plugin requires explicit optimizer support for candidate-library scoping',
+);
 my $compatibility = slurp(File::Spec->catfile($plugin, 'BlissCompatibility.pm'));
 like(
     $compatibility,
@@ -217,6 +222,34 @@ like(
     $request_builder,
     qr/candidate_policy\s*=>\s*\{\s*genre\s*=>.*?restrict_genres.*?exclude_christmas.*?genre_groups.*?match_all_genres.*?use_track_genre/s,
     'the shared request builder applies one genre policy to all feature modes',
+);
+like(
+    $request_builder,
+    qr/CandidateLibrary::describe.*?candidate_library\s*=>\s*\$candidate_library/s,
+    'the shared request builder freezes the selected virtual library for every job',
+);
+like(
+    $extras,
+    qr/<select name="candidate_library_id".*?bettercallbliss_candidate_libraries.*?materialCandidateLibraryId/s,
+    'Extras offers candidate libraries and follows Material active-library state initially',
+);
+like(
+    $extras,
+    qr/setVisible\(candidateLibraryRow, true\).*?setVisible\(candidateLibraryRow, additions\)/s,
+    'candidate-library control stays visible for destination routes and only track-adding editor modes',
+);
+my $candidate_inventory = slurp(File::Spec->catfile(
+    $plugin, 'CandidateInventory.pm',
+));
+like(
+    $candidate_inventory,
+    qr/library_track WHERE library = \?.*?candidate_files.*?virtual_library_excluded_bliss_row_count/s,
+    'candidate inventory distinguishes selected-library additions from LMS tracks outside it',
+);
+like(
+    $plugin_module,
+    qr/candidate_library_name.*?candidate_library_track_count.*?candidate_library_allowed_bliss_row_count.*?candidate_library_excluded_bliss_row_count/s,
+    'status command reports the last frozen candidate-library boundary',
 );
 like(
     $extras,

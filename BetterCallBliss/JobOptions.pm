@@ -72,6 +72,7 @@ sub defaults {
         queue_player_id => '',
         queue_action => 'replace',
         source_queue_scope => 'full',
+        candidate_library_id => '',
         queue_start_playback => 0,
     };
 }
@@ -286,6 +287,15 @@ sub normalize {
             || $options->{queue_action} eq 'play_next';
     $options->{queue_start_playback} = $input->{queue_start_playback} ? 1 : 0
         if exists $input->{queue_start_playback};
+
+    if (defined $input->{candidate_library_id}) {
+        my $id = $input->{candidate_library_id};
+        $id =~ s/^\s+|\s+$//g;
+        die "Candidate library id is too long" if length($id) > 128;
+        die "Candidate library id contains invalid characters"
+            if $id =~ /[\x00-\x1f]/;
+        $options->{candidate_library_id} = $id;
+    }
     die "Choose a player for queue output"
         if $options->{output_mode} eq 'player_queue'
             && !length($options->{queue_player_id} || '');

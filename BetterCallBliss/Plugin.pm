@@ -14,6 +14,7 @@ use Slim::Utils::Strings;
 
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::ContextMenu;
 use Plugins::BetterCallBliss::Defaults qw(
     preference_defaults
@@ -70,9 +71,12 @@ sub initPlugin {
         _optimizerSupportsTrustedRequest($optimizer_binary);
     my $optimizer_supports_genre_policy =
         _optimizerSupportsGenrePolicy($optimizer_binary);
+    my $optimizer_supports_candidate_library_scope =
+        _optimizerSupportsCandidateLibraryScope($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
         $optimizer_binary,
         $optimizer_supports_genre_policy,
+        $optimizer_supports_candidate_library_scope,
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -108,7 +112,9 @@ sub initPlugin {
         . ' trusted_request='
         . ($optimizer_supports_trusted_request ? 'supported' : 'unsupported')
         . ' genre_policy='
-        . ($optimizer_supports_genre_policy ? 'supported' : 'unsupported'));
+        . ($optimizer_supports_genre_policy ? 'supported' : 'unsupported')
+        . ' candidate_library_scope='
+        . ($optimizer_supports_candidate_library_scope ? 'supported' : 'unsupported'));
     return 1;
 }
 
@@ -138,6 +144,12 @@ sub _optimizerSupportsGenrePolicy {
     my $binary = shift;
     my $output = _optimizerVersionOutput($binary);
     return $output =~ /"genre_policy"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerSupportsCandidateLibraryScope {
+    my $binary = shift;
+    my $output = _optimizerVersionOutput($binary);
+    return $output =~ /"candidate_library_scope"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerVersionOutput {
@@ -287,6 +299,7 @@ sub routeToCommand {
     my $route_source = Plugins::BetterCallBliss::RouteMode::normalize_source(
         $request->getParam('route_source'),
     );
+    my $candidate_library_id = $request->getParam('candidate_library_id');
     if (!$client || !defined $target_track_id || "$target_track_id" !~ /^\d+$/) {
         $request->addResult('state', 'failed');
         $request->addResult('error_code', 'INVALID_ROUTE_CONTEXT');
@@ -297,6 +310,9 @@ sub routeToCommand {
         $request->setStatusBadParams();
         return;
     }
+    $candidate_library_id =
+        Plugins::BetterCallBliss::CandidateLibrary::active_id($client)
+        unless defined $candidate_library_id;
     if (!defined $route_source) {
         $request->addResult('state', 'failed');
         $request->addResult('error_code', 'INVALID_ROUTE_SOURCE');
@@ -317,6 +333,7 @@ sub routeToCommand {
                 quick_route => 1,
                 auto_apply => 1,
                 route_source => $route_source,
+                candidate_library_id => $candidate_library_id,
             },
         );
     };
@@ -402,9 +419,28 @@ sub statusCommand {
     $request->addResult(
         'non_lms_bliss_row_count', 0 + $inventory->{unmatched_row_count},
     ) if defined $inventory->{unmatched_row_count};
+    $request->addResult(
+        'candidate_library_id', $inventory->{candidate_library_id} || '',
+    ) if $inventory->{ready};
+    $request->addResult(
+        'candidate_library_name',
+        $inventory->{candidate_library_name} || 'All tracks',
+    ) if $inventory->{ready};
+    $request->addResult(
+        'candidate_library_track_count',
+        0 + ($inventory->{candidate_library_track_count} || 0),
+    ) if $inventory->{ready};
+    $request->addResult(
+        'candidate_library_allowed_bliss_row_count',
+        0 + ($inventory->{allowed_row_count} || 0),
+    ) if $inventory->{ready};
+    $request->addResult(
+        'candidate_library_excluded_bliss_row_count',
+        0 + ($inventory->{virtual_library_excluded_bliss_row_count} || 0),
+    ) if $inventory->{ready};
     $request->addResult('non_lms_bliss_audit_path', $inventory->{audit_path})
         if $inventory->{audit_path};
-    $request->addResult('ux_contract', 'extras-job-editor-v22');
+    $request->addResult('ux_contract', 'extras-job-editor-v23');
     $request->addResult(
         'working_mode',
         'per-job-adaptive/optimize-or-preserve/none-auto-extend/context-route-to-track/playlist-or-queue-output',

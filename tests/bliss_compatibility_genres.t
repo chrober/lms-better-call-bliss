@@ -66,7 +66,7 @@ for my $path ($database, $binary) {
 }
 chmod 0755, $binary;
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1);
 my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 
 ok($snapshot->{ready}, 'compatible optimizer and readable Bliss database are ready');
@@ -82,10 +82,18 @@ is_deeply(
 ok($snapshot->{match_all_genres}, 'match-all mode is captured');
 ok($snapshot->{use_track_genre}, 'per-track genre mode is captured');
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 0);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 0, 1);
 my $incompatible = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok(!$incompatible->{ready}, 'an older optimizer is rejected instead of ignoring genre settings');
 like(join('; ', @{$incompatible->{problems}}), qr/does not support BlissMixer genre settings/,
     'the compatibility failure explains the required optimizer capability');
+
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 0);
+my $old_candidate_scope = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+ok(!$old_candidate_scope->{ready},
+    'an optimizer without candidate-library scoping is rejected');
+like(join('; ', @{$old_candidate_scope->{problems}}),
+    qr/does not support candidate-library scoping/,
+    'candidate-library compatibility failure names the missing capability');
 
 done_testing();

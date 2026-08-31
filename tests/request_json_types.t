@@ -56,6 +56,10 @@ BEGIN {
     sub database_file_for_track { return '/music/1999.flac' }
     $INC{'Plugins/BetterCallBliss/CandidateInventory.pm'} = __FILE__;
 
+    package Plugins::BetterCallBliss::CandidateLibrary;
+    sub describe { return {id => '', name => 'All tracks', virtual => 0} }
+    $INC{'Plugins/BetterCallBliss/CandidateLibrary.pm'} = __FILE__;
+
     package Plugins::BetterCallBliss::JobOptions;
     our $extension_mode = 'exact_count';
     our $algorithm = 'adaptive';

@@ -15,6 +15,7 @@ use Slim::Web::HTTP;
 use Slim::Web::Pages;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::LastFmEvidence;
@@ -136,7 +137,7 @@ sub _form_from_params {
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
-        queue_player_id queue_action queue_start_playback
+        queue_player_id queue_action queue_start_playback candidate_library_id
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }
@@ -356,6 +357,9 @@ sub _result_view {
         route_max_intermediates => 0 + ($job->{options}->{route_max_intermediates} || 0),
         route_exact_intermediates => 0 + ($job->{options}->{route_exact_intermediates} || 0),
         gap_context_mode => $job->{options}->{gap_context_mode} || 'rolling',
+        candidate_library_id => $job->{options}->{candidate_library_id} || '',
+        candidate_library_name => $job->{options}->{candidate_library_name}
+            || 'All tracks',
     };
     if (($view->{mixing_strategy} || '') eq 'static') {
         $view->{mixing_note} = 'Static BlissMixer weights were used for every contextual distance.';
@@ -635,6 +639,12 @@ sub handler {
     $params ||= {};
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
+    my $candidate_library_was_explicit =
+        exists $params->{candidate_library_id} || exists $params->{job_id};
+    unless ($candidate_library_was_explicit) {
+        $defaults->{candidate_library_id} =
+            Plugins::BetterCallBliss::CandidateLibrary::active_id($client);
+    }
     my $form = _form_from_params($params, $defaults);
     if (($form->{source_mode} || '') eq 'player_queue') {
         $form->{source_player_id} ||= $form->{queue_player_id};
@@ -758,6 +768,10 @@ sub handler {
 
     $params->{bettercallbliss_playlists} = $playlists;
     $params->{bettercallbliss_players} = $players;
+    $params->{bettercallbliss_candidate_libraries} =
+        Plugins::BetterCallBliss::CandidateLibrary::choices($client);
+    $params->{bettercallbliss_material_library_autoselect} =
+        $candidate_library_was_explicit ? 0 : 1;
     $params->{bettercallbliss_form} = $form;
     $params->{bettercallbliss_quick_route} = $job
         ? ($job->{quick_route} ? 1 : 0) : ($form->{quick_route} ? 1 : 0);
@@ -765,11 +779,15 @@ sub handler {
         my $player = uri_escape_utf8($form->{route_player_id} || '');
         my $target = uri_escape_utf8($form->{route_target_track_id} || '');
         my $route_source = uri_escape_utf8($form->{route_source} || 'queue_end');
+        my $candidate_library = uri_escape_utf8(
+            $form->{candidate_library_id} || '',
+        );
         my $base_route_url = $page
             . '?player=' . $player
             . '&source_mode=route_to_track&route_player_id=' . $player
             . '&queue_player_id=' . $player
             . '&route_source=' . $route_source
+            . '&candidate_library_id=' . $candidate_library
             . '&route_target_track_id=' . $target;
         $params->{bettercallbliss_advanced_route_url} = $base_route_url;
         $params->{bettercallbliss_recalculate_route_url}

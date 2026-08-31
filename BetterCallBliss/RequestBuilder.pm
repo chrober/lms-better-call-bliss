@@ -9,6 +9,7 @@ use Slim::Player::Playlist;
 use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::JobOptions;
 
 sub _job_seed {
@@ -287,6 +288,12 @@ sub _build_sequence_request {
     my $options = Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, $job_input,
     );
+    my $candidate_library =
+        Plugins::BetterCallBliss::CandidateLibrary::describe(
+            $options->{candidate_library_id},
+        );
+    $options->{candidate_library_id} = $candidate_library->{id};
+    $options->{candidate_library_name} = $candidate_library->{name};
     $options->{generation_seed} = _job_seed($job_id)
         unless defined $options->{generation_seed};
 
@@ -556,6 +563,7 @@ sub _build_sequence_request {
         capability => $capability,
         history_track_ids => [map { $_->{id} } @$history_tracks],
         options => $options,
+        candidate_library => $candidate_library,
     };
 }
 

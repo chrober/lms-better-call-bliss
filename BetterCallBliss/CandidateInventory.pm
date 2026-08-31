@@ -16,7 +16,7 @@ use Slim::Utils::Unicode;
 use URI::Escape qw(uri_unescape);
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
-use constant BUILDER_REVISION => 2;
+use constant BUILDER_REVISION => 3;
 my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
@@ -129,7 +129,8 @@ sub _load_ledger {
 }
 
 sub _load_cached_inventory {
-    my ($key, $database_identity, $scan_time) = @_;
+    my ($key, $database_identity, $scan_time, $candidate_library,
+        $membership_sha256, $membership_count) = @_;
     my $miss = sub {
         my $reason = shift;
         $log->info("candidate_inventory stage=CacheMiss reason=$reason");
@@ -162,6 +163,12 @@ sub _load_cached_inventory {
         unless ($inventory->{database_cache_identity} || '') eq $database_identity;
     return $miss->('artifact_scan_mismatch')
         unless 0 + ($inventory->{lms_scan_time} || 0) == $scan_time;
+    return $miss->('candidate_library_changed')
+        unless ($state->{candidate_library_id} || '')
+            eq ($candidate_library->{id} || '');
+    return $miss->('candidate_library_membership_changed')
+        unless ($state->{candidate_library_membership_sha256} || '')
+            eq $membership_sha256;
     return $miss->('artifact_rows_invalid')
         unless ref($inventory->{allowed_row_ids}) eq 'ARRAY';
     my $ledger = _load_ledger();
@@ -173,6 +180,15 @@ sub _load_cached_inventory {
         usable_bliss_row_count => 0 + ($inventory->{usable_bliss_row_count} || 0),
         allowed_row_count => scalar(@{$inventory->{allowed_row_ids}}),
         unmatched_row_count => 0 + ($ledger->{current_unmatched_count} || 0),
+        candidate_library_id => $candidate_library->{id} || '',
+        candidate_library_name => $candidate_library->{name} || 'All tracks',
+        candidate_library_track_count => 0 + ($state->{candidate_library_track_count}
+            // $membership_count // 0),
+        candidate_library_membership_sha256 => $membership_sha256,
+        virtual_library_excluded_lms_track_count =>
+            0 + ($state->{virtual_library_excluded_lms_track_count} || 0),
+        virtual_library_excluded_bliss_row_count =>
+            0 + ($state->{virtual_library_excluded_bliss_row_count} || 0),
         inventory_path => $path,
         inventory_sha256 => $sha256,
         audit_path => $audit_path,
@@ -186,6 +202,27 @@ sub _load_cached_inventory {
         },
         status => $status,
     };
+}
+
+sub _candidate_library_membership {
+    my $candidate_library = shift || {};
+    my $id = $candidate_library->{id} || '';
+    return ({}, 'all-local-tracks', undef) unless length $id;
+
+    my %members;
+    my $digest = Digest::SHA->new(256);
+    $digest->add(encode_utf8($id), "\n");
+    my $sth = Slim::Schema->dbh->prepare(
+        'SELECT track FROM library_track WHERE library = ? ORDER BY track'
+    );
+    $sth->execute($id);
+    while (my ($track_id) = $sth->fetchrow_array) {
+        next unless defined $track_id;
+        $members{0 + $track_id} = 1;
+        $digest->add("$track_id\n");
+    }
+    $sth->finish;
+    return (\%members, $digest->hexdigest, scalar keys %members);
 }
 
 sub _update_audit {
@@ -243,17 +280,22 @@ sub _update_audit {
 }
 
 sub prepare {
-    my ($capability, $database_identity) = @_;
+    my ($capability, $database_identity, $candidate_library) = @_;
     die "Candidate inventory cache is not initialized" unless $inventory_root;
+    $candidate_library ||= {id => '', name => 'All tracks'};
+    my ($library_members, $membership_sha256, $membership_count) =
+        _candidate_library_membership($candidate_library);
     my $scan_time_value = Slim::Music::Import->lastScanTime() || 0;
-    my $key = join('|', $database_identity, $scan_time_value);
+    my $key = join('|', $database_identity, $scan_time_value,
+        $candidate_library->{id} || '', $membership_sha256);
     my $scan_time = int($scan_time_value);
     if ($cached_result && ($cached_key || '') eq $key) {
         $cached_result->{status}->{cache_state} = 'memory';
         return $cached_result;
     }
     if (my $disk = _load_cached_inventory(
-        $key, $database_identity, $scan_time,
+        $key, $database_identity, $scan_time, $candidate_library,
+        $membership_sha256, $membership_count,
     )) {
         $cached_key = $key;
         $cached_result = $disk;
@@ -267,20 +309,26 @@ sub prepare {
         return $cached_result;
     }
 
-    my (%lms_files, %lms_files_folded, %ambiguous_folded);
+    my (%lms_files, %candidate_files, %lms_files_folded, %ambiguous_folded);
     my $lms_track_count = 0;
+    my $candidate_library_track_count = 0;
     my $roots = $capability->{music_roots} || [];
     my $root_descriptors = _root_descriptors($roots);
     my $lms_sth = Slim::Schema->dbh->prepare(
-        'SELECT url, tracknum FROM tracks WHERE remote = 0 AND audio = 1'
+        'SELECT id, url, tracknum FROM tracks WHERE remote = 0 AND audio = 1'
     );
     $lms_sth->execute;
-    while (my ($url, $tracknum) = $lms_sth->fetchrow_array) {
+    while (my ($track_id, $url, $tracknum) = $lms_sth->fetchrow_array) {
         my $database_file = _database_file_for_url(
             $url, $tracknum, $root_descriptors, $roots,
         );
         next unless defined $database_file && length $database_file;
         $lms_files{$database_file} = 1;
+        if (!length($candidate_library->{id} || '')
+            || $library_members->{0 + $track_id}) {
+            $candidate_files{$database_file} = 1;
+            $candidate_library_track_count++;
+        }
         my $folded = lc($database_file);
         if (exists $lms_files_folded{$folded}
             && $lms_files_folded{$folded} ne $database_file) {
@@ -310,12 +358,17 @@ sub prepare {
     $sth->execute;
     my (@allowed, @unmatched);
     my $usable_count = 0;
+    my $virtual_library_excluded_bliss_row_count = 0;
     while (my ($row_id, $file, $title, $artist, $album) = $sth->fetchrow_array) {
         $usable_count++;
         my $database_file = _database_text($file);
         my $folded = defined $database_file ? lc($database_file) : '';
-        if (defined $database_file && $lms_files{$database_file}) {
+        if (defined $database_file && $candidate_files{$database_file}) {
             push @allowed, 0 + $row_id;
+            next;
+        }
+        if (defined $database_file && $lms_files{$database_file}) {
+            $virtual_library_excluded_bliss_row_count++;
             next;
         }
         my $case_variant = defined $database_file
@@ -362,6 +415,14 @@ sub prepare {
         usable_bliss_row_count => $usable_count,
         allowed_row_count => scalar(@allowed),
         unmatched_row_count => scalar(@unmatched),
+        candidate_library_id => $candidate_library->{id} || '',
+        candidate_library_name => $candidate_library->{name} || 'All tracks',
+        candidate_library_track_count => $candidate_library_track_count,
+        candidate_library_membership_sha256 => $membership_sha256,
+        virtual_library_excluded_lms_track_count =>
+            $lms_track_count - $candidate_library_track_count,
+        virtual_library_excluded_bliss_row_count =>
+            $virtual_library_excluded_bliss_row_count,
     };
     _update_audit(\@unmatched, $summary, $now);
 
@@ -386,6 +447,13 @@ sub prepare {
         schema_version => 1,
         builder_revision => BUILDER_REVISION,
         cache_key => $key,
+        candidate_library_id => $candidate_library->{id} || '',
+        candidate_library_membership_sha256 => $membership_sha256,
+        candidate_library_track_count => $candidate_library_track_count,
+        virtual_library_excluded_lms_track_count =>
+            $lms_track_count - $candidate_library_track_count,
+        virtual_library_excluded_bliss_row_count =>
+            $virtual_library_excluded_bliss_row_count,
         inventory_path => $path,
         inventory_sha256 => $sha256,
     }));
@@ -394,6 +462,10 @@ sub prepare {
         . " lms_local=$lms_track_count bliss_usable=$usable_count"
         . ' allowed=' . scalar(@allowed)
         . ' unmatched=' . scalar(@unmatched)
+        . ' candidate_library=' . ($candidate_library->{id} || 'all')
+        . ' candidate_library_tracks=' . $candidate_library_track_count
+        . ' virtual_library_excluded_bliss='
+        . $virtual_library_excluded_bliss_row_count
         . " audit=$audit_path"
     );
     return $cached_result;

@@ -223,8 +223,10 @@ sub status_detail_lines {
         && ref($job->{candidate_inventory}) eq 'HASH') {
         my $inventory = $job->{candidate_inventory};
         push @details, sprintf(
-            'Candidate inventory: %d LMS-matched Bliss rows, %d excluded non-LMS rows, cache %s.',
+            'Candidate library: %s; %d LMS-matched Bliss candidates, %d outside-library Bliss rows, %d excluded non-LMS rows, cache %s.',
+            $inventory->{candidate_library_name} || 'All tracks',
             0 + ($inventory->{allowed_row_count} || 0),
+            0 + ($inventory->{virtual_library_excluded_bliss_row_count} || 0),
             0 + ($inventory->{unmatched_row_count} || 0),
             $inventory->{cache_state} || 'unknown',
         );
@@ -416,6 +418,7 @@ sub _start_preview_from_built {
     if ($native_command eq 'bridge') {
         $candidate_inventory = Plugins::BetterCallBliss::CandidateInventory::prepare(
             $built->{capability}, $database_identity,
+            $built->{candidate_library},
         );
         $built->{request}->{artifacts}->{local_candidate_inventory}
             = $candidate_inventory->{artifact};
@@ -536,6 +539,14 @@ sub _start_preview_from_built {
                 . $candidate_inventory->{status}->{unmatched_row_count}
                 . ' inventory_cache='
                 . $candidate_inventory->{status}->{cache_state}
+                . ' candidate_library_id='
+                . (length($candidate_inventory->{status}->{candidate_library_id} || '')
+                    ? $candidate_inventory->{status}->{candidate_library_id} : 'all')
+                . ' candidate_library_name="'
+                . ($candidate_inventory->{status}->{candidate_library_name} || 'All tracks')
+                . '" virtual_library_excluded_bliss='
+                . ($candidate_inventory->{status}
+                    ->{virtual_library_excluded_bliss_row_count} || 0)
             : '')
         . ($effective->{extension_mode} eq 'automatic'
             ? " max_added=$effective->{max_added_tracks}"

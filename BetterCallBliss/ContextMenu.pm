@@ -92,7 +92,7 @@ sub _web_item {
 }
 
 sub playlistInfoHandler {
-    my ($client, $url, $playlist) = @_;
+    my ($client, $url, $playlist, $remote_meta, $tags, $filter) = @_;
     return unless $playlist && $playlist->can('tracks') && $playlist->can('id');
     my $player_id = _client_id($client);
     return _web_item(
@@ -102,13 +102,15 @@ sub playlistInfoHandler {
             player => length $player_id ? $player_id : undef,
             source_mode => 'saved_playlist',
             playlist_id => 0 + $playlist->id,
+            candidate_library_id => ref($filter) eq 'HASH'
+                ? $filter->{library_id} : undef,
         ),
         $client,
     );
 }
 
 sub _route_item {
-    my ($client, $track, $name, $description, $route_source) = @_;
+    my ($client, $track, $name, $description, $route_source, $filter) = @_;
     return unless $client && $track && !$track->remote && $track->can('id');
     my $player_id = _client_id($client);
     return unless length $player_id;
@@ -126,6 +128,8 @@ sub _route_item {
                     params => {
                         target_track_id => 0 + $track->id,
                         route_source => $route_source,
+                        (ref($filter) eq 'HASH' && defined $filter->{library_id}
+                            ? (candidate_library_id => $filter->{library_id}) : ()),
                     },
                     nextWindow => 'parent',
                 },
@@ -135,35 +139,38 @@ sub _route_item {
 }
 
 sub trackInfoHandler {
-    my ($client, $url, $track) = @_;
+    my ($client, $url, $track, $remote_meta, $tags, $filter) = @_;
     return _route_item(
         $client,
         $track,
         'Bliss me there... when we\'re through!',
         'Build a fluent route from the current queue end to this track and append it using the saved Bliss me there defaults.',
         'queue_end',
+        $filter,
     );
 }
 
 sub trackNowPlayingInfoHandler {
-    my ($client, $url, $track) = @_;
+    my ($client, $url, $track, $remote_meta, $tags, $filter) = @_;
     return _route_item(
         $client,
         $track,
         'Bliss me there...',
         'Keep the currently playing song and replace the upcoming queue with a fluent route to this track using the saved Bliss me there defaults.',
         'now_playing',
+        $filter,
     );
 }
 
 sub trackRoundTripInfoHandler {
-    my ($client, $url, $track) = @_;
+    my ($client, $url, $track, $remote_meta, $tags, $filter) = @_;
     return _route_item(
         $client,
         $track,
         'Bliss me there... and back again!',
         'Insert a fluent excursion from the currently playing song through this track and back to the existing upcoming queue.',
         'round_trip',
+        $filter,
     );
 }
 

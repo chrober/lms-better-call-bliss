@@ -199,8 +199,11 @@ sub start_info_lines {
     ) if $mode eq 'automatic' && ($options->{algorithm} || '') eq 'adaptive';
     if (ref($job->{candidate_inventory}) eq 'HASH') {
         push @lines, sprintf(
-            'Candidate inventory: %d local LMS-matched Bliss rows; %d non-LMS rows excluded; cache %s.',
+            'Candidate library: %s; %d local LMS-matched Bliss candidates; %d Bliss rows outside the selected virtual library; %d non-LMS rows excluded; cache %s.',
+            $job->{candidate_inventory}->{candidate_library_name} || 'All tracks',
             0 + ($job->{candidate_inventory}->{allowed_row_count} || 0),
+            0 + ($job->{candidate_inventory}
+                ->{virtual_library_excluded_bliss_row_count} || 0),
             0 + ($job->{candidate_inventory}->{unmatched_row_count} || 0),
             $job->{candidate_inventory}->{cache_state} || 'unknown',
         );

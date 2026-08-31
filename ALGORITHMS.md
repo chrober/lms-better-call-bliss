@@ -23,6 +23,7 @@ Three job choices work together:
 1. **Source-track order** decides whether songs already in the playlist may move.
 2. **Additional tracks** asks for the listener-facing purpose: no additions, improve difficult transitions, or extend the source by a chosen amount. **Extend playlist** opens the second **Chosen amount** selector for exact additions, final track count, or double track count; **Reach a final track count** is also the replacement for the former separate target-size workflow.
 3. **Mixing strategy** supplies the similarity measurement used by those playlist operations. Better Call Bliss reuses this capability from BlissMixer; it is not the main feature being selected here.
+4. **Candidate library** limits every newly generated track to the selected Lyrion virtual library. Existing source, history, destination, waypoint, and queue-rejoin tracks remain valid anchors even when they are outside that view.
 
 ## Features at a glance
 
@@ -47,6 +48,7 @@ Three job choices work together:
 | [Static weighted distance](#static-weighted-distance--working) | Working | BlissMixer's fixed user priorities. |
 | [Extended Isolation Forest](#extended-isolation-forest--planned-for-better-call-bliss) | Planned | BlissMixer's model of the sound shared by several example songs. |
 | [Last.fm track and artist guidance](#lastfm-track-and-artist-guidance) | Working, optional | Extra evidence for ranking suitable additions; Bliss remains the acoustic gate. |
+| [Candidate library](#candidate-library-for-all-addition-modes) | Working | Restricts generated tracks to the active or explicitly selected Lyrion virtual-library membership. |
 
 ## How the pieces fit together
 
@@ -63,7 +65,7 @@ The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, free
 | [Extend playlist](#extend-playlist) | Eligible local analyzed library tracks | Every original source track together as one fixed musical reference | No. All additions are selected against the unchanged original source set. They influence only the later placement or route search. |
 | [Bliss me there...](#bliss-me-there) | Eligible local analyzed library tracks | For a one-way route, the chosen start and destination drive one acoustic shortlist. For **and back again**, the current song, selected waypoint, and first upcoming rejoin define two gap-specific shortlists: start-to-waypoint and waypoint-to-rejoin. For Adaptive, a bounded analyzed queue prefix ending at the start constructs the frozen per-run matrix; this context and all locked anchors can also provide Last.fm and repeat evidence. | No. Intermediates are chosen from the frozen shortlist for their leg. An outward path is carried into return-leg evaluation, so uniqueness and repeat windows apply across the complete excursion, but chosen tracks do not recruit new candidates. |
 
-Here, N means **Musical context window**. "Eligible local analyzed library tracks" means the intersection of usable `bliss.db` rows and current local LMS tracks after source-track exclusions and the captured BlissMixer genre policy. Last.fm can support tracks already in that pool; it cannot add remote tracks or bypass Bliss, LMS membership, or genre checks.  
+Here, N means **Musical context window**. "Eligible local analyzed library tracks" means the intersection of usable `bliss.db` rows, current local LMS tracks, and the frozen **Candidate library** membership after source-track exclusions and the captured BlissMixer genre policy. Last.fm can support tracks already in that pool; it cannot add remote tracks or bypass Bliss, LMS membership, the virtual-library boundary, or genre checks.  
 
 The diagrams below use four recurring stages:
 
@@ -336,24 +338,25 @@ Additional route-search attempts have no effect because the anchors cannot move.
 
 ### Candidate library for all addition modes
 
-When Better Call Bliss adds music, it chooses only analyzed songs that Lyrion currently knows as local tracks. A stale Bliss database row cannot become a playlist entry merely because its acoustic data still exists. This stage defines the allowed universe; it does not yet decide whether a track resembles a local gap, a complete source set, or a destination path.
+When Better Call Bliss adds music, it chooses only analyzed songs that Lyrion currently knows as local tracks and that belong to the per-job **Candidate library**. The Extras editor initially follows Material Skin's active virtual library when available, then the library assigned to the active player, with **All tracks** as the fallback. Users can override that choice before starting a preview. A stale Bliss database row, or a local song outside the selected virtual library, cannot become an addition merely because its acoustic data exists. This stage defines the allowed universe; it does not yet decide whether a track resembles a local gap, a complete source set, or a destination path.
 
 #### How eligible candidates are frozen
 
-Before search, the plugin intersects usable rows in bliss.db with the current local LMS catalog. From that intersection it excludes:
+Before search, the plugin freezes the selected Lyrion `library_track` membership and intersects it with usable rows in `bliss.db` and the current local LMS catalog. The membership checksum participates in the inventory cache key, so a rebuilt virtual library cannot silently reuse an obsolete allowlist. From that intersection it excludes:
 
 - every source file already in the playlist; and
 - another file with the same normalized artist-and-title identity as a source.
 
 It then applies the current BlissMixer genre settings to every possible **new** track. Genre-group restriction, group glob patterns, **Match all genres**, and **Use track genre** follow BlissMixer's behavior. Source tracks—and immutable recent listening history for a destination shortcut—identify the acceptable groups. When no reference track belongs to a configured group, candidates belonging to configured groups are excluded while BlissMixer's implicit “other genres” remain together. An untagged candidate remains eligible.  
 
-BlissMixer's **Filter Christmas music** switch is a separate hard candidate filter outside December, even when general genre restriction is disabled. During December the configured switch is deliberately inactive, matching BlissMixer. Existing source tracks, listening history, mandatory destinations, waypoints, and queue-rejoin anchors are never removed: genre settings constrain music chosen by Better Call Bliss, not the user's input.  
+BlissMixer's **Filter Christmas music** switch is a separate hard candidate filter outside December, even when general genre restriction is disabled. During December the configured switch is deliberately inactive, matching BlissMixer. Existing source tracks, listening history, mandatory destinations, waypoints, and queue-rejoin anchors are never removed: both the Candidate library and genre settings constrain music chosen by Better Call Bliss, not the user's input.  
 
 The remaining tracks form a checksum-protected candidate inventory for this job. Uniqueness and repeat rules are checked again during search, when the native result is resolved back to LMS tracks, and before persistence. The completed preview and information log report separate counts for candidates rejected by genre groups and by the Christmas filter.  
 
 ~~~mermaid
 flowchart LR
-    L["LMS library<br/>A, B, C, X, Y"] --> I["Keep tracks with<br/>matching Bliss rows"]
+    L["Local LMS library<br/>A, B, C, X, Y"] --> V["Keep selected Candidate library<br/>A, B, X"]
+    V --> I["Keep tracks with<br/>matching Bliss rows"]
     B["bliss.db<br/>A, B, X, Y, Z"] --> I
     I --> G["Apply captured BlissMixer<br/>genre and Christmas policy"]
     G --> P["After removing source A, B<br/>eligible additions: X, Y"]

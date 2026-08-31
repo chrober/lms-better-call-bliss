@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 40;
+use Test::More tests => 42;
 
 BEGIN {
     package TestPrefs;
@@ -74,6 +74,8 @@ is($defaults->{route_exact_intermediates}, 3,
     'destination exact count is read from plugin preferences');
 is($defaults->{route_search_effort}, 'balanced',
     'destination search effort is read from plugin preferences');
+is($defaults->{candidate_library_id}, '',
+    'all tracks is the non-contextual candidate-library default');
 
 my $saved_track_guidance = delete $TestPrefs::values{lastfm_track_guidance_percent};
 my $saved_artist_guidance = delete $TestPrefs::values{lastfm_artist_guidance_percent};
@@ -134,6 +136,13 @@ is($queue->{queue_action}, 'play_next',
     'queue action is retained');
 is($queue->{queue_start_playback}, 1,
     'queue start playback is normalized to a boolean-ish integer');
+
+my $library_scoped = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {candidate_library_id => '  4d2ba37f  '},
+);
+is($library_scoped->{candidate_library_id}, '4d2ba37f',
+    'candidate library id is trimmed and retained per job');
 
 my $destination = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,
