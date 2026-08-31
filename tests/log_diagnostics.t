@@ -252,7 +252,7 @@ like($start, qr/similar tracks 25%.*similar artists 25%/,
     'information log exposes both Last.fm guidance settings');
 like($start, qr/destination route \(automatic, 0-4 intermediate tracks, fast effort, target 70%, cautious direct-transition caution\)/,
     'information log explains destination length, effort, and target settings');
-like($start, qr/64128 local LMS-matched Bliss rows; 1 non-LMS rows excluded; cache memory/,
+like($start, qr/Candidate library: All tracks; 64128 local LMS-matched Bliss candidates; 0 Bliss rows outside the selected virtual library; 1 non-LMS rows excluded; cache memory/,
     'information log summarizes the frozen candidate inventory');
 like($start, qr/BlissMixer genre policy: genre restriction enabled with 2 configured groups.*Christmas exclusion active/,
     'information log reports the captured BlissMixer genre policy');
