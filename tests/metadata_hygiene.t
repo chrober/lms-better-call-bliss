@@ -115,7 +115,7 @@ like(
 );
 like(
     $settings_module,
-    qr/BlissCompatibility::snapshot\(\).*?bliss_compatibility/s,
+    qr/bliss_compatibility.*?BlissCompatibility::snapshot\(\)/s,
     'settings capture live provider compatibility from the shared runtime snapshot',
 );
 like(
