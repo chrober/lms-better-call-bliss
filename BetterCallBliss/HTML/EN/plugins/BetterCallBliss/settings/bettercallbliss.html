@@ -19,6 +19,25 @@
 [% PROCESS settings/header.html %]
 
 [% WRAPPER settingSection %]
+  <h3>[% "PLUGIN_BETTERCALLBLISS_COMPATIBILITY_STATUS" | string %]</h3>
+  [% IF bliss_compatibility.bliss_compatible %]
+    <p style="color:#398439">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXER_OK" | string %] [% bliss_compatibility.bliss_version | html %].</p>
+  [% ELSIF bliss_compatibility.bliss_enabled %]
+    <p style="color:#c9302c">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXER_INCOMPATIBLE" | string %] [% bliss_compatibility.bliss_version | html %].</p>
+  [% ELSE %]
+    <p style="color:#c9302c">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXER_MISSING" | string %]</p>
+  [% END %]
+
+  [% IF bliss_compatibility.blissmixerext_compatible %]
+    <p style="color:#398439">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_OK" | string %] [% bliss_compatibility.blissmixerext_version | html %].</p>
+  [% ELSIF bliss_compatibility.blissmixerext_enabled %]
+    <p style="color:#c9302c">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_INCOMPATIBLE" | string %] [% bliss_compatibility.blissmixerext_version | html %].</p>
+  [% ELSE %]
+    <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_MISSING" | string %]</p>
+  [% END %]
+
+  <br><hr style="opacity:0.4" class="sub-sep"><br>
+
   <b style="font-size:125%" id="job-defaults-section-header" class="shown-section" onclick="toggleSection('job-defaults-section')">Job defaults</b><br><br>
   <div id="job-defaults-section">
     <p>

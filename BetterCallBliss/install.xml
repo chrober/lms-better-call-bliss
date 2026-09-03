@@ -4,7 +4,7 @@
   <icon>plugins/BetterCallBliss/html/images/bettercallbliss_MTL_icon_playlist_add_check_circle.png</icon>
   <name>PLUGIN_BETTERCALLBLISS_NAME</name>
   <module>Plugins::BetterCallBliss::Plugin</module>
-  <version>0.16.3</version>
+  <version>0.17.0</version>
   <description>PLUGIN_BETTERCALLBLISS_DESC</description>
   <creator>Christoph O'Bermair</creator>
   <defaultState>

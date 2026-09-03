@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 69;
+use Test::More tests => 71;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -112,6 +112,16 @@ like(
     $settings_module,
     qr/ensure_preference_defaults\(\$prefs\).*?\$params->\{prefs\}->\{\$name\}\s*=\s*\$prefs->get\(\$name\)/s,
     'settings page backfills and renders missing defaults before Material sliders are built',
+);
+like(
+    $settings_module,
+    qr/BlissCompatibility::snapshot\(\).*?bliss_compatibility/s,
+    'settings capture live provider compatibility from the shared runtime snapshot',
+);
+like(
+    $settings,
+    qr/PLUGIN_BETTERCALLBLISS_BLISSMIXER_OK.*?bliss_version.*?PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_OK.*?blissmixerext_version/s,
+    'settings display the detected versions of both BlissMixer providers',
 );
 like(
     $settings,

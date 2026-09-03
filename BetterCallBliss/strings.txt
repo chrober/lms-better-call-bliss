@@ -18,6 +18,34 @@ PLUGIN_BETTERCALLBLISS_SETTINGS
 	EN	Better Call Bliss
 	DE	Better Call Bliss
 
+PLUGIN_BETTERCALLBLISS_COMPATIBILITY_STATUS
+	EN	Compatibility status
+	DE	Kompatibilitätsstatus
+
+PLUGIN_BETTERCALLBLISS_BLISSMIXER_OK
+	EN	Compatible installed BlissMixer version:
+	DE	Kompatible installierte BlissMixer-Version:
+
+PLUGIN_BETTERCALLBLISS_BLISSMIXER_INCOMPATIBLE
+	EN	BlissMixer 0.10.0 or newer is required. Detected version:
+	DE	BlissMixer 0.10.0 oder neuer ist erforderlich. Erkannte Version:
+
+PLUGIN_BETTERCALLBLISS_BLISSMIXER_MISSING
+	EN	BlissMixer 0.10.0 or newer is required but is not enabled.
+	DE	BlissMixer 0.10.0 oder neuer ist erforderlich, aber nicht aktiviert.
+
+PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_OK
+	EN	Compatible installed BlissMixerExt version:
+	DE	Kompatible installierte BlissMixerExt-Version:
+
+PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_INCOMPATIBLE
+	EN	BlissMixerExt 0.1.4 or newer is required for optional learned personalization. Detected version:
+	DE	Für die optionale gelernte Personalisierung ist BlissMixerExt 0.1.4 oder neuer erforderlich. Erkannte Version:
+
+PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_MISSING
+	EN	BlissMixerExt is not enabled. Learned personalization is optional.
+	DE	BlissMixerExt ist nicht aktiviert. Die gelernte Personalisierung ist optional.
+
 PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX
 	EN	Default optimized-copy suffix
 	DE	Standard-Suffix für optimierte Kopien
