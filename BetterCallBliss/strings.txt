@@ -175,8 +175,8 @@ PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE
 	DE	Hinweisstärke ähnlicher Titel (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC
-	EN	Bounded influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores track evidence. Default: 25.
-	DE	Begrenzter Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Null ignoriert Titelhinweise. Standard: 25.
+	EN	Current BlissMixerExt setting used to initialize each Better Call Bliss job. It remains overridable per job in Extras. A 25% fallback is used when BlissMixerExt 0.3.0 or newer is unavailable.
+	DE	Aktuelle BlissMixerExt-Einstellung, mit der jeder Better-Call-Bliss-Vorgang initialisiert wird. Unter Extras bleibt sie pro Vorgang änderbar. Falls BlissMixerExt 0.3.0 oder neuer nicht verfügbar ist, werden 25 % verwendet.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE
 	EN	Similar-artist guidance (%)

@@ -51,7 +51,7 @@ fall through to either working mode.
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
-| Last.fm guidance | Working, optional and per job | Requires enabled LastMix and queries similar tracks and artists for the complete distinct source set. Similar-track and similar-artist guidance are separate 0-100 bounded influences, both defaulting to 25. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
+| Last.fm guidance | Working, optional and per job | Requires enabled LastMix and queries similar tracks and artists for the complete distinct source set. Similar-track and similar-artist guidance are separate 0-100 bounded influences. Track guidance initializes from the current BlissMixerExt 0.3.0+ preference, with a 25 fallback when unavailable; artist guidance defaults to 25 in Better Call Bliss. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
 | Relevance-aware controls | Working | The Extras editor shows only sections relevant to the selected source-order and addition purpose. Count-specific fields appear only when Extend playlist requires them. Hidden sections keep their values for mode switching, selected-mode inputs remain submitted for draft restoration, exact and target counts follow the selected source snapshot, and guaranteed no-op combinations disable submission and fail server validation if bypassed. Bounded numeric controls use the same `sliderInput_min_max_step` enhancement classes as BlissMixer settings where practical. |
 | Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
 | LMS scan coordination | Working | Preview pauses while LMS reports an active library scan, explains that the catalog is changing, and retries the page automatically until the scan finishes. |
@@ -96,9 +96,11 @@ fall through to either working mode.
 The Extras editor initializes base scoring and repeat fields from the original
 BlissMixer. The submitted values belong to that job only and never update its
 global preferences. A compatible BlissMixerExt optionally supplies
-`learned_matrix.json` and the learned-blend default. Its absence is shown as a
+`learned_matrix.json`, the learned-blend default, and—starting with its 0.3.0
+capability—the Last.fm similar-track guidance default. Its absence is shown as a
 non-blocking personalization notice, and the effective learned percentage is
-forced to zero. The bundled optimizer supports Adaptive and Static routing:
+forced to zero; missing track-guidance ownership uses a 25% fallback. The
+bundled optimizer supports Adaptive and Static routing:
 Adaptive otherwise uses variance weighting for multi-track contexts plus Static
 BlissMixer weights for one-track contexts. Extended Isolation Forest remains
 disabled and labeled.

@@ -16,6 +16,7 @@ my $optimizer_supports_candidate_library_scope;
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
 use constant MIN_BLISSMIXEREXT_VERSION => '0.1.4';
+use constant MIN_BLISSMIXEREXT_TRACK_GUIDANCE_VERSION => '0.3.0';
 
 sub init {
     $optimizer_binary = shift;
@@ -162,6 +163,18 @@ sub snapshot {
     my $static_weights = _static_slider_weights();
     my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
     my $month = (localtime())[4] + 1;
+    my $lastfm_track_guidance_available = $bliss_ext->{enabled}
+        && length($bliss_ext->{version})
+        && Slim::Utils::Versions->compareVersions(
+            $bliss_ext->{version},
+            MIN_BLISSMIXEREXT_TRACK_GUIDANCE_VERSION,
+        ) >= 0 ? 1 : 0;
+    my $lastfm_track_guidance_percent = $lastfm_track_guidance_available
+        ? _ext_int_pref('lastfm_track_guidance_percent', 25) : 25;
+    $lastfm_track_guidance_percent = 0
+        if $lastfm_track_guidance_percent < 0;
+    $lastfm_track_guidance_percent = 100
+        if $lastfm_track_guidance_percent > 100;
 
     return {
         ready             => @problems ? 0 : 1,
@@ -173,6 +186,12 @@ sub snapshot {
         blissmixerext_enabled => $bliss_ext->{enabled},
         blissmixerext_version => $bliss_ext->{version},
         blissmixerext_compatible => $bliss_ext->{compatible},
+        blissmixerext_track_guidance_minimum_version =>
+            MIN_BLISSMIXEREXT_TRACK_GUIDANCE_VERSION,
+        lastfm_track_guidance_available =>
+            $lastfm_track_guidance_available,
+        lastfm_track_guidance_percent =>
+            $lastfm_track_guidance_percent,
         personalization_state => $personalization_state,
         matrix_provider   => $matrix_available ? 'BlissMixerExt' : 'none',
         database          => $database,

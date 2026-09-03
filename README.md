@@ -73,9 +73,11 @@ complete feature matrix.
 - A completed Bliss analysis that produced a readable bliss.db in the Lyrion
   preferences directory.
 - [BlissMixerExt](https://github.com/chrober/lms-blissmixer-ext) is optional.
-  When enabled, it contributes `learned_matrix.json` and its learned-blend
-  preference. Better Call Bliss does not treat a stray matrix file as active
-  personalization when BlissMixerExt is unavailable.
+  When enabled, it contributes `learned_matrix.json`, its learned-blend
+  preference, and—starting with BlissMixerExt 0.3.0—its Last.fm similar-track
+  guidance preference. Better Call Bliss consumes that track-guidance value
+  instead of storing a duplicate global setting. It does not treat a stray
+  matrix file as active personalization when BlissMixerExt is unavailable.
 - A readable `learned_matrix.json` is optional. When present through
   BlissMixerExt, Adaptive can blend it with dynamic variance. When absent,
   Better Call Bliss follows the BlissMixer
@@ -189,7 +191,7 @@ flowchart LR
     LMS["Lyrion saved playlist"] --> P["Better Call Bliss plugin"]
     Q["Current player queue snapshot"] --> P
     BM["Original lms-blissmixer<br/>settings and bliss.db"] --> P
-    BME["Optional BlissMixerExt<br/>learned matrix and blend"] -.-> P
+    BME["Optional BlissMixerExt<br/>learned matrix, blend, and track guidance"] -.-> P
     LM["Optional LastMix<br/>Last.fm track and artist evidence"] --> P
     P --> O["bliss-playlist-optimizer"]
     O --> C["bliss-mixer-core<br/>shared Bliss scoring"]

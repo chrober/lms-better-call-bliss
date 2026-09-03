@@ -23,7 +23,10 @@ BEGIN {
     sub get { return $values{$_[1]} }
 
     package TestBlissExtPrefs;
-    our %values = (learned_blend => 20);
+    our %values = (
+        learned_blend => 20,
+        lastfm_track_guidance_percent => 68,
+    );
     sub get { return $values{$_[1]} }
 
     package TestServerPrefs;
@@ -60,7 +63,7 @@ BEGIN {
     );
     our %versions = (
         'Plugins::BlissMixer::Plugin' => '0.10.0',
-        'Plugins::BlissMixerExt::Plugin' => '0.1.4',
+        'Plugins::BlissMixerExt::Plugin' => '0.3.0',
     );
     sub isEnabled { return $enabled{$_[1]} || 0 }
     sub dataForPlugin {
@@ -104,6 +107,10 @@ ok($snapshot->{bliss_compatible}, 'original BlissMixer satisfies the required ba
 ok($snapshot->{blissmixerext_compatible}, 'BlissMixerExt is detected independently');
 is($snapshot->{matrix_provider}, 'BlissMixerExt', 'BlissMixerExt owns the learned matrix capability');
 is($snapshot->{learned_percent}, 20, 'learned blend is read from BlissMixerExt');
+ok($snapshot->{lastfm_track_guidance_available},
+    'BlissMixerExt track-guidance capability is detected');
+is($snapshot->{lastfm_track_guidance_percent}, 68,
+    'Last.fm track guidance is read from BlissMixerExt');
 ok($snapshot->{filter_genres}, 'genre restriction is captured');
 ok($snapshot->{filter_xmas}, 'configured Christmas preference is captured');
 is($snapshot->{exclude_christmas}, (localtime())[4] == 11 ? 0 : 1,
@@ -133,8 +140,20 @@ is($without_extension->{personalization_state}, 'extension_not_enabled',
     'the missing optional extension is reported explicitly');
 is($without_extension->{learned_percent}, 0,
     'the extension preference is ignored when the extension is disabled');
+ok(!$without_extension->{lastfm_track_guidance_available},
+    'disabled BlissMixerExt does not provide track guidance');
+is($without_extension->{lastfm_track_guidance_percent}, 25,
+    'disabled BlissMixerExt uses the safe track-guidance fallback');
 ok(@{$without_extension->{notices}}, 'optional personalization fallback is explained');
 $Slim::Utils::PluginManager::enabled{'Plugins::BlissMixerExt::Plugin'} = 1;
+
+$Slim::Utils::PluginManager::versions{'Plugins::BlissMixerExt::Plugin'} = '0.2.0';
+my $before_track_guidance = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+ok(!$before_track_guidance->{lastfm_track_guidance_available},
+    'older BlissMixerExt releases do not claim the track-guidance capability');
+is($before_track_guidance->{lastfm_track_guidance_percent}, 25,
+    'older BlissMixerExt releases use the safe track-guidance fallback');
+$Slim::Utils::PluginManager::versions{'Plugins::BlissMixerExt::Plugin'} = '0.3.0';
 
 $Slim::Utils::PluginManager::enabled{'Plugins::BlissMixer::Plugin'} = 0;
 my $without_base = Plugins::BetterCallBliss::BlissCompatibility::snapshot();

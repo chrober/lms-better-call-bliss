@@ -9,7 +9,7 @@ BEGIN {
         auto_bridge_budget => '12',
         auto_trigger_percent => '65',
         lastfm_enabled => 1,
-        lastfm_track_guidance_percent => '75',
+        lastfm_track_guidance_percent => '99',
         lastfm_artist_guidance_percent => '75',
         restart_count => '80',
         variation_percent => '35',
@@ -39,6 +39,7 @@ my $capability = {
     seed_limit => '3',
     learned_percent => '20',
     matrix_available => 1,
+    lastfm_track_guidance_percent => '68',
     artist_window => '5',
     album_window => '10',
     track_window => '100',
@@ -51,8 +52,8 @@ is($defaults->{restart_count}, 80,
     'restart count default is read from plugin preferences');
 is($defaults->{lastfm_enabled}, 1,
     'Last.fm default is read from plugin preferences');
-is($defaults->{lastfm_track_guidance_percent}, 75,
-    'explicit track-guidance preference is retained');
+is($defaults->{lastfm_track_guidance_percent}, 68,
+    'track guidance is inherited from BlissMixerExt instead of a stale plugin preference');
 is($defaults->{lastfm_artist_guidance_percent}, 75,
     'explicit artist-guidance preference is retained');
 is($defaults->{max_added_tracks}, 12,
@@ -89,14 +90,14 @@ is(Plugins::BetterCallBliss::JobOptions::normalize(
     )->{learned_percent}, 77,
     'a learned blend remains configurable when the matrix is usable');
 
-my $saved_track_guidance = delete $TestPrefs::values{lastfm_track_guidance_percent};
 my $saved_artist_guidance = delete $TestPrefs::values{lastfm_artist_guidance_percent};
-my $fallback_defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
+my $fallback_defaults = Plugins::BetterCallBliss::JobOptions::defaults(
+    {%$capability, lastfm_track_guidance_percent => undef},
+);
 is($fallback_defaults->{lastfm_track_guidance_percent}, 25,
-    'missing track-guidance preference falls back to 25');
+    'missing BlissMixerExt track guidance falls back to 25');
 is($fallback_defaults->{lastfm_artist_guidance_percent}, 25,
     'missing artist-guidance preference falls back to 25');
-$TestPrefs::values{lastfm_track_guidance_percent} = $saved_track_guidance;
 $TestPrefs::values{lastfm_artist_guidance_percent} = $saved_artist_guidance;
 
 my $legacy_exact = Plugins::BetterCallBliss::JobOptions::normalize(

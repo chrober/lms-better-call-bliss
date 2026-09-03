@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 71;
+use Test::More tests => 73;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -135,18 +135,28 @@ like(
 );
 like(
     $settings,
-    qr/updateLastFmGuidance.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent/s,
-    'Last.fm guidance inputs follow the provider enable checkbox',
+    qr/updateLastFmGuidance.*?setInputAndSliderEnabled\('lastfm_artist_guidance_percent', enabled\)/s,
+    'the Better Call Bliss artist-guidance input follows its provider enable checkbox',
+);
+unlike(
+    $settings,
+    qr/name="pref_lastfm_track_guidance_percent"/,
+    'settings do not expose a duplicate writable Last.fm track preference',
 );
 like(
+    $settings,
+    qr/lastfm_track_guidance_available.*?BlissMixerExt current setting/s,
+    'settings report the inherited BlissMixerExt track-guidance value',
+);
+unlike(
     $defaults_module,
-    qr/lastfm_track_guidance_percent\s*=>\s*25,.*?lastfm_artist_guidance_percent\s*=>\s*25,/s,
-    'new installations default both Last.fm guidance controls to 25 percent',
+    qr/lastfm_track_guidance_percent\s*=>/,
+    'Better Call Bliss no longer owns a durable track-guidance default',
 );
 like(
     $plugin_module,
-    qr/preference_defaults_version.*?<\s*2.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent.*?set\(\$name,\s*25\).*?==\s*75/s,
-    'legacy untouched 75 percent guidance defaults migrate once to 25 percent',
+    qr/preference_defaults_version.*?<\s*2.*?lastfm_artist_guidance_percent.*?set\(\$name,\s*25\).*?==\s*75/s,
+    'the legacy untouched artist-guidance default still migrates once to 25 percent',
 );
 like(
     $plugin_module,

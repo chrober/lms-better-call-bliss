@@ -397,7 +397,11 @@
     <div class="bea-row">
       <label for="lastfm_track_guidance_percent">Similar-track guidance (%)</label>
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% bettercallbliss_form.lastfm_track_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
-      <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.lastfm_track_guidance_percent %]</span>
+      [% IF bettercallbliss_capability.lastfm_track_guidance_available %]
+        <span class="bea-disabled">BlissMixerExt current setting: [% bettercallbliss_defaults.lastfm_track_guidance_percent %]</span>
+      [% ELSE %]
+        <span class="bea-disabled">Fallback: [% bettercallbliss_defaults.lastfm_track_guidance_percent %] (BlissMixerExt [% bettercallbliss_capability.blissmixerext_track_guidance_minimum_version %]+ unavailable)</span>
+      [% END %]
     </div>
     <div class="bea-row">
       <label for="lastfm_artist_guidance_percent">Similar-artist guidance (%)</label>
