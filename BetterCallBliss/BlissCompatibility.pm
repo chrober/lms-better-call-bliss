@@ -5,12 +5,17 @@ use Slim::Music::Import;
 use Slim::Utils::Misc;
 use Slim::Utils::PluginManager;
 use Slim::Utils::Prefs;
+use Slim::Utils::Versions;
 
 my $bliss_prefs = preferences('plugin.blissmixer');
+my $bliss_ext_prefs = preferences('plugin.blissmixerext');
 my $server_prefs = preferences('server');
 my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
+
+use constant MIN_BLISSMIXER_VERSION => '0.10.0';
+use constant MIN_BLISSMIXEREXT_VERSION => '0.1.4';
 
 sub init {
     $optimizer_binary = shift;
@@ -23,6 +28,29 @@ sub _int_pref {
     my $value = $bliss_prefs->get($name);
     $value = $fallback unless defined $value;
     return int($value);
+}
+
+sub _ext_int_pref {
+    my ($name, $fallback) = @_;
+    my $value = $bliss_ext_prefs->get($name);
+    $value = $fallback unless defined $value;
+    return int($value);
+}
+
+sub _plugin_state {
+    my ($module, $minimum) = @_;
+    my $enabled = Slim::Utils::PluginManager->isEnabled($module) ? 1 : 0;
+    my $manifest = Slim::Utils::PluginManager->dataForPlugin($module);
+    my $version = $manifest ? ($manifest->{version} || '') : '';
+    my $compatible = $enabled && length($version)
+        && Slim::Utils::Versions->compareVersions($version, $minimum) >= 0
+        ? 1 : 0;
+    return {
+        enabled => $enabled,
+        version => $version,
+        compatible => $compatible,
+        minimum_version => $minimum,
+    };
 }
 
 sub _genre_groups {
@@ -75,12 +103,21 @@ sub snapshot {
     my $matrix = $prefs_dir . '/learned_matrix.json';
     my $music_roots = Slim::Utils::Misc::getAudioDirs() || [];
     my $music_root = @$music_roots ? $music_roots->[0] : '';
-    my $bliss_enabled =
-        Slim::Utils::PluginManager->isEnabled('Plugins::BlissMixer::Plugin') ? 1 : 0;
+    my $bliss = _plugin_state(
+        'Plugins::BlissMixer::Plugin', MIN_BLISSMIXER_VERSION,
+    );
+    my $bliss_ext = _plugin_state(
+        'Plugins::BlissMixerExt::Plugin', MIN_BLISSMIXEREXT_VERSION,
+    );
     my $scanning = Slim::Music::Import->stillScanning() ? 1 : 0;
 
     my @problems;
-    push @problems, 'BlissMixer is not enabled' unless $bliss_enabled;
+    push @problems, 'BlissMixer is not enabled' unless $bliss->{enabled};
+    push @problems, sprintf(
+        'BlissMixer %s or newer is required; detected %s',
+        MIN_BLISSMIXER_VERSION,
+        $bliss->{version} || 'unknown',
+    ) if $bliss->{enabled} && !$bliss->{compatible};
     push @problems, 'bliss.db is missing or unreadable' unless -r $database;
     push @problems, 'bliss-playlist-optimizer is not installed'
         unless $optimizer_binary && -x $optimizer_binary;
@@ -97,6 +134,30 @@ sub snapshot {
         if $scanning;
     push @problems, 'the LMS music folder is not configured' unless $music_root;
 
+    my $matrix_available = $bliss_ext->{compatible} && -r $matrix ? 1 : 0;
+    my $configured_learned_percent = $bliss_ext->{compatible}
+        ? _ext_int_pref('learned_blend', 50) : 0;
+    $configured_learned_percent = 0 if $configured_learned_percent < 0;
+    $configured_learned_percent = 100 if $configured_learned_percent > 100;
+    my $personalization_state = !$bliss_ext->{enabled} ? 'extension_not_enabled'
+        : !$bliss_ext->{compatible} ? 'extension_incompatible'
+        : !$matrix_available ? 'matrix_not_trained'
+        : 'available';
+    my @notices;
+    if (!$bliss_ext->{enabled}) {
+        push @notices,
+            'BlissMixerExt is not enabled; learned personalization is optional and Adaptive will use variance with Static fallback';
+    } elsif (!$bliss_ext->{compatible}) {
+        push @notices, sprintf(
+            'BlissMixerExt %s or newer is required for optional learned personalization; detected %s',
+            MIN_BLISSMIXEREXT_VERSION,
+            $bliss_ext->{version} || 'unknown',
+        );
+    } elsif (!$matrix_available) {
+        push @notices,
+            'BlissMixerExt is enabled but learned_matrix.json is not trained or readable; Adaptive will use variance with Static fallback';
+    }
+
     my $strategy = _strategy_from_prefs();
     my $static_weights = _static_slider_weights();
     my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
@@ -105,16 +166,26 @@ sub snapshot {
     return {
         ready             => @problems ? 0 : 1,
         problems          => \@problems,
-        bliss_enabled     => $bliss_enabled,
+        notices           => \@notices,
+        bliss_enabled     => $bliss->{enabled},
+        bliss_version     => $bliss->{version},
+        bliss_compatible  => $bliss->{compatible},
+        blissmixerext_enabled => $bliss_ext->{enabled},
+        blissmixerext_version => $bliss_ext->{version},
+        blissmixerext_compatible => $bliss_ext->{compatible},
+        personalization_state => $personalization_state,
+        matrix_provider   => $matrix_available ? 'BlissMixerExt' : 'none',
         database          => $database,
         matrix            => $matrix,
-        matrix_available  => -r $matrix ? 1 : 0,
+        matrix_available  => $matrix_available,
         optimizer_binary  => $optimizer_binary,
         scanning          => $scanning,
         music_root        => $music_root,
         music_roots       => $music_roots,
         seed_limit        => _int_pref('num_seed_tracks', 3),
-        learned_percent   => _int_pref('learned_blend', 50),
+        configured_learned_percent => $configured_learned_percent,
+        learned_percent   => $matrix_available
+            ? $configured_learned_percent : 0,
         artist_window     => _int_pref('no_repeat_artist', 0),
         album_window      => _int_pref('no_repeat_album', 0),
         track_window      => _int_pref('no_repeat_track', 0),

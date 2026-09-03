@@ -98,7 +98,7 @@ sub normalize_request_types {
     _normalize_integers(
         $request->{scoring}->{captured_blissmixer_preferences},
         qw(
-            num_seed_tracks learned_blend no_repeat_artist
+            num_seed_tracks no_repeat_artist
             no_repeat_album no_repeat_track weight_tempo weight_timbre
             weight_loudness weight_chroma
         ),
@@ -411,7 +411,6 @@ sub _build_sequence_request {
                 use_track_genre => $capability->{use_track_genre}
                     ? JSON::XS::true : JSON::XS::false,
                 num_seed_tracks => _json_integer($capability->{seed_limit}),
-                learned_blend => _json_integer($capability->{learned_percent}),
                 no_repeat_artist => _json_integer($capability->{artist_window}),
                 no_repeat_album => _json_integer($capability->{album_window}),
                 no_repeat_track => _json_integer($capability->{track_window}),

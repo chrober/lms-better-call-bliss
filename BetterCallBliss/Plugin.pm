@@ -414,6 +414,21 @@ sub statusCommand {
     my $status = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     $request->addResult('ready', 0 + $status->{ready});
     $request->addResult('problem_count', scalar @{$status->{problems}});
+    $request->addResult('notice_count', scalar @{$status->{notices} || []});
+    $request->addResult('blissmixer_enabled', 0 + $status->{bliss_enabled});
+    $request->addResult('blissmixer_version', $status->{bliss_version} || '');
+    $request->addResult(
+        'blissmixerext_enabled', 0 + $status->{blissmixerext_enabled},
+    );
+    $request->addResult(
+        'blissmixerext_version', $status->{blissmixerext_version} || '',
+    );
+    $request->addResult(
+        'personalization_state', $status->{personalization_state} || 'unknown',
+    );
+    $request->addResult(
+        'learned_matrix_available', 0 + $status->{matrix_available},
+    );
     my $inventory = Plugins::BetterCallBliss::CandidateInventory::status();
     $request->addResult('candidate_inventory_ready', 0 + $inventory->{ready});
     $request->addResult(

@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 42;
+use Test::More tests => 44;
 
 BEGIN {
     package TestPrefs;
@@ -38,6 +38,7 @@ my $capability = {
     algorithm => 'forest',
     seed_limit => '3',
     learned_percent => '20',
+    matrix_available => 1,
     artist_window => '5',
     album_window => '10',
     track_window => '100',
@@ -76,6 +77,17 @@ is($defaults->{route_search_effort}, 'balanced',
     'destination search effort is read from plugin preferences');
 is($defaults->{candidate_library_id}, '',
     'all tracks is the non-contextual candidate-library default');
+
+my $without_matrix = {%$capability, matrix_available => 0};
+my $unpersonalized = Plugins::BetterCallBliss::JobOptions::normalize(
+    $without_matrix, {learned_percent => '99'},
+);
+is($unpersonalized->{learned_percent}, 0,
+    'a crafted learned blend is forced to zero without a usable matrix');
+is(Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {learned_percent => '77'},
+    )->{learned_percent}, 77,
+    'a learned blend remains configurable when the matrix is usable');
 
 my $saved_track_guidance = delete $TestPrefs::values{lastfm_track_guidance_percent};
 my $saved_artist_guidance = delete $TestPrefs::values{lastfm_artist_guidance_percent};

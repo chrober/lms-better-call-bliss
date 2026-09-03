@@ -333,6 +333,7 @@ sub _result_view {
         mixing_strategy => $job->{options}->{algorithm},
         blissmixer_strategy => $job->{capability}->{algorithm},
         learned_matrix_available => $job->{capability}->{matrix_available} ? 1 : 0,
+        matrix_provider => $job->{capability}->{matrix_provider} || 'none',
         route_to_track => $job->{route_to_track} ? 1 : 0,
         source_mode => $job->{source_mode} || ($job->{route_to_track} ? 'route_to_track' : 'saved_playlist'),
         source_player_id => $job->{source_player_id},
@@ -364,9 +365,9 @@ sub _result_view {
     if (($view->{mixing_strategy} || '') eq 'static') {
         $view->{mixing_note} = 'Static BlissMixer weights were used for every contextual distance.';
     } elsif (!$view->{learned_matrix_available}) {
-        $view->{mixing_note} = 'No learned matrix was available. Adaptive used variance for multi-track contexts and Static BlissMixer weights for one-track contexts.';
+        $view->{mixing_note} = 'No BlissMixerExt learned matrix was available. Adaptive used variance for multi-track contexts and Static BlissMixer weights for one-track contexts.';
     } else {
-        $view->{mixing_note} = 'Adaptive used the learned matrix according to the selected blend.';
+        $view->{mixing_note} = 'Adaptive used the BlissMixerExt learned matrix according to the selected blend.';
     }
 
     if ($job->{state} eq 'failed') {

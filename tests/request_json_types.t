@@ -24,7 +24,8 @@ BEGIN {
             ready => 1,
             problems => [],
             database => '/tmp/bliss-2026.db',
-            matrix_available => 0,
+            matrix_available => 1,
+            matrix => '/tmp/learned_matrix.json',
             music_roots => ['/music'],
             seed_limit => '3',
             learned_percent => '20',
@@ -196,6 +197,8 @@ ok(
     JSON::XS::is_bool($request->{output}->{include_private_paths}),
     'output flag remains a JSON boolean',
 );
+ok(!exists $request->{scoring}->{captured_blissmixer_preferences}->{learned_blend},
+    'extension-owned learned blend is not attributed to captured BlissMixer preferences');
 like(
     $json,
     qr/"title"\s*:\s*"1999"/,

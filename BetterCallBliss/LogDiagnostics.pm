@@ -146,7 +146,7 @@ sub start_info_lines {
         'User action: ' . _action_name($job),
         'Source: ' . _source_description($job),
         sprintf(
-            'Mixing strategy: %s; adaptive context %d; learned blend %d%%; learned matrix %s.',
+            'Mixing strategy: %s; adaptive context %d; BlissMixerExt learned blend %d%%; learned matrix %s.',
             $options->{algorithm} || 'unknown',
             0 + ($options->{seed_limit} || 0),
             0 + ($options->{learned_percent} || 0),
@@ -359,7 +359,7 @@ sub result_info_lines {
     my $provenance = _scoring_provenance($job);
     if (%$provenance) {
         push @lines, sprintf(
-            'Scoring provenance: context %s; seeds %s; configured %s with learned share %d%%; effective base share %d%%; learned matrix %s.',
+            'Scoring provenance: context %s; seeds %s; configured %s with BlissMixerExt learned share %d%%; effective base share %d%%; learned matrix %s.',
             $provenance->{context_policy} || 'unknown',
             $provenance->{seed_policy} || 'unknown',
             $provenance->{configured_algorithm} || 'unknown',

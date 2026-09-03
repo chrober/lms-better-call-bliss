@@ -94,6 +94,13 @@
   [% END %]
 [% END %]
 
+[% IF bettercallbliss_capability.notices.size %]
+  <div class="bea-note">
+    <b>Optional personalization:</b>
+    <ul>[% FOREACH notice = bettercallbliss_capability.notices %]<li>[% notice | html %]</li>[% END %]</ul>
+  </div>
+[% END %]
+
 [% IF bettercallbliss_running_jobs.size || bettercallbliss_recent_jobs.size %]
   <details class="bea-section" id="bea-job-overview"[% IF bettercallbliss_running_jobs.size %] open[% END %]>
     <summary id="bea-job-overview-summary">Running and recent previews[% IF bettercallbliss_running_jobs.size %] ([% bettercallbliss_running_jobs.size %] running)[% END %]</summary>
@@ -418,8 +425,14 @@
     </div>
     <div class="bea-row" id="learned_percent_row">
       <label for="learned_percent">Learned-matrix blend (%)</label>
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="learned_percent" id="learned_percent" value="[% bettercallbliss_form.learned_percent %]" required>
-      <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.learned_percent %]</span>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="learned_percent" id="learned_percent" value="[% bettercallbliss_form.learned_percent %]"[% UNLESS bettercallbliss_capability.matrix_available %] readonly[% END %] required>
+      [% IF bettercallbliss_capability.matrix_available %]
+        <span class="bea-disabled">Current BlissMixerExt setting: [% bettercallbliss_capability.configured_learned_percent %]</span>
+      [% ELSIF bettercallbliss_capability.blissmixerext_compatible %]
+        <span class="bea-disabled">BlissMixerExt has not produced a readable learned matrix yet; this job uses 0%.</span>
+      [% ELSE %]
+        <span class="bea-disabled">Optional BlissMixerExt personalization is unavailable; this job uses 0%.</span>
+      [% END %]
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
     <p class="bea-note">Current BlissMixer strategy: [% bettercallbliss_capability.algorithm | html %]. These values are passed to the optimizer request for this preview. Static uses BlissMixer's four metric sliders expanded to the 23 Bliss audio features. Adaptive can run without a learned matrix; in that case multi-track contexts use variance and one-track contexts fall back to the static BlissMixer weights.</p>
@@ -537,6 +550,8 @@
     var routeMinimumRow = document.getElementById('route_min_intermediates_row');
     var routeExactRow = document.getElementById('route_exact_intermediates_row');
     var learnedPercentRow = document.getElementById('learned_percent_row');
+    var learnedPercent = document.getElementById('learned_percent');
+    var learnedMatrixAvailable = [% IF bettercallbliss_capability.matrix_available %]true[% ELSE %]false[% END %];
     var restarts = document.getElementById('restart_count');
     var restartHelp = document.getElementById('restart_help');
     var advancedSearch = document.getElementById('advanced_search');
@@ -710,6 +725,7 @@
         setVisible(gapContextModeNote, false);
         if (gapContextMode) gapContextMode.disabled = true;
         setVisible(learnedPercentRow, algorithm.value === 'adaptive');
+        setReadOnlyWithSlider(learnedPercent, !learnedMatrixAvailable);
         setVisible(advancedSearch, false);
         return;
       }
@@ -831,6 +847,7 @@
       setVisible(gapContextModeNote, automatic && algorithm.value === 'adaptive');
       if (gapContextMode) gapContextMode.disabled = false;
       setVisible(learnedPercentRow, algorithm.value === 'adaptive');
+      setReadOnlyWithSlider(learnedPercent, !learnedMatrixAvailable);
     }
 
     ordering.addEventListener('change', synchronizeControls);

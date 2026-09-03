@@ -202,7 +202,7 @@ flowchart LR
 | [Transition-quality threshold percentile](#understanding-transition-quality-percentiles) | 0-100%; plugin default 70 | Used only by Automatic. It is a library-relative distance rank, not percentage similarity. Lower is stricter and makes more direct transitions trigger a search. Cautious may search below the threshold when models disagree. |
 | Musical context window | 1-50; inherited from BlissMixer | Caps the analyzed queue prefix ending at the chosen route start that is used to construct the per-run Adaptive matrix. It also bounds recent context that can contribute Last.fm evidence. Longer repeat windows can require more immutable history. |
 | Mixing strategy | Inherited from BlissMixer | Static uses the current feature weights. Adaptive constructs a variance/learned blend from recent analyzed context and follows BlissMixer's learned/Static fallback rules. The chosen matrix stays fixed during this route search. |
-| Learned-matrix blend | 0-100%; inherited from BlissMixer | Learned share of the Adaptive matrix when at least two seed tracks allow a variance matrix. Zero means pure variance; 100 means pure learned. The learned matrix is optional. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixerExt when available | Learned share of the Adaptive matrix when at least two seed tracks allow a variance matrix. Zero means pure variance; 100 means pure learned. The learned matrix is optional. |
 | Artist, album, and track look-back | Inherited from BlissMixer | Hard constraints for generated intermediates; zero disables a window. The chosen destination itself remains fixed user intent. |
 | Variation and generation seed | 0-100%; default 25 | Chooses reproducibly among complete routes close to the best adjacent bottleneck and route sum. Zero keeps the strict deterministic winner. |
 | Last.fm track/artist guidance | Optional; defaults 25% each | Provides bounded supporting evidence for candidates related to the route start, destination, or captured context. Provider failure falls back to Bliss. |
@@ -255,7 +255,7 @@ The result may start with any song. It may also build gently toward a livelier s
 | --- | --- | --- |
 | Source-track order | Optimize | Required: Preserve plus no additions would leave the playlist unchanged. |
 | Musical context window | 1-50; inherited from BlissMixer | Maximum number of immediately preceding route tracks used to judge each possible next song. |
-| Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixerExt when available | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
 | Artist look-back | 0-10,000; inherited | Forbids the same artist within that many preceding positions. Zero disables it. |
 | Album look-back | 0-10,000; inherited | Forbids the same album within that many preceding positions. Zero disables it. |
 | Additional route-search attempts | 0-500; default 50 | Adds seeded greedy starting routes. Zero still evaluates the built-in starts. |
@@ -320,7 +320,7 @@ flowchart LR
 | --- | --- | --- |
 | Source-track order | Preserve | Keeps every original track as an immutable ordered anchor. |
 | Musical context window | 1-50; inherited from BlissMixer | Controls local bridge scoring and final placement. Extend membership discovery still uses every original source track together. |
-| Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixerExt when available | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
 | Artist look-back | 0-10,000; inherited | Applied to the source-anchor pre-check and final route. Zero disables it. |
 | Album look-back | 0-10,000; inherited | Applied to the source-anchor pre-check and final route. Zero disables it. |
 | Use Last.fm guidance | Inherited; optional | Asks LastMix for track and artist relationships. Failures transparently use Bliss alone. |
@@ -379,7 +379,7 @@ If the original transition is already fine, or no candidate improves it safely, 
 | --- | --- | --- |
 | Source-track order | Optimize by default | Either optimizes the originals before gap repair or preserves them as anchors. |
 | Musical context window | 1-50; inherited from BlissMixer | Controls the preceding context for direct gaps and both candidate legs. |
-| Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixerExt when available | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
 | Adaptive gap context | Follow the evolving route (default), or Freeze weights per source gap | Adaptive only. Rolling recalculates feature weights after an inserted track enters the context. Frozen derives one matrix from the preceding route ending at the original left anchor and reuses it for every leg inside that source gap. |
 | Artist look-back | 0-10,000; inherited | Rejects tentative and final routes with artists too close together. Zero disables it. |
 | Album look-back | 0-10,000; inherited | Rejects tentative and final routes with albums too close together. Zero disables it. |
@@ -502,7 +502,7 @@ Duration-based targets remain future work. Advanced strict gap-bridge placement 
 | Exact number of additions | 1-100; default 1 | Used only by Add exactly N tracks. It is not limited by `S - 1` gaps. |
 | Final track count | 3-500; default 25 | Used only by Reach final track count. Must be greater than `S`. |
 | Musical context window | 1-50; inherited from BlissMixer | Controls final route ordering only. Membership relevance always uses every original source track. |
-| Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixerExt when available | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
 | Artist look-back | 0-10,000; inherited | Limits artist membership capacity and constrains the final route. Zero disables it. |
 | Album look-back | 0-10,000; inherited | Limits album membership capacity and constrains the final route. Zero disables it. |
 | Additional route-search attempts | 0-500; default 50 | Applies only when Source-track order is Optimize. |
@@ -538,7 +538,7 @@ BlissMixer also already owns an immediate mix-generation action, **Create bliss 
 
 Similarity scoring is an input to the playlist workflows above, not Better Call Bliss's main feature. The workflow chooses the candidate and the tracks that form its comparison context first; Adaptive or Static then measures the candidate against exactly those inputs. A mixing strategy does not independently scan the library, choose gap endpoints, turn an added song into a seed, or decide where a selected song is placed.
 
-The algorithms and learned-matrix capability come from the [BlissMixer implementation and its algorithm guide](https://github.com/chrober/lms-blissmixer/blob/main/ALGORITHMS.md). Better Call Bliss depends on a compatible lms-blissmixer installation and reuses the shared native Bliss scoring core so both applications interpret the 23 Bliss audio features consistently.
+The base strategy and settings come from the original [BlissMixer](https://github.com/CDrummond/lms-blissmixer). Better Call Bliss requires a compatible original BlissMixer installation and reuses the shared native Bliss scoring core so both applications interpret the 23 Bliss audio features consistently. Optional learned personalization comes from [BlissMixerExt](https://github.com/chrober/lms-blissmixer-ext), which owns `learned_matrix.json` and its learned-blend preference.
 
 **Adaptive dynamic weighting** and **Static weighted distance** are connected in Better Call Bliss. Extended Isolation Forest remains a BlissMixer capability for now; its Better Call Bliss option is visible but disabled until native playlist-routing semantics are implemented.
 
@@ -553,7 +553,7 @@ Adaptive behaves like a DJ who listens for the common thread in the music immedi
 | Option | Range / default | Effect |
 | --- | --- | --- |
 | Musical context window | 1-50; inherited from BlissMixer | Maximum preceding tracks used for each directional route or bridge score. Extend membership deliberately uses the complete original source set instead. |
-| Learned-matrix blend | 0-100%; inherited | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixerExt when available | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
 
 #### How Adaptive calculates distance
 
@@ -572,11 +572,11 @@ Distance is directional because the context comes from the proposed route prefix
 
 #### Is a learned matrix optional?
 
-For BlissMixer and the shared Adaptive algorithm, **yes**. A learned matrix is optional personalization produced by the similarity survey and training process:
+For Better Call Bliss and the shared Adaptive algorithm, **yes**. BlissMixerExt optionally produces the learned matrix through its similarity survey and training process:
 
 - with two or more context tracks and no learned matrix, Adaptive can use the variance-based matrix by itself;
 - with two or more context tracks and a learned matrix, **Learned-matrix blend** combines the learned and variance-based matrices;
-- with one context track, no variance matrix can be calculated; BlissMixer can fall back to its standard algorithm when the learned matrix is absent.
+- with one context track, no variance matrix can be calculated; the shared scoring path falls back to the Static BlissMixer weights when the learned matrix is absent.
 
 For Better Call Bliss, **yes** as well. The optimizer request may omit `artifacts.learned_matrix`. In that case:
 

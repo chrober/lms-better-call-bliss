@@ -167,6 +167,7 @@ sub normalize {
     $options->{learned_percent} = _integer(
         $input, 'learned_percent', 0, 100, $options->{learned_percent},
     );
+    $options->{learned_percent} = 0 unless $capability->{matrix_available};
     $options->{artist_window} = _integer(
         $input, 'artist_window', 0, 10000, $options->{artist_window},
     );

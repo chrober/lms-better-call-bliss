@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 65;
+use Test::More tests => 69;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -214,6 +214,21 @@ like(
 my $compatibility = slurp(File::Spec->catfile($plugin, 'BlissCompatibility.pm'));
 like(
     $compatibility,
+    qr/preferences\('plugin\.blissmixer'\).*?preferences\('plugin\.blissmixerext'\)/s,
+    'base and extension preference namespaces are captured independently',
+);
+like(
+    $compatibility,
+    qr/MIN_BLISSMIXER_VERSION\s*=>\s*'0\.10\.0'.*?MIN_BLISSMIXEREXT_VERSION\s*=>\s*'0\.1\.4'/s,
+    'compatibility records explicit minimum versions for both providers',
+);
+like(
+    $compatibility,
+    qr/learned_matrix\.json.*?matrix_available\s*=\s*\$bliss_ext->\{compatible\}\s*&&\s*-r\s+\$matrix/s,
+    'the canonical learned matrix is activated only by compatible BlissMixerExt',
+);
+like(
+    $compatibility,
     qr/filter_genres.*?filter_xmas.*?exclude_christmas.*?genre_groups.*?match_all_genres.*?use_track_genre/s,
     'Bliss compatibility captures every relevant BlissMixer genre preference',
 );
@@ -255,6 +270,11 @@ like(
     $extras,
     qr/BlissMixer genre policy:.*?genre_filter_excluded.*?genre_filter_christmas_excluded/s,
     'completed previews expose genre-filtering results',
+);
+like(
+    $extras,
+    qr/Current BlissMixerExt setting:.*?setReadOnlyWithSlider\(learnedPercent, !learnedMatrixAvailable\)/s,
+    'Extras attributes and gates the optional learned blend through BlissMixerExt',
 );
 like(
     $jobs,

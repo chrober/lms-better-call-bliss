@@ -49,8 +49,8 @@ which is bundled with supported plugin packages.
 
 ## Relationship to BlissMixer
 
-Better Call Bliss deliberately builds on and credits the existing
-[lms-blissmixer](https://github.com/chrober/lms-blissmixer) feature
+Better Call Bliss deliberately builds on and credits the original
+[lms-blissmixer](https://github.com/CDrummond/lms-blissmixer) feature
 **Create bliss mix**. That BlissMixer action already generates immediate
 Bliss-based mixes from a selected track, artist, album, or genre context. Better
 Call Bliss is a companion workflow around the same Bliss ecosystem: it previews
@@ -66,16 +66,19 @@ complete feature matrix.
 ## Requirements
 
 - Lyrion Music Server 8.5 or newer.
-- A compatible
-  [lms-blissmixer](https://github.com/chrober/lms-blissmixer) installation,
-  currently the fork paired with this project. Better Call Bliss deliberately
-  reuses its analyzed library, shared scoring behavior, and configured defaults
-  without modifying the plugin. Training a learned matrix is optional for
-  BlissMixer itself.
+- A compatible original
+  [lms-blissmixer](https://github.com/CDrummond/lms-blissmixer) installation.
+  Better Call Bliss reuses its analyzed library and configured base defaults
+  without modifying the plugin.
 - A completed Bliss analysis that produced a readable bliss.db in the Lyrion
   preferences directory.
-- A readable learned_matrix.json is optional. When present, Adaptive can blend it
-  with dynamic variance. When absent, Better Call Bliss follows the BlissMixer
+- [BlissMixerExt](https://github.com/chrober/lms-blissmixer-ext) is optional.
+  When enabled, it contributes `learned_matrix.json` and its learned-blend
+  preference. Better Call Bliss does not treat a stray matrix file as active
+  personalization when BlissMixerExt is unavailable.
+- A readable `learned_matrix.json` is optional. When present through
+  BlissMixerExt, Adaptive can blend it with dynamic variance. When absent,
+  Better Call Bliss follows the BlissMixer
   fallback shape: multi-track contexts use variance and one-track contexts use
   the configured Static BlissMixer weights. See
   [Is a learned matrix optional?](ALGORITHMS.md#is-a-learned-matrix-optional).
@@ -185,7 +188,8 @@ creating a release or touching the plugin feed.
 flowchart LR
     LMS["Lyrion saved playlist"] --> P["Better Call Bliss plugin"]
     Q["Current player queue snapshot"] --> P
-    BM["lms-blissmixer settings<br/>bliss.db and optional<br/>learned matrix"] --> P
+    BM["Original lms-blissmixer<br/>settings and bliss.db"] --> P
+    BME["Optional BlissMixerExt<br/>learned matrix and blend"] -.-> P
     LM["Optional LastMix<br/>Last.fm track and artist evidence"] --> P
     P --> O["bliss-playlist-optimizer"]
     O --> C["bliss-mixer-core<br/>shared Bliss scoring"]

@@ -506,6 +506,7 @@ sub _start_preview_from_built {
         . " algorithm=$effective->{algorithm}"
         . " seed_limit=$effective->{seed_limit}"
         . " learned_percent=$effective->{learned_percent}"
+        . " matrix_provider=" . ($built->{capability}->{matrix_provider} || 'none')
         . " repeat_artist=$effective->{artist_window}"
         . " repeat_album=$effective->{album_window}"
         . " repeat_track=$effective->{track_window}"
@@ -587,6 +588,7 @@ sub _start_preview_from_built {
             . " seed_limit=$effective->{seed_limit}"
             . " learned_percent=$effective->{learned_percent}"
             . " matrix=" . ($capability->{matrix_available} ? 'present' : 'absent')
+            . " matrix_provider=" . ($capability->{matrix_provider} || 'none')
             . " repeat_artist=$effective->{artist_window}"
             . " repeat_album=$effective->{album_window}"
             . " repeat_track=$effective->{track_window}"

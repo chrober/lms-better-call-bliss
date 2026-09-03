@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.16.2` / `extras-job-editor-v23` UX shell. The shell is
+model and the exact boundary of the current `0.16.3` / `extras-job-editor-v23` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -47,7 +47,7 @@ fall through to either working mode.
 | Double duration | Not connected yet | Duration-based doubling remains future work. |
 | Numeric editor for N/T | Working for Extend playlist targets | Exact-addition input is validated as 1-100 and converted to final size `S + N`. Target track count is validated as 3-500 and must exceed `S`. Double count is disabled when `2S` would exceed the 500-track target limit. |
 | Musical context window (previous tracks) | Working, per job | Rolling preceding-track count used for every directional Adaptive leg. A bridge C between A and B is scored as history-to-C and updated-history-with-C-to-B; variance-based weighting begins with two available context tracks. |
-| Learned-matrix blend | Working, per job | Validated as 0-100 and passed to this job's native request. With two or more context tracks, 0 means pure variance weighting. If no learned matrix is available, Adaptive uses variance for multi-track contexts and Static BlissMixer weights for one-track contexts. |
+| Learned-matrix blend | Working when BlissMixerExt has a matrix | Initialized from BlissMixerExt and validated as 0-100. The control is read-only at an effective 0 when the optional extension or its matrix is unavailable. With two or more context tracks, 0 means pure variance weighting; one-track contexts then use Static BlissMixer weights. |
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
@@ -93,12 +93,15 @@ fall through to either working mode.
 
 ## Settings
 
-The Extras editor initializes scoring and repeat fields from BlissMixer. The
-submitted values belong to that job only and never update BlissMixer's global
-preferences. The bundled optimizer supports Adaptive and Static routing. A
-learned matrix is optional: Adaptive blends it when supplied and otherwise uses
-variance weighting for multi-track contexts plus Static BlissMixer weights for
-one-track contexts. Extended Isolation Forest remains disabled and labeled.
+The Extras editor initializes base scoring and repeat fields from the original
+BlissMixer. The submitted values belong to that job only and never update its
+global preferences. A compatible BlissMixerExt optionally supplies
+`learned_matrix.json` and the learned-blend default. Its absence is shown as a
+non-blocking personalization notice, and the effective learned percentage is
+forced to zero. The bundled optimizer supports Adaptive and Static routing:
+Adaptive otherwise uses variance weighting for multi-track contexts plus Static
+BlissMixer weights for one-track contexts. Extended Isolation Forest remains
+disabled and labeled.
 
 **Additional route-search attempts**, automatic bridge budget, automatic trigger percentile, and Last.fm guidance values supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The following settings are persisted to establish their future contract but are labeled **not connected yet** on the settings page:
 
@@ -114,7 +117,7 @@ ListenBrainz remains optional and is deliberately deferred.
 
 ## Safety boundary
 
-Version `0.16.2` keeps Preview read-only. Completed previews are accepted through explicit post-Preview actions: create a verified copy, overwrite the source playlist with confirmation, or send the result to a player queue. Create optimized copy uses Lyrion's core M3U serializer, verifies the same-directory temporary file, exclusively claims the final path without overwrite semantics, copies the verified bytes, creates the LMS catalog object, and compares both catalog and final-file order with the optimizer result. It rejects an explicit existing name without touching it, automatically chooses a free numbered name only when the field was left blank, and removes only artifacts created by the failed attempt. Overwrite source verifies the generated M3U and attempts to restore the original file if publication fails. Queue output does not write a saved playlist; it resolves the preview to LMS URLs and applies the chosen player queue action. Same-player Replace upcoming tracks validates the live queue against the preview snapshot and trims the accepted result after the current item when playback has advanced predictably.
+Version `0.16.3` keeps Preview read-only. Completed previews are accepted through explicit post-Preview actions: create a verified copy, overwrite the source playlist with confirmation, or send the result to a player queue. Create optimized copy uses Lyrion's core M3U serializer, verifies the same-directory temporary file, exclusively claims the final path without overwrite semantics, copies the verified bytes, creates the LMS catalog object, and compares both catalog and final-file order with the optimizer result. It rejects an explicit existing name without touching it, automatically chooses a free numbered name only when the field was left blank, and removes only artifacts created by the failed attempt. Overwrite source verifies the generated M3U and attempts to restore the original file if publication fails. Queue output does not write a saved playlist; it resolves the preview to LMS URLs and applies the chosen player queue action. Same-player Replace upcoming tracks validates the live queue against the preview snapshot and trims the accepted result after the current item when playback has advanced predictably.
 
 Automatic and exact-count extension additionally require the native source membership proofs, an unchanged database file identity during the job, exact source subsequence preservation, unique final membership, and successful read-only resolution of every proposed bridge to a local LMS track. The frozen LMS-local allowlist is required for plugin addition jobs and is applied before the native candidate search. It is bound to the exact guarded `bliss.db` identity; an invalid checksum, wrong schema, unknown row, database mismatch, or missing source membership fails the request. The later per-bridge resolution remains a separate fail-closed proof if LMS membership changes after inventory capture.
 

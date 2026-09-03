@@ -97,8 +97,15 @@ unrecognized Extras images to its generic extension glyph; the
 `timeline` glyph. Other skins and extension metadata use the actual packaged
 transparent monochrome PNG.
 
-BlissMixer and the shared scoring core treat the learned matrix as optional.
-Better Call Bliss now mirrors that fallback shape in the native optimizer:
+The original BlissMixer is the required owner of `bliss.db`, the selected
+strategy, static feature weights, genre policy, context size, and repeat
+windows. BlissMixerExt is an optional, independently detected personalization
+provider. It owns `learned_matrix.json` and its `learned_blend` preference in
+the shared LMS preferences directory. Better Call Bliss never treats a matrix
+file as usable unless a compatible BlissMixerExt is enabled.
+
+The shared scoring core treats that learned matrix as optional. Better Call
+Bliss mirrors the fallback shape in the native optimizer:
 contexts with at least two tracks can use variance-based weighting alone, while
 one-track contexts use the Static BlissMixer feature-weight matrix when no
 learned matrix is available. If the user selects Static explicitly, that same
