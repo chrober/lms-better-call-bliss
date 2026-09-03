@@ -17,7 +17,6 @@ PLUGIN_CREATOR = "Christoph O'Bermair"
 PLUGIN_CATEGORY = "playlists"
 PLUGIN_MIN_TARGET = "8.5"
 PLUGIN_MAX_TARGET = "*"
-DEFAULT_TARGETS = ("unix", "mac", "windows")
 
 
 def child(parent: ET.Element, tag: str, text: str | None = None, **attrs: str) -> ET.Element:
@@ -47,7 +46,11 @@ def build_plugin(version: str, url: str, sha: str, target: str) -> ET.Element:
     return plugin
 
 
-def update(repo_xml: Path, version: str, url: str, sha: str, targets: tuple[str, ...]) -> None:
+def update(
+    repo_xml: Path,
+    version: str,
+    packages: tuple[tuple[str, str, str], ...],
+) -> None:
     tree = ET.parse(repo_xml)
     root = tree.getroot()
     plugins = root.find("plugins")
@@ -58,7 +61,7 @@ def update(repo_xml: Path, version: str, url: str, sha: str, targets: tuple[str,
         if existing.get("name") == PLUGIN_NAME:
             plugins.remove(existing)
 
-    for target in targets:
+    for target, url, sha in packages:
         plugins.append(build_plugin(version, url, sha, target))
 
     ET.indent(tree, space="  ")
@@ -69,11 +72,19 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--repo-xml", type=Path, required=True)
     parser.add_argument("--version", required=True)
-    parser.add_argument("--url", required=True)
-    parser.add_argument("--sha", required=True)
-    parser.add_argument("--targets", nargs="+", default=list(DEFAULT_TARGETS))
+    for platform in ("linux", "mac", "windows"):
+        parser.add_argument(f"--{platform}-url", required=True)
+        parser.add_argument(f"--{platform}-sha", required=True)
     args = parser.parse_args()
-    update(args.repo_xml, args.version, args.url, args.sha, tuple(args.targets))
+    update(
+        args.repo_xml,
+        args.version,
+        (
+            ("unix", args.linux_url, args.linux_sha),
+            ("mac", args.mac_url, args.mac_sha),
+            ("windows", args.windows_url, args.windows_sha),
+        ),
+    )
 
 
 if __name__ == "__main__":

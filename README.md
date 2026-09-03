@@ -138,7 +138,7 @@ the secondary comparison.
 
 ## Release and publishing workflow
 
-GitHub Actions workflow `.github/workflows/release.yml` builds a release package
+GitHub Actions workflow `.github/workflows/release.yml` builds platform-specific release packages
 without committing native binaries to this repository:
 
 1. Runs the lightweight Perl regression suite from `tests/`. The suite stubs
@@ -152,10 +152,13 @@ without committing native binaries to this repository:
    verifies their `.sha256` files.
 4. Copies those binaries into the matching `BetterCallBliss/Bin/<platform>/`
    folders only inside the release workspace.
-5. Creates `lms-better-call-bliss-<version>.zip` plus SHA-1 and SHA-256 files.
-6. Publishes the GitHub Release and, unless disabled, updates
-   `chrober/lms-plugins` `repo.xml` with immutable release-asset URLs for
-   `unix`, `mac`, and `windows`.
+5. Creates separate `lms-better-call-bliss-{linux,mac,windows}-<version>.zip`
+   archives plus SHA-1 and SHA-256 files. Linux retains x86_64, AArch64, and
+   ARMHF binaries; macOS and Windows retain only their matching binary.
+6. Verifies that no archive contains another target family's binaries.
+7. Publishes the GitHub Release and, unless disabled, updates
+   `chrober/lms-plugins` `repo.xml` with distinct immutable release-asset URLs
+   and checksums for `unix`, `mac`, and `windows`.
 
 The cross-repository feed update requires a repository secret named
 `LMS_PLUGINS_TOKEN` with contents-write access to `chrober/lms-plugins`. Use
@@ -174,7 +177,8 @@ creating a release or touching the plugin feed.
   The expected optimizer release, supported package folders, and release
   packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
   `.gitignore` prevents local executables from being accidentally committed.
-- `tests/` contains lightweight Perl regression tests for the plugin glue code.
+- `tests/` contains lightweight Perl regression tests for the plugin glue code
+  and Python regression tests for platform-specific feed publication.
   The tests stub the relevant LMS/LastMix APIs and check request JSON typing,
   Last.fm evidence handling, per-job option normalization, localization
   metadata, and source-package hygiene. GitHub Actions runs them on push, pull

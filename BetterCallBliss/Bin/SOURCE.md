@@ -6,14 +6,17 @@ separate `chrober/bliss-playlist-optimizer` repository.
 
 Latest packaged optimizer source:
 
-- Optimizer release: `v0.1.9`
-- Optimizer commit: `2029a0d96b992f34e2a2c0ee8716df36a3d59a1c`
-- Program contract: `0.1.9`, core API `0.1`
+- Optimizer release: `v0.1.10`
+- Optimizer commit: `57f4d8aff253274a9001f65c306fc183b456354e`
+- Program contract: `0.1.10`, core API `0.1`
 
 The GitHub release workflow downloads the optimizer release above, verifies each
 published `.sha256` file, places the binaries below the matching
-`BetterCallBliss/Bin/<platform>/` folders in the release package, and records
-the package checksum in the LMS plugin repository feed.
+`BetterCallBliss/Bin/<platform>/` folders in the release workspace, and creates
+separate Linux, macOS, and Windows archives. The Linux archive contains the
+x86_64, AArch64, and ARMHF binaries; macOS and Windows each contain only their
+matching binary. Each target-specific package checksum is recorded separately
+in the LMS plugin repository feed.
 
 Supported package folders:
 

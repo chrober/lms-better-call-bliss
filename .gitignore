@@ -4,3 +4,5 @@
 BetterCallBliss/Bin/**/bliss-playlist-optimizer*
 /.tmp/
 /.work/
+__pycache__/
+*.pyc
