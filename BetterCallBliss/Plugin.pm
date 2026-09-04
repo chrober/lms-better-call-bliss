@@ -47,6 +47,7 @@ sub initPlugin {
     ensure_preference_defaults($prefs);
     if ($preference_defaults_version < 2) {
         for my $name (qw(
+            lastfm_track_guidance_percent
             lastfm_artist_guidance_percent
         )) {
             $prefs->set($name, 25) if ($prefs->get($name) || 0) == 75;

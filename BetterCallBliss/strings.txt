@@ -175,16 +175,16 @@ PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE
 	DE	Hinweisstärke ähnlicher Titel (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC
-	EN	Current BlissMixerExt setting used to initialize each Better Call Bliss job. It remains overridable per job in Extras. A 25% fallback is used when BlissMixerExt 0.3.0 or newer is unavailable.
-	DE	Aktuelle BlissMixerExt-Einstellung, mit der jeder Better-Call-Bliss-Vorgang initialisiert wird. Unter Extras bleibt sie pro Vorgang änderbar. Falls BlissMixerExt 0.3.0 oder neuer nicht verfügbar ist, werden 25 % verwendet.
+	EN	Better Call Bliss influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. This is not BlissMixerExt's immediate-mix sampling weight. Zero ignores track evidence. Default: 25.
+	DE	Better-Call-Bliss-Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Dies ist nicht die Gewichtung für Sofort-Mixe von BlissMixerExt. Null ignoriert Titelhinweise. Standard: 25.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE
 	EN	Similar-artist guidance (%)
 	DE	Hinweisstärke ähnlicher Interpreten (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC
-	EN	Bounded influence of Last.fm artist.getSimilar evidence among candidates that pass Bliss acoustic checks. Zero ignores artist evidence. Default: 25.
-	DE	Begrenzter Einfluss von Last.fm-artist.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Null ignoriert Interpretenhinweise. Standard: 25.
+	EN	Better Call Bliss influence of Last.fm artist.getSimilar evidence among candidates that pass Bliss acoustic checks. This is not BlissMixer's target proportion of selected artists. Zero ignores artist evidence. Default: 25.
+	DE	Better-Call-Bliss-Einfluss von Last.fm-artist.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Dies ist nicht der Zielanteil ausgewählter Interpreten von BlissMixer. Null ignoriert Interpretenhinweise. Standard: 25.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE
 	EN	Requires the LastMix plugin to be installed and enabled.

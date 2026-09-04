@@ -74,9 +74,9 @@ complete feature matrix.
   preferences directory.
 - [BlissMixerExt](https://github.com/chrober/lms-blissmixer-ext) is optional.
   When enabled, it contributes `learned_matrix.json`, its learned-blend
-  preference, and—starting with BlissMixerExt 0.3.0—its Last.fm similar-track
-  guidance preference. Better Call Bliss consumes that track-guidance value
-  instead of storing a duplicate global setting. It does not treat a stray
+  preference, and its immediate-mix extensions. Better Call Bliss keeps separate
+  Last.fm route and playlist guidance defaults because the similarly named
+  provider controls have different algorithmic meanings. It does not treat a stray
   matrix file as active personalization when BlissMixerExt is unavailable.
 - A readable `learned_matrix.json` is optional. When present through
   BlissMixerExt, Adaptive can blend it with dynamic variance. When absent,

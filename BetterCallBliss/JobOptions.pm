@@ -12,10 +12,8 @@ sub defaults {
     my $trigger_percent = $plugin_prefs->get('auto_trigger_percent');
     $trigger_percent = 70 unless defined $trigger_percent;
     my $lastfm_track_guidance =
-        $capability->{lastfm_track_guidance_percent};
+        $plugin_prefs->get('lastfm_track_guidance_percent');
     $lastfm_track_guidance = 25 unless defined $lastfm_track_guidance;
-    $lastfm_track_guidance = 0 if $lastfm_track_guidance < 0;
-    $lastfm_track_guidance = 100 if $lastfm_track_guidance > 100;
     my $lastfm_artist_guidance =
         $plugin_prefs->get('lastfm_artist_guidance_percent');
     $lastfm_artist_guidance = 25 unless defined $lastfm_artist_guidance;

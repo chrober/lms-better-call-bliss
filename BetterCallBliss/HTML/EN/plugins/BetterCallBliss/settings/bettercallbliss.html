@@ -119,7 +119,7 @@
 
   <b style="font-size:125%" id="lastfm-section-header" class="hidden-section" onclick="toggleSection('lastfm-section')">Last.fm guidance</b><br><br>
   <div id="lastfm-section" class="hidden">
-    <p>Every job can override its Last.fm values. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. Similar-track guidance is initialized from BlissMixerExt, while Better Call Bliss owns the similar-artist default below. Both values only influence candidates that have already passed the local-library, repeat, and Bliss acoustic checks.</p>
+    <p>Every job can override these Better Call Bliss defaults. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. These controls are independent from BlissMixer's artist-selection target and BlissMixerExt's immediate-mix track weighting because Better Call Bliss applies bounded evidence to complete playlist and route searches. They influence only candidates that have already passed the local-library, repeat, and Bliss acoustic checks.</p>
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC" %]
       <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %] [% UNLESS lastmix_available %]disabled[% END %] onchange="updateLastFmGuidance()">
@@ -127,11 +127,7 @@
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC" %]
-      [% IF bliss_compatibility.lastfm_track_guidance_available %]
-        <span>[% bliss_compatibility.lastfm_track_guidance_percent %]% (BlissMixerExt current setting)</span>
-      [% ELSE %]
-        <span>25% fallback; BlissMixerExt [% bliss_compatibility.blissmixerext_track_guidance_minimum_version %] or newer is not active.</span>
-      [% END %]
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6"[% UNLESS lastmix_available && prefs.lastfm_enabled %] disabled[% END %]>
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC" %]
@@ -228,6 +224,7 @@
   function updateLastFmGuidance() {
     var checkbox = document.getElementById('lastfm_enabled');
     var enabled = checkbox && checkbox.checked && !checkbox.disabled;
+    setInputAndSliderEnabled('lastfm_track_guidance_percent', enabled);
     setInputAndSliderEnabled('lastfm_artist_guidance_percent', enabled);
   }
 

@@ -135,28 +135,28 @@ like(
 );
 like(
     $settings,
-    qr/updateLastFmGuidance.*?setInputAndSliderEnabled\('lastfm_artist_guidance_percent', enabled\)/s,
-    'the Better Call Bliss artist-guidance input follows its provider enable checkbox',
-);
-unlike(
-    $settings,
-    qr/name="pref_lastfm_track_guidance_percent"/,
-    'settings do not expose a duplicate writable Last.fm track preference',
+    qr/updateLastFmGuidance.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent/s,
+    'both independent Better Call Bliss guidance inputs follow their enable checkbox',
 );
 like(
-    $settings,
-    qr/lastfm_track_guidance_available.*?BlissMixerExt current setting/s,
-    'settings report the inherited BlissMixerExt track-guidance value',
-);
-unlike(
     $defaults_module,
-    qr/lastfm_track_guidance_percent\s*=>/,
-    'Better Call Bliss no longer owns a durable track-guidance default',
+    qr/lastfm_track_guidance_percent\s*=>\s*25,.*?lastfm_artist_guidance_percent\s*=>\s*25,/s,
+    'new installations default both independent Last.fm guidance controls to 25 percent',
 );
 like(
     $plugin_module,
-    qr/preference_defaults_version.*?<\s*2.*?lastfm_artist_guidance_percent.*?set\(\$name,\s*25\).*?==\s*75/s,
-    'the legacy untouched artist-guidance default still migrates once to 25 percent',
+    qr/preference_defaults_version.*?<\s*2.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent.*?set\(\$name,\s*25\).*?==\s*75/s,
+    'legacy untouched 75 percent guidance defaults migrate once to 25 percent',
+);
+like(
+    $extras,
+    qr/Better Call Bliss default:.*?lastfm_track_guidance_percent.*?Better Call Bliss default:.*?lastfm_artist_guidance_percent/s,
+    'Extras attributes both per-job Last.fm defaults to Better Call Bliss',
+);
+like(
+    $strings,
+    qr/This is not BlissMixerExt's immediate-mix sampling weight.*?This is not BlissMixer's target proportion/s,
+    'setting help distinguishes Better Call Bliss guidance from provider sampling controls',
 );
 like(
     $plugin_module,
