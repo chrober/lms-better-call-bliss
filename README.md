@@ -4,20 +4,9 @@
   <img src="docs/images/better-call-bliss-banner.png" alt="Playlist Breaking Bad? Better Call Bliss." width="900">
 </p>
 
-**Better Call Bliss** is a Lyrion Music Server plugin that turns a saved
-playlist or a current player queue snapshot into a smoother listening journey.
-It can reorder the existing songs, insert suitable bridge tracks, preserve the
-original order while filling its gaps, extend a short source list to a chosen
-length, or rebuild the upcoming part of a live queue. Every job is previewed before
-anything is saved or sent to a player, and artist, album, and track repeat rules
-remain hard constraints.
+**Better Call Bliss** is a Lyrion Music Server plugin that turns a saved playlist or a current player queue snapshot into a smoother listening journey. It can reorder the existing songs, insert suitable bridge tracks, preserve the original order while filling its gaps, extend a short source list to a chosen length, or rebuild the upcoming part of a live queue. Every job is previewed before anything is saved or sent to a player, and artist, album, and track repeat rules remain hard constraints.
 
-The plugin owns the Lyrion user interface, settings, Last.fm integration,
-background jobs, result review, playlist persistence, and player-queue output.
-CPU-intensive acoustic
-scoring and route search are delegated to the network-free Rust engine
-[bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer),
-which is bundled with supported plugin packages.
+The plugin owns the Lyrion user interface, settings, Last.fm integration, background jobs, result review, playlist persistence, and player-queue output. CPU-intensive acoustic scoring and route search are delegated to the network-free Rust engine [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer), which is bundled with supported plugin packages.
 
 ## What it does
 
@@ -25,43 +14,27 @@ which is bundled with supported plugin packages.
 - Adds bridges automatically only where a transition is difficult.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
-- Uses dynamic Adaptive Bliss similarity, optional learned preferences,
-  per-job variation, and optional Last.fm similar-track and similar-artist guidance.
-- Uses a saved playlist, a full player queue, only upcoming queue tracks, or the
-  current-plus-upcoming queue segment as input.
+- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, and optional Last.fm similar-track and similar-artist guidance.
+- Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
 - Offers three destination shortcuts on a local track in this menu order.  
-  **Bliss me there...** keeps the current song and playback state while replacing  
-  only the upcoming queue with a route to the destination. **Bliss me there... and  
-  back again!**  
-  inserts an excursion from the current song through the selected track and back  
-  to the unchanged upcoming queue. **Bliss me there... when we're through!** builds  
-  from the queue end and appends its route. All three validate their captured live anchors  
-  before changing the queue. Recent entries are immutable history rather than  
+  - **Bliss me there...** keeps the current song and playback state while replacing only the upcoming queue with a route to the destination.
+  - **Bliss me there... and  back again!** inserts an excursion from the current song through the selected track and back  
+  to the unchanged upcoming queue.
+  - **Bliss me there... when we're through!** builds from the queue end and appends its route.
+  - All three validate their captured live anchors before changing the queue. Recent entries are immutable history rather than  
   route members, so legitimate repeats already heard do not invalidate the request.  
-  Normal or Cautious automatic bridge handling controls how learned/Static  
-  disagreement affects direct acceptance and whole-route ranking. Fast, Balanced,  
-  and Thorough trade runtime for progressively wider searches.  
-- Shows a read-only preview and diagnostics before creating a verified copy,
-  overwriting the source playlist, or sending the result to a player queue.
-- Can replace, append to, play next, or replace only the upcoming part of a
-  player queue, with optional start playback.
+  - Normal or Cautious automatic bridge handling controls how learned/Static disagreement affects direct acceptance and whole-route ranking.
+  - Fast, Balanced, and Thorough trade runtime for progressively wider searches.  
+- Shows a read-only preview and diagnostics before creating a verified copy, overwriting the source playlist, or sending the result to a player queue.
+- Can replace, append to, play next, or replace only the upcoming part of a player queue, with optional start playback.
 - Never modifies bliss.db or the source audio files.
 
 ## Relationship to BlissMixer
 
-Better Call Bliss deliberately builds on and credits the original
-[lms-blissmixer](https://github.com/CDrummond/lms-blissmixer) feature
-**Create bliss mix**. That BlissMixer action already generates immediate
-Bliss-based mixes from a selected track, artist, album, or genre context. Better
-Call Bliss is a companion workflow around the same Bliss ecosystem: it previews
-auditable saved-playlist and player-queue transformations, exposes per-job
-constraints, and lets the user choose whether to save, overwrite, or send the
-accepted result to a player.
+Better Call Bliss deliberately builds on and credits the original [lms-blissmixer](https://github.com/CDrummond/lms-blissmixer) feature
+**Create bliss mix**. That BlissMixer action already generates immediate Bliss-based mixes from a selected track, artist, album, or genre context. Better Call Bliss is a companion workflow around the same Bliss ecosystem: it previews auditable saved-playlist and player-queue transformations, exposes per-job constraints, and lets the user choose whether to save, overwrite, or send the accepted result to a player.
 
-See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
-explanations, technical flowcharts, option ranges, and the exact boundary
-between working and planned modes. See [UX status](docs/UX_STATUS.md) for the
-complete feature matrix.
+See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly explanations, technical flowcharts, option ranges, and the exact boundary between working and planned modes. See [UX status](docs/UX_STATUS.md) for the complete feature matrix.
 
 ## Requirements
 
