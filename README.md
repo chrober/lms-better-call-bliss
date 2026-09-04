@@ -16,15 +16,14 @@ The plugin owns the Lyrion user interface, settings, Last.fm integration, backgr
 - Preserves the existing order when requested and inserts tracks only in gaps.
 - Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, and optional Last.fm similar-track and similar-artist guidance.
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
-- Offers three destination shortcuts on a local track in this menu order.  
+- Offers three destination shortcuts on a local track in this menu order:
+
   - **Bliss me there...** keeps the current song and playback state while replacing only the upcoming queue with a route to the destination.
-  - **Bliss me there... and  back again!** inserts an excursion from the current song through the selected track and back  
-  to the unchanged upcoming queue.
+  - **Bliss me there... and back again!** inserts an excursion from the current song through the selected track and back to the unchanged upcoming queue.
   - **Bliss me there... when we're through!** builds from the queue end and appends its route.
-  - All three validate their captured live anchors before changing the queue. Recent entries are immutable history rather than  
-  route members, so legitimate repeats already heard do not invalidate the request.  
+  - All three validate their captured live anchors before changing the queue. Recent entries are immutable history rather than route members, so legitimate repeats already heard do not invalidate the request.
   - Normal or Cautious automatic bridge handling controls how learned/Static disagreement affects direct acceptance and whole-route ranking.
-  - Fast, Balanced, and Thorough trade runtime for progressively wider searches.  
+  - Fast, Balanced, and Thorough trade runtime for progressively wider searches.
 - Shows a read-only preview and diagnostics before creating a verified copy, overwriting the source playlist, or sending the result to a player queue.
 - Can replace, append to, play next, or replace only the upcoming part of a player queue, with optional start playback.
 - Never modifies bliss.db or the source audio files.
@@ -67,6 +66,31 @@ enabled, it supplies anonymous Last.fm similar-track and similar-artist evidence
 Internet access, provider failures, and rate limits fall back to local Bliss
 scoring and do not fail the optimization job.
 
+## Installation
+
+The recommended installation method is
+[chrober's LMS Plugin Repository](https://github.com/chrober/lms-plugins),
+where the current repository setup and package releases are maintained. First
+install and enable the original
+[BlissMixer](https://github.com/CDrummond/lms-blissmixer) plugin and complete its
+library analysis. Then add this feed as an additional repository under the LMS
+plugin settings:
+
+```text
+https://raw.githubusercontent.com/chrober/lms-plugins/main/repo.xml
+```
+
+Install **Better Call Bliss** through the LMS plugin manager and restart LMS
+when requested. The repository automatically supplies the matching Linux,
+macOS, or Windows package, including the native `bliss-playlist-optimizer`
+binary. Future releases can be installed through the same plugin manager.
+
+After installation, open **Extras > Better Call Bliss**. The optional
+[BlissMixerExt](https://github.com/chrober/lms-blissmixer-ext) and
+[LastMix](https://github.com/AF-1/lms-lastmix) plugins can be installed alongside
+it to provide learned preferences and Last.fm guidance respectively; neither is
+required for local Bliss-based optimization.
+
 ## Basic use
 
 1. Open **Extras > Better Call Bliss**.
@@ -80,34 +104,6 @@ scoring and do not fail the optimization job.
 When a live player is used as both source and target, **Replace upcoming tracks**
 keeps the currently playing song untouched and updates only the queue tail. All
 unsupported combinations are visibly marked or rejected before persistence.
-
-## Logging and diagnostics
-
-Lyrion exposes the plugin log category `plugin.bettercallbliss`. Its output is
-grouped by the stable `job=<id>` prefix so one preview can be followed from the
-user action through provider collection, native optimization, review, and final
-playlist or queue output.
-
-At **Information** level, Better Call Bliss reports the source and destination,
-effective mixing and repeat settings, immutable history and route members,
-Last.fm request health,
-selected additions and their evidence type, the audible final route, acoustic
-quality, native runtime, and verified output. This is intended to explain what
-the job did without enumerating the candidate library.
-
-At **Debug** level it additionally reports request/result/progress artifact
-paths, stable LMS identities and URLs, native stage timings, detailed Last.fm
-evidence for each selected addition, and every adjacent **Bliss me there...**
-leg. When learned and Static acoustic models are both available, the governing
-measurement and the other model's measurement are shown separately for every
-final leg. Under Normal caution the second view is advisory. Under Cautious it
-participates in route acceptance and ranking.
-
-The native optimizer publishes these secondary measurements in
-`selection_preview.route_quality.secondary_models` and records configured
-caution, disagreement magnitude, and whether it triggered a search. Older artifacts
-without that optional field remain supported; Better Call Bliss simply omits
-the secondary comparison.
 
 ## Release and publishing workflow
 
