@@ -8,6 +8,7 @@ use Scalar::Util qw(blessed);
 use JSON::XS;
 use Proc::Background;
 use Time::HiRes qw(time);
+use Slim::Music::Import;
 use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
@@ -734,8 +735,124 @@ sub start_queue_preview {
         },
     );
 }
+sub _fail_deferred_route_job {
+    my ($job_id, $message, $code) = @_;
+    my $job = $jobs{$job_id} || return;
+    $message ||= 'Could not start Bliss me there';
+    $message =~ s/\s+at\s+\S+\s+line\s+\d+\.?\s*$//;
+    $message =~ s/\s+/ /g;
+    $job->{state} = 'failed';
+    $job->{stage} = 'Failed';
+    $job->{finished_at} = time();
+    $job->{error_code} = $code || 'ROUTE_START_FAILED';
+    $job->{error} = substr($message, 0, 400);
+    $job->{native_message} = $job->{error};
+    $log->error(
+        "job=$job_id stage=Failed code=$job->{error_code}"
+        . " message=$job->{error}"
+    );
+}
+
+sub _create_deferred_route_job {
+    my ($job_id, $route_source, $target_track_id, $options) = @_;
+    my $option_ref = $options || {};
+    my $title = Plugins::BetterCallBliss::RouteMode::action_name($route_source)
+        . ': preparing route';
+    $jobs{$job_id} = {
+        id => $job_id,
+        state => 'running',
+        stage => 'Preparing route request',
+        started_at => time(),
+        playlist_id => 0,
+        playlist_title => $title,
+        track_count => 0,
+        source_track_ids => [],
+        history_track_ids => [],
+        labels => {},
+        original_positions => {},
+        track_urls => {},
+        capability => {},
+        options => {
+            extension_mode => 'destination_route',
+            ordering_policy => 'preserve_order',
+            artist_window => 0,
+            album_window => 0,
+            track_window => 0,
+            lastfm_enabled => 0,
+            route_min_intermediates =>
+                0 + ($option_ref->{route_min_intermediates} || 0),
+            route_max_intermediates =>
+                0 + ($option_ref->{route_max_intermediates} || 0),
+            route_exact_intermediates =>
+                0 + ($option_ref->{route_exact_intermediates} || 0),
+            route_length_policy =>
+                ($option_ref->{route_length_policy} || 'automatic'),
+        },
+        native_command => 'bridge',
+        route_to_track => 1,
+        quick_route => ($option_ref->{quick_route} ? 1 : 0),
+        auto_apply => ($option_ref->{auto_apply} ? 1 : 0),
+        route_source => $route_source,
+        route_target_track_id => 0 + ($target_track_id || 0),
+    };
+    return $jobs{$job_id};
+}
+
+sub start_route_to_track_preview_deferred {
+    my ($player_id, $target_track_id, $options) = @_;
+    die "Optimizer binary is unavailable"
+        unless $optimizer_binary && -x $optimizer_binary;
+    die "An LMS library scan is in progress; try Bliss me there again after it finishes"
+        if Slim::Music::Import->stillScanning();
+
+    my %route_options = (%{$options || {}});
+    my $route_source = Plugins::BetterCallBliss::RouteMode::normalize_source(
+        $route_options{route_source},
+    );
+    die "Unknown Bliss me there route source"
+        unless defined $route_source;
+
+    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    my $job = _create_deferred_route_job(
+        $job_id, $route_source, $target_track_id, \%route_options,
+    );
+    Slim::Utils::Timers::setTimer(
+        undef, time() + 0.01, sub {
+            my $current = $jobs{$job_id};
+            return unless $current && ($current->{state} || '') eq 'running';
+            if (Slim::Music::Import->stillScanning()) {
+                _fail_deferred_route_job(
+                    $job_id,
+                    'An LMS library scan started before the route could be prepared; try again after it finishes',
+                    'LIBRARY_SCAN_IN_PROGRESS',
+                );
+                return;
+            }
+            my $ok = eval {
+                _start_route_to_track_preview_in_context(
+                    $job_id, $dir, $semantic_path,
+                    $player_id, $target_track_id, \%route_options,
+                );
+                1;
+            };
+            _fail_deferred_route_job($job_id, $@, 'ROUTE_START_FAILED')
+                unless $ok;
+        },
+    );
+    return $job;
+}
+
 sub start_route_to_track_preview {
     my ($player_id, $target_track_id, $options) = @_;
+    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    return _start_route_to_track_preview_in_context(
+        $job_id, $dir, $semantic_path, $player_id, $target_track_id, $options,
+    );
+}
+
+sub _start_route_to_track_preview_in_context {
+    my ($job_id, $dir, $semantic_path, $player_id, $target_track_id, $options)
+        = @_;
     die "Optimizer binary is unavailable"
         unless $optimizer_binary && -x $optimizer_binary;
     $player_id = '' unless defined $player_id;
@@ -836,7 +953,6 @@ sub start_route_to_track_preview {
     die "Could not capture an analyzed local route start for destination routing"
         unless @context && $context[-1]->id == $start->id;
 
-    my ($job_id, $dir, $semantic_path) = _new_job_context();
     my $start_label = _track_label($start);
     my $target_label = _track_label($target);
     my $rejoin_label = _track_label($rejoin);

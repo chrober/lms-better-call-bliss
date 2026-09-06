@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 73;
+use Test::More tests => 75;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -120,7 +120,7 @@ like(
 );
 like(
     $settings,
-    qr/PLUGIN_BETTERCALLBLISS_BLISSMIXER_OK.*?bliss_version.*?PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_OK.*?blissmixerext_version/s,
+    qr/PLUGIN_BETTERCALLBLISS_BLISSMIXER_OK.*?bliss_version.*?PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_OK.*?blissmixerlab_version/s,
     'settings display the detected versions of both BlissMixer providers',
 );
 like(
@@ -155,13 +155,23 @@ like(
 );
 like(
     $strings,
-    qr/This is not BlissMixerExt's immediate-mix sampling weight.*?This is not BlissMixer's target proportion/s,
+    qr/This is not BlissMixerLab's immediate-mix sampling weight.*?This is not BlissMixer's target proportion/s,
     'setting help distinguishes Better Call Bliss guidance from provider sampling controls',
 );
 like(
     $plugin_module,
     qr/\['bettercallbliss',\s*'route_to'\]\s*,\s*\[1,\s*0,\s*1,\s*\\&routeToCommand\]/s,
     'route_to requires a player and permits tagged destination parameters',
+);
+like(
+    $plugin_module,
+    qr/stillScanning\(\).*?LIBRARY_SCAN_IN_PROGRESS.*?setResultLoopHash\('item_loop'.*?type\s*=>\s*'text'.*?style\s*=>\s*'item'.*?setStatusDone\(\).*?return;.*?start_route_to_track_preview_deferred/s,
+    'route_to reports an in-progress library scan as unwrapped notification text before starting a deferred job',
+);
+like(
+    $strings,
+    qr/PLUGIN_BETTERCALLBLISS_LIBRARY_SCAN_IN_PROGRESS.*?temporarily unavailable while the music library is being scanned/s,
+    'the direct route scan rejection has localized user-facing text',
 );
 
 my $context_menu = slurp(File::Spec->catfile($plugin, 'ContextMenu.pm'));
@@ -234,18 +244,18 @@ like(
 my $compatibility = slurp(File::Spec->catfile($plugin, 'BlissCompatibility.pm'));
 like(
     $compatibility,
-    qr/preferences\('plugin\.blissmixer'\).*?preferences\('plugin\.blissmixerext'\)/s,
+    qr/preferences\('plugin\.blissmixer'\).*?preferences\('plugin\.blissmixerlab'\)/s,
     'base and extension preference namespaces are captured independently',
 );
 like(
     $compatibility,
-    qr/MIN_BLISSMIXER_VERSION\s*=>\s*'0\.10\.0'.*?MIN_BLISSMIXEREXT_VERSION\s*=>\s*'0\.1\.4'/s,
+    qr/MIN_BLISSMIXER_VERSION\s*=>\s*'0\.10\.0'.*?MIN_BLISSMIXERLAB_VERSION\s*=>\s*'0\.5\.0'/s,
     'compatibility records explicit minimum versions for both providers',
 );
 like(
     $compatibility,
     qr/learned_matrix\.json.*?matrix_available\s*=\s*\$bliss_ext->\{compatible\}\s*&&\s*-r\s+\$matrix/s,
-    'the canonical learned matrix is activated only by compatible BlissMixerExt',
+    'the canonical learned matrix is activated only by compatible BlissMixerLab',
 );
 like(
     $compatibility,
@@ -293,8 +303,8 @@ like(
 );
 like(
     $extras,
-    qr/Current BlissMixerExt setting:.*?setReadOnlyWithSlider\(learnedPercent, !learnedMatrixAvailable\)/s,
-    'Extras attributes and gates the optional learned blend through BlissMixerExt',
+    qr/Current BlissMixerLab setting:.*?setReadOnlyWithSlider\(learnedPercent, !learnedMatrixAvailable\)/s,
+    'Extras attributes and gates the optional learned blend through BlissMixerLab',
 );
 like(
     $jobs,

@@ -35,7 +35,7 @@ BEGIN {
         return bless({}, 'TestBlissPrefs')
             if $_[0] eq 'plugin.blissmixer';
         return bless({}, 'TestBlissExtPrefs')
-            if $_[0] eq 'plugin.blissmixerext';
+            if $_[0] eq 'plugin.blissmixerlab';
         return bless({}, 'TestServerPrefs');
     }
     sub dir { return $directory }
@@ -56,11 +56,11 @@ BEGIN {
     package Slim::Utils::PluginManager;
     our %enabled = (
         'Plugins::BlissMixer::Plugin' => 1,
-        'Plugins::BlissMixerExt::Plugin' => 1,
+        'Plugins::BlissMixerLab::Plugin' => 1,
     );
     our %versions = (
         'Plugins::BlissMixer::Plugin' => '0.10.0',
-        'Plugins::BlissMixerExt::Plugin' => '0.1.4',
+        'Plugins::BlissMixerLab::Plugin' => '0.5.0',
     );
     sub isEnabled { return $enabled{$_[1]} || 0 }
     sub dataForPlugin {
@@ -101,9 +101,9 @@ my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 
 ok($snapshot->{ready}, 'compatible optimizer and readable Bliss database are ready');
 ok($snapshot->{bliss_compatible}, 'original BlissMixer satisfies the required base version');
-ok($snapshot->{blissmixerext_compatible}, 'BlissMixerExt is detected independently');
-is($snapshot->{matrix_provider}, 'BlissMixerExt', 'BlissMixerExt owns the learned matrix capability');
-is($snapshot->{learned_percent}, 20, 'learned blend is read from BlissMixerExt');
+ok($snapshot->{blissmixerlab_compatible}, 'BlissMixerLab is detected independently');
+is($snapshot->{matrix_provider}, 'BlissMixerLab', 'BlissMixerLab owns the learned matrix capability');
+is($snapshot->{learned_percent}, 20, 'learned blend is read from BlissMixerLab');
 ok($snapshot->{filter_genres}, 'genre restriction is captured');
 ok($snapshot->{filter_xmas}, 'configured Christmas preference is captured');
 is($snapshot->{exclude_christmas}, (localtime())[4] == 11 ? 0 : 1,
@@ -126,7 +126,7 @@ is($without_matrix->{configured_learned_percent}, 20,
 is($without_matrix->{learned_percent}, 0,
     'the effective learned blend is forced to zero without a matrix');
 
-$Slim::Utils::PluginManager::enabled{'Plugins::BlissMixerExt::Plugin'} = 0;
+$Slim::Utils::PluginManager::enabled{'Plugins::BlissMixerLab::Plugin'} = 0;
 my $without_extension = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok($without_extension->{ready}, 'the optional extension does not gate base readiness');
 is($without_extension->{personalization_state}, 'extension_not_enabled',
@@ -134,7 +134,7 @@ is($without_extension->{personalization_state}, 'extension_not_enabled',
 is($without_extension->{learned_percent}, 0,
     'the extension preference is ignored when the extension is disabled');
 ok(@{$without_extension->{notices}}, 'optional personalization fallback is explained');
-$Slim::Utils::PluginManager::enabled{'Plugins::BlissMixerExt::Plugin'} = 1;
+$Slim::Utils::PluginManager::enabled{'Plugins::BlissMixerLab::Plugin'} = 1;
 
 $Slim::Utils::PluginManager::enabled{'Plugins::BlissMixer::Plugin'} = 0;
 my $without_base = Plugins::BetterCallBliss::BlissCompatibility::snapshot();

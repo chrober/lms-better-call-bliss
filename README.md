@@ -44,14 +44,14 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
   without modifying the plugin.
 - A completed Bliss analysis that produced a readable bliss.db in the Lyrion
   preferences directory.
-- [BlissMixerExt](https://github.com/chrober/lms-blissmixer-ext) is optional.
+- [BlissMixerLab](https://github.com/chrober/lms-blissmixer-lab) is optional.
   When enabled, it contributes `learned_matrix.json`, its learned-blend
   preference, and its immediate-mix extensions. Better Call Bliss keeps separate
   Last.fm route and playlist guidance defaults because the similarly named
   provider controls have different algorithmic meanings. It does not treat a stray
-  matrix file as active personalization when BlissMixerExt is unavailable.
+  matrix file as active personalization when BlissMixerLab is unavailable.
 - A readable `learned_matrix.json` is optional. When present through
-  BlissMixerExt, Adaptive can blend it with dynamic variance. When absent,
+  BlissMixerLab, Adaptive can blend it with dynamic variance. When absent,
   Better Call Bliss follows the BlissMixer
   fallback shape: multi-track contexts use variance and one-track contexts use
   the configured Static BlissMixer weights. See
@@ -86,7 +86,7 @@ macOS, or Windows package, including the native `bliss-playlist-optimizer`
 binary. Future releases can be installed through the same plugin manager.
 
 After installation, open **Extras > Better Call Bliss**. The optional
-[BlissMixerExt](https://github.com/chrober/lms-blissmixer-ext) and
+[BlissMixerLab](https://github.com/chrober/lms-blissmixer-lab) and
 [LastMix](https://github.com/AF-1/lms-lastmix) plugins can be installed alongside
 it to provide learned preferences and Last.fm guidance respectively; neither is
 required for local Bliss-based optimization.
@@ -164,7 +164,7 @@ flowchart LR
     LMS["Lyrion saved playlist"] --> P["Better Call Bliss plugin"]
     Q["Current player queue snapshot"] --> P
     BM["Original lms-blissmixer<br/>settings and bliss.db"] --> P
-    BME["Optional BlissMixerExt<br/>learned matrix, blend, and track guidance"] -.-> P
+    BME["Optional BlissMixerLab<br/>learned matrix, blend, and track guidance"] -.-> P
     LM["Optional LastMix<br/>Last.fm track and artist evidence"] --> P
     P --> O["bliss-playlist-optimizer"]
     O --> C["bliss-mixer-core<br/>shared Bliss scoring"]

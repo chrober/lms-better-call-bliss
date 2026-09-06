@@ -7,6 +7,7 @@ use File::Basename qw(dirname);
 use Config qw(%Config);
 use File::Spec::Functions qw(catdir catfile);
 use Slim::Control::Request;
+use Slim::Music::Import;
 use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
@@ -324,9 +325,36 @@ sub routeToCommand {
         return;
     }
 
+    if (Slim::Music::Import->stillScanning()) {
+        my $message = $request->string(
+            'PLUGIN_BETTERCALLBLISS_LIBRARY_SCAN_IN_PROGRESS',
+        );
+        $log->info(
+            'stage=RouteToTrackRejected player=' . ($client->id || 'unknown')
+            . " target_track=$target_track_id code=LIBRARY_SCAN_IN_PROGRESS"
+        );
+        $request->addResult('state', 'failed');
+        $request->addResult('error_code', 'LIBRARY_SCAN_IN_PROGRESS');
+        $request->addResult('error', $message);
+        $request->addResult('message', $message);
+        $request->addResult('offset', 0);
+        $request->addResult('count', 1);
+        $request->setResultLoopHash('item_loop', 0, {
+            text => $message,
+            type => 'text',
+            # Material wraps a lone non-clickable text result in presentation
+            # markup before reusing its title as a nextWindow notification.
+            # Marking this transient result as a normal item prevents that
+            # wrapper; nextWindow consumes it before it can be opened.
+            style => 'item',
+        });
+        $request->setStatusDone();
+        return;
+    }
+
     my ($job, $error);
     eval {
-        $job = Plugins::BetterCallBliss::Jobs::start_route_to_track_preview(
+        $job = Plugins::BetterCallBliss::Jobs::start_route_to_track_preview_deferred(
             $client->id,
             0 + $target_track_id,
             {
@@ -418,10 +446,10 @@ sub statusCommand {
     $request->addResult('blissmixer_enabled', 0 + $status->{bliss_enabled});
     $request->addResult('blissmixer_version', $status->{bliss_version} || '');
     $request->addResult(
-        'blissmixerext_enabled', 0 + $status->{blissmixerext_enabled},
+        'blissmixerlab_enabled', 0 + $status->{blissmixerlab_enabled},
     );
     $request->addResult(
-        'blissmixerext_version', $status->{blissmixerext_version} || '',
+        'blissmixerlab_version', $status->{blissmixerlab_version} || '',
     );
     $request->addResult(
         'personalization_state', $status->{personalization_state} || 'unknown',

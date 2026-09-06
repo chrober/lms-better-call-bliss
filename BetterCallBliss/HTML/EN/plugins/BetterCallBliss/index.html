@@ -427,11 +427,11 @@
       <label for="learned_percent">Learned-matrix blend (%)</label>
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="learned_percent" id="learned_percent" value="[% bettercallbliss_form.learned_percent %]"[% UNLESS bettercallbliss_capability.matrix_available %] readonly[% END %] required>
       [% IF bettercallbliss_capability.matrix_available %]
-        <span class="bea-disabled">Current BlissMixerExt setting: [% bettercallbliss_capability.configured_learned_percent %]</span>
-      [% ELSIF bettercallbliss_capability.blissmixerext_compatible %]
-        <span class="bea-disabled">BlissMixerExt has not produced a readable learned matrix yet; this job uses 0%.</span>
+        <span class="bea-disabled">Current BlissMixerLab setting: [% bettercallbliss_capability.configured_learned_percent %]</span>
+      [% ELSIF bettercallbliss_capability.blissmixerlab_compatible %]
+        <span class="bea-disabled">BlissMixerLab has not produced a readable learned matrix yet; this job uses 0%.</span>
       [% ELSE %]
-        <span class="bea-disabled">Optional BlissMixerExt personalization is unavailable; this job uses 0%.</span>
+        <span class="bea-disabled">Optional BlissMixerLab personalization is unavailable; this job uses 0%.</span>
       [% END %]
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>

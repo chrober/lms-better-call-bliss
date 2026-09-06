@@ -99,10 +99,10 @@ transparent monochrome PNG.
 
 The original BlissMixer is the required owner of `bliss.db`, the selected
 strategy, static feature weights, genre policy, context size, and repeat
-windows. BlissMixerExt is an optional, independently detected personalization
+windows. BlissMixerLab is an optional, independently detected personalization
 provider. It owns `learned_matrix.json` and its `learned_blend` preference in
 the shared LMS preferences directory. Better Call Bliss never treats a matrix
-file as usable unless a compatible BlissMixerExt is enabled.
+file as usable unless a compatible BlissMixerLab is enabled.
 
 The shared scoring core treats that learned matrix as optional. Better Call
 Bliss mirrors the fallback shape in the native optimizer:

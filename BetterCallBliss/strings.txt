@@ -10,6 +10,10 @@ PLUGIN_BETTERCALLBLISS_DESC
 	EN	Playlist Breaking Bad? Better Call Bliss. Bliss-powered playlist optimization.
 	DE	Wiedergabeliste Breaking Bad? Better Call Bliss. Bliss-basierte Wiedergabelisten-Optimierung.
 
+PLUGIN_BETTERCALLBLISS_LIBRARY_SCAN_IN_PROGRESS
+	EN	Better Call Bliss is temporarily unavailable while the music library is being scanned. Please try again when the scan has finished.
+	DE	Better Call Bliss ist während des Musikbibliotheks-Scans vorübergehend nicht verfügbar. Bitte versuche es erneut, sobald der Scan abgeschlossen ist.
+
 DEBUG_PLUGIN_BETTERCALLBLISS
 	EN	Better Call Bliss
 	DE	Better Call Bliss
@@ -34,17 +38,17 @@ PLUGIN_BETTERCALLBLISS_BLISSMIXER_MISSING
 	EN	BlissMixer 0.10.0 or newer is required but is not enabled.
 	DE	BlissMixer 0.10.0 oder neuer ist erforderlich, aber nicht aktiviert.
 
-PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_OK
-	EN	Compatible installed BlissMixerExt version:
-	DE	Kompatible installierte BlissMixerExt-Version:
+PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_OK
+	EN	Compatible installed BlissMixerLab version:
+	DE	Kompatible installierte BlissMixerLab-Version:
 
-PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_INCOMPATIBLE
-	EN	BlissMixerExt 0.1.4 or newer is required for optional learned personalization. Detected version:
-	DE	Für die optionale gelernte Personalisierung ist BlissMixerExt 0.1.4 oder neuer erforderlich. Erkannte Version:
+PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_INCOMPATIBLE
+	EN	BlissMixerLab 0.5.0 or newer is required for optional learned personalization. Detected version:
+	DE	Für die optionale gelernte Personalisierung ist BlissMixerLab 0.5.0 oder neuer erforderlich. Erkannte Version:
 
-PLUGIN_BETTERCALLBLISS_BLISSMIXEREXT_MISSING
-	EN	BlissMixerExt is not enabled. Learned personalization is optional.
-	DE	BlissMixerExt ist nicht aktiviert. Die gelernte Personalisierung ist optional.
+PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_MISSING
+	EN	BlissMixerLab is not enabled. Learned personalization is optional.
+	DE	BlissMixerLab ist nicht aktiviert. Die gelernte Personalisierung ist optional.
 
 PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX
 	EN	Default optimized-copy suffix
@@ -175,8 +179,8 @@ PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE
 	DE	Hinweisstärke ähnlicher Titel (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC
-	EN	Better Call Bliss influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. This is not BlissMixerExt's immediate-mix sampling weight. Zero ignores track evidence. Default: 25.
-	DE	Better-Call-Bliss-Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Dies ist nicht die Gewichtung für Sofort-Mixe von BlissMixerExt. Null ignoriert Titelhinweise. Standard: 25.
+	EN	Better Call Bliss influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. This is not BlissMixerLab's immediate-mix sampling weight. Zero ignores track evidence. Default: 25.
+	DE	Better-Call-Bliss-Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Dies ist nicht die Gewichtung für Sofort-Mixe von BlissMixerLab. Null ignoriert Titelhinweise. Standard: 25.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE
 	EN	Similar-artist guidance (%)

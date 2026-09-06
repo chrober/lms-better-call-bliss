@@ -8,14 +8,14 @@ use Slim::Utils::Prefs;
 use Slim::Utils::Versions;
 
 my $bliss_prefs = preferences('plugin.blissmixer');
-my $bliss_ext_prefs = preferences('plugin.blissmixerext');
+my $bliss_ext_prefs = preferences('plugin.blissmixerlab');
 my $server_prefs = preferences('server');
 my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
-use constant MIN_BLISSMIXEREXT_VERSION => '0.1.4';
+use constant MIN_BLISSMIXERLAB_VERSION => '0.5.0';
 
 sub init {
     $optimizer_binary = shift;
@@ -107,7 +107,7 @@ sub snapshot {
         'Plugins::BlissMixer::Plugin', MIN_BLISSMIXER_VERSION,
     );
     my $bliss_ext = _plugin_state(
-        'Plugins::BlissMixerExt::Plugin', MIN_BLISSMIXEREXT_VERSION,
+        'Plugins::BlissMixerLab::Plugin', MIN_BLISSMIXERLAB_VERSION,
     );
     my $scanning = Slim::Music::Import->stillScanning() ? 1 : 0;
 
@@ -146,16 +146,16 @@ sub snapshot {
     my @notices;
     if (!$bliss_ext->{enabled}) {
         push @notices,
-            'BlissMixerExt is not enabled; learned personalization is optional and Adaptive will use variance with Static fallback';
+            'BlissMixerLab is not enabled; learned personalization is optional and Adaptive will use variance with Static fallback';
     } elsif (!$bliss_ext->{compatible}) {
         push @notices, sprintf(
-            'BlissMixerExt %s or newer is required for optional learned personalization; detected %s',
-            MIN_BLISSMIXEREXT_VERSION,
+            'BlissMixerLab %s or newer is required for optional learned personalization; detected %s',
+            MIN_BLISSMIXERLAB_VERSION,
             $bliss_ext->{version} || 'unknown',
         );
     } elsif (!$matrix_available) {
         push @notices,
-            'BlissMixerExt is enabled but learned_matrix.json is not trained or readable; Adaptive will use variance with Static fallback';
+            'BlissMixerLab is enabled but learned_matrix.json is not trained or readable; Adaptive will use variance with Static fallback';
     }
 
     my $strategy = _strategy_from_prefs();
@@ -169,11 +169,11 @@ sub snapshot {
         bliss_enabled     => $bliss->{enabled},
         bliss_version     => $bliss->{version},
         bliss_compatible  => $bliss->{compatible},
-        blissmixerext_enabled => $bliss_ext->{enabled},
-        blissmixerext_version => $bliss_ext->{version},
-        blissmixerext_compatible => $bliss_ext->{compatible},
+        blissmixerlab_enabled => $bliss_ext->{enabled},
+        blissmixerlab_version => $bliss_ext->{version},
+        blissmixerlab_compatible => $bliss_ext->{compatible},
         personalization_state => $personalization_state,
-        matrix_provider   => $matrix_available ? 'BlissMixerExt' : 'none',
+        matrix_provider   => $matrix_available ? 'BlissMixerLab' : 'none',
         database          => $database,
         matrix            => $matrix,
         matrix_available  => $matrix_available,
