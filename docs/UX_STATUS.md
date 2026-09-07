@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.17.3` / `extras-job-editor-v23` UX shell. The shell is
+model and the exact boundary of the current `0.17.4` / `extras-job-editor-v23` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
