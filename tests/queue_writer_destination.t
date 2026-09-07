@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 30;
+use Test::More;
 
 BEGIN {
     package TestLog;
@@ -152,7 +152,35 @@ is_deeply($round_client->{commands}->[0]->[3], [qw(
 )], 'inserted excursion contains outward route, waypoint, and return route');
 is($round_result->{removed_upcoming_count}, 0, 'round-trip route removes no existing queue entries');
 
+my $album_client = TestClient->new;
+$album_client->{queue} = [
+    TestTrack->new('file:///tail.flac'),
+    TestTrack->new('file:///rejoin.flac'),
+];
+$Slim::Player::Client::client = $album_client;
+$Plugins::BetterCallBliss::PlaylistWriter::resolved_urls = [qw(
+    file:///tail.flac file:///outward.flac
+    file:///album-01.flac file:///album-02.flac file:///album-03.flac
+    file:///return.flac file:///rejoin.flac
+)];
+my $album_job = {
+    %$round_job,
+    route_target_album_id => 789,
+    route_target_album_track_count => 3,
+};
+my $album_result = Plugins::BetterCallBliss::QueueWriter::send_to_player($album_job);
+is($album_result->{queue_action}, 'play_next',
+    'album round trip retains non-destructive insertion semantics');
+is_deeply($album_client->{commands}->[0]->[3], [qw(
+    file:///outward.flac
+    file:///album-01.flac file:///album-02.flac file:///album-03.flac
+    file:///return.flac
+)], 'album round trip inserts both bridges around the complete ordered album');
+is($album_result->{track_count}, 5,
+    'album round trip reports bridges plus every album track');
+
 $round_client->{queue}->[1] = TestTrack->new('file:///different-rejoin.flac');
+$Slim::Player::Client::client = $round_client;
 my $round_before = scalar @{$round_client->{commands}};
 eval { Plugins::BetterCallBliss::QueueWriter::send_to_player($round_job) };
 like($@, qr/ROUTE_PREVIEW_STALE/, 'changed rejoin anchor refuses a round-trip route');
@@ -182,3 +210,41 @@ my $before = scalar @{$client->{commands}};
 eval { Plugins::BetterCallBliss::QueueWriter::send_to_player($job) };
 like($@, qr/ROUTE_PREVIEW_STALE/, 'changed queue tail refuses the stale preview');
 is(scalar @{$client->{commands}}, $before, 'stale preview sends no queue command');
+
+my $album_end_client = TestClient->new;
+$Slim::Player::Client::client = $album_end_client;
+$Plugins::BetterCallBliss::PlaylistWriter::resolved_urls = [qw(
+    file:///tail.flac file:///bridge.flac
+    file:///album-01.flac file:///album-02.flac file:///album-03.flac
+)];
+my $album_end_result = Plugins::BetterCallBliss::QueueWriter::send_to_player({
+    %$job,
+    route_target_album_id => 789,
+    route_target_album_track_count => 3,
+});
+is($album_end_result->{queue_action}, 'append',
+    'queue-end album route retains append semantics');
+is_deeply($album_end_client->{commands}->[0]->[3], [qw(
+    file:///bridge.flac
+    file:///album-01.flac file:///album-02.flac file:///album-03.flac
+)], 'queue-end album route appends the bridge and complete ordered album');
+
+my $album_now_client = TestClient->new;
+$album_now_client->{queue} = [
+    TestTrack->new('file:///tail.flac'),
+    TestTrack->new('file:///old-upcoming.flac'),
+];
+$Slim::Player::Client::client = $album_now_client;
+my $album_now_result = Plugins::BetterCallBliss::QueueWriter::send_to_player({
+    %$now_job,
+    route_target_album_id => 789,
+    route_target_album_track_count => 3,
+});
+is($album_now_result->{queue_action}, 'replace_upcoming',
+    'now-playing album route retains replacement semantics');
+is_deeply($album_now_client->{commands}->[-1]->[3], [qw(
+    file:///bridge.flac
+    file:///album-01.flac file:///album-02.flac file:///album-03.flac
+)], 'now-playing album route replaces upcoming tracks with the bridge and complete ordered album');
+
+done_testing();

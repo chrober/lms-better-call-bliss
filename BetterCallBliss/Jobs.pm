@@ -20,6 +20,7 @@ use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::LastFmEvidence;
 use Plugins::BetterCallBliss::LogDiagnostics;
@@ -434,13 +435,21 @@ sub _start_preview_from_built {
         @{$built->{request}->{history_tracks} || []},
         @{$built->{request}->{source_tracks}},
     ];
-    my $lastfm_source_count = 0 + ($fields->{lastfm_source_track_count} || 0);
-    if ($lastfm_source_count > 0
-        && $lastfm_source_count < @{$lastfm_source_tracks}) {
-        my $first = @{$lastfm_source_tracks} - $lastfm_source_count;
+    if (ref($fields->{lastfm_source_track_ids}) eq 'ARRAY') {
+        my %track_for = map { $_->{id} => $_ } @$lastfm_source_tracks;
         $lastfm_source_tracks = [
-            @{$lastfm_source_tracks}[$first .. $#{$lastfm_source_tracks}]
+            map { $track_for{$_} }
+            grep { exists $track_for{$_} } @{$fields->{lastfm_source_track_ids}}
         ];
+    } else {
+        my $lastfm_source_count = 0 + ($fields->{lastfm_source_track_count} || 0);
+        if ($lastfm_source_count > 0
+            && $lastfm_source_count < @{$lastfm_source_tracks}) {
+            my $first = @{$lastfm_source_tracks} - $lastfm_source_count;
+            $lastfm_source_tracks = [
+                @{$lastfm_source_tracks}[$first .. $#{$lastfm_source_tracks}]
+            ];
+        }
     }
 
     my $playlist_title = defined $fields->{playlist_title}
@@ -481,6 +490,7 @@ sub _start_preview_from_built {
         route_to_track quick_route auto_apply route_output_skip_source_count
         route_output_skip_suffix_count route_player_id
         route_source route_target_track_id route_start_track_id
+        route_target_track_ids route_target_album_id route_target_album_track_count
         route_target_label route_start_label route_start_url
         route_rejoin_track_id route_rejoin_label route_rejoin_url
         route_source_context_count
@@ -794,6 +804,10 @@ sub _create_deferred_route_job {
         auto_apply => ($option_ref->{auto_apply} ? 1 : 0),
         route_source => $route_source,
         route_target_track_id => 0 + ($target_track_id || 0),
+        (defined $option_ref->{target_album_id}
+                && "$option_ref->{target_album_id}" =~ /^\d+$/ ? (
+            route_target_album_id => 0 + $option_ref->{target_album_id},
+        ) : ()),
     };
     return $jobs{$job_id};
 }
@@ -890,13 +904,26 @@ sub _start_route_to_track_preview_in_context {
     die "Could not resolve the $source_description to a local LMS track"
         unless $start && !$start->remote && $start->can('id');
 
-    die "Choose a destination track"
-        unless defined $target_track_id && "$target_track_id" =~ /^\d+$/;
-    my $target = Slim::Schema->find('Track', int($target_track_id));
-    die "Destination track was not found in the LMS library"
-        unless $target && !$target->remote && $target->can('id');
-    die "The selected destination is already the $source_description"
-        if $start->id == $target->id;
+    my ($target_album, @target_tracks);
+    if (defined $route_options{target_album_id}
+            && "$route_options{target_album_id}" =~ /^\d+$/) {
+        ($target_album, @target_tracks) =
+            Plugins::BetterCallBliss::AlbumDestination::ordered_local_tracks(
+            $route_options{target_album_id},
+        );
+    } else {
+        die "Choose a destination track"
+            unless defined $target_track_id && "$target_track_id" =~ /^\d+$/;
+        my $target = Slim::Schema->find('Track', int($target_track_id));
+        die "Destination track was not found in the LMS library"
+            unless $target && !$target->remote && $target->can('id');
+        @target_tracks = ($target);
+    }
+    my $target = $target_tracks[0];
+    my $target_exit = $target_tracks[-1];
+    my %target_track_ids = map { $_->id => 1 } @target_tracks;
+    die "The selected destination already contains the $source_description"
+        if $target_track_ids{$start->id};
 
     my $rejoin;
     if ($route_source eq 'round_trip') {
@@ -907,8 +934,8 @@ sub _start_route_to_track_preview_in_context {
         );
         die "Could not resolve the first upcoming queue track to a local LMS track"
             unless $rejoin && !$rejoin->remote && $rejoin->can('id');
-        die "The selected destination is already the first upcoming queue track"
-            if $target->id == $rejoin->id;
+        die "The selected destination already contains the first upcoming queue track"
+            if $target_track_ids{$rejoin->id};
     }
 
     $route_options{ordering_policy} = 'preserve_order';
@@ -944,7 +971,7 @@ sub _start_route_to_track_preview_in_context {
             @context = ();
             next;
         }
-        if ($item->id == $target->id) {
+        if ($target_track_ids{$item->id}) {
             @context = ();
             next;
         }
@@ -954,26 +981,49 @@ sub _start_route_to_track_preview_in_context {
         unless @context && $context[-1]->id == $start->id;
 
     my $start_label = _track_label($start);
-    my $target_label = _track_label($target);
+    my $target_label = $target_album
+        ? Plugins::BetterCallBliss::AlbumDestination::label($target_album)
+        : _track_label($target);
     my $rejoin_label = _track_label($rejoin);
     my $title = Plugins::BetterCallBliss::RouteMode::action_name($route_source)
         . ": $start_label -> $target_label"
         . ($rejoin ? " -> $rejoin_label" : '');
     my @history = @context > 1 ? @context[0 .. $#context - 1] : ();
-    my @route_tracks = ($start, $target);
+    my @route_tracks = ($start, @target_tracks);
     push @route_tracks, $rejoin if $rejoin;
     my $built = Plugins::BetterCallBliss::RequestBuilder::build_sequence_request(
         $title, \@route_tracks, $job_id, $semantic_path, $normalized,
-        \@history, $rejoin ? 1 : 0,
+        \@history, $rejoin ? 1 : 0, scalar @target_tracks,
     );
+    my @lastfm_history_ids =
+        map { $_->{id} } @{$built->{request}->{history_tracks} || []};
+    if (@lastfm_history_ids > $normalized->{seed_limit}) {
+        @lastfm_history_ids = @lastfm_history_ids[
+            @lastfm_history_ids - $normalized->{seed_limit} .. $#lastfm_history_ids
+        ];
+    }
+    my @lastfm_source_ids = (
+        @lastfm_history_ids,
+        'lms-track-' . $start->id,
+        'lms-track-' . $target->id,
+        ($target_exit->id != $target->id
+            ? ('lms-track-' . $target_exit->id) : ()),
+        ($rejoin ? ('lms-track-' . $rejoin->id) : ()),
+    );
+    my %lastfm_seen;
+    @lastfm_source_ids = grep { !$lastfm_seen{$_}++ } @lastfm_source_ids;
     return _start_preview_from_built(
         $job_id, $dir, $semantic_path, $built,
         {
             playlist_id => 0,
             playlist_title => $title,
-            source_log => 'route_to_track player=' . ($client->id || $player_id)
+            source_log => 'route_to_' . ($target_album ? 'album' : 'track')
+                . ' player=' . ($client->id || $player_id)
                 . " route_source=$route_source start_track=" . $start->id
-                . ' target_track=' . $target->id
+                . ($target_album
+                    ? ' target_album=' . $target_album->id
+                        . ' album_tracks=' . scalar(@target_tracks)
+                    : ' target_track=' . $target->id)
                 . ($rejoin ? ' rejoin_track=' . $rejoin->id : ''),
             route_to_track => 1,
             quick_route => $route_options{quick_route} ? 1 : 0,
@@ -984,6 +1034,11 @@ sub _start_route_to_track_preview_in_context {
             route_source => $route_source,
             route_start_track_id => 0 + $start->id,
             route_target_track_id => 0 + $target->id,
+            route_target_track_ids => [map { 0 + $_->id } @target_tracks],
+            ($target_album ? (
+                route_target_album_id => 0 + $target_album->id,
+                route_target_album_track_count => scalar @target_tracks,
+            ) : ()),
             route_start_url => $start->url,
             ($rejoin ? (
                 route_rejoin_track_id => 0 + $rejoin->id,
@@ -991,11 +1046,7 @@ sub _start_route_to_track_preview_in_context {
                 route_rejoin_label => $rejoin_label,
             ) : ()),
             route_source_context_count => scalar @context,
-            lastfm_source_track_count =>
-                ($normalized->{seed_limit} + ($rejoin ? 2 : 1)
-                    < @context + ($rejoin ? 2 : 1))
-                    ? $normalized->{seed_limit} + ($rejoin ? 2 : 1)
-                    : @context + ($rejoin ? 2 : 1),
+            lastfm_source_track_ids => \@lastfm_source_ids,
             route_start_label => $start_label,
             route_target_label => $target_label,
         },

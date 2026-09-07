@@ -23,6 +23,16 @@ route search, bridge selection, repeat-window enforcement, deterministic
 verification, and result/progress JSON. It never performs network requests or
 writes an LMS playlist.
 
+Destination routes can carry either one selected track or an immutable ordered
+destination block. The plugin resolves a selected album into all of its local
+audio tracks in canonical disc/track order and sends those identities as route
+membership. The native planner delegates the block's entry and optional exit to
+the shared anchored A-to-B engine, excludes every block member from generated
+candidate membership, and leaves all internal album transitions untouched. The
+plugin registers album context actions only when `version --json` advertises
+`destination_blocks`, so an older packaged optimizer cannot receive an
+unsupported album request.
+
 The initial release uses one process per job. Compatibility is discovered with
 `bliss-playlist-optimizer version --json`; absence or incompatibility disables
 the feature without affecting BlissMixer.

@@ -282,6 +282,8 @@ sub _build_sequence_request {
     my $playlist = $args->{playlist};
     my $error_prefix = $args->{error_prefix} || 'Source';
     my $route_rejoins_queue = $args->{route_rejoins_queue} ? 1 : 0;
+    my $route_destination_track_count =
+        0 + ($args->{route_destination_track_count} || 1);
 
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     die join('; ', @{$capability->{problems}}) unless $capability->{ready};
@@ -299,8 +301,11 @@ sub _build_sequence_request {
 
     my ($source_tracks, $labels, $original_positions, $track_urls)
         = _track_bundle($tracks, $capability, $error_prefix, 2);
-    die "$error_prefix requires start, waypoint, and rejoin tracks"
-        if $route_rejoins_queue && @$source_tracks < 3;
+    my $minimum_route_tracks =
+        1 + $route_destination_track_count + ($route_rejoins_queue ? 1 : 0);
+    die "$error_prefix does not contain the complete destination block"
+        if $options->{extension_mode} eq 'destination_route'
+            && @$source_tracks < $minimum_route_tracks;
     my ($history_tracks, $history_labels, $history_positions, $history_urls)
         = _track_bundle($args->{history_tracks} || [], $capability,
             'Listening history', 0);
@@ -460,11 +465,18 @@ sub _build_sequence_request {
                 ? 'queue_destination' : $options->{ordering_policy},
             ($options->{extension_mode} eq 'destination_route' ? (
                 start_track_id => $source_tracks->[
-                    $route_rejoins_queue ? -3 : -2
+                    -$minimum_route_tracks
                 ]->{id},
                 destination_track_id => $source_tracks->[
-                    $route_rejoins_queue ? -2 : -1
+                    -$minimum_route_tracks + 1
                 ]->{id},
+                ($route_destination_track_count > 1 ? (
+                    destination_track_ids => [
+                        map { $source_tracks->[$_]->{id} }
+                        (-$minimum_route_tracks + 1)
+                            .. (-$minimum_route_tracks + $route_destination_track_count)
+                    ],
+                ) : ()),
                 ($route_rejoins_queue ? (
                     rejoin_track_id => $source_tracks->[-1]->{id},
                 ) : ()),
@@ -568,7 +580,7 @@ sub _build_sequence_request {
 
 sub build_sequence_request {
     my ($title, $tracks, $job_id, $semantic_path, $job_input, $history_tracks,
-        $route_rejoins_queue) = @_;
+        $route_rejoins_queue, $route_destination_track_count) = @_;
     return _build_sequence_request({
         title => $title,
         tracks => $tracks,
@@ -576,6 +588,7 @@ sub build_sequence_request {
         semantic_path => $semantic_path,
         history_tracks => $history_tracks,
         route_rejoins_queue => $route_rejoins_queue,
+        route_destination_track_count => $route_destination_track_count,
         job_input => $job_input,
         error_prefix => $title || 'Source',
     });

@@ -35,6 +35,7 @@ my $prefs = preferences('plugin.bettercallbliss');
 my $initialized = 0;
 my $optimizer_binary;
 my %optimizer_version_output;
+my $optimizer_supports_destination_blocks;
 
 sub getDisplayName { return 'PLUGIN_BETTERCALLBLISS_NAME'; }
 
@@ -74,6 +75,8 @@ sub initPlugin {
         _optimizerSupportsGenrePolicy($optimizer_binary);
     my $optimizer_supports_candidate_library_scope =
         _optimizerSupportsCandidateLibraryScope($optimizer_binary);
+    $optimizer_supports_destination_blocks =
+        _optimizerSupportsDestinationBlocks($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
         $optimizer_binary,
         $optimizer_supports_genre_policy,
@@ -84,7 +87,9 @@ sub initPlugin {
         $optimizer_supports_progress,
         $optimizer_supports_trusted_request,
     );
-    Plugins::BetterCallBliss::ContextMenu::init();
+    Plugins::BetterCallBliss::ContextMenu::init(
+        $optimizer_supports_destination_blocks,
+    );
 
     if (main::WEBUI) {
         require Plugins::BetterCallBliss::Settings;
@@ -115,7 +120,9 @@ sub initPlugin {
         . ' genre_policy='
         . ($optimizer_supports_genre_policy ? 'supported' : 'unsupported')
         . ' candidate_library_scope='
-        . ($optimizer_supports_candidate_library_scope ? 'supported' : 'unsupported'));
+        . ($optimizer_supports_candidate_library_scope ? 'supported' : 'unsupported')
+        . ' destination_blocks='
+        . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
     return 1;
 }
 
@@ -151,6 +158,12 @@ sub _optimizerSupportsCandidateLibraryScope {
     my $binary = shift;
     my $output = _optimizerVersionOutput($binary);
     return $output =~ /"candidate_library_scope"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerSupportsDestinationBlocks {
+    my $binary = shift;
+    my $output = _optimizerVersionOutput($binary);
+    return $output =~ /"destination_blocks"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerVersionOutput {
@@ -297,16 +310,19 @@ sub routeToCommand {
     my $request = shift;
     my $client = $request->client();
     my $target_track_id = $request->getParam('target_track_id');
+    my $target_album_id = $request->getParam('target_album_id');
     my $route_source = Plugins::BetterCallBliss::RouteMode::normalize_source(
         $request->getParam('route_source'),
     );
     my $candidate_library_id = $request->getParam('candidate_library_id');
-    if (!$client || !defined $target_track_id || "$target_track_id" !~ /^\d+$/) {
+    my $track_target = defined $target_track_id && "$target_track_id" =~ /^\d+$/;
+    my $album_target = defined $target_album_id && "$target_album_id" =~ /^\d+$/;
+    if (!$client || ($track_target ? 1 : 0) + ($album_target ? 1 : 0) != 1) {
         $request->addResult('state', 'failed');
         $request->addResult('error_code', 'INVALID_ROUTE_CONTEXT');
         $request->addResult(
             'error',
-            'Bliss me there requires a selected player and a local destination track',
+            'Bliss me there requires a selected player and exactly one local track or album destination',
         );
         $request->setStatusBadParams();
         return;
@@ -324,6 +340,16 @@ sub routeToCommand {
         $request->setStatusBadParams();
         return;
     }
+    if ($album_target && !$optimizer_supports_destination_blocks) {
+        $request->addResult('state', 'failed');
+        $request->addResult('error_code', 'ALBUM_DESTINATION_UNSUPPORTED');
+        $request->addResult(
+            'error',
+            'The installed playlist optimizer does not support complete-album destinations',
+        );
+        $request->setStatusBadParams();
+        return;
+    }
 
     if (Slim::Music::Import->stillScanning()) {
         my $message = $request->string(
@@ -331,7 +357,9 @@ sub routeToCommand {
         );
         $log->info(
             'stage=RouteToTrackRejected player=' . ($client->id || 'unknown')
-            . " target_track=$target_track_id code=LIBRARY_SCAN_IN_PROGRESS"
+            . ($album_target ? " target_album=$target_album_id"
+                : " target_track=$target_track_id")
+            . ' code=LIBRARY_SCAN_IN_PROGRESS'
         );
         $request->addResult('state', 'failed');
         $request->addResult('error_code', 'LIBRARY_SCAN_IN_PROGRESS');
@@ -356,12 +384,13 @@ sub routeToCommand {
     eval {
         $job = Plugins::BetterCallBliss::Jobs::start_route_to_track_preview_deferred(
             $client->id,
-            0 + $target_track_id,
+            $track_target ? 0 + $target_track_id : undef,
             {
                 quick_route => 1,
                 auto_apply => 1,
                 route_source => $route_source,
                 candidate_library_id => $candidate_library_id,
+                ($album_target ? (target_album_id => 0 + $target_album_id) : ()),
             },
         );
     };
@@ -373,7 +402,9 @@ sub routeToCommand {
         $error = substr($error, 0, 500);
         $log->error(
             'stage=RouteToTrackStartFailed player=' . ($client->id || 'unknown')
-            . " target_track=$target_track_id message=$error"
+            . ($album_target ? " target_album=$target_album_id"
+                : " target_track=$target_track_id")
+            . " message=$error"
         );
         $request->addResult('state', 'failed');
         $request->addResult('error_code', 'ROUTE_START_FAILED');
@@ -388,10 +419,14 @@ sub routeToCommand {
     $request->addResult(
         'message',
         $route_source eq 'round_trip'
-            ? 'Building an excursion through the selected track and back to the upcoming queue; it will be inserted after the current song when ready.'
+            ? 'Building an excursion through the selected '
+                . ($album_target ? 'album' : 'track')
+                . ' and back to the upcoming queue; it will be inserted after the current song when ready.'
         : $route_source eq 'now_playing'
-            ? 'Building a fluent route from the currently playing song; it will replace the upcoming queue when ready.'
-            : 'Building a fluent route from the queue end; it will be appended when ready.',
+            ? 'Building a fluent route from the currently playing song; it will replace the upcoming queue with the route and selected '
+                . ($album_target ? 'album' : 'track') . ' when ready.'
+            : 'Building a fluent route from the queue end; the selected '
+                . ($album_target ? 'album' : 'track') . ' will be appended when ready.',
     );
     $request->setStatusDone();
 }

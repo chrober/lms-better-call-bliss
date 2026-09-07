@@ -13,6 +13,7 @@ use Slim::Utils::Misc;
 use Slim::Utils::Unicode;
 use Slim::Web::HTTP;
 use Slim::Web::Pages;
+use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
@@ -100,14 +101,29 @@ sub _track_label {
 sub _route_context {
     my $form = shift || {};
     return unless ($form->{source_mode} || '') eq 'route_to_track';
+    my $target_album_id = $form->{route_target_album_id};
+    my $target_label = _track_label($form->{route_target_track_id});
+    my $target_is_album =
+        defined $target_album_id && "$target_album_id" =~ /^\d+$/ ? 1 : 0;
+    if ($target_is_album) {
+        my $album = Slim::Schema->find('Album', int($target_album_id));
+        $target_label = Plugins::BetterCallBliss::AlbumDestination::label($album);
+    }
+    my $target_track_count = $target_is_album
+        ? 0 + ($form->{route_target_album_track_count} || 1) : 1;
+    my $route_source = Plugins::BetterCallBliss::RouteMode::normalize_source(
+        $form->{route_source},
+    ) || 'queue_end';
     return {
         player_id => $form->{route_player_id} || $form->{queue_player_id} || '',
         player_name => _player_name($form->{route_player_id} || $form->{queue_player_id}),
-        route_source => Plugins::BetterCallBliss::RouteMode::normalize_source(
-            $form->{route_source},
-        ) || 'queue_end',
+        route_source => $route_source,
         target_track_id => $form->{route_target_track_id},
-        target_label => _track_label($form->{route_target_track_id}),
+        target_album_id => $target_album_id,
+        target_label => $target_label,
+        target_is_album => $target_is_album,
+        source_track_count => 1 + $target_track_count
+            + ($route_source eq 'round_trip' ? 1 : 0),
     };
 }
 sub _playlists {
@@ -131,7 +147,7 @@ sub _form_from_params {
     my ($params, $defaults) = @_;
     my $form = {%$defaults};
     for my $name (qw(
-        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
+        source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_target_album_id route_target_album_track_count route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed lastfm_enabled
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
@@ -161,6 +177,9 @@ sub _form_from_job {
         $params{source_mode} = 'route_to_track';
         $params{route_player_id} = $job->{route_player_id};
         $params{route_target_track_id} = $job->{route_target_track_id};
+        $params{route_target_album_id} = $job->{route_target_album_id};
+        $params{route_target_album_track_count} =
+            $job->{route_target_album_track_count};
         $params{route_source} = $job->{route_source} || 'queue_end';
         $params{queue_player_id} = $options->{queue_player_id} || $job->{route_player_id};
         $params{quick_route} = $job->{quick_route} ? 1 : 0;
@@ -350,6 +369,9 @@ sub _result_view {
         ) || 'append',
         route_start_label => $job->{route_start_label},
         route_target_label => $job->{route_target_label},
+        route_target_album_id => $job->{route_target_album_id},
+        route_target_album_track_count =>
+            0 + ($job->{route_target_album_track_count} || 0),
         route_rejoin_label => $job->{route_rejoin_label},
         route_source_context_count => 0 + ($job->{route_source_context_count} || 0),
         route_length_policy => $job->{options}->{route_length_policy},
@@ -779,6 +801,7 @@ sub handler {
     if (($form->{source_mode} || '') eq 'route_to_track') {
         my $player = uri_escape_utf8($form->{route_player_id} || '');
         my $target = uri_escape_utf8($form->{route_target_track_id} || '');
+        my $target_album = uri_escape_utf8($form->{route_target_album_id} || '');
         my $route_source = uri_escape_utf8($form->{route_source} || 'queue_end');
         my $candidate_library = uri_escape_utf8(
             $form->{candidate_library_id} || '',
@@ -789,7 +812,9 @@ sub handler {
             . '&queue_player_id=' . $player
             . '&route_source=' . $route_source
             . '&candidate_library_id=' . $candidate_library
-            . '&route_target_track_id=' . $target;
+            . (length($target_album)
+                ? '&route_target_album_id=' . $target_album
+                : '&route_target_track_id=' . $target);
         $params->{bettercallbliss_advanced_route_url} = $base_route_url;
         $params->{bettercallbliss_recalculate_route_url}
             = $base_route_url . '&quick_route=1';

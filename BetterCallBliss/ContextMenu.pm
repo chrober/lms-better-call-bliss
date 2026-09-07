@@ -2,13 +2,16 @@ package Plugins::BetterCallBliss::ContextMenu;
 
 use strict;
 use URI::Escape qw(uri_escape_utf8);
+use Slim::Menu::AlbumInfo;
 use Slim::Menu::PlaylistInfo;
 use Slim::Menu::TrackInfo;
 
 my $registered = 0;
+my $album_registered = 0;
 my $page = 'plugins/BetterCallBliss/index.html';
 
 sub init {
+    my $destination_blocks_supported = shift;
     return if $registered;
     Slim::Menu::PlaylistInfo->registerInfoProvider(
         bettercallbliss_playlist => (
@@ -34,6 +37,27 @@ sub init {
             func => \&trackInfoHandler,
         ),
     );
+    if ($destination_blocks_supported) {
+        Slim::Menu::AlbumInfo->registerInfoProvider(
+            bettercallbliss_album_route_to_now_playing => (
+                before => 'favorites',
+                func => \&albumNowPlayingInfoHandler,
+            ),
+        );
+        Slim::Menu::AlbumInfo->registerInfoProvider(
+            bettercallbliss_album_route_round_trip => (
+                after => 'bettercallbliss_album_route_to_now_playing',
+                func => \&albumRoundTripInfoHandler,
+            ),
+        );
+        Slim::Menu::AlbumInfo->registerInfoProvider(
+            bettercallbliss_album_route_to => (
+                after => 'bettercallbliss_album_route_round_trip',
+                func => \&albumInfoHandler,
+            ),
+        );
+        $album_registered = 1;
+    }
     $registered = 1;
 }
 
@@ -47,6 +71,18 @@ sub shutdown {
     Slim::Menu::TrackInfo->deregisterInfoProvider(
         'bettercallbliss_route_round_trip',
     );
+    if ($album_registered) {
+        Slim::Menu::AlbumInfo->deregisterInfoProvider(
+            'bettercallbliss_album_route_to_now_playing',
+        );
+        Slim::Menu::AlbumInfo->deregisterInfoProvider(
+            'bettercallbliss_album_route_round_trip',
+        );
+        Slim::Menu::AlbumInfo->deregisterInfoProvider(
+            'bettercallbliss_album_route_to',
+        );
+        $album_registered = 0;
+    }
     $registered = 0;
 }
 
@@ -109,9 +145,9 @@ sub playlistInfoHandler {
     );
 }
 
-sub _route_item {
-    my ($client, $track, $name, $description, $route_source, $filter) = @_;
-    return unless $client && $track && !$track->remote && $track->can('id');
+sub _destination_item {
+    my ($client, $target_params, $name, $description, $route_source, $filter) = @_;
+    return unless $client && ref($target_params) eq 'HASH';
     my $player_id = _client_id($client);
     return unless length $player_id;
     return {
@@ -126,7 +162,7 @@ sub _route_item {
                     player => 0,
                     cmd => ['bettercallbliss', 'route_to'],
                     params => {
-                        target_track_id => 0 + $track->id,
+                        %$target_params,
                         route_source => $route_source,
                         (ref($filter) eq 'HASH' && defined $filter->{library_id}
                             ? (candidate_library_id => $filter->{library_id}) : ()),
@@ -136,6 +172,26 @@ sub _route_item {
             },
         },
     };
+}
+
+sub _route_item {
+    my ($client, $track, $name, $description, $route_source, $filter) = @_;
+    return unless $track && !$track->remote && $track->can('id');
+    return _destination_item(
+        $client,
+        {target_track_id => 0 + $track->id},
+        $name, $description, $route_source, $filter,
+    );
+}
+
+sub _album_route_item {
+    my ($client, $album, $name, $description, $route_source, $filter) = @_;
+    return unless $album && $album->can('id');
+    return _destination_item(
+        $client,
+        {target_album_id => 0 + $album->id},
+        $name, $description, $route_source, $filter,
+    );
 }
 
 sub trackInfoHandler {
@@ -169,6 +225,42 @@ sub trackRoundTripInfoHandler {
         $track,
         'Bliss me there... and back again!',
         'Insert a fluent excursion from the currently playing song through this track and back to the existing upcoming queue.',
+        'round_trip',
+        $filter,
+    );
+}
+
+sub albumInfoHandler {
+    my ($client, $url, $album, $remote_meta, $tags, $filter) = @_;
+    return _album_route_item(
+        $client,
+        $album,
+        'Bliss me there... when we\'re through!',
+        'Build a fluent route from the current queue end to this album, then append the complete album in disc and track order.',
+        'queue_end',
+        $filter,
+    );
+}
+
+sub albumNowPlayingInfoHandler {
+    my ($client, $url, $album, $remote_meta, $tags, $filter) = @_;
+    return _album_route_item(
+        $client,
+        $album,
+        'Bliss me there...',
+        'Keep the currently playing song, replace the upcoming queue with a fluent route, then play this complete album in disc and track order.',
+        'now_playing',
+        $filter,
+    );
+}
+
+sub albumRoundTripInfoHandler {
+    my ($client, $url, $album, $remote_meta, $tags, $filter) = @_;
+    return _album_route_item(
+        $client,
+        $album,
+        'Bliss me there... and back again!',
+        'Insert a fluent excursion through this complete album and back to the existing upcoming queue.',
         'round_trip',
         $filter,
     );

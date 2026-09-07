@@ -253,6 +253,8 @@ is($destination_request->{route}->{start_track_id}, 'lms-track-42',
     'destination route locks the queue-tail source track');
 is($destination_request->{route}->{destination_track_id}, 'lms-track-43',
     'destination route locks the selected target track');
+ok(!exists $destination_request->{route}->{destination_track_ids},
+    'single-track routes retain the wire shape accepted by older optimizers');
 is($destination_request->{extension}->{mode}, 'destination_route',
     'destination route uses the dedicated native extension mode');
 is($destination_request->{scoring}->{algorithm}, 'adaptive',
@@ -316,5 +318,36 @@ is($round_request->{route}->{rejoin_track_id}, 'lms-track-44',
     'round-trip route locks the first upcoming rejoin track');
 is(scalar @{$round_request->{source_tracks}}, 3,
     'round-trip request contains exactly its three audible anchors');
+
+my $album_round_trip = Plugins::BetterCallBliss::RequestBuilder::build_sequence_request(
+    'Bliss me through a complete album and back test',
+    [
+        TestTrack->new(42, '1999'),
+        TestTrack->new(43, '1234'),
+        TestTrack->new(44, '1235'),
+        TestTrack->new(45, '1236'),
+        TestTrack->new(46, '2001'),
+    ],
+    'preview-json-types-album-round-trip',
+    '/tmp/semantic-evidence.json',
+    {},
+    [TestTrack->new(41, '1984')],
+    1,
+    3,
+);
+my $album_round_request = JSON::XS->new->decode(
+    JSON::XS->new->canonical->encode($album_round_trip->{request}),
+);
+is($album_round_request->{route}->{start_track_id}, 'lms-track-42',
+    'album route locks the current-song entrance');
+is_deeply($album_round_request->{route}->{destination_track_ids},
+    [qw(lms-track-43 lms-track-44 lms-track-45)],
+    'album route carries every destination track in canonical order');
+is($album_round_request->{route}->{destination_track_id}, 'lms-track-43',
+    'album route keeps the first destination track as its compatible entrance anchor');
+is($album_round_request->{route}->{rejoin_track_id}, 'lms-track-46',
+    'album round trip locks the queue rejoin after the album exit');
+is(scalar @{$album_round_request->{source_tracks}}, 5,
+    'album round trip keeps start, complete album, and rejoin as route members');
 
 done_testing();

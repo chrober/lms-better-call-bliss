@@ -16,11 +16,11 @@ The plugin owns the Lyrion user interface, settings, Last.fm integration, backgr
 - Preserves the existing order when requested and inserts tracks only in gaps.
 - Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, and optional Last.fm similar-track and similar-artist guidance.
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
-- Offers three destination shortcuts on a local track in this menu order:
+- Offers three destination shortcuts on a local track or album in this menu order. An album destination always plays every local audio track in disc and track order:
 
-  - **Bliss me there...** keeps the current song and playback state while replacing only the upcoming queue with a route to the destination.
-  - **Bliss me there... and back again!** inserts an excursion from the current song through the selected track and back to the unchanged upcoming queue.
-  - **Bliss me there... when we're through!** builds from the queue end and appends its route.
+  - **Bliss me there...** keeps the current song and playback state while replacing only the upcoming queue with a route to the selected track or complete album.
+  - **Bliss me there... and back again!** inserts an excursion from the current song through the selected track or complete album and back to the unchanged upcoming queue.
+  - **Bliss me there... when we're through!** builds from the queue end and appends its route followed by the selected track or complete album.
   - All three validate their captured live anchors before changing the queue. Recent entries are immutable history rather than route members, so legitimate repeats already heard do not invalidate the request.
   - Normal or Cautious automatic bridge handling controls how learned/Static disagreement affects direct acceptance and whole-route ranking.
   - Fast, Balanced, and Thorough trade runtime for progressively wider searches.

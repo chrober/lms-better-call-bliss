@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 42;
+use Test::More;
 
 BEGIN {
     package Slim::Menu::PlaylistInfo;
@@ -13,6 +13,17 @@ BEGIN {
     sub registerInfoProvider { }
     sub deregisterInfoProvider { }
     $INC{'Slim/Menu/TrackInfo.pm'} = __FILE__;
+
+    package Slim::Menu::AlbumInfo;
+    sub registerInfoProvider { }
+    sub deregisterInfoProvider { }
+    $INC{'Slim/Menu/AlbumInfo.pm'} = __FILE__;
+}
+
+{
+    package TestAlbum;
+    sub new { return bless {}, $_[0] }
+    sub id { return 789 }
 }
 
 use lib "$FindBin::Bin/..";
@@ -150,3 +161,32 @@ is($round_item->{jive}->{actions}->{go}->{nextWindow}, 'parent',
     'round-trip command returns to the existing context view');
 like($round_item->{description}, qr/back to the existing upcoming queue/i,
     'round-trip action explains that the existing queue is preserved');
+
+for my $case (
+    [\&Plugins::BetterCallBliss::ContextMenu::albumNowPlayingInfoHandler,
+        'Bliss me there...', 'now_playing'],
+    [\&Plugins::BetterCallBliss::ContextMenu::albumRoundTripInfoHandler,
+        'Bliss me there... and back again!', 'round_trip'],
+    [\&Plugins::BetterCallBliss::ContextMenu::albumInfoHandler,
+        'Bliss me there... when we\'re through!', 'queue_end'],
+) {
+    my ($handler, $label, $route_source) = @$case;
+    my $item = $handler->(
+        TestClient->new, undef, TestAlbum->new, undef, undef,
+        {library_id => '4d2ba37f'},
+    );
+    ok($item, "$route_source album action is created");
+    is($item->{name}, $label, "$route_source album action uses the track-action label");
+    is($item->{jive}->{actions}->{go}->{params}->{target_album_id}, 789,
+        "$route_source album action freezes the complete destination album");
+    ok(!exists $item->{jive}->{actions}->{go}->{params}->{target_track_id},
+        "$route_source album action does not collapse the album to one track");
+    is($item->{jive}->{actions}->{go}->{params}->{route_source}, $route_source,
+        "$route_source album action preserves its queue semantics");
+    is($item->{jive}->{actions}->{go}->{params}->{candidate_library_id}, '4d2ba37f',
+        "$route_source album action freezes the active candidate library");
+    like($item->{description}, qr/complete album/i,
+        "$route_source album action says the complete album will play");
+}
+
+done_testing();

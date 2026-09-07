@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 75;
+use Test::More tests => 80;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -194,6 +194,34 @@ like(
     $context_menu,
     qr/bettercallbliss_route_to.*?after\s*=>\s*'bettercallbliss_route_round_trip'/s,
     'queue-end route is the third sibling track action',
+);
+like(
+    $context_menu,
+    qr/AlbumInfo->registerInfoProvider\(.*?bettercallbliss_album_route_to_now_playing.*?bettercallbliss_album_route_round_trip.*?bettercallbliss_album_route_to/s,
+    'the three album actions are registered in the same semantic order as track actions',
+);
+ok(
+    $plugin_module =~ /_optimizerSupportsDestinationBlocks.*?"destination_blocks"/s
+        && $plugin_module
+            =~ /ContextMenu::init\(\s*\$optimizer_supports_destination_blocks/s,
+    'album context actions are exposed only with an optimizer advertising destination blocks',
+);
+my $web_module = slurp(File::Spec->catfile($plugin, 'Web.pm'));
+like(
+    $web_module,
+    qr/route_target_album_id.*?_form_from_job.*?route_target_album_id.*?start_route_to_track_preview/s,
+    'an opened album-route job retains its album identity for recalculation',
+);
+like(
+    $extras,
+    qr/name="route_target_album_id".*?bettercallbliss_form\.route_target_album_id/s,
+    'the route editor round-trips its hidden destination album ID',
+);
+my $album_destination = slurp(File::Spec->catfile($plugin, 'AlbumDestination.pm'));
+like(
+    $album_destination,
+    qr/\$_->remote.*?\$_->audio.*?cannot be routed in full.*?\$a->disc.*?\$a->tracknum.*?\$a->title/s,
+    'album destinations reject partial playback and use canonical disc/track ordering',
 );
 like(
     $context_menu,

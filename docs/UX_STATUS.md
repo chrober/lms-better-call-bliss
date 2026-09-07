@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.17.2` / `extras-job-editor-v23` UX shell. The shell is
+model and the exact boundary of the current `0.17.3` / `extras-job-editor-v23` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -23,9 +23,9 @@ fall through to either working mode.
 | Extensions contribution icon | Working | Explicitly registers the packaged 512x512 transparent monochrome route icon. Material recognizes its `MTL_icon_timeline` marker and renders the theme-colored `timeline` glyph instead of the generic puzzle piece. |
 | Applications / My Apps > Better Call Bliss | Removed | The OPML adapter cannot provide the required portable multi-field form. |
 | Saved-playlist context > Better Call Bliss... | Working | Opens the rich job editor with the selected saved playlist preselected. In Material this appears as an item menu/More action rather than a permanent inline row button. |
-| Track context > Bliss me there... | Working | Starts the destination-route search at the current song. Future queue entries are excluded from captured context. After validating that the same song is still current, the action preserves it and playback, removes only later entries, and appends the generated route suffix. A stale or failed route changes nothing. |
-| Track context > Bliss me there... and back again! | Working | Uses the current song as start, the selected track as a required waypoint, and the first upcoming track as a locked rejoin. It inserts the complete excursion before the otherwise unchanged upcoming queue. One intermediate budget is shared by the outward and return legs; stale current or rejoin anchors prevent any queue command. |
-| Track context > Bliss me there... when we're through! | Working | Starts a destination route at the queue end in the background using saved defaults, without opening Extras or requiring an Accept button. It appends only the generated suffix after validating that the captured queue end is unchanged. |
+| Track or album context > Bliss me there... | Working | Starts the destination-route search at the current song. Future queue entries are excluded from captured context. After validating that the same song is still current, the action preserves it and playback, removes only later entries, and appends the generated route suffix. An album is emitted completely in canonical disc/track order. A stale or failed route changes nothing. |
+| Track or album context > Bliss me there... and back again! | Working | Uses the current song as start, the selected track or complete ordered album as the required destination, and the first upcoming track as a locked rejoin. It inserts the complete excursion before the otherwise unchanged upcoming queue. One intermediate budget is shared by the destination's entry and exit boundaries; stale current or rejoin anchors prevent any queue command. |
+| Track or album context > Bliss me there... when we're through! | Working | Starts a destination route at the queue end in the background using saved defaults, without opening Extras or requiring an Accept button. It appends only the generated suffix and selected track or complete ordered album after validating that the captured queue end is unchanged. |
 | Full EN/DE menu localization | Not connected yet | The Extras shell is English-first; settings labels have EN/DE strings. |
 
 ## Optimization wizard
@@ -59,7 +59,7 @@ fall through to either working mode.
 | Bridge trigger percentile | Working, per job | Validated as 0-100; only direct gaps strictly above this frozen contextual percentile are eligible. |
 | Internal bridge shortlist | Working, implementation-level | Addition jobs deterministically narrow each large internal-gap pool to 256 high-recall candidates before strict scoring. Endpoint-local semantic evidence is reserved; strict dynamic Adaptive scoring and all safety gates remain authoritative. This is intentionally not a job control in the current UX. |
 | LMS-local bridge inventory | Working, safety gate | Every addition job freezes a checksum-protected allowlist of usable Bliss rows that resolve to current non-remote LMS audio tracks. Non-allowlisted rows are removed before semantic ranking, shortlisting, and scoring; post-result LMS resolution remains mandatory. |
-| Candidate library | Working, per job | Extras lists the registered Lyrion virtual libraries and initially follows Material Skin's active library, falling back to the library assigned to the active player. The selected membership is frozen into the candidate inventory: newly generated tracks must belong to it, while source tracks, listening history, destinations, waypoints, and queue-rejoin anchors remain valid outside it. |
+| Candidate library | Working, per job | Extras lists the registered Lyrion virtual libraries and initially follows Material Skin's active library, falling back to the library assigned to the active player. The selected membership is frozen into the candidate inventory: newly generated tracks must belong to it, while source tracks, listening history, selected destination tracks or albums, and queue-rejoin anchors remain valid outside it. |
 | Static weighted strategy | Working, per job | Uses BlissMixer's four static metric sliders expanded to the 23 Bliss feature weights; the same fixed matrix is used for every contextual distance. |
 | Extended Isolation Forest strategy | Not connected yet | Visible but disabled because native playlist routing does not implement Forest scoring yet. |
 | Review | Working for all connected combinations | The submitted form and result retain the job-specific values and explicitly state whether source order was optimized or preserved. |
