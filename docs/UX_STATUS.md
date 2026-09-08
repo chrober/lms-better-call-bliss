@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.17.4` / `extras-job-editor-v23` UX shell. The shell is
+model and the exact boundary of the current `0.18.0` / `extras-job-editor-v23` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -52,6 +52,7 @@ fall through to either working mode.
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
 | Last.fm guidance | Working, optional and per job | Requires enabled LastMix and queries similar tracks and artists for the complete distinct source set. Similar-track and similar-artist guidance are separate 0-100 bounded influences with independent Better Call Bliss defaults of 25. They intentionally do not reuse BlissMixer's artist-selection target or BlissMixerLab's immediate-mix track weighting. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
+| Play-count influence | Working, per job | Initialized from BlissMixer for each new job and never persisted by Better Call Bliss. Values from -100 to -1 prefer less-played generated tracks, 1 to 100 prefer frequently played generated tracks, and zero disables the guidance. It is forced to zero when Lyrion playback statistics are disabled and never changes the membership of reorder-only jobs. |
 | Relevance-aware controls | Working | The Extras editor shows only sections relevant to the selected source-order and addition purpose. Count-specific fields appear only when Extend playlist requires them. Hidden sections keep their values for mode switching, selected-mode inputs remain submitted for draft restoration, exact and target counts follow the selected source snapshot, and guaranteed no-op combinations disable submission and fail server validation if bypassed. Bounded numeric controls use the same `sliderInput_min_max_step` enhancement classes as BlissMixer settings where practical. |
 | Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
 | LMS scan coordination | Working | Preview pauses while LMS reports an active library scan, explains that the catalog is changing, and retries the page automatically until the scan finishes. |

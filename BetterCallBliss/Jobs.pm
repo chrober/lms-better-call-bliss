@@ -424,6 +424,16 @@ sub _start_preview_from_built {
         );
         $built->{request}->{artifacts}->{local_candidate_inventory}
             = $candidate_inventory->{artifact};
+        if ($built->{options}->{playcount_influence}) {
+            my $playcounts =
+                Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts(
+                    $built->{capability}, $database_identity,
+                    $dir . '/play-counts.json',
+                );
+            $built->{request}->{artifacts}->{play_counts}
+                = $playcounts->{artifact};
+            $fields->{playcount_status} = $playcounts->{status};
+        }
     }
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
@@ -480,6 +490,7 @@ sub _start_preview_from_built {
         database_identity => $database_identity,
         candidate_inventory => $candidate_inventory
             ? $candidate_inventory->{status} : undef,
+        playcount_status => $fields->{playcount_status},
         semantic_path => $semantic_path,
         request_path => $request_path,
         result_path => $result_path,
@@ -523,6 +534,8 @@ sub _start_preview_from_built {
         . " repeat_track=$effective->{track_window}"
         . " restarts=$effective->{restart_count}"
         . " variation=$effective->{variation_percent}"
+        . ' playcount_influence=' . ($effective->{extension_mode} ne 'none'
+            ? $effective->{playcount_influence} : 0)
         . " generation_seed=$effective->{generation_seed}"
         . ($effective->{extension_mode} eq 'destination_route'
             ? " search_effort=$effective->{route_search_effort}"
@@ -603,6 +616,8 @@ sub _start_preview_from_built {
             . " repeat_artist=$effective->{artist_window}"
             . " repeat_album=$effective->{album_window}"
             . " repeat_track=$effective->{track_window}"
+            . ' playcount_influence=' . ($effective->{extension_mode} ne 'none'
+                ? $effective->{playcount_influence} : 0)
             . " output_mode=$effective->{output_mode}"
         );
     }

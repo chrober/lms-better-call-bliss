@@ -149,7 +149,7 @@ sub _form_from_params {
     for my $name (qw(
         source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_target_album_id route_target_album_track_count route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
-        variation_percent generation_seed lastfm_enabled
+        variation_percent generation_seed playcount_influence lastfm_enabled
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
@@ -338,6 +338,7 @@ sub _result_view {
         source_track_count => 0 + ($job->{track_count} || 0),
         variation_percent => $job->{options}->{variation_percent},
         generation_seed => $job->{options}->{generation_seed},
+        playcount_influence => $job->{options}->{playcount_influence},
         lastfm_enabled => $job->{options}->{lastfm_enabled},
         lastfm_track_guidance_percent =>
             $job->{options}->{lastfm_track_guidance_percent},

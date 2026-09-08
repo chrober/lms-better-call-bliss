@@ -101,6 +101,7 @@ sub normalize_request_types {
             num_seed_tracks no_repeat_artist
             no_repeat_album no_repeat_track weight_tempo weight_timbre
             weight_loudness weight_chroma
+            playcount_influence
         ),
     );
     _normalize_booleans(
@@ -122,6 +123,7 @@ sub normalize_request_types {
         qw(
             variation_percent generation_seed
             lastfm_track_guidance_percent lastfm_artist_guidance_percent
+            playcount_influence
         ),
     );
     _normalize_integers(
@@ -431,6 +433,9 @@ sub _build_sequence_request {
                 weight_chroma => _json_integer(
                     $capability->{static_weight_sliders}->{chroma},
                 ),
+                playcount_influence => _json_integer(
+                    $capability->{playcount_influence},
+                ),
             },
         },
         candidate_policy => {
@@ -453,6 +458,8 @@ sub _build_sequence_request {
             generation_seed => _json_integer(
                 $options->{generation_seed}, 'generation_seed',
             ),
+            playcount_influence => $options->{extension_mode} ne 'none'
+                ? _json_integer($options->{playcount_influence}) : 0,
             lastfm_track_guidance_percent => $options->{lastfm_enabled}
                 && $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_track_guidance_percent}) : 0,

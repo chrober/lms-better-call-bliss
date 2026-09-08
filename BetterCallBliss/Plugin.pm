@@ -75,12 +75,15 @@ sub initPlugin {
         _optimizerSupportsGenrePolicy($optimizer_binary);
     my $optimizer_supports_candidate_library_scope =
         _optimizerSupportsCandidateLibraryScope($optimizer_binary);
+    my $optimizer_supports_play_count_guidance =
+        _optimizerSupportsPlayCountGuidance($optimizer_binary);
     $optimizer_supports_destination_blocks =
         _optimizerSupportsDestinationBlocks($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
         $optimizer_binary,
         $optimizer_supports_genre_policy,
         $optimizer_supports_candidate_library_scope,
+        $optimizer_supports_play_count_guidance,
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -121,6 +124,8 @@ sub initPlugin {
         . ($optimizer_supports_genre_policy ? 'supported' : 'unsupported')
         . ' candidate_library_scope='
         . ($optimizer_supports_candidate_library_scope ? 'supported' : 'unsupported')
+        . ' play_count_guidance='
+        . ($optimizer_supports_play_count_guidance ? 'supported' : 'unsupported')
         . ' destination_blocks='
         . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
     return 1;
@@ -158,6 +163,12 @@ sub _optimizerSupportsCandidateLibraryScope {
     my $binary = shift;
     my $output = _optimizerVersionOutput($binary);
     return $output =~ /"candidate_library_scope"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerSupportsPlayCountGuidance {
+    my $binary = shift;
+    my $output = _optimizerVersionOutput($binary);
+    return $output =~ /"play_count_guidance"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerSupportsDestinationBlocks {
@@ -491,6 +502,13 @@ sub statusCommand {
     );
     $request->addResult(
         'learned_matrix_available', 0 + $status->{matrix_available},
+    );
+    $request->addResult(
+        'statistics_enabled', 0 + $status->{statistics_enabled},
+    );
+    $request->addResult(
+        'blissmixer_playcount_influence',
+        0 + ($status->{playcount_influence} || 0),
     );
     my $inventory = Plugins::BetterCallBliss::CandidateInventory::status();
     $request->addResult('candidate_inventory_ready', 0 + $inventory->{ready});

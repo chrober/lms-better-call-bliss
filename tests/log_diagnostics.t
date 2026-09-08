@@ -40,12 +40,14 @@ my $job = {
         genre_groups => [['Rock', 'Hard Rock'], ['Jazz*']],
         match_all_genres => 0,
         use_track_genre => 1,
+        statistics_enabled => 1,
     },
     candidate_inventory => {
         allowed_row_count => 64128,
         unmatched_row_count => 1,
         cache_state => 'memory',
     },
+    playcount_status => {known_count => 63000, unknown_count => 1128},
     native_performance => {total_ms => 1488, database_cache => 'hit'},
     options => {
         extension_mode => 'destination_route',
@@ -57,6 +59,7 @@ my $job = {
         track_window => 100,
         restart_count => 50,
         variation_percent => 25,
+        playcount_influence => -40,
         lastfm_enabled => 1,
         lastfm_track_guidance_percent => 25,
         lastfm_artist_guidance_percent => 25,
@@ -250,6 +253,8 @@ like($start, qr/Mixing strategy: adaptive.*learned matrix available/,
     'information log explains the effective acoustic strategy');
 like($start, qr/similar tracks 25%.*similar artists 25%/,
     'information log exposes both Last.fm guidance settings');
+like($start, qr/Play-count guidance.*?-40.*?63000 known tracks.*?1128 tracks/s,
+    'information log reports the per-job influence and snapshot coverage');
 like($start, qr/destination route \(automatic, 0-4 intermediate tracks, fast effort, target 70%, cautious direct-transition caution\)/,
     'information log explains destination length, effort, and target settings');
 like($start, qr/Candidate library: All tracks; 64128 local LMS-matched Bliss candidates; 0 Bliss rows outside the selected virtual library; 1 non-LMS rows excluded; cache memory/,

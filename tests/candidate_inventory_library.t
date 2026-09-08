@@ -5,6 +5,7 @@ use File::Spec;
 use File::Temp qw(tempdir);
 use Test::More;
 use DBI;
+use JSON::XS;
 
 BEGIN {
     package TestLog;
@@ -67,6 +68,13 @@ $Slim::Schema::dbh->do(
 $Slim::Schema::dbh->do(
     q{INSERT INTO library_track VALUES ('4d2ba37f', 1)}
 );
+$Slim::Schema::dbh->do('ALTER TABLE tracks ADD COLUMN urlmd5 TEXT');
+$Slim::Schema::dbh->do(q{UPDATE tracks SET urlmd5 = 'allowed' WHERE id = 1});
+$Slim::Schema::dbh->do(q{UPDATE tracks SET urlmd5 = 'outside' WHERE id = 2});
+$Slim::Schema::dbh->do(
+    'CREATE TABLE tracks_persistent (urlmd5 TEXT PRIMARY KEY, playcount INTEGER)'
+);
+$Slim::Schema::dbh->do(q{INSERT INTO tracks_persistent VALUES ('allowed', 7)});
 
 my $bliss = DBI->connect(
     "dbi:SQLite:dbname=$bliss_path", '', '', {RaiseError => 1},
@@ -108,6 +116,31 @@ is($second->{status}->{allowed_row_count}, 2,
     'changed virtual-library membership invalidates the cached allowlist');
 is($second->{status}->{cache_state}, 'miss',
     'membership changes force a fresh inventory even without an LMS scan');
+
+my $playcount_path = File::Spec->catfile($root, 'play-counts.json');
+my $playcounts = Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts(
+    {%$capability, statistics_enabled => 1},
+    'bliss-fixture-v1',
+    $playcount_path,
+);
+is($playcounts->{artifact}->{schema_identity}, 'lms-play-counts-v1',
+    'the fresh play-count snapshot declares its schema identity');
+is($playcounts->{status}->{known_count}, 1,
+    'a persisted LMS play count is reported as known');
+is($playcounts->{status}->{unknown_count}, 1,
+    'a local track without persistent statistics remains explicitly unknown');
+open my $playcount_fh, '<:raw', $playcount_path
+    or die "Cannot read $playcount_path: $!";
+local $/;
+my $playcount_payload = JSON::XS->new->decode(<$playcount_fh>);
+close $playcount_fh;
+is($playcount_payload->{database_cache_identity}, 'bliss-fixture-v1',
+    'the play-count snapshot is bound to the guarded Bliss database identity');
+is_deeply(
+    [map { $_->{play_count} } @{$playcount_payload->{tracks}}],
+    [7, undef],
+    'known and unknown play counts retain distinct JSON values',
+);
 
 $Slim::Schema::dbh->disconnect;
 done_testing();

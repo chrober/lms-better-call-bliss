@@ -32,6 +32,8 @@ BEGIN {
             artist_window => '5',
             album_window => '10',
             track_window => '100',
+            statistics_enabled => 1,
+            playcount_influence => '-35',
             use_adaptive_weights => 1,
             use_forest => 0,
             filter_genres => 1,
@@ -78,6 +80,7 @@ BEGIN {
             track_window => '100',
             restart_count => '50',
             variation_percent => '25',
+            playcount_influence => '-35',
             generation_seed => '123456',
             generation_seed_supplied => 1,
             lastfm_enabled => 1,
@@ -162,6 +165,10 @@ is($request->{selection}->{lastfm_track_guidance_percent}, 75,
     'track guidance is a JSON integer');
 is($request->{selection}->{lastfm_artist_guidance_percent}, 75,
     'artist guidance is a JSON integer');
+is($request->{selection}->{playcount_influence}, -35,
+    'signed play-count influence is a JSON integer');
+is($request->{scoring}->{captured_blissmixer_preferences}->{playcount_influence}, -35,
+    'the inherited BlissMixer play-count default is captured for provenance');
 ok(JSON::XS::is_bool($request->{candidate_policy}->{genre}->{restrict_genres}),
     'genre restriction is serialized as a JSON boolean');
 ok($request->{candidate_policy}->{genre}->{restrict_genres},

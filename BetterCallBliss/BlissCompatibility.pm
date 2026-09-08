@@ -13,6 +13,7 @@ my $server_prefs = preferences('server');
 my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
+my $optimizer_supports_play_count_guidance;
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
 use constant MIN_BLISSMIXERLAB_VERSION => '0.5.0';
@@ -21,6 +22,7 @@ sub init {
     $optimizer_binary = shift;
     $optimizer_supports_genre_policy = shift ? 1 : 0;
     $optimizer_supports_candidate_library_scope = shift ? 1 : 0;
+    $optimizer_supports_play_count_guidance = shift ? 1 : 0;
 }
 
 sub _int_pref {
@@ -130,6 +132,10 @@ sub snapshot {
         if $optimizer_binary && -x $optimizer_binary
             && !$optimizer_supports_candidate_library_scope;
     push @problems,
+        'the installed bliss-playlist-optimizer does not support play-count guidance'
+        if $optimizer_binary && -x $optimizer_binary
+            && !$optimizer_supports_play_count_guidance;
+    push @problems,
         'an LMS library scan is updating the catalog; preview will resume when it finishes'
         if $scanning;
     push @problems, 'the LMS music folder is not configured' unless $music_root;
@@ -159,6 +165,11 @@ sub snapshot {
     }
 
     my $strategy = _strategy_from_prefs();
+    my $statistics_enabled = main::STATISTICS ? 1 : 0;
+    my $playcount_influence = $statistics_enabled
+        ? _int_pref('playcount_influence', 0) : 0;
+    $playcount_influence = -100 if $playcount_influence < -100;
+    $playcount_influence = 100 if $playcount_influence > 100;
     my $static_weights = _static_slider_weights();
     my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
     my $month = (localtime())[4] + 1;
@@ -189,6 +200,8 @@ sub snapshot {
         album_window      => _int_pref('no_repeat_album', 0),
         track_window      => _int_pref('no_repeat_track', 0),
         algorithm         => $strategy,
+        statistics_enabled => $statistics_enabled,
+        playcount_influence => $playcount_influence,
         use_adaptive_weights => _int_pref('use_adaptive_weights', 0) ? 1 : 0,
         use_forest        => _int_pref('use_forest', 0) ? 1 : 0,
         static_weight_sliders => $static_weights->{raw},

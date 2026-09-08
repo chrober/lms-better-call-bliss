@@ -6,6 +6,9 @@ use File::Temp qw(tempdir);
 use Test::More;
 
 BEGIN {
+    package main;
+    sub STATISTICS () { 1 }
+
     package TestBlissPrefs;
     our %values = (
         filter_genres => 1,
@@ -19,6 +22,7 @@ BEGIN {
         no_repeat_artist => 5,
         no_repeat_album => 10,
         no_repeat_track => 100,
+        playcount_influence => -40,
     );
     sub get { return $values{$_[1]} }
 
@@ -96,7 +100,7 @@ for my $path ($database, $matrix, $binary) {
 }
 chmod 0755, $binary;
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1);
 my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 
 ok($snapshot->{ready}, 'compatible optimizer and readable Bliss database are ready');
@@ -115,6 +119,9 @@ is_deeply(
 );
 ok($snapshot->{match_all_genres}, 'match-all mode is captured');
 ok($snapshot->{use_track_genre}, 'per-track genre mode is captured');
+ok($snapshot->{statistics_enabled}, 'LMS playback statistics availability is captured');
+is($snapshot->{playcount_influence}, -40,
+    'play-count influence is inherited from BlissMixer');
 
 unlink $matrix or die "Cannot remove $matrix: $!";
 my $without_matrix = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
@@ -143,18 +150,26 @@ like(join('; ', @{$without_base->{problems}}), qr/BlissMixer is not enabled/,
     'the missing required base plugin is a blocking problem');
 $Slim::Utils::PluginManager::enabled{'Plugins::BlissMixer::Plugin'} = 1;
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 0, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 0, 1, 1);
 my $incompatible = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok(!$incompatible->{ready}, 'an older optimizer is rejected instead of ignoring genre settings');
 like(join('; ', @{$incompatible->{problems}}), qr/does not support BlissMixer genre settings/,
     'the compatibility failure explains the required optimizer capability');
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 0);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 0, 1);
 my $old_candidate_scope = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok(!$old_candidate_scope->{ready},
     'an optimizer without candidate-library scoping is rejected');
 like(join('; ', @{$old_candidate_scope->{problems}}),
     qr/does not support candidate-library scoping/,
     'candidate-library compatibility failure names the missing capability');
+
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 0);
+my $old_playcount = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+ok(!$old_playcount->{ready},
+    'an optimizer without play-count guidance is rejected');
+like(join('; ', @{$old_playcount->{problems}}),
+    qr/does not support play-count guidance/,
+    'play-count compatibility failure names the missing capability');
 
 done_testing();

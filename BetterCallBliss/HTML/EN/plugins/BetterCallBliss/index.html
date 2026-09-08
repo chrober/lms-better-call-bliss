@@ -412,6 +412,20 @@
     <p class="bea-note">Better Call Bliss asks LastMix for tracks and artists related to the complete original playlist. For an individual gap, track evidence from both neighboring songs is strongest, followed by one neighbor, similar artists, and the original artist collection as fallback. These percentages set bounded influence, not ownership of the choice: candidates must still be local, repeat-safe, and pass Bliss acoustic checks. Zero ignores that evidence type. Network/API failures fall back to Bliss without failing the job.</p>
   </fieldset>
 
+  <fieldset class="bea-section" id="playcount_guidance_fields">
+    <legend>Playback history guidance</legend>
+    <div class="bea-row">
+      <label for="playcount_influence">Play-count influence</label>
+      <input type="number" min="-100" max="100" step="1" class="stdedit sliderInput_-100_100_1" name="playcount_influence" id="playcount_influence" value="[% bettercallbliss_form.playcount_influence %]" required[% UNLESS bettercallbliss_capability.statistics_enabled %] readonly[% END %]>
+      [% IF bettercallbliss_capability.statistics_enabled %]
+        <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.playcount_influence %]</span>
+      [% ELSE %]
+        <span class="bea-disabled">Lyrion playback statistics are disabled; this job uses 0.</span>
+      [% END %]
+    </div>
+    <p class="bea-note">Negative values prefer less-played additions; positive values prefer frequently played additions. Zero disables play-count guidance. The value affects only tracks newly added by this preview.</p>
+  </fieldset>
+
 
   <fieldset class="bea-section" id="mixing_strategy_fields">
     <legend>Mixing strategy</legend>
@@ -565,6 +579,7 @@
     var lastFmEnabled = document.getElementById('lastfm_enabled');
     var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
     var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
+    var playcountFields = document.getElementById('playcount_guidance_fields');
     var submit = document.getElementById('run_preview');
     var candidateLibrary = document.getElementById('candidate_library_id');
     var candidateLibraryRow = document.getElementById('candidate_library_row');
@@ -721,6 +736,7 @@
         if (routeExact) routeExact.readOnly = !exactRoute;
         submit.disabled = !capabilityReady || invalidRoute;
         setVisible(lastFmFields, true);
+        setVisible(playcountFields, true);
         setVisible(candidateLibraryRow, true);
         setVisible(candidateLibraryNote, true);
         var routeLastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
@@ -829,6 +845,7 @@
 
       var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
       setVisible(lastFmFields, additions);
+      setVisible(playcountFields, additions);
       setVisible(candidateLibraryRow, additions);
       setVisible(candidateLibraryNote, additions);
       setReadOnlyWithSlider(lastFmTrackGuidance, lastFmInactive);
@@ -886,7 +903,7 @@
     [% ELSE %]
       <p class="bea-note">Preview runs are read-only and do not change playlists or player queues.</p>
     [% END %]
-    <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
+    <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Play-count influence [% IF bettercallbliss_job.extension_mode == 'none' %]not applied (no additions)[% ELSE %][% bettercallbliss_job.playcount_influence %][% END %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
     [% IF bettercallbliss_job.extension_mode != 'none' %]<p class="bea-note"><b>Candidate library:</b> [% bettercallbliss_job.candidate_library_name | html %]. Only newly generated tracks were restricted to this frozen Lyrion library membership.</p>[% END %]
     [% IF bettercallbliss_job.mixing_note %]<p class="bea-note"><b>Mixing:</b> [% bettercallbliss_job.mixing_strategy | html %] (BlissMixer current setting: [% bettercallbliss_job.blissmixer_strategy | html %]). [% bettercallbliss_job.mixing_note | html %]</p>[% END %]
     [% IF bettercallbliss_job.genre_filter_active %]<p class="bea-note"><b>BlissMixer genre policy:</b> [% IF bettercallbliss_job.genre_filter_restrict %][% bettercallbliss_job.genre_filter_acceptable %] source-compatible genres were accepted; [% bettercallbliss_job.genre_filter_excluded %] otherwise eligible candidates were excluded[% ELSE %]genre-group restriction was disabled[% END %]. [% IF bettercallbliss_job.genre_filter_christmas %][% bettercallbliss_job.genre_filter_christmas_excluded %] Christmas candidates were excluded.[% ELSE %]Christmas exclusion was inactive.[% END %]</p>[% END %]

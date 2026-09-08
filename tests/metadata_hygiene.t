@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 80;
+use Test::More tests => 85;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -269,6 +269,11 @@ like(
     qr/my \$optimizer_supports_candidate_library_scope\s*=\s*_optimizerSupportsCandidateLibraryScope.*?BlissCompatibility::init\(.*?\$optimizer_supports_candidate_library_scope/s,
     'plugin requires explicit optimizer support for candidate-library scoping',
 );
+like(
+    $plugin_module,
+    qr/my \$optimizer_supports_play_count_guidance\s*=\s*_optimizerSupportsPlayCountGuidance.*?BlissCompatibility::init\(.*?\$optimizer_supports_play_count_guidance/s,
+    'plugin requires explicit optimizer support for play-count guidance',
+);
 my $compatibility = slurp(File::Spec->catfile($plugin, 'BlissCompatibility.pm'));
 like(
     $compatibility,
@@ -290,6 +295,11 @@ like(
     qr/filter_genres.*?filter_xmas.*?exclude_christmas.*?genre_groups.*?match_all_genres.*?use_track_genre/s,
     'Bliss compatibility captures every relevant BlissMixer genre preference',
 );
+like(
+    $compatibility,
+    qr/main::STATISTICS.*?_int_pref\('playcount_influence',\s*0\).*?playcount_influence\s*=>\s*\$playcount_influence/s,
+    'the job default reads play-count influence from BlissMixer only when LMS statistics are active',
+);
 my $request_builder = slurp(File::Spec->catfile($plugin, 'RequestBuilder.pm'));
 like(
     $request_builder,
@@ -300,6 +310,25 @@ like(
     $request_builder,
     qr/CandidateLibrary::describe.*?candidate_library\s*=>\s*\$candidate_library/s,
     'the shared request builder freezes the selected virtual library for every job',
+);
+like(
+    $request_builder,
+    qr/selection\s*=>\s*\{.*?playcount_influence\s*=>\s*\$options->\{extension_mode\} ne 'none'/s,
+    'the request applies the per-job play-count override only to track-adding jobs',
+);
+like(
+    $extras,
+    qr/name="playcount_influence".*?Current BlissMixer setting:.*?bettercallbliss_defaults\.playcount_influence/s,
+    'Extras exposes a per-job play-count slider initialized from BlissMixer',
+);
+my $settings_page = slurp(File::Spec->catfile(
+    $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'settings',
+    'bettercallbliss.html',
+));
+unlike(
+    $settings_module . $settings_page . $defaults_module,
+    qr/playcount_influence/,
+    'Better Call Bliss does not persist a competing plugin-wide play-count setting',
 );
 like(
     $extras,

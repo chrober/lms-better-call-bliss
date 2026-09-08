@@ -178,6 +178,23 @@ sub start_info_lines {
                 ? ', ' . ($options->{route_direct_caution} || 'normal') . ' direct-transition caution' : '',
         ) : $mode;
     push @lines, "Job mode: $ordering; additional tracks: $addition.";
+    if ($mode eq 'none') {
+        push @lines, 'Play-count guidance: not applied because this job adds no tracks.';
+    } else {
+        push @lines, sprintf(
+            'Play-count guidance for generated tracks: influence %+d; LMS statistics %s.',
+            0 + ($options->{playcount_influence} || 0),
+            $capability->{statistics_enabled} ? 'available' : 'disabled',
+        );
+    }
+    if ($mode ne 'none' && $options->{playcount_influence}
+        && ref($job->{playcount_status}) eq 'HASH') {
+        push @lines, sprintf(
+            'Play-count snapshot: %d known tracks; %d tracks without a recorded count.',
+            0 + ($job->{playcount_status}->{known_count} || 0),
+            0 + ($job->{playcount_status}->{unknown_count} || 0),
+        );
+    }
     if ($capability->{filter_genres} || $capability->{filter_xmas}) {
         push @lines, sprintf(
             'BlissMixer genre policy: genre restriction %s with %d configured groups; match all source genres %s; per-track genre groups %s; Christmas exclusion %s.',

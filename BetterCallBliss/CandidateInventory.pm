@@ -471,6 +471,70 @@ sub prepare {
     return $cached_result;
 }
 
+sub prepare_playcounts {
+    my ($capability, $database_identity, $path) = @_;
+    die "Playback statistics are unavailable"
+        unless $capability->{statistics_enabled};
+    die "Play-count artifact path is required" unless length($path || '');
+
+    my $roots = $capability->{music_roots} || [];
+    my $root_descriptors = _root_descriptors($roots);
+    my $sth = Slim::Schema->dbh->prepare(
+        'SELECT tracks.url, tracks.tracknum, tracks_persistent.playcount '
+        . 'FROM tracks LEFT JOIN tracks_persistent '
+        . 'ON tracks_persistent.urlmd5 = tracks.urlmd5 '
+        . 'WHERE tracks.remote = 0 AND tracks.audio = 1'
+    );
+    $sth->execute;
+    my (%playcount_for, %seen);
+    while (my ($url, $tracknum, $playcount) = $sth->fetchrow_array) {
+        my $database_file = _database_file_for_url(
+            $url, $tracknum, $root_descriptors, $roots,
+        );
+        next unless defined $database_file && length $database_file;
+        $seen{$database_file} = 1;
+        $playcount_for{$database_file} = 0 + $playcount
+            if defined $playcount
+                && (!defined $playcount_for{$database_file}
+                    || $playcount > $playcount_for{$database_file});
+    }
+    $sth->finish;
+
+    my @tracks = map {
+        {database_file => $_, play_count => $playcount_for{$_}}
+    } sort keys %seen;
+    my $known = scalar grep { defined $_->{play_count} } @tracks;
+    my $unknown = @tracks - $known;
+    my $payload = {
+        schema_version => 1,
+        schema_identity => 'lms-play-counts-v1',
+        generated_at => time(),
+        database_cache_identity => $database_identity,
+        tracks => \@tracks,
+    };
+    my $bytes = _json()->encode($payload);
+    _write_atomic($path, $bytes);
+    my $sha256 = sha256_hex($bytes);
+    $log->info(
+        'play_counts stage=Ready'
+        . ' tracks=' . scalar(@tracks)
+        . ' known=' . (0 + ($known || 0))
+        . ' unknown=' . (0 + ($unknown || 0))
+    );
+    return {
+        artifact => {
+            path => $path,
+            sha256 => $sha256,
+            schema_identity => 'lms-play-counts-v1',
+        },
+        status => {
+            track_count => scalar(@tracks),
+            known_count => 0 + ($known || 0),
+            unknown_count => 0 + ($unknown || 0),
+        },
+    };
+}
+
 sub status {
     return $last_status || {
         ready => 0,

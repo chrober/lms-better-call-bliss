@@ -14,7 +14,7 @@ The plugin owns the Lyrion user interface, settings, Last.fm integration, backgr
 - Adds bridges automatically only where a transition is difficult.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
-- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, and optional Last.fm similar-track and similar-artist guidance.
+- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm similar-track and similar-artist guidance, and per-job play-count guidance initialized from BlissMixer.
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
 - Offers three destination shortcuts on a local track or album in this menu order. An album destination always plays every local audio track in disc and track order:
 
@@ -65,6 +65,11 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 enabled, it supplies anonymous Last.fm similar-track and similar-artist evidence. Missing
 Internet access, provider failures, and rate limits fall back to local Bliss
 scoring and do not fail the optimization job.
+
+For jobs that add tracks, the play-count influence starts with BlissMixer's current
+setting and can be overridden without changing BlissMixer. Negative values prefer
+less-played additions, positive values prefer frequently played additions, and zero
+disables the guidance. Lyrion playback statistics must be enabled.
 
 ## Installation
 

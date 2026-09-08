@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 44;
+use Test::More tests => 48;
 
 BEGIN {
     package TestPrefs;
@@ -42,6 +42,8 @@ my $capability = {
     artist_window => '5',
     album_window => '10',
     track_window => '100',
+    statistics_enabled => 1,
+    playcount_influence => '-30',
 };
 
 my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
@@ -63,6 +65,24 @@ is($defaults->{gap_context_mode}, 'rolling',
     'rolling adaptive gap context remains the compatibility default');
 is($defaults->{variation_percent}, 35,
     'variation default is read from plugin preferences');
+is($defaults->{playcount_influence}, -30,
+    'play-count default is inherited from BlissMixer capability');
+is(Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {playcount_influence => '45'},
+    )->{playcount_influence}, 45,
+    'play-count influence can be overridden for one job');
+is(Plugins::BetterCallBliss::JobOptions::normalize(
+        {%$capability, statistics_enabled => 0},
+        {playcount_influence => '45'},
+    )->{playcount_influence}, 0,
+    'play-count influence is forced to zero when LMS statistics are disabled');
+eval {
+    Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {playcount_influence => '-101'},
+    );
+};
+like($@, qr/playcount_influence must be between -100 and 100/,
+    'out-of-range signed play-count influence is rejected');
 is($defaults->{route_length_policy}, 'exact',
     'destination route policy is read from plugin preferences');
 is($defaults->{route_direct_caution}, 'normal',

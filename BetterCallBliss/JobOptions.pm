@@ -43,6 +43,7 @@ sub defaults {
         track_window => int($capability->{track_window}),
         restart_count => int($plugin_prefs->get('restart_count') || 50),
         variation_percent => int($variation_percent),
+        playcount_influence => int($capability->{playcount_influence} || 0),
         generation_seed => '',
         generation_seed_supplied => 0,
         lastfm_enabled => $plugin_prefs->get('lastfm_enabled') ? 1 : 0,
@@ -82,6 +83,17 @@ sub _integer {
     return $fallback unless defined $input->{$name};
     my $raw = $input->{$name};
     die "$name must be an integer" unless "$raw" =~ /^\d+$/;
+    my $value = int($raw);
+    die "$name must be between $minimum and $maximum"
+        if $value < $minimum || $value > $maximum;
+    return $value;
+}
+
+sub _signed_integer {
+    my ($input, $name, $minimum, $maximum, $fallback) = @_;
+    return $fallback unless defined $input->{$name};
+    my $raw = $input->{$name};
+    die "$name must be an integer" unless "$raw" =~ /^-?\d+$/;
     my $value = int($raw);
     die "$name must be between $minimum and $maximum"
         if $value < $minimum || $value > $maximum;
@@ -183,6 +195,12 @@ sub normalize {
     $options->{variation_percent} = _integer(
         $input, 'variation_percent', 0, 100, $options->{variation_percent},
     );
+    $options->{playcount_influence} = _signed_integer(
+        $input, 'playcount_influence', -100, 100,
+        $options->{playcount_influence},
+    );
+    $options->{playcount_influence} = 0
+        unless $capability->{statistics_enabled};
     if (defined $input->{generation_seed} && length "$input->{generation_seed}") {
         $options->{generation_seed} = _integer(
             $input, 'generation_seed', 0, 4294967295, 0,
