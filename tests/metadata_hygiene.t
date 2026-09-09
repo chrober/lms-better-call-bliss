@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 85;
+use Test::More tests => 87;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -120,13 +120,23 @@ like(
 );
 like(
     $settings,
-    qr/PLUGIN_BETTERCALLBLISS_BLISSMIXER_OK.*?bliss_version.*?PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_OK.*?blissmixerlab_version/s,
-    'settings display the detected versions of both BlissMixer providers',
+    qr/PLUGIN_BETTERCALLBLISS_BLISSMIXER_OK.*?bliss_version.*?PLUGIN_BETTERCALLBLISS_DATABASE_OK.*?PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_OK.*?blissmixerlab_version.*?PLUGIN_BETTERCALLBLISS_MATRIX_OK/s,
+    'settings display provider versions plus database and learned-matrix presence',
 );
 like(
     $settings,
-    qr/job-defaults-section-header.*?route-section-header.*?lastfm-section-header.*?roadmap-section-header/s,
+    qr/compatibility-section-header.*?job-defaults-section-header.*?route-section-header.*?lastfm-section-header.*?roadmap-section-header/s,
     'settings page groups preferences into collapsible sections',
+);
+like(
+    $settings,
+    qr/<div id="compatibility-section">.*?<hr[^>]+class="sub-sep"[^>]*>.*?<\/div>.*?'compatibility-section': true/s,
+    'compatibility status and its separator fold together and default to expanded',
+);
+like(
+    $settings,
+    qr/string\("<code>bliss\.db<\/code>"\).*?string\("<code>learned_matrix\.json<\/code>"\)/s,
+    'compatibility resources are rendered in a fixed-width font',
 );
 like(
     $settings,

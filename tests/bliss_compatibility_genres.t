@@ -104,6 +104,7 @@ Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1);
 my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 
 ok($snapshot->{ready}, 'compatible optimizer and readable Bliss database are ready');
+ok($snapshot->{database_available}, 'the readable Bliss database is reported explicitly');
 ok($snapshot->{bliss_compatible}, 'original BlissMixer satisfies the required base version');
 ok($snapshot->{blissmixerlab_compatible}, 'BlissMixerLab is detected independently');
 is($snapshot->{matrix_provider}, 'BlissMixerLab', 'BlissMixerLab owns the learned matrix capability');
@@ -126,6 +127,7 @@ is($snapshot->{playcount_influence}, -40,
 unlink $matrix or die "Cannot remove $matrix: $!";
 my $without_matrix = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok($without_matrix->{ready}, 'a missing optional learned matrix does not block previews');
+ok(!$without_matrix->{matrix_available}, 'the missing learned matrix is reported explicitly');
 is($without_matrix->{personalization_state}, 'matrix_not_trained',
     'an enabled extension without training has a distinct state');
 is($without_matrix->{configured_learned_percent}, 20,

@@ -38,6 +38,14 @@ PLUGIN_BETTERCALLBLISS_BLISSMIXER_MISSING
 	EN	BlissMixer 0.10.0 or newer is required but is not enabled.
 	DE	BlissMixer 0.10.0 oder neuer ist erforderlich, aber nicht aktiviert.
 
+PLUGIN_BETTERCALLBLISS_DATABASE_OK
+	EN	The BlissMixer analysis database (%s) is available.
+	DE	Die BlissMixer-Analysedatenbank (%s) ist verfügbar.
+
+PLUGIN_BETTERCALLBLISS_DATABASE_MISSING
+	EN	No readable BlissMixer analysis database (%s) was found.
+	DE	Es wurde keine lesbare BlissMixer-Analysedatenbank (%s) gefunden.
+
 PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_OK
 	EN	Compatible installed BlissMixerLab version:
 	DE	Kompatible installierte BlissMixerLab-Version:
@@ -49,6 +57,14 @@ PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_INCOMPATIBLE
 PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_MISSING
 	EN	BlissMixerLab is not enabled. Learned personalization is optional.
 	DE	BlissMixerLab ist nicht aktiviert. Die gelernte Personalisierung ist optional.
+
+PLUGIN_BETTERCALLBLISS_MATRIX_OK
+	EN	The BlissMixerLab learned matrix (%s) is available.
+	DE	Die gelernte Matrix von BlissMixerLab (%s) ist verfügbar.
+
+PLUGIN_BETTERCALLBLISS_MATRIX_MISSING
+	EN	No BlissMixerLab learned matrix (%s) is available. Learned personalization is optional.
+	DE	Es ist keine gelernte Matrix von BlissMixerLab (%s) verfügbar. Die gelernte Personalisierung ist optional.
 
 PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX
 	EN	Default optimized-copy suffix

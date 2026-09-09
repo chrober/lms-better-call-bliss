@@ -19,13 +19,20 @@
 [% PROCESS settings/header.html %]
 
 [% WRAPPER settingSection %]
-  <h3>[% "PLUGIN_BETTERCALLBLISS_COMPATIBILITY_STATUS" | string %]</h3>
+  <b style="font-size:125%" id="compatibility-section-header" class="shown-section" onclick="toggleSection('compatibility-section')">[% "PLUGIN_BETTERCALLBLISS_COMPATIBILITY_STATUS" | string %]</b><br><br>
+  <div id="compatibility-section">
   [% IF bliss_compatibility.bliss_compatible %]
     <p style="color:#398439">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXER_OK" | string %] [% bliss_compatibility.bliss_version | html %].</p>
   [% ELSIF bliss_compatibility.bliss_enabled %]
     <p style="color:#c9302c">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXER_INCOMPATIBLE" | string %] [% bliss_compatibility.bliss_version | html %].</p>
   [% ELSE %]
     <p style="color:#c9302c">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXER_MISSING" | string %]</p>
+  [% END %]
+
+  [% IF bliss_compatibility.database_available %]
+    <p style="color:#398439">[% "PLUGIN_BETTERCALLBLISS_DATABASE_OK" | string("<code>bliss.db</code>") %]</p>
+  [% ELSE %]
+    <p style="color:#c9302c">[% "PLUGIN_BETTERCALLBLISS_DATABASE_MISSING" | string("<code>bliss.db</code>") %]</p>
   [% END %]
 
   [% IF bliss_compatibility.blissmixerlab_compatible %]
@@ -36,7 +43,13 @@
     <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_BLISSMIXERLAB_MISSING" | string %]</p>
   [% END %]
 
+  [% IF bliss_compatibility.matrix_available %]
+    <p style="color:#398439">[% "PLUGIN_BETTERCALLBLISS_MATRIX_OK" | string("<code>learned_matrix.json</code>") %]</p>
+  [% ELSE %]
+    <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_MATRIX_MISSING" | string("<code>learned_matrix.json</code>") %]</p>
+  [% END %]
   <br><hr style="opacity:0.4" class="sub-sep"><br>
+  </div>
 
   <b style="font-size:125%" id="job-defaults-section-header" class="shown-section" onclick="toggleSection('job-defaults-section')">Job defaults</b><br><br>
   <div id="job-defaults-section">
@@ -230,6 +243,7 @@
 
   window.addEventListener('load', function () {
     var defaults = {
+      'compatibility-section': true,
       'job-defaults-section': true,
       'route-section': false,
       'lastfm-section': false,

@@ -186,6 +186,7 @@ sub snapshot {
         personalization_state => $personalization_state,
         matrix_provider   => $matrix_available ? 'BlissMixerLab' : 'none',
         database          => $database,
+        database_available => -r $database ? 1 : 0,
         matrix            => $matrix,
         matrix_available  => $matrix_available,
         optimizer_binary  => $optimizer_binary,
