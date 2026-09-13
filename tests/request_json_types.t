@@ -68,10 +68,14 @@ BEGIN {
     our $algorithm = 'adaptive';
     our $additional_track_count = '1';
     our $bridge_target_track_count = '25';
+    our $target_track_count = '25';
+    our $max_added_tracks = '8';
+    our $addition_purpose = '';
     sub normalize {
         return {
             ordering_policy => 'preserve_order',
             extension_mode => $extension_mode,
+            addition_purpose => $addition_purpose,
             algorithm => $algorithm,
             seed_limit => '3',
             learned_percent => '20',
@@ -86,12 +90,12 @@ BEGIN {
             lastfm_enabled => 1,
             lastfm_track_guidance_percent => '75',
             lastfm_artist_guidance_percent => '75',
-            max_added_tracks => '8',
+            max_added_tracks => $max_added_tracks,
             trigger_percent => '70',
             gap_context_mode => 'frozen',
             additional_track_count => $additional_track_count,
             bridge_target_track_count => $bridge_target_track_count,
-            target_track_count => '25',
+            target_track_count => $target_track_count,
             route_length_policy => 'automatic',
             route_direct_caution => 'cautious',
             route_min_intermediates => '0',
@@ -219,13 +223,64 @@ like(
 
 $Plugins::BetterCallBliss::JobOptions::algorithm = 'static';
 $Plugins::BetterCallBliss::JobOptions::extension_mode = 'automatic';
+$Plugins::BetterCallBliss::JobOptions::max_added_tracks = '20';
+my $automatic_needs_spacing = eval {
+    Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+        7, 'preview-json-types-automatic-needs-spacing',
+        '/tmp/semantic-evidence.json', {},
+    );
+    1;
+};
+ok(!$automatic_needs_spacing,
+    'difficult-transition repair fails before optimizer launch when repeat spacing is needed');
+like($@, qr/Add spacing tracks as needed/s,
+    'difficult-transition repair points users to the dedicated spacing-track mode');
+
+$Plugins::BetterCallBliss::JobOptions::extension_mode = 'fixed_source_extension';
+$Plugins::BetterCallBliss::JobOptions::target_track_count = '11';
+my $extension_too_small = eval {
+    Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+        7, 'preview-json-types-extension-too-small',
+        '/tmp/semantic-evidence.json', {},
+    );
+    1;
+};
+ok(!$extension_too_small,
+    'fixed-source extension fails early when the chosen target cannot satisfy repeat windows');
+like($@, qr/final playlist of at least 12 tracks.*current request targets 11 tracks/s,
+    'fixed-source extension failure reports the chosen target and minimum feasible target');
+
+$Plugins::BetterCallBliss::JobOptions::extension_mode = 'fixed_source_extension';
+$Plugins::BetterCallBliss::JobOptions::addition_purpose = 'satisfy_constraints';
+$Plugins::BetterCallBliss::JobOptions::max_added_tracks = '20';
 my $static = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
-    7, 'preview-json-types-static', '/tmp/semantic-evidence.json', {},
+    7, 'preview-json-types-spacing', '/tmp/semantic-evidence.json', {},
 );
+is($static->{request}->{extension}->{mode}, 'fixed_source_extension',
+    'spacing-track repair uses fixed-source extension');
+is($static->{request}->{extension}->{target_track_count}, 18,
+    'spacing-track repair derives a routeable target from repeat windows and budget');
 ok(!exists $static->{request}->{extension}->{gap_context_mode},
-    'Static requests omit the Adaptive-only gap-context policy');
+    'Static spacing-track repair omits the Adaptive-only gap-context policy');
+
+$Plugins::BetterCallBliss::JobOptions::max_added_tracks = '4';
+my $spacing_too_small = eval {
+    Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+        7, 'preview-json-types-spacing-too-small',
+        '/tmp/semantic-evidence.json', {},
+    );
+    1;
+};
+ok(!$spacing_too_small,
+    'spacing-track repair fails before optimizer launch when the maximum is too small');
+like($@, qr/final playlist of at least 12 tracks.*current request targets 6 tracks/s,
+    'spacing-track repair failure reports the minimum feasible target');
+
 $Plugins::BetterCallBliss::JobOptions::algorithm = 'adaptive';
+$Plugins::BetterCallBliss::JobOptions::addition_purpose = '';
 $Plugins::BetterCallBliss::JobOptions::extension_mode = 'double_count';
+$Plugins::BetterCallBliss::JobOptions::max_added_tracks = '8';
+$Plugins::BetterCallBliss::JobOptions::target_track_count = '25';
 $Plugins::BetterCallBliss::JobOptions::additional_track_count = '1';
 $Plugins::BetterCallBliss::JobOptions::bridge_target_track_count = '25';
 my $double = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(

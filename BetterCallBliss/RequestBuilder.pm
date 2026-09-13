@@ -274,6 +274,81 @@ sub _track_bundle {
     return (\@source_tracks, \%labels, \%original_positions, \%track_urls);
 }
 
+sub _repeat_key {
+    my $value = shift;
+    return '' unless defined $value;
+    $value = lc "$value";
+    $value =~ s/^\s+|\s+$//g;
+    $value =~ s/\s+/ /g;
+    return $value;
+}
+
+sub _minimum_tracks_for_repeat_window {
+    my ($source_tracks, $field, $window) = @_;
+    return scalar @$source_tracks unless $window && $window > 0;
+    my %counts;
+    for my $track (@$source_tracks) {
+        my $key = _repeat_key($track->{$field});
+        next unless length $key;
+        $counts{$key}++;
+    }
+    my $minimum = scalar @$source_tracks;
+    for my $count (values %counts) {
+        next unless $count > 1;
+        my $needed = ($count - 1) * ($window + 1) + 1;
+        $minimum = $needed if $needed > $minimum;
+    }
+    return $minimum;
+}
+
+sub _minimum_repeat_safe_target {
+    my ($source_tracks, $options) = @_;
+    my $minimum = scalar @$source_tracks;
+    my $artist_minimum = _minimum_tracks_for_repeat_window(
+        $source_tracks, 'artist', $options->{artist_window},
+    );
+    my $album_minimum = _minimum_tracks_for_repeat_window(
+        $source_tracks, 'album', $options->{album_window},
+    );
+    $minimum = $artist_minimum if $artist_minimum > $minimum;
+    $minimum = $album_minimum if $album_minimum > $minimum;
+    return $minimum;
+}
+
+sub _automatic_repeat_safe_target {
+    my ($source_count, $minimum, $max_added_tracks) = @_;
+    my $maximum = $source_count + $max_added_tracks;
+    return $minimum if $minimum >= $maximum;
+
+    # The exact mathematical minimum often leaves the route search no freedom:
+    # e.g. four tracks by one artist with an artist window of five must occupy
+    # positions 1, 7, 13 and 19 in a 19-track result.  Spacing repair should
+    # therefore spend a bounded amount of the user's available budget on
+    # routeability slack.  Explicit target-size modes remain exact.
+    my $slack = int(($minimum + 3) / 4);
+    $slack = 6 if $slack < 6;
+    $slack = 12 if $slack > 12;
+
+    my $target = $minimum + $slack;
+    return $target > $maximum ? $maximum : $target;
+}
+
+sub _repeat_safe_target_error {
+    my ($source_count, $target, $minimum) = @_;
+    my $needed = $minimum - $source_count;
+    my $requested = $target - $source_count;
+    $requested = 0 if $requested < 0;
+    return 'The selected repeat windows need a final playlist of at least '
+        . $minimum . ' tracks for this source ('
+        . $needed
+        . ($needed == 1 ? ' additional track' : ' additional tracks')
+        . '), but the current request targets '
+        . $target . ' tracks ('
+        . $requested
+        . ($requested == 1 ? ' addition' : ' additions')
+        . '). Increase the chosen amount, use Add spacing tracks as needed with a large enough maximum, or relax the repeat windows.';
+}
+
 sub _build_sequence_request {
     my ($args) = @_;
     my $job_id = $args->{job_id};
@@ -316,6 +391,29 @@ sub _build_sequence_request {
     my $source_count = scalar @$source_tracks;
     my $internal_gap_count = $source_count - 1;
     my $endpoint_capacity = 2;
+    if (($options->{addition_purpose} || '') eq 'satisfy_constraints') {
+        my $minimum_repeat_safe_target = _minimum_repeat_safe_target(
+            $source_tracks, $options,
+        );
+        die 'The selected repeat windows are already feasible for this source; no spacing tracks are necessary. Use Reorder only or Improve difficult transitions instead.'
+            . chr(10)
+            if $minimum_repeat_safe_target <= $source_count;
+        my $needed = $minimum_repeat_safe_target - $source_count;
+        die _repeat_safe_target_error(
+                $source_count,
+                $source_count + $options->{max_added_tracks},
+                $minimum_repeat_safe_target,
+            )
+            . chr(10)
+            if $needed > $options->{max_added_tracks};
+        $options->{extension_mode} = 'fixed_source_extension';
+        $options->{target_track_count} = _automatic_repeat_safe_target(
+            $source_count,
+            $minimum_repeat_safe_target,
+            $options->{max_added_tracks},
+        );
+        $options->{constraint_spacing} = 1;
+    }
     if (($options->{addition_purpose} || '') eq 'extend_playlist') {
         if (($options->{addition_amount_mode} || '') eq 'target_count') {
             die 'Target track count must exceed the source playlist size'
@@ -335,6 +433,15 @@ sub _build_sequence_request {
         die 'Extend playlist target must exceed the source playlist size'
             if $options->{target_track_count} <= $source_count;
         $options->{extension_mode} = 'fixed_source_extension';
+    }
+    if ($options->{extension_mode} eq 'automatic') {
+        my $minimum_repeat_safe_target = _minimum_repeat_safe_target(
+            $source_tracks, $options,
+        );
+        if ($minimum_repeat_safe_target > $source_count) {
+            die 'The source tracks cannot satisfy the selected repeat windows without spacing tracks. Choose Add spacing tracks as needed, increase its maximum-additions budget if necessary, or relax the repeat windows.'
+                . chr(10);
+        }
     }
     my $exact_like_extension = $options->{extension_mode} eq 'exact_count'
         || $options->{extension_mode} eq 'target_count'
@@ -370,6 +477,16 @@ sub _build_sequence_request {
             if $options->{target_track_count} <= $source_count;
         die 'Extend playlist target must not exceed 500 tracks'
             if $options->{target_track_count} > 500;
+        my $minimum_repeat_safe_target = _minimum_repeat_safe_target(
+            $source_tracks, $options,
+        );
+        die _repeat_safe_target_error(
+                $source_count,
+                $options->{target_track_count},
+                $minimum_repeat_safe_target,
+            )
+            . chr(10)
+            if $options->{target_track_count} < $minimum_repeat_safe_target;
     }
 
     my $artifacts = {

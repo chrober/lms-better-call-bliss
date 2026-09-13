@@ -203,6 +203,8 @@ sub _job_mode_label {
     return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
     return 'Improve difficult transitions' if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
+    return 'Add spacing tracks as needed'
+        if $purpose eq 'satisfy_constraints';
     return 'Extend playlist' if $purpose eq 'extend_playlist'
         || ($options->{extension_mode} || '') eq 'fixed_source_extension';
     return 'Strict gap bridge placement';
@@ -456,7 +458,11 @@ sub _result_view {
             $view->{fixed_source_extension} = 1
                 if $job->{options}->{extension_mode} eq 'fixed_source_extension';
             $view->{extend_playlist_extension} = 1
-                if $job->{options}->{extension_mode} eq 'fixed_source_extension';
+                if $job->{options}->{extension_mode} eq 'fixed_source_extension'
+                    && ($job->{options}->{addition_purpose} || '') ne 'satisfy_constraints';
+            $view->{constraint_spacing_extension} = 1
+                if $job->{options}->{extension_mode} eq 'fixed_source_extension'
+                    && ($job->{options}->{addition_purpose} || '') eq 'satisfy_constraints';
             $view->{base_route_objective} = sprintf(
                 '%.3f', $artifact->{selected_route_objective},
             );

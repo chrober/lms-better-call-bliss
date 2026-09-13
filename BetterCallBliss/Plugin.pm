@@ -259,6 +259,8 @@ sub _job_mode_label {
     return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
     return 'Improve difficult transitions' if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
+    return 'Add spacing tracks as needed'
+        if $purpose eq 'satisfy_constraints';
     return 'Extend playlist' if $purpose eq 'extend_playlist'
         || ($options->{extension_mode} || '') eq 'fixed_source_extension';
     return 'Strict gap bridge placement';

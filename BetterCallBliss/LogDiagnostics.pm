@@ -19,8 +19,10 @@ sub _action_name {
         $job->{route_source},
     ) if $job->{route_to_track};
     my $mode = ($job->{options} || {})->{extension_mode} || 'none';
+    my $purpose = ($job->{options} || {})->{addition_purpose} || '';
     return 'Reorder playlist' if $mode eq 'none';
     return 'Improve difficult transitions' if $mode eq 'automatic';
+    return 'Add spacing tracks as needed' if $purpose eq 'satisfy_constraints';
     return 'Extend playlist';
 }
 
@@ -167,6 +169,8 @@ sub start_info_lines {
     my $mode = $options->{extension_mode} || 'none';
     my $addition = $mode eq 'none' ? 'none'
         : $mode eq 'automatic' ? 'improve difficult transitions'
+        : ($options->{addition_purpose} || '') eq 'satisfy_constraints'
+            ? 'add spacing tracks as needed'
         : $mode eq 'destination_route' ? sprintf(
             'destination route (%s, %d-%d intermediate tracks, %s effort, target %d%%%s)',
             $options->{route_length_policy} || 'automatic',

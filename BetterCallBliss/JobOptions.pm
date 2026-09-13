@@ -132,9 +132,10 @@ sub normalize {
         $options->{addition_purpose} = 'extend_playlist';
         $options->{addition_amount_mode} = 'target_count';
     }
-    die "Additional tracks must be No additions, Improve difficult transitions, or Extend playlist"
+    die "Additional tracks must be No additions, Improve difficult transitions, Add spacing tracks as needed, or Extend playlist"
         unless $options->{addition_purpose} eq 'none'
             || $options->{addition_purpose} eq 'automatic'
+            || $options->{addition_purpose} eq 'satisfy_constraints'
             || $options->{addition_purpose} eq 'extend_playlist';
     $options->{addition_amount_mode} = $input->{addition_amount_mode}
         if defined $input->{addition_amount_mode};
@@ -159,7 +160,8 @@ sub normalize {
         }
     }
     if ($addition_purpose_provided && !$destination_route) {
-        if ($options->{addition_purpose} eq 'extend_playlist') {
+        if ($options->{addition_purpose} eq 'extend_playlist'
+            || $options->{addition_purpose} eq 'satisfy_constraints') {
             $options->{extension_mode} = 'fixed_source_extension';
         } elsif ($options->{addition_purpose} eq 'automatic'
             || $options->{addition_purpose} eq 'none') {

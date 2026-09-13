@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 48;
+use Test::More tests => 50;
 
 BEGIN {
     package TestPrefs;
@@ -152,6 +152,18 @@ is($extend->{extension_mode}, 'fixed_source_extension',
     'extend playlist uses the native fixed-source extension');
 is($extend->{bridge_target_track_count}, 33,
     'target track count input is normalized to an integer');
+
+my $spacing = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {
+        addition_purpose => 'satisfy_constraints',
+        max_added_tracks => '42',
+    },
+);
+is($spacing->{extension_mode}, 'fixed_source_extension',
+    'spacing-track repair uses the native fixed-source extension');
+is($spacing->{max_added_tracks}, 42,
+    'spacing-track repair retains the maximum-additions budget');
 
 my $queue = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

@@ -10,6 +10,7 @@ This document describes the current implementation. **Working** means the choice
 | --- | --- | --- |
 | Smooth out a shuffled collection without adding songs | [Optimize source order](#reorder-existing-tracks-only) + Additional tracks: No additions | The same songs are rearranged; nothing is added or removed. |
 | Keep a carefully chosen order but soften awkward changes | [Preserve source order](#preserve-source-order-and-fill-gaps) + Additional tracks: Improve difficult transitions | Original songs stay in their current order; helpful songs may be inserted between them. |
+| Make repeat-window rules possible for a short or repetitive source | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + Additional tracks: [Add spacing tracks as needed](#add-spacing-tracks-as-needed) | Better Call Bliss adds suitable local songs, within the configured budget, so repeated artists or albums have room to satisfy the selected look-back windows. |
 | Make an existing playlist exactly N songs longer | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + Additional tracks: [Extend playlist](#extend-playlist) | Treat the current playlist as the thing to extend. Better Call Bliss adds the requested number of suitable local songs and then orders or places them according to the chosen source-order policy. |
 | Turn a tiny seed list into a full mix with the same general character | Additional tracks: [Extend playlist](#extend-playlist) + Chosen amount: Reach a final track count | Treat the input as examples of a desired sound. Better Call Bliss selects enough related local songs to reach the target size, then arranges originals and additions together. |
 | Get a different but still sensible result | [Increase Variation](#variation-and-reproducibility) | Search explores different good alternatives without relaxing its quality and repeat rules. |
@@ -22,7 +23,7 @@ This document describes the current implementation. **Working** means the choice
 Three job choices work together:
 
 1. **Source-track order** decides whether songs already in the playlist may move.
-2. **Additional tracks** asks for the listener-facing purpose: no additions, improve difficult transitions, or extend the source by a chosen amount. **Extend playlist** opens the second **Chosen amount** selector for exact additions, final track count, or double track count; **Reach a final track count** is also the replacement for the former separate target-size workflow.
+2. **Additional tracks** asks for the listener-facing purpose: no additions, improve difficult transitions, add spacing tracks as needed, or extend the source by a chosen amount. **Extend playlist** opens the second **Chosen amount** selector for exact additions, final track count, or double track count; **Reach a final track count** is also the replacement for the former separate target-size workflow.
 3. **Mixing strategy** supplies the similarity measurement used by those playlist operations. Better Call Bliss reuses this capability from BlissMixer; it is not the main feature being selected here.
 4. **Candidate library** limits every newly generated track to the selected Lyrion virtual library. Existing source, history, destination, waypoint, and queue-rejoin tracks remain valid anchors even when they are outside that view.
 
@@ -35,7 +36,8 @@ Three job choices work together:
 | [Optimize source order](#reorder-existing-tracks-only) | Working | The songs are right, but the order is not. | Existing songs may move; the membership stays the same unless an addition mode is also selected. |
 | [Preserve source order and fill gaps](#preserve-source-order-and-fill-gaps) | Working | The current order matters: chronology, story, album-like flow, or deliberate DJ arc. | Existing songs stay in their current order; additions can be placed around those anchors. |
 | [No additions / reorder existing tracks only](#reorder-existing-tracks-only) | Working | You want a cleaner sequence without changing the track list. | No new tracks are added; no source tracks are removed. |
-| [Improve difficult transitions](#add-automatically) | Working | The playlist mostly works, but a few handovers are awkward. | Adds zero or more bridge tracks only where the frozen source route has difficult transitions. |
+| [Improve difficult transitions](#add-automatically) | Working | The playlist mostly works, but a few handovers are awkward. | Adds zero or more bridge tracks only where the source route has difficult transitions. If the source set itself cannot satisfy repeat windows, use **Add spacing tracks as needed** instead. |
+| [Add spacing tracks as needed](#add-spacing-tracks-as-needed) | Working | The source contains repeated artists or albums too close together for the selected repeat windows. | Adds the required spacing membership plus a bounded routeability buffer, then routes or places the complete source-plus-addition set. It does not add optional bridges for merely awkward transitions. |
 | [Extend playlist](#extend-playlist) | Working | The playlist is already the thing you want, just too short. | Adds a chosen amount of local songs. Addition similarity is based on the complete original source set, not on one gap at a time; originals remain required members. |
 | [Bliss me there...](#bliss-me-there) | Working | You want to arrive at one selected local track or play a complete album after the queue, directly after the current song, or as an excursion before the existing upcoming queue. | The three sibling actions append, replace upcoming tracks, or insert a route through the destination and back to the first upcoming track. Albums remain intact in disc and track order. All actions use locked anchors and validate them before changing the queue. |
 | Add N bridge tracks per source transition | Planned | You want a strict "put the same number of bridges inside every existing gap" placement rule. | Future preset; different from Extend playlist because the number of additions is tied to each source transition. |
@@ -64,6 +66,7 @@ The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, free
 | --- | --- | --- | --- |
 | [Reorder only](#reorder-existing-tracks-only) | Only source tracks not yet placed in the proposed route | Up to N already placed source tracks immediately before the next position | There are no additions. Each placed source track becomes part of the context for the next position. |
 | [Improve difficult transitions](#add-automatically) | Eligible local analyzed library tracks | The local gap `A -> B`, including up to N preceding route tracks ending in A; the complete original source set supplies the frozen percentile scale and Last.fm artist fallback, not the primary acoustic target | The per-job Adaptive gap-context choice decides whether inserted tracks may recalculate feature weights inside a gap. A selected bridge still affects the context used for later gaps, but it does not turn the workflow into whole-playlist growth. |
+| [Add spacing tracks as needed](#add-spacing-tracks-as-needed) | Eligible local analyzed library tracks | Every original source track together as one fixed musical reference | No. Selected spacing tracks do not become new relevance seeds. They are used only to make the final route satisfy repeat windows and flow constraints. |
 | [Extend playlist](#extend-playlist) | Eligible local analyzed library tracks | Every original source track together as one fixed musical reference | No. All additions are selected against the unchanged original source set. They influence only the later placement or route search. |
 | [Bliss me there...](#bliss-me-there) | Eligible local analyzed library tracks | For a one-way route, the chosen start and destination entrance drive one acoustic shortlist. For **and back again**, the current song, destination exit, and first upcoming rejoin define a second gap-specific shortlist. A track destination has the same entrance and exit; an album uses its first and last tracks while every track between them remains fixed. For Adaptive, a bounded analyzed queue prefix ending at the start constructs the frozen per-run matrix; this context and all boundary anchors can also provide Last.fm and repeat evidence. | No. Intermediates are chosen from the frozen shortlist for their boundary. An outward path is carried into return-boundary evaluation, so uniqueness and repeat windows apply across the complete excursion, but chosen tracks do not recruit new candidates. |
 
@@ -82,7 +85,7 @@ Inside a diagram, `A -> B -> C` is a playlist or queue in playback order. `+X` m
 
 ## Understanding transition-quality percentiles
 
-Better Call Bliss uses the shared **Transition-quality threshold percentile** in two automatic workflows: **Improve difficult transitions** uses it to decide which existing playlist gaps deserve examination, while **Bliss me there... / Choose automatically** uses it as the neighboring-leg quality target for a destination route. The setting does not control **Reorder only**, **Extend playlist**, or the number of intermediates in an exact-count destination route.  
+Better Call Bliss uses the shared **Transition-quality threshold percentile** in two automatic workflows: **Improve difficult transitions** uses it to decide which existing playlist gaps deserve examination, while **Bliss me there... / Choose automatically** uses it as the neighboring-leg quality target for a destination route. The setting does not control **Reorder only**, **Add spacing tracks as needed**, **Extend playlist**, or the number of intermediates in an exact-count destination route.
 
 The percentage is a **rank of acoustic distance**, not “percent similar.” A result at the 30th percentile means that roughly 30% of the relevant comparison distances are smaller - acoustically closer - while roughly 70% are equal or larger. Lower values therefore mean a closer, stricter transition. Lowering the configured threshold moves the decision boundary left: more transitions are searched, and an automatically accepted result must clear a stricter boundary.  
 
@@ -309,15 +312,15 @@ For example, A -> B -> C can become A -> X -> B -> Y -> C, but never B -> A -> C
 
 #### Options for Preserve source order
 
-Preserve is an ordering policy used with **Improve difficult transitions** or **Extend playlist**. The chosen addition workflow supplies its remaining controls.
+Preserve is an ordering policy used with **Improve difficult transitions**, **Add spacing tracks as needed**, or **Extend playlist**. The chosen addition workflow supplies its remaining controls.
 
-Preserve does not define a candidate-discovery method by itself. It fixes the source route that another addition strategy sees. **Improve difficult transitions** therefore discovers candidates separately for the fixed gaps `A -> B`, `B -> C`, and so on. **Extend playlist** still discovers its complete added membership against all original source tracks together, then places only that already selected membership around the anchors.
+Preserve does not define a candidate-discovery method by itself. It fixes the source route that another addition strategy sees. **Improve difficult transitions** therefore discovers candidates separately for the fixed gaps `A -> B`, `B -> C`, and so on. **Add spacing tracks as needed** and **Extend playlist** discover complete added membership against all original source tracks together, then place only that already selected membership around the anchors.
 
 ~~~mermaid
 flowchart LR
     S["Source playlist<br/>A -> B -> C"] --> P["Preserve A, B and C<br/>as ordered anchors"]
     G["Improve:<br/>examine local gaps"] --> P
-    E["Extend:<br/>use all originals together"] --> P
+    S2["Spacing/Extend:<br/>use all originals together"] --> P
     P --> R["Possible result<br/>A -> +X -> B -> +Y -> C"]
 ~~~
 
@@ -337,7 +340,7 @@ flowchart LR
 
 The input sequence is used directly as the source route. It is scored but not searched. The final result must prove that filtering out every added song yields the exact original sequence.
 
-The source anchors must already satisfy the requested repeat windows. The current pre-check rejects an existing anchor conflict before trying insertions, even though a future implementation could attempt to separate those anchors with added tracks. Today such a job fails with a preserved-anchor conflict.
+For **Improve difficult transitions**, the source anchors must already satisfy the requested repeat windows because that workflow only repairs local awkward handovers. **Add spacing tracks as needed** is the preserved-order workflow that can insert enough songs around fixed anchors to make repeated artists or albums feasible.
 
 Additional route-search attempts have no effect because the anchors cannot move. Preserve plus **Reorder only** is rejected because it would leave the playlist unchanged.
 
@@ -372,11 +375,13 @@ flowchart LR
 
 In the current Extras UI this appears as **Improve difficult transitions when useful**.
 
-Better Call Bliss first decides the order of the original songs - or respects your order if you chose Preserve. It then listens to each handover and asks: "Is this one of the awkward changes, and can one extra song genuinely improve it?"
+Better Call Bliss decides the order of the original songs - or respects your order if you chose Preserve. It then listens to each handover and asks: "Is this one of the awkward changes, and can one extra song genuinely improve it?"
 
 The similarity base is local to the transition being repaired. Suppose the playlist contains A followed by B. A candidate C is used only if A -> C and C -> B both work, using the configured preceding context around that gap. It is not enough for C to resemble only A, only B, or the playlist in general. Last.fm guidance follows the same shape: similar-track evidence from A and B is strongest, endpoint artist evidence comes next, and the complete source artist pool is only a fallback when the local gap has no usable evidence.
 
-If the original transition is already fine, or no candidate improves it safely, nothing is inserted. Therefore **Add automatically** can correctly add zero songs. This mode improves difficult transitions; it is not yet the repeat-window spacer-repair mode that can insert several tracks solely to separate repeated artists or albums.
+If the original transition is already fine, or no candidate improves it safely, nothing is inserted. Therefore **Improve difficult transitions** can correctly add zero songs when transitions are acceptable.
+
+This workflow assumes the source set itself can satisfy the selected artist and album repeat windows. If a short playlist contains too many tracks by the same artist or album, use **Add spacing tracks as needed** instead. That separate workflow adds tracks for repeat-window feasibility rather than for local transition repair.
 
 #### Options for Add automatically
 
@@ -477,6 +482,29 @@ flowchart LR
     S["Whole source set<br/>scale and fallback only"] -.-> G
     G --> R["Possible result<br/>W -> X -> A -> +C -> B"]
 ~~~
+
+### Add spacing tracks as needed
+
+Use this when the source playlist is musically right but too short or too repetitive to obey the selected artist and album look-back windows. For example, four tracks by one artist cannot satisfy an artist look-back of five inside a tiny playlist unless enough other tracks are inserted between them.
+
+Better Call Bliss calculates the theoretical minimum final size required by the repeated source artists and albums. It then asks for a bounded routeability buffer when the configured **Maximum additional tracks** budget allows it, because the exact mathematical minimum can leave the route search with only one possible spacing pattern.
+
+The similarity base is the complete original source set, just like **Extend playlist**. Every original source track is retained exactly once and all originals together form one fixed acoustic relevance context while spacing additions are selected. Selected additions do not become new relevance seeds. They are used only to make the final source-plus-addition membership repeat-safe and routeable.
+
+This workflow does not inspect individual source gaps and does not use **Bridge trigger percentile**. It can still improve flow as part of the final complete-membership route, but it will not add optional bridges merely because one handover sounds awkward. Use **Improve difficult transitions** for that listener intent.
+
+#### Options for Add spacing tracks as needed
+
+| Option | Range / default | Effect in this workflow |
+| --- | --- | --- |
+| Source-track order | Optimize by default | Optimize may move originals and spacing tracks together. Preserve keeps originals as ordered anchors and places spacing tracks around them. |
+| Maximum additional tracks | 0-100; plugin default | Upper bound for the calculated spacing additions. If the repeat windows need more room than this, the preview fails before launching the optimizer and reports the minimum required final size. |
+| Musical context window | 1-50; inherited from BlissMixer | Controls contextual scoring during final route or placement. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Learned share for contexts with at least two tracks. |
+| Artist look-back | 0-10,000; inherited | Drives the spacing calculation and final proof. Zero disables artist spacing. |
+| Album look-back | 0-10,000; inherited | Drives the spacing calculation and final proof. Zero disables album spacing. |
+| Use Last.fm guidance | Inherited; optional | Supports ranking within the Bliss-qualified candidate pool. Failures transparently use Bliss alone. |
+| Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
 
 ### Extend playlist
 

@@ -12,6 +12,7 @@ The plugin owns the Lyrion user interface, settings, Last.fm integration, backgr
 
 - Reorders every song in a curated playlist or queue snapshot for better transition flow.
 - Adds bridges automatically only where a transition is difficult.
+- Adds spacing tracks as needed when repeated source artists or albums need more room to satisfy the selected repeat windows.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
 - Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm similar-track and similar-artist guidance, and per-job play-count guidance initialized from BlissMixer.

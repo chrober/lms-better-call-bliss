@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 87;
+use Test::More tests => 92;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -90,6 +90,31 @@ like(
     $extras,
     qr/setVisible\(gapContextModeRow, automatic && algorithm\.value === 'adaptive'\).*?gapContextMode\.disabled = false/s,
     'gap-context control is shown only when relevant but remains submitted so its value survives strategy changes',
+);
+like(
+    $extras,
+    qr/id="bea-submit-feedback".*?Preparing preview\.\.\..*?capturing the source and candidate library/s,
+    'Extras shows immediate feedback while synchronous preview preparation is still running',
+);
+like(
+    $extras,
+    qr/mainForm\.addEventListener\('submit'.*?hidden\.name = submitter\.name.*?submit\.value = 'Preparing preview\.\.\.'/s,
+    'submit handler preserves the clicked preview action before disabling the button',
+);
+like(
+    $extras,
+    qr/value="satisfy_constraints".*?Add spacing tracks as needed/s,
+    'Extras offers a dedicated spacing-track repair purpose',
+);
+like(
+    $extras,
+    qr/It does not inspect individual gaps for optional transition bridges/s,
+    'spacing-track repair copy distinguishes constraint repair from difficult-transition repair',
+);
+like(
+    $extras,
+    qr/setVisible\(triggerPercentRow, automatic\).*?setVisible\(gapContextModeRow, automatic && algorithm\.value === 'adaptive'\)/s,
+    'spacing-track repair hides gap-trigger controls that belong only to difficult-transition repair',
 );
 my $plugin_module = slurp(File::Spec->catfile($plugin, 'Plugin.pm'));
 my $defaults_module = slurp(File::Spec->catfile($plugin, 'Defaults.pm'));
