@@ -122,7 +122,7 @@ sub normalize_request_types {
         $request->{selection},
         qw(
             variation_percent generation_seed
-            lastfm_track_guidance_percent lastfm_artist_guidance_percent
+            recording_guidance_percent artist_guidance_percent
             playcount_influence
         ),
     );
@@ -315,24 +315,6 @@ sub _minimum_repeat_safe_target {
     return $minimum;
 }
 
-sub _automatic_repeat_safe_target {
-    my ($source_count, $minimum, $max_added_tracks) = @_;
-    my $maximum = $source_count + $max_added_tracks;
-    return $minimum if $minimum >= $maximum;
-
-    # The exact mathematical minimum often leaves the route search no freedom:
-    # e.g. four tracks by one artist with an artist window of five must occupy
-    # positions 1, 7, 13 and 19 in a 19-track result.  Spacing repair should
-    # therefore spend a bounded amount of the user's available budget on
-    # routeability slack.  Explicit target-size modes remain exact.
-    my $slack = int(($minimum + 3) / 4);
-    $slack = 6 if $slack < 6;
-    $slack = 12 if $slack > 12;
-
-    my $target = $minimum + $slack;
-    return $target > $maximum ? $maximum : $target;
-}
-
 sub _repeat_safe_target_error {
     my ($source_count, $target, $minimum) = @_;
     my $needed = $minimum - $source_count;
@@ -407,11 +389,7 @@ sub _build_sequence_request {
             . chr(10)
             if $needed > $options->{max_added_tracks};
         $options->{extension_mode} = 'fixed_source_extension';
-        $options->{target_track_count} = _automatic_repeat_safe_target(
-            $source_count,
-            $minimum_repeat_safe_target,
-            $options->{max_added_tracks},
-        );
+        $options->{target_track_count} = $minimum_repeat_safe_target;
         $options->{constraint_spacing} = 1;
     }
     if (($options->{addition_purpose} || '') eq 'extend_playlist') {
@@ -577,10 +555,10 @@ sub _build_sequence_request {
             ),
             playcount_influence => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{playcount_influence}) : 0,
-            lastfm_track_guidance_percent => $options->{lastfm_enabled}
+            recording_guidance_percent => $options->{lastfm_enabled}
                 && $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_track_guidance_percent}) : 0,
-            lastfm_artist_guidance_percent => $options->{lastfm_enabled}
+            artist_guidance_percent => $options->{lastfm_enabled}
                 && $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_artist_guidance_percent}) : 0,
         },
@@ -643,6 +621,9 @@ sub _build_sequence_request {
                 mode => 'fixed_source_extension',
                 shortlist_limit => _json_integer(256),
                 target_track_count => _json_integer($options->{target_track_count}),
+                (($options->{constraint_spacing} || 0) ? (
+                    max_added_tracks => _json_integer($options->{max_added_tracks}),
+                ) : ()),
             }
             : $options->{extension_mode} eq 'destination_route' ? {
                 mode => 'destination_route',

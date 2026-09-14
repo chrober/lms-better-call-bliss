@@ -182,6 +182,11 @@ sub start_info_lines {
                 ? ', ' . ($options->{route_direct_caution} || 'normal') . ' direct-transition caution' : '',
         ) : $mode;
     push @lines, "Job mode: $ordering; additional tracks: $addition.";
+    push @lines, sprintf(
+        'Spacing target: start at %d total tracks and grow only if needed, up to %d additions.',
+        0 + ($options->{target_track_count} || 0),
+        0 + ($options->{max_added_tracks} || 0),
+    ) if ($options->{addition_purpose} || '') eq 'satisfy_constraints';
     if ($mode eq 'none') {
         push @lines, 'Play-count guidance: not applied because this job adds no tracks.';
     } else {

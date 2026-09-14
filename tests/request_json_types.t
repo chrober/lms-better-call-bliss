@@ -165,10 +165,10 @@ unlike(
     qr/"shortlist_limit"\s*:\s*"256"/,
     'shortlist is never serialized as a JSON string',
 );
-is($request->{selection}->{lastfm_track_guidance_percent}, 75,
-    'track guidance is a JSON integer');
-is($request->{selection}->{lastfm_artist_guidance_percent}, 75,
-    'artist guidance is a JSON integer');
+is($request->{selection}->{recording_guidance_percent}, 75,
+    'recording guidance is a provider-neutral JSON integer');
+is($request->{selection}->{artist_guidance_percent}, 75,
+    'artist guidance is a provider-neutral JSON integer');
 is($request->{selection}->{playcount_influence}, -35,
     'signed play-count influence is a JSON integer');
 is($request->{scoring}->{captured_blissmixer_preferences}->{playcount_influence}, -35,
@@ -258,8 +258,10 @@ my $static = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
 );
 is($static->{request}->{extension}->{mode}, 'fixed_source_extension',
     'spacing-track repair uses fixed-source extension');
-is($static->{request}->{extension}->{target_track_count}, 18,
-    'spacing-track repair derives a routeable target from repeat windows and budget');
+is($static->{request}->{extension}->{target_track_count}, 12,
+    'spacing-track repair starts from the minimum repeat-safe target');
+is($static->{request}->{extension}->{max_added_tracks}, 20,
+    'spacing-track repair gives the optimizer the maximum additions budget for dynamic growth');
 ok(!exists $static->{request}->{extension}->{gap_context_mode},
     'Static spacing-track repair omits the Adaptive-only gap-context policy');
 

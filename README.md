@@ -6,7 +6,7 @@
 
 **Better Call Bliss** is a Lyrion Music Server plugin that turns a saved playlist or a current player queue snapshot into a smoother listening journey. It can reorder the existing songs, insert suitable bridge tracks, preserve the original order while filling its gaps, extend a short source list to a chosen length, or rebuild the upcoming part of a live queue. Every job is previewed before anything is saved or sent to a player, and artist, album, and track repeat rules remain hard constraints.
 
-The plugin owns the Lyrion user interface, settings, Last.fm integration, background jobs, result review, playlist persistence, and player-queue output. CPU-intensive acoustic scoring and route search are delegated to the network-free Rust engine [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer), which is bundled with supported plugin packages.
+The plugin owns the Lyrion user interface, settings, Last.fm integration, provider-to-library identity resolution, background jobs, result review, playlist persistence, and player-queue output. CPU-intensive acoustic scoring and route search are delegated to the network-free Rust engine [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer), which is bundled with supported plugin packages.
 
 ## What it does
 

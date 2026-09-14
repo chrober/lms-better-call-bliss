@@ -16,7 +16,7 @@ use Slim::Utils::Unicode;
 use URI::Escape qw(uri_unescape);
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
-use constant BUILDER_REVISION => 3;
+use constant BUILDER_REVISION => 4;
 my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
@@ -171,6 +171,26 @@ sub _load_cached_inventory {
             eq $membership_sha256;
     return $miss->('artifact_rows_invalid')
         unless ref($inventory->{allowed_row_ids}) eq 'ARRAY';
+    my $identity_path = $state->{identity_path} || '';
+    return $miss->('identity_path_invalid')
+        unless $identity_path
+            =~ /^\Q$inventory_root\E\/identities-[0-9a-f]{64}\.json$/;
+    return $miss->('identity_index_unreadable') unless -r $identity_path;
+    my $identity_bytes = eval { read_file($identity_path, binmode => ':raw') };
+    return $miss->('identity_index_read_failed') unless defined $identity_bytes;
+    return $miss->('identity_index_hash_mismatch')
+        unless sha256_hex($identity_bytes) eq ($state->{identity_sha256} || '');
+    my $identity_index = eval { _json()->decode($identity_bytes) };
+    return $miss->('identity_index_invalid')
+        unless ref($identity_index) eq 'HASH'
+            && ($identity_index->{schema_identity} || '')
+                eq 'bettercallbliss-candidate-identities-v1'
+            && ($identity_index->{database_cache_identity} || '')
+                eq $database_identity
+            && 0 + ($identity_index->{lms_scan_time} || 0) == $scan_time
+            && ($identity_index->{candidate_library_id} || '')
+                eq ($candidate_library->{id} || '')
+            && ref($identity_index->{candidates}) eq 'ARRAY';
     my $ledger = _load_ledger();
     my $status = {
         ready => 1,
@@ -201,6 +221,7 @@ sub _load_cached_inventory {
             schema_identity => 'lms-local-candidate-inventory-v1',
         },
         status => $status,
+        identities => $identity_index->{candidates},
     };
 }
 
@@ -309,16 +330,21 @@ sub prepare {
         return $cached_result;
     }
 
-    my (%lms_files, %candidate_files, %lms_files_folded, %ambiguous_folded);
+    my (%lms_files, %candidate_files, %lms_files_folded, %ambiguous_folded,
+        %lms_identity_for);
     my $lms_track_count = 0;
     my $candidate_library_track_count = 0;
     my $roots = $capability->{music_roots} || [];
     my $root_descriptors = _root_descriptors($roots);
     my $lms_sth = Slim::Schema->dbh->prepare(
-        'SELECT id, url, tracknum FROM tracks WHERE remote = 0 AND audio = 1'
+        'SELECT tracks.id, tracks.url, tracks.tracknum, tracks.musicbrainz_id, '
+        . 'contributors.musicbrainz_id FROM tracks '
+        . 'LEFT JOIN contributors ON contributors.id = tracks.primary_artist '
+        . 'WHERE tracks.remote = 0 AND tracks.audio = 1'
     );
     $lms_sth->execute;
-    while (my ($track_id, $url, $tracknum) = $lms_sth->fetchrow_array) {
+    while (my ($track_id, $url, $tracknum, $recording_mbid, $artist_mbid)
+        = $lms_sth->fetchrow_array) {
         my $database_file = _database_file_for_url(
             $url, $tracknum, $root_descriptors, $roots,
         );
@@ -327,6 +353,13 @@ sub prepare {
         if (!length($candidate_library->{id} || '')
             || $library_members->{0 + $track_id}) {
             $candidate_files{$database_file} = 1;
+            $lms_identity_for{$database_file} = {
+                lms_track_id => 0 + $track_id,
+                defined $recording_mbid && length $recording_mbid
+                    ? (recording_mbid => "$recording_mbid") : (),
+                defined $artist_mbid && length $artist_mbid
+                    ? (artist_mbid => "$artist_mbid") : (),
+            };
             $candidate_library_track_count++;
         }
         my $folded = lc($database_file);
@@ -356,7 +389,7 @@ sub prepare {
         . 'WHERE Ignore IS NOT 1 ORDER BY rowid'
     );
     $sth->execute;
-    my (@allowed, @unmatched);
+    my (@allowed, @candidate_identities, @unmatched);
     my $usable_count = 0;
     my $virtual_library_excluded_bliss_row_count = 0;
     while (my ($row_id, $file, $title, $artist, $album) = $sth->fetchrow_array) {
@@ -365,6 +398,18 @@ sub prepare {
         my $folded = defined $database_file ? lc($database_file) : '';
         if (defined $database_file && $candidate_files{$database_file}) {
             push @allowed, 0 + $row_id;
+            my $lms_identity = $lms_identity_for{$database_file} || {};
+            push @candidate_identities, {
+                candidate_id => 'bliss-row-' . (0 + $row_id),
+                row_id => 0 + $row_id,
+                lms_track_id => 0 + ($lms_identity->{lms_track_id} || 0),
+                title => defined $title ? $title : '',
+                artist => defined $artist ? $artist : '',
+                defined $lms_identity->{recording_mbid}
+                    ? (recording_mbid => $lms_identity->{recording_mbid}) : (),
+                defined $lms_identity->{artist_mbid}
+                    ? (artist_mbid => $lms_identity->{artist_mbid}) : (),
+            };
             next;
         }
         if (defined $database_file && $lms_files{$database_file}) {
@@ -408,6 +453,20 @@ sub prepare {
     my $sha256 = sha256_hex($bytes);
     my $path = $inventory_root . '/inventory-' . $sha256 . '.json';
     _write_atomic($path, $bytes) unless -r $path;
+    my $identity_index = {
+        schema_version => 1,
+        schema_identity => 'bettercallbliss-candidate-identities-v1',
+        generated_at => $now,
+        database_cache_identity => $database_identity,
+        lms_scan_time => $scan_time,
+        candidate_library_id => $candidate_library->{id} || '',
+        candidates => \@candidate_identities,
+    };
+    my $identity_bytes = _json()->encode($identity_index);
+    my $identity_sha256 = sha256_hex($identity_bytes);
+    my $identity_path =
+        $inventory_root . '/identities-' . $identity_sha256 . '.json';
+    _write_atomic($identity_path, $identity_bytes) unless -r $identity_path;
     my $summary = {
         database_cache_identity => $database_identity,
         lms_scan_time => $scan_time,
@@ -442,6 +501,7 @@ sub prepare {
             schema_identity => 'lms-local-candidate-inventory-v1',
         },
         status => $last_status,
+        identities => \@candidate_identities,
     };
     _write_atomic($state_path, _json()->encode({
         schema_version => 1,
@@ -456,6 +516,8 @@ sub prepare {
             $virtual_library_excluded_bliss_row_count,
         inventory_path => $path,
         inventory_sha256 => $sha256,
+        identity_path => $identity_path,
+        identity_sha256 => $identity_sha256,
     }));
     $log->info(
         'candidate_inventory stage=Ready'

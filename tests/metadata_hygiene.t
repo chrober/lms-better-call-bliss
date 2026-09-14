@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 92;
+use Test::More tests => 96;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -93,8 +93,8 @@ like(
 );
 like(
     $extras,
-    qr/id="bea-submit-feedback".*?Preparing preview\.\.\..*?capturing the source and candidate library/s,
-    'Extras shows immediate feedback while synchronous preview preparation is still running',
+    qr/id="bea-live-status-banner".*?id="bea-job-overview".*?function showStartingPreviewRow.*?sessionStorage\.setItem\('bettercallbliss_preview_started_ms'.*?bea-starting-duration.*?Preparing preview: capturing/s,
+    'Extras shows immediate preparation feedback in the live banner and the same job overview used by running jobs',
 );
 like(
     $extras,
@@ -108,7 +108,7 @@ like(
 );
 like(
     $extras,
-    qr/It does not inspect individual gaps for optional transition bridges/s,
+    qr/does not inspect individual gaps for optional transition bridges/,
     'spacing-track repair copy distinguishes constraint repair from difficult-transition repair',
 );
 like(
@@ -309,6 +309,11 @@ like(
     qr/my \$optimizer_supports_play_count_guidance\s*=\s*_optimizerSupportsPlayCountGuidance.*?BlissCompatibility::init\(.*?\$optimizer_supports_play_count_guidance/s,
     'plugin requires explicit optimizer support for play-count guidance',
 );
+like(
+    $plugin_module,
+    qr/my \$optimizer_supports_resolved_candidate_guidance\s*=\s*_optimizerSupportsResolvedCandidateGuidance.*?BlissCompatibility::init\(.*?\$optimizer_supports_resolved_candidate_guidance/s,
+    'plugin requires explicit optimizer support for caller-resolved candidate guidance',
+);
 my $compatibility = slurp(File::Spec->catfile($plugin, 'BlissCompatibility.pm'));
 like(
     $compatibility,
@@ -350,6 +355,27 @@ like(
     $request_builder,
     qr/selection\s*=>\s*\{.*?playcount_influence\s*=>\s*\$options->\{extension_mode\} ne 'none'/s,
     'the request applies the per-job play-count override only to track-adding jobs',
+);
+like(
+    $request_builder,
+    qr/recording_guidance_percent\s*=>.*?artist_guidance_percent\s*=>/s,
+    'the bridge request exposes provider-neutral recording and artist guidance strengths',
+);
+my $candidate_inventory_module = slurp(File::Spec->catfile(
+    $plugin, 'CandidateInventory.pm',
+));
+like(
+    $candidate_inventory_module,
+    qr/candidate_identities.*?recording_mbid.*?artist_mbid/s,
+    'the frozen local inventory carries the identities needed for provider resolution',
+);
+my $candidate_guidance = slurp(File::Spec->catfile(
+    $plugin, 'CandidateGuidance.pm',
+));
+like(
+    $jobs . $candidate_guidance,
+    qr/CandidateGuidance::resolve.*?resolved_candidate_id/s,
+    'Better Call Bliss resolves provider evidence to local candidate IDs before optimizer launch',
 );
 like(
     $extras,

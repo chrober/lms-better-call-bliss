@@ -371,7 +371,7 @@ After the final restart, `bettercallbliss status` reported `ready=1`, no compati
 problems, `ux_contract=extras-job-editor-v8`, and working mode
 `per-job-adaptive/optimize-or-preserve/none-auto-exact/create-copy`.
 
-The live Extras page enabled **Preserve source order and fill gaps [Working]**.
+The live Extras page enabled **Preserve source order and fill gaps**.
 The previously disabled option is selectable, route-search attempts remain
 irrelevant in this mode, and Preserve plus no possible additions is still
 blocked in the browser and rejected independently by the Perl validator.

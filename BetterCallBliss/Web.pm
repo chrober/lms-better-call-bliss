@@ -154,6 +154,7 @@ sub _form_from_params {
         lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback candidate_library_id
+        preview_job_id
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }

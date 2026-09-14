@@ -14,6 +14,7 @@ my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
 my $optimizer_supports_play_count_guidance;
+my $optimizer_supports_resolved_candidate_guidance;
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
 use constant MIN_BLISSMIXERLAB_VERSION => '0.5.0';
@@ -23,6 +24,7 @@ sub init {
     $optimizer_supports_genre_policy = shift ? 1 : 0;
     $optimizer_supports_candidate_library_scope = shift ? 1 : 0;
     $optimizer_supports_play_count_guidance = shift ? 1 : 0;
+    $optimizer_supports_resolved_candidate_guidance = shift ? 1 : 0;
 }
 
 sub _int_pref {
@@ -135,6 +137,10 @@ sub snapshot {
         'the installed bliss-playlist-optimizer does not support play-count guidance'
         if $optimizer_binary && -x $optimizer_binary
             && !$optimizer_supports_play_count_guidance;
+    push @problems,
+        'the installed bliss-playlist-optimizer does not support caller-resolved candidate guidance'
+        if $optimizer_binary && -x $optimizer_binary
+            && !$optimizer_supports_resolved_candidate_guidance;
     push @problems,
         'an LMS library scan is updating the catalog; preview will resume when it finishes'
         if $scanning;

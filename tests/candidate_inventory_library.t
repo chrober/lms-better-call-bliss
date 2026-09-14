@@ -54,17 +54,24 @@ $Slim::Schema::dbh = DBI->connect(
     "dbi:SQLite:dbname=$lms_path", '', '', {RaiseError => 1},
 );
 $Slim::Schema::dbh->do(
-    'CREATE TABLE tracks (id INTEGER PRIMARY KEY, url TEXT, tracknum INTEGER, remote INTEGER, audio INTEGER)'
+    'CREATE TABLE tracks (id INTEGER PRIMARY KEY, url TEXT, tracknum INTEGER, remote INTEGER, audio INTEGER, musicbrainz_id TEXT, primary_artist INTEGER)'
+);
+$Slim::Schema::dbh->do(
+    'CREATE TABLE contributors (id INTEGER PRIMARY KEY, musicbrainz_id TEXT)'
 );
 $Slim::Schema::dbh->do(
     'CREATE TABLE library_track (library TEXT, track INTEGER)'
 );
 $Slim::Schema::dbh->do(
-    q{INSERT INTO tracks VALUES (1, 'file:///music/allowed.flac', 1, 0, 1)}
+    q{INSERT INTO tracks VALUES (1, 'file:///music/allowed.flac', 1, 0, 1, '11111111-1111-4111-8111-111111111111', 10)}
 );
 $Slim::Schema::dbh->do(
-    q{INSERT INTO tracks VALUES (2, 'file:///music/outside.flac', 2, 0, 1)}
+    q{INSERT INTO tracks VALUES (2, 'file:///music/outside.flac', 2, 0, 1, NULL, 20)}
 );
+$Slim::Schema::dbh->do(
+    q{INSERT INTO contributors VALUES (10, '22222222-2222-4222-8222-222222222222')}
+);
+$Slim::Schema::dbh->do(q{INSERT INTO contributors VALUES (20, NULL)});
 $Slim::Schema::dbh->do(
     q{INSERT INTO library_track VALUES ('4d2ba37f', 1)}
 );
@@ -105,6 +112,29 @@ is($first->{status}->{unmatched_row_count}, 1,
     'a genuinely stale Bliss row remains in the non-LMS audit');
 is($first->{status}->{candidate_library_name}, 'All Music without Audiobooks',
     'the frozen candidate-library name is retained for UX and logs');
+is_deeply(
+    $first->{identities},
+    [{
+        candidate_id => 'bliss-row-1', row_id => 1, lms_track_id => 1,
+        title => 'Allowed', artist => 'A',
+        recording_mbid => '11111111-1111-4111-8111-111111111111',
+        artist_mbid => '22222222-2222-4222-8222-222222222222',
+    }],
+    'the cached inventory exposes local identities for plugin-side guidance resolution',
+);
+open my $inventory_fh, '<:raw', $first->{artifact}->{path}
+    or die "Cannot read $first->{artifact}->{path}: $!";
+my $inventory_payload = JSON::XS->new->decode(do { local $/; <$inventory_fh> });
+close $inventory_fh;
+ok(!exists $inventory_payload->{candidate_identities},
+    'the native allowlist stays compact and excludes the plugin-private identity index');
+my $cached = Plugins::BetterCallBliss::CandidateInventory::prepare(
+    $capability, 'bliss-fixture-v1', $library,
+);
+is($cached->{status}->{cache_state}, 'memory',
+    'unchanged candidate inventory is reused from memory');
+is_deeply($cached->{identities}, $first->{identities},
+    'a cache hit preserves the provider-resolution identity index');
 
 $Slim::Schema::dbh->do(
     q{INSERT INTO library_track VALUES ('4d2ba37f', 2)}

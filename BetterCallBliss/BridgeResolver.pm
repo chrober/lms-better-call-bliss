@@ -125,11 +125,26 @@ sub resolve_bridge_preview {
                 . $upper . '. No partial result was accepted.',
         );
     }
+    my $dynamic_spacing_extension = $mode eq 'fixed_source_extension'
+        && ($job->{options}->{constraint_spacing} || 0);
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-source extension preview omitted its target')
+        if $mode eq 'fixed_source_extension'
+            && !exists $preview->{target_track_count};
     _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-source extension preview changed the requested target')
         if $mode eq 'fixed_source_extension'
-            && (!exists $preview->{target_track_count}
-                || $preview->{target_track_count}
-                    != $job->{options}->{target_track_count});
+            && !$dynamic_spacing_extension
+            && $preview->{target_track_count}
+                != $job->{options}->{target_track_count};
+    if ($dynamic_spacing_extension) {
+        my $minimum_target = 0 + ($job->{options}->{target_track_count} || 0);
+        my $maximum_target = @{$job->{source_track_ids} || []}
+            + 0 + ($job->{options}->{max_added_tracks} || 0);
+        _fail(
+            'BRIDGE_ARTIFACT_INVALID',
+            'The spacing preview returned a target outside its configured range',
+        ) if $preview->{target_track_count} < $minimum_target
+            || $preview->{target_track_count} > $maximum_target;
+    }
     _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-source extension preview omitted its feasibility state')
         if $mode eq 'fixed_source_extension' && !exists $preview->{feasible};
     _fail('FIXED_SOURCE_EXTENSION_INFEASIBLE', 'The optimizer could not reach the requested target')
@@ -229,9 +244,20 @@ sub resolve_bridge_preview {
             unless @bridges == $job->{options}->{additional_track_count};
     } else {
         my $expected = $job->{options}->{target_track_count} - @source;
-        _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-source extension preview returned the wrong number of additions')
-            unless @bridges == $expected
-                && @final == $job->{options}->{target_track_count};
+        if ($dynamic_spacing_extension) {
+            my $maximum = $job->{options}->{max_added_tracks} || 0;
+            _fail('BRIDGE_ARTIFACT_INVALID', 'The spacing preview used too few additions')
+                if @bridges < $expected;
+            _fail('BRIDGE_ARTIFACT_INVALID', 'The spacing preview exceeded its additions budget')
+                if @bridges > $maximum;
+            _fail('BRIDGE_ARTIFACT_INVALID', 'The spacing preview target does not match its final sequence')
+                unless @final == $preview->{target_track_count}
+                    && @final == @source + @bridges;
+        } else {
+            _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-source extension preview returned the wrong number of additions')
+                unless @bridges == $expected
+                    && @final == $job->{options}->{target_track_count};
+        }
     }
 
     my %decision_for;

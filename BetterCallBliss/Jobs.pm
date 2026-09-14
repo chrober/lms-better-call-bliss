@@ -20,6 +20,7 @@ use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::CandidateGuidance;
 use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::LastFmEvidence;
@@ -34,6 +35,7 @@ my $server_prefs = preferences('server');
 my ($optimizer_binary, $job_root, $library_cache_root,
     $optimizer_supports_progress, $optimizer_supports_trusted_request);
 my %jobs;
+my %pre_start_cancels;
 my $serial = 0;
 
 sub init {
@@ -129,6 +131,13 @@ sub _extension_detail {
         . (0 + ($options->{target_track_count} || 0))
         . ' total tracks.'
         if $mode eq 'double_count';
+    return 'Additional tracks: add spacing tracks dynamically; start at '
+        . (0 + ($options->{target_track_count} || 0))
+        . ' total tracks and grow only if needed, up to '
+        . (0 + ($options->{max_added_tracks} || 0))
+        . ' additions.'
+        if $mode eq 'fixed_source_extension'
+            && ($options->{constraint_spacing} || 0);
     return 'Additional tracks: extend the playlist against the complete source '
         . 'set as the fixed reference.'
         if $mode eq 'fixed_source_extension';
@@ -400,8 +409,20 @@ sub _track_label {
     return "$artist - $title";
 }
 
+sub _valid_preview_job_id {
+    my $job_id = shift;
+    return defined $job_id
+        && $job_id =~ /\Apreview-\d+-[A-Za-z0-9_-]+\z/;
+}
+
 sub _new_job_context {
-    my $job_id = sprintf('preview-%d-%04d', int(time()), ++$serial);
+    my $requested_job_id = shift;
+    my $job_id;
+    if (_valid_preview_job_id($requested_job_id) && !$jobs{$requested_job_id}) {
+        $job_id = $requested_job_id;
+    } else {
+        $job_id = sprintf('preview-%d-%04d', int(time()), ++$serial);
+    }
     my $dir = $job_root . '/' . $job_id;
     make_path($dir);
     return ($job_id, $dir, $dir . '/semantic-evidence.json');
@@ -417,24 +438,6 @@ sub _start_preview_from_built {
     $built->{request}->{artifacts}->{database}->{cache_identity}
         = $database_identity;
     my $candidate_inventory;
-    if ($native_command eq 'bridge') {
-        $candidate_inventory = Plugins::BetterCallBliss::CandidateInventory::prepare(
-            $built->{capability}, $database_identity,
-            $built->{candidate_library},
-        );
-        $built->{request}->{artifacts}->{local_candidate_inventory}
-            = $candidate_inventory->{artifact};
-        if ($built->{options}->{playcount_influence}) {
-            my $playcounts =
-                Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts(
-                    $built->{capability}, $database_identity,
-                    $dir . '/play-counts.json',
-                );
-            $built->{request}->{artifacts}->{play_counts}
-                = $playcounts->{artifact};
-            $fields->{playcount_status} = $playcounts->{status};
-        }
-    }
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
     my $stderr_path = $dir . '/stderr.log';
@@ -468,8 +471,8 @@ sub _start_preview_from_built {
     $jobs{$job_id} = {
         id => $job_id,
         state => 'running',
-        stage => $lastfm_applies
-            ? 'Preparing Last.fm track and artist evidence' : 'Preparing request',
+        stage => $native_command eq 'bridge'
+            ? 'Preparing candidate library' : 'Preparing request',
         started_at => time(),
         playlist_id => 0 + ($fields->{playlist_id} || 0),
         playlist_title => $playlist_title,
@@ -511,8 +514,61 @@ sub _start_preview_from_built {
     )) {
         $jobs{$job_id}->{$key} = $fields->{$key} if exists $fields->{$key};
     }
+    if (delete $pre_start_cancels{$job_id}) {
+        _mark_cancelled($jobs{$job_id});
+        $log->info("job=$job_id stage=Cancelled pre_start=1");
+        return $jobs{$job_id};
+    }
 
     my $effective = $built->{options};
+    if ($native_command eq 'bridge') {
+        $jobs{$job_id}->{stage} = 'Capturing candidate library';
+        my $candidate_ok = eval {
+            $candidate_inventory =
+                Plugins::BetterCallBliss::CandidateInventory::prepare(
+                    $built->{capability}, $database_identity,
+                    $built->{candidate_library},
+                );
+            $built->{request}->{artifacts}->{local_candidate_inventory}
+                = $candidate_inventory->{artifact};
+            $jobs{$job_id}->{candidate_inventory}
+                = $candidate_inventory->{status};
+            if (($jobs{$job_id}->{state} || '') eq 'running'
+                && $built->{options}->{playcount_influence}) {
+                $jobs{$job_id}->{stage} = 'Preparing play-count guidance';
+                my $playcounts =
+                    Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts(
+                        $built->{capability}, $database_identity,
+                        $dir . '/play-counts.json',
+                    );
+                $built->{request}->{artifacts}->{play_counts}
+                    = $playcounts->{artifact};
+                $fields->{playcount_status} = $playcounts->{status};
+                $jobs{$job_id}->{playcount_status} = $fields->{playcount_status};
+            }
+            1;
+        };
+        unless ($candidate_ok) {
+            my $message = $@ || 'Could not capture candidate library';
+            $message =~ s/\s+/ /g;
+            my $job = $jobs{$job_id};
+            $job->{state} = 'failed';
+            $job->{stage} = 'Failed';
+            $job->{finished_at} = time();
+            $job->{error_code} = 'CANDIDATE_LIBRARY_FAILED';
+            $job->{error} = substr($message, 0, 400);
+            $job->{native_message} = $job->{error};
+            $log->error(
+                "job=$job_id stage=Failed code=CANDIDATE_LIBRARY_FAILED"
+                . " message=$job->{error}"
+            );
+            return $job;
+        }
+        return $jobs{$job_id}
+            unless ($jobs{$job_id}->{state} || '') eq 'running';
+    }
+    $jobs{$job_id}->{stage} = $lastfm_applies
+        ? 'Preparing Last.fm track and artist evidence' : 'Preparing request';
     my $initial_stage = $jobs{$job_id}->{stage};
     my $source_log = $fields->{source_log} || ('playlist_id=' . ($fields->{playlist_id} || 0));
     if (main::INFOLOG) {
@@ -583,6 +639,10 @@ sub _start_preview_from_built {
                 || $effective->{extension_mode} eq 'double_count')
             ? " target_tracks=$effective->{target_track_count}"
             : '')
+        . (($effective->{extension_mode} eq 'fixed_source_extension'
+                && ($effective->{constraint_spacing} || 0))
+            ? " dynamic_spacing_max_added=$effective->{max_added_tracks}"
+            : '')
         . " output_mode=$effective->{output_mode}"
         . ($effective->{output_mode} eq 'player_queue'
             ? " queue_player=$effective->{queue_player_id}"
@@ -626,13 +686,19 @@ sub _start_preview_from_built {
             $lastfm_applies, $lastfm_source_tracks, sub {
                 my $bundle = shift;
                 my $job = $jobs{$job_id} || return;
+                return unless ($job->{state} || '') eq 'running';
                 my $provider = ref($bundle->{providers}) eq 'ARRAY'
                     ? $bundle->{providers}->[0] : undef;
                 $job->{lastfm_state} = $provider
                     ? $provider->{state} : 'disabled'
                     if $lastfm_applies;
                 my $launch_ok = eval {
-                    _launch_optimizer($job, $built, $bundle);
+                    my ($resolved_bundle, $guidance_stats) =
+                        Plugins::BetterCallBliss::CandidateGuidance::resolve(
+                            $bundle, $candidate_inventory, {job_id => $job_id},
+                        );
+                    $job->{candidate_guidance} = $guidance_stats;
+                    _launch_optimizer($job, $built, $resolved_bundle);
                     1;
                 };
                 unless ($launch_ok) {
@@ -653,6 +719,7 @@ sub _start_preview_from_built {
             sub {
                 my $progress = shift || {};
                 my $job = $jobs{$job_id} || return;
+                return unless ($job->{state} || '') eq 'running';
                 my $total = 0 + ($progress->{total} || 0);
                 my $done = 0 + ($progress->{requests} || 0);
                 my $edges = 0 + ($progress->{edges} || 0);
@@ -675,6 +742,7 @@ sub _start_preview_from_built {
         my $message = $@ || 'Could not start Last.fm evidence preparation';
         $message =~ s/\s+/ /g;
         my $job = $jobs{$job_id};
+        return $job if ($job->{state} || '') ne 'running';
         $job->{lastfm_state} = 'failed';
         $log->warn(
             "job=$job_id Last.fm preparation failed; falling back to Bliss: "
@@ -713,10 +781,12 @@ sub _start_preview_from_built {
 
 sub start_reorder_preview {
     my ($playlist_id, $options) = @_;
+    $options ||= {};
     die "Optimizer binary is unavailable"
         unless $optimizer_binary && -x $optimizer_binary;
 
-    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    my ($job_id, $dir, $semantic_path) =
+        _new_job_context($options->{preview_job_id});
     my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
         $playlist_id, $job_id, $semantic_path, $options,
     );
@@ -728,10 +798,12 @@ sub start_reorder_preview {
 
 sub start_queue_preview {
     my ($player_id, $scope, $options) = @_;
+    $options ||= {};
     die "Optimizer binary is unavailable"
         unless $optimizer_binary && -x $optimizer_binary;
 
-    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    my ($job_id, $dir, $semantic_path) =
+        _new_job_context($options->{preview_job_id});
     my $built = Plugins::BetterCallBliss::RequestBuilder::build_queue_request(
         $player_id, $scope, $job_id, $semantic_path, $options,
     );
@@ -841,7 +913,8 @@ sub start_route_to_track_preview_deferred {
     die "Unknown Bliss me there route source"
         unless defined $route_source;
 
-    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    my ($job_id, $dir, $semantic_path) =
+        _new_job_context($route_options{preview_job_id});
     my $job = _create_deferred_route_job(
         $job_id, $route_source, $target_track_id, \%route_options,
     );
@@ -873,7 +946,9 @@ sub start_route_to_track_preview_deferred {
 
 sub start_route_to_track_preview {
     my ($player_id, $target_track_id, $options) = @_;
-    my ($job_id, $dir, $semantic_path) = _new_job_context();
+    $options ||= {};
+    my ($job_id, $dir, $semantic_path) =
+        _new_job_context($options->{preview_job_id});
     return _start_route_to_track_preview_in_context(
         $job_id, $dir, $semantic_path, $player_id, $target_track_id, $options,
     );
@@ -1325,11 +1400,36 @@ sub all {
     return sort { $b->{started_at} <=> $a->{started_at} } values %jobs;
 }
 
+sub _mark_cancelled {
+    my $job = shift;
+    return $job unless $job;
+    delete $job->{process};
+    $job->{state} = 'cancelled';
+    $job->{stage} = 'Cancelled';
+    $job->{finished_at} = time();
+    $job->{error_code} = 'CANCELLED';
+    $job->{error} = 'Preview cancelled by user. No playlist or player queue was changed.';
+    return $job;
+}
 
 sub cancel {
     my $job_id = shift;
     my $job = $jobs{$job_id};
-    die "JOB_NOT_FOUND: Preview job is no longer available\n" unless $job;
+    if (!$job) {
+        if (_valid_preview_job_id($job_id)) {
+            $pre_start_cancels{$job_id} = time();
+            return {
+                id => $job_id,
+                state => 'cancelled',
+                stage => 'Cancelled',
+                started_at => time(),
+                finished_at => time(),
+                error_code => 'CANCELLED',
+                error => 'Preview cancelled before the server-side job became available.',
+            };
+        }
+        die "JOB_NOT_FOUND: Preview job is no longer available\n";
+    }
     return $job unless ($job->{state} || '') eq 'running';
 
     if ($job->{process}) {
@@ -1342,12 +1442,7 @@ sub cancel {
         }
     }
 
-    delete $job->{process};
-    $job->{state} = 'cancelled';
-    $job->{stage} = 'Cancelled';
-    $job->{finished_at} = time();
-    $job->{error_code} = 'CANCELLED';
-    $job->{error} = 'Preview cancelled by user. No playlist or player queue was changed.';
+    _mark_cancelled($job);
     $log->info("job=$job_id stage=Cancelled");
     return $job;
 }
@@ -1601,6 +1696,7 @@ sub shutdown {
         }
     }
     %jobs = ();
+    %pre_start_cancels = ();
 }
 
 1;

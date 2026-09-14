@@ -77,6 +77,8 @@ sub initPlugin {
         _optimizerSupportsCandidateLibraryScope($optimizer_binary);
     my $optimizer_supports_play_count_guidance =
         _optimizerSupportsPlayCountGuidance($optimizer_binary);
+    my $optimizer_supports_resolved_candidate_guidance =
+        _optimizerSupportsResolvedCandidateGuidance($optimizer_binary);
     $optimizer_supports_destination_blocks =
         _optimizerSupportsDestinationBlocks($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
@@ -84,6 +86,7 @@ sub initPlugin {
         $optimizer_supports_genre_policy,
         $optimizer_supports_candidate_library_scope,
         $optimizer_supports_play_count_guidance,
+        $optimizer_supports_resolved_candidate_guidance,
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -126,6 +129,8 @@ sub initPlugin {
         . ($optimizer_supports_candidate_library_scope ? 'supported' : 'unsupported')
         . ' play_count_guidance='
         . ($optimizer_supports_play_count_guidance ? 'supported' : 'unsupported')
+        . ' resolved_candidate_guidance='
+        . ($optimizer_supports_resolved_candidate_guidance ? 'supported' : 'unsupported')
         . ' destination_blocks='
         . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
     return 1;
@@ -169,6 +174,12 @@ sub _optimizerSupportsPlayCountGuidance {
     my $binary = shift;
     my $output = _optimizerVersionOutput($binary);
     return $output =~ /"play_count_guidance"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerSupportsResolvedCandidateGuidance {
+    my $binary = shift;
+    my $output = _optimizerVersionOutput($binary);
+    return $output =~ /"resolved_candidate_guidance"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerSupportsDestinationBlocks {
