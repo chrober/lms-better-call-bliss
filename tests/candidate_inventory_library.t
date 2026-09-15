@@ -41,6 +41,11 @@ BEGIN {
     sub utf8decode_locale { return $_[0] }
     sub utf8encode_locale { return $_[0] }
     $INC{'Slim/Utils/Unicode.pm'} = __FILE__;
+
+    package Slim::Utils::Timers;
+    our @pending;
+    sub setTimer { push @pending, $_[2] }
+    $INC{'Slim/Utils/Timers.pm'} = __FILE__;
 }
 
 use lib "$FindBin::Bin/..";
@@ -128,6 +133,19 @@ my $inventory_payload = JSON::XS->new->decode(do { local $/; <$inventory_fh> });
 close $inventory_fh;
 ok(!exists $inventory_payload->{candidate_identities},
     'the native allowlist stays compact and excludes the plugin-private identity index');
+ok(-r $first->{identity_lookup_path},
+    'candidate identities are persisted as an indexed sidecar');
+my $identity_lookup = DBI->connect(
+    'dbi:SQLite:dbname=' . $first->{identity_lookup_path}, '', '',
+    {RaiseError => 1},
+);
+is($identity_lookup->selectrow_array(
+    'SELECT COUNT(1) FROM candidate_identity'
+), 1, 'the identity sidecar indexes every eligible candidate');
+is($identity_lookup->selectrow_array(
+    'SELECT recording_artist FROM candidate_identity LIMIT 1'
+), 'a', 'the identity sidecar stores normalized lookup keys');
+$identity_lookup->disconnect;
 my $cached = Plugins::BetterCallBliss::CandidateInventory::prepare(
     $capability, 'bliss-fixture-v1', $library,
 );
@@ -135,6 +153,17 @@ is($cached->{status}->{cache_state}, 'memory',
     'unchanged candidate inventory is reused from memory');
 is_deeply($cached->{identities}, $first->{identities},
     'a cache hit preserves the provider-resolution identity index');
+
+Plugins::BetterCallBliss::CandidateInventory::init($root);
+my $disk_cached = Plugins::BetterCallBliss::CandidateInventory::prepare(
+    $capability, 'bliss-fixture-v1', $library,
+);
+is($disk_cached->{status}->{cache_state}, 'hit',
+    'a simulated LMS restart reuses the persisted inventory');
+is_deeply($disk_cached->{identities}, [],
+    'a persisted cache hit avoids decoding the large legacy identity JSON');
+is($disk_cached->{identity_lookup_path}, $first->{identity_lookup_path},
+    'a persisted cache hit exposes the indexed identity sidecar');
 
 $Slim::Schema::dbh->do(
     q{INSERT INTO library_track VALUES ('4d2ba37f', 2)}
@@ -171,6 +200,39 @@ is_deeply(
     [7, undef],
     'known and unknown play counts retain distinct JSON values',
 );
+
+my ($async_playcounts, $async_error);
+my $async_playcount_path = File::Spec->catfile(
+    $root, 'play-counts-async.json',
+);
+Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts_async(
+    {%$capability, statistics_enabled => 1},
+    'bliss-fixture-v1',
+    $async_playcount_path,
+    sub { ($async_playcounts, $async_error) = @_ },
+);
+while (my $callback = shift @Slim::Utils::Timers::pending) {
+    $callback->();
+}
+is($async_error, undef, 'asynchronous play-count capture succeeds');
+is_deeply($async_playcounts->{status}, $playcounts->{status},
+    'asynchronous play-count capture produces the synchronous statistics');
+ok(-f $async_playcount_path,
+    'asynchronous play-count capture publishes its artifact');
+
+my $cancelled_playcount_callback_ran = 0;
+Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts_async(
+    {%$capability, statistics_enabled => 1},
+    'bliss-fixture-v1',
+    File::Spec->catfile($root, 'cancelled-play-counts.json'),
+    sub { $cancelled_playcount_callback_ran = 1 },
+    sub { 0 },
+);
+while (my $callback = shift @Slim::Utils::Timers::pending) {
+    $callback->();
+}
+ok(!$cancelled_playcount_callback_ran,
+    'cancelled play-count capture stops without completing stale work');
 
 $Slim::Schema::dbh->disconnect;
 done_testing();

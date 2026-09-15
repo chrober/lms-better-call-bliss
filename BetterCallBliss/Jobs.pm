@@ -37,6 +37,48 @@ my ($optimizer_binary, $job_root, $library_cache_root,
 my %jobs;
 my %pre_start_cancels;
 my $serial = 0;
+my $last_web_activity = 0;
+my @pending_web_preparations;
+
+use constant DEFERRED_WEB_PREPARATION_DELAY => 0.5;
+use constant WEB_RESPONSE_GRACE => 2;
+
+sub note_web_activity {
+    $last_web_activity = time();
+}
+
+sub _schedule_web_preparation {
+    my $callback = shift;
+    my $runner;
+    $runner = sub {
+        my $idle_for = time() - ($last_web_activity || 0);
+        if ($idle_for < WEB_RESPONSE_GRACE) {
+            Slim::Utils::Timers::setTimer(
+                undef,
+                time() + (WEB_RESPONSE_GRACE - $idle_for),
+                $runner,
+            );
+            return;
+        }
+        my $work = $callback;
+        $runner = undef;
+        $work->();
+    };
+    Slim::Utils::Timers::setTimer(
+        undef, time() + DEFERRED_WEB_PREPARATION_DELAY, $runner,
+    );
+}
+
+sub _defer_web_preparation {
+    my $callback = shift;
+    push @pending_web_preparations, $callback;
+}
+
+sub finish_web_response {
+    note_web_activity();
+    my @ready = splice @pending_web_preparations;
+    _schedule_web_preparation($_) for @ready;
+}
 
 sub init {
     $optimizer_binary = shift;
@@ -184,6 +226,12 @@ sub _running_phase_detail {
     my $native = _native_progress_detail($job);
     return $native if $native;
     if (!$job->{process}) {
+        my $stage = $job->{stage} || '';
+        return 'Status: ' . $stage . '.'
+            if $stage eq 'Preparing source and candidate library'
+                || $stage eq 'Capturing candidate library'
+                || $stage eq 'Preparing play-count guidance'
+                || $stage eq 'Matching Last.fm guidance to candidate library';
         if (($job->{lastfm_state} || '') eq 'preparing') {
             return 'Status: ' . $job->{lastfm_progress_message}
                 if length($job->{lastfm_progress_message} || '');
@@ -428,9 +476,54 @@ sub _new_job_context {
     return ($job_id, $dir, $dir . '/semantic-evidence.json');
 }
 
+sub _resolve_guidance_and_launch {
+    my ($job_id, $built, $bundle, $candidate_inventory) = @_;
+    my $job = $jobs{$job_id} || return;
+    return unless ($job->{state} || '') eq 'running';
+    $job->{stage} = 'Matching Last.fm guidance to candidate library'
+        if $built->{options}->{lastfm_enabled}
+            && $built->{options}->{extension_mode} ne 'none';
+    Plugins::BetterCallBliss::CandidateGuidance::resolve_async(
+        $bundle, $candidate_inventory, {
+            job_id => $job_id,
+            should_continue => sub {
+                my $current = $jobs{$job_id};
+                return $current && ($current->{state} || '') eq 'running';
+            },
+        },
+        sub {
+            my ($resolved_bundle, $guidance_stats, $error) = @_;
+            my $current = $jobs{$job_id} || return;
+            return unless ($current->{state} || '') eq 'running';
+            if ($error || !$resolved_bundle) {
+                _fail_deferred_route_job(
+                    $job_id,
+                    $error || 'Could not match guidance to the candidate library',
+                    'CANDIDATE_GUIDANCE_FAILED',
+                );
+                return;
+            }
+            $current->{candidate_guidance} = $guidance_stats;
+            my $launch_ok = eval {
+                _launch_optimizer($current, $built, $resolved_bundle);
+                1;
+            };
+            _fail_deferred_route_job(
+                $job_id, $@ || 'Could not prepare optimizer request',
+                'OPTIMIZER_LAUNCH_FAILED',
+            ) unless $launch_ok;
+        },
+    );
+}
+
 sub _start_preview_from_built {
     my ($job_id, $dir, $semantic_path, $built, $fields) = @_;
     $fields ||= {};
+    my $existing_job = $jobs{$job_id};
+    return $existing_job
+        if $existing_job && ($existing_job->{state} || '') ne 'running';
+    my $started_at = $existing_job && $existing_job->{started_at}
+        ? $existing_job->{started_at} : time();
     my $native_command = $built->{options}->{extension_mode} ne 'none'
         ? 'bridge' : 'route';
     my $database_identity = _file_identity($built->{capability}->{database});
@@ -473,7 +566,7 @@ sub _start_preview_from_built {
         state => 'running',
         stage => $native_command eq 'bridge'
             ? 'Preparing candidate library' : 'Preparing request',
-        started_at => time(),
+        started_at => $started_at,
         playlist_id => 0 + ($fields->{playlist_id} || 0),
         playlist_title => $playlist_title,
         track_count => scalar @{$built->{request}->{source_tracks}},
@@ -533,19 +626,6 @@ sub _start_preview_from_built {
                 = $candidate_inventory->{artifact};
             $jobs{$job_id}->{candidate_inventory}
                 = $candidate_inventory->{status};
-            if (($jobs{$job_id}->{state} || '') eq 'running'
-                && $built->{options}->{playcount_influence}) {
-                $jobs{$job_id}->{stage} = 'Preparing play-count guidance';
-                my $playcounts =
-                    Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts(
-                        $built->{capability}, $database_identity,
-                        $dir . '/play-counts.json',
-                    );
-                $built->{request}->{artifacts}->{play_counts}
-                    = $playcounts->{artifact};
-                $fields->{playcount_status} = $playcounts->{status};
-                $jobs{$job_id}->{playcount_status} = $fields->{playcount_status};
-            }
             1;
         };
         unless ($candidate_ok) {
@@ -566,6 +646,55 @@ sub _start_preview_from_built {
         }
         return $jobs{$job_id}
             unless ($jobs{$job_id}->{state} || '') eq 'running';
+        if ($built->{options}->{playcount_influence}
+            && !$fields->{playcount_prepared}) {
+            $jobs{$job_id}->{stage} = 'Preparing play-count guidance';
+            my $async_ok = eval {
+                Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts_async(
+                    $built->{capability}, $database_identity,
+                    $dir . '/play-counts.json',
+                    sub {
+                        my ($playcounts, $error) = @_;
+                        my $job = $jobs{$job_id} || return;
+                        return unless ($job->{state} || '') eq 'running';
+                        if ($error || !$playcounts) {
+                            _fail_deferred_route_job(
+                                $job_id,
+                                $error || 'Could not capture play-count guidance',
+                                'PLAYCOUNT_PREPARATION_FAILED',
+                            );
+                            return;
+                        }
+                        $built->{request}->{artifacts}->{play_counts}
+                            = $playcounts->{artifact};
+                        $fields->{playcount_status} = $playcounts->{status};
+                        $fields->{playcount_prepared} = 1;
+                        $job->{playcount_status} = $fields->{playcount_status};
+                        my $continued = eval {
+                            _start_preview_from_built(
+                                $job_id, $dir, $semantic_path, $built, $fields,
+                            );
+                            1;
+                        };
+                        _fail_deferred_route_job(
+                            $job_id, $@, 'PREVIEW_START_FAILED',
+                        ) unless $continued;
+                    },
+                    sub {
+                        my $current = $jobs{$job_id};
+                        return $current
+                            && ($current->{state} || '') eq 'running';
+                    },
+                );
+                1;
+            };
+            unless ($async_ok) {
+                _fail_deferred_route_job(
+                    $job_id, $@, 'PLAYCOUNT_PREPARATION_FAILED',
+                );
+            }
+            return $jobs{$job_id};
+        }
     }
     $jobs{$job_id}->{stage} = $lastfm_applies
         ? 'Preparing Last.fm track and artist evidence' : 'Preparing request';
@@ -693,28 +822,15 @@ sub _start_preview_from_built {
                     ? $provider->{state} : 'disabled'
                     if $lastfm_applies;
                 my $launch_ok = eval {
-                    my ($resolved_bundle, $guidance_stats) =
-                        Plugins::BetterCallBliss::CandidateGuidance::resolve(
-                            $bundle, $candidate_inventory, {job_id => $job_id},
-                        );
-                    $job->{candidate_guidance} = $guidance_stats;
-                    _launch_optimizer($job, $built, $resolved_bundle);
+                    _resolve_guidance_and_launch(
+                        $job_id, $built, $bundle, $candidate_inventory,
+                    );
                     1;
                 };
-                unless ($launch_ok) {
-                    my $message = $@ || 'Could not prepare optimizer request';
-                    $message =~ s/\s+/ /g;
-                    $job->{state} = 'failed';
-                    $job->{stage} = 'Failed';
-                    $job->{finished_at} = time();
-                    $job->{error_code} = 'OPTIMIZER_LAUNCH_FAILED';
-                    $job->{error} = substr($message, 0, 400);
-                    $job->{native_message} = $job->{error};
-                    $log->error(
-                        "job=$job_id stage=Failed code=OPTIMIZER_LAUNCH_FAILED"
-                        . " message=$job->{error}"
-                    );
-                }
+                _fail_deferred_route_job(
+                    $job_id, $@ || 'Could not prepare optimizer request',
+                    'OPTIMIZER_LAUNCH_FAILED',
+                ) unless $launch_ok;
             },
             sub {
                 my $progress = shift || {};
@@ -763,75 +879,19 @@ sub _start_preview_from_built {
             edges => [],
         };
         my $launch_ok = eval {
-            _launch_optimizer($job, $built, $fallback);
+            _resolve_guidance_and_launch(
+                $job_id, $built, $fallback, $candidate_inventory,
+            );
             1;
         };
-        unless ($launch_ok) {
-            my $launch_message = $@ || 'Could not prepare optimizer request';
-            $launch_message =~ s/\s+/ /g;
-            $job->{state} = 'failed';
-            $job->{stage} = 'Failed';
-            $job->{finished_at} = time();
-            $job->{error_code} = 'OPTIMIZER_LAUNCH_FAILED';
-            $job->{error} = substr($launch_message, 0, 400);
-        }
+        _fail_deferred_route_job(
+            $job_id, $@ || 'Could not prepare optimizer request',
+            'OPTIMIZER_LAUNCH_FAILED',
+        ) unless $launch_ok;
     }
     return $jobs{$job_id};
 }
 
-sub start_reorder_preview {
-    my ($playlist_id, $options) = @_;
-    $options ||= {};
-    die "Optimizer binary is unavailable"
-        unless $optimizer_binary && -x $optimizer_binary;
-
-    my ($job_id, $dir, $semantic_path) =
-        _new_job_context($options->{preview_job_id});
-    my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
-        $playlist_id, $job_id, $semantic_path, $options,
-    );
-    return _start_preview_from_built(
-        $job_id, $dir, $semantic_path, $built,
-        {playlist_id => 0 + $playlist_id},
-    );
-}
-
-sub start_queue_preview {
-    my ($player_id, $scope, $options) = @_;
-    $options ||= {};
-    die "Optimizer binary is unavailable"
-        unless $optimizer_binary && -x $optimizer_binary;
-
-    my ($job_id, $dir, $semantic_path) =
-        _new_job_context($options->{preview_job_id});
-    my $built = Plugins::BetterCallBliss::RequestBuilder::build_queue_request(
-        $player_id, $scope, $job_id, $semantic_path, $options,
-    );
-    my $snapshot = $built->{queue_snapshot} || {};
-    return _start_preview_from_built(
-        $job_id, $dir, $semantic_path, $built,
-        {
-            playlist_id => 0,
-            playlist_title => $built->{playlist_title},
-            source_log => 'player_queue player=' . ($snapshot->{player_id} || $player_id)
-                . ' scope=' . ($snapshot->{scope} || $scope || 'full')
-                . ' captured_tracks=' . scalar(@{$built->{request}->{source_tracks} || []})
-                . ' queue_count=' . (0 + ($snapshot->{queue_count} || 0))
-                . ' current_index=' . (0 + ($snapshot->{current_index} || 0))
-                . ' active=' . (($snapshot->{active} || 0) ? 1 : 0),
-            source_mode => 'player_queue',
-            source_player_id => $snapshot->{player_id} || $player_id,
-            source_player_name => $snapshot->{player_name} || $player_id,
-            source_queue_scope => $snapshot->{scope} || $scope || 'full',
-            source_queue_count => 0 + ($snapshot->{queue_count} || 0),
-            source_queue_current_index => 0 + ($snapshot->{current_index} || 0),
-            source_queue_start_index => 0 + ($snapshot->{start_index} || 0),
-            source_queue_active => ($snapshot->{active} || 0) ? 1 : 0,
-            source_queue_track_urls => $snapshot->{track_urls} || [],
-            source_queue_current_url => $snapshot->{current_url},
-        },
-    );
-}
 sub _fail_deferred_route_job {
     my ($job_id, $message, $code) = @_;
     my $job = $jobs{$job_id} || return;
@@ -848,6 +908,144 @@ sub _fail_deferred_route_job {
         "job=$job_id stage=Failed code=$job->{error_code}"
         . " message=$job->{error}"
     );
+}
+
+sub _create_deferred_sequence_job {
+    my ($job_id, $title, $track_count, $options, $fields) = @_;
+    $options ||= {};
+    $fields ||= {};
+    my %display_options = %$options;
+    $display_options{ordering_policy} ||= 'optimize_order';
+    $display_options{extension_mode} ||= 'none';
+    $display_options{addition_purpose} ||= $display_options{extension_mode};
+    $jobs{$job_id} = {
+        id => $job_id,
+        state => 'running',
+        stage => 'Preparing source and candidate library',
+        started_at => time(),
+        playlist_id => 0 + ($fields->{playlist_id} || 0),
+        playlist_title => $title,
+        track_count => 0 + ($track_count || 0),
+        source_track_ids => [],
+        history_track_ids => [],
+        labels => {},
+        original_positions => {},
+        track_urls => {},
+        capability => {},
+        options => \%display_options,
+        lastfm_state => $display_options{lastfm_enabled}
+            ? 'preparing' : 'disabled',
+        native_command => $display_options{extension_mode} ne 'none'
+            ? 'bridge' : 'route',
+        %$fields,
+    };
+    return $jobs{$job_id};
+}
+
+sub start_reorder_preview {
+    my ($playlist_id, $options) = @_;
+    $options ||= {};
+    die "Optimizer binary is unavailable"
+        unless $optimizer_binary && -x $optimizer_binary;
+
+    my $playlist = Slim::Schema->find('Playlist', $playlist_id);
+    die "Saved playlist not found" unless $playlist && $playlist->can('tracks');
+    my $track_count = eval { $playlist->tracks->count } || 0;
+    die "At least two local tracks are required" unless $track_count >= 2;
+    my ($job_id, $dir, $semantic_path) =
+        _new_job_context($options->{preview_job_id});
+    my $job = _create_deferred_sequence_job(
+        $job_id, _playlist_title($playlist), $track_count, $options,
+        {playlist_id => 0 + $playlist_id, source_mode => 'saved_playlist'},
+    );
+    _defer_web_preparation(
+        sub {
+            my $current = $jobs{$job_id};
+            return unless $current && ($current->{state} || '') eq 'running';
+            my $ok = eval {
+                my $built =
+                    Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+                        $playlist_id, $job_id, $semantic_path, $options,
+                    );
+                _start_preview_from_built(
+                    $job_id, $dir, $semantic_path, $built,
+                    {playlist_id => 0 + $playlist_id},
+                );
+                1;
+            };
+            _fail_deferred_route_job($job_id, $@, 'PREVIEW_START_FAILED')
+                unless $ok;
+        },
+    );
+    return $job;
+}
+
+sub start_queue_preview {
+    my ($player_id, $scope, $options) = @_;
+    $options ||= {};
+    die "Optimizer binary is unavailable"
+        unless $optimizer_binary && -x $optimizer_binary;
+
+    my $client = Slim::Player::Client::getClient($player_id);
+    die "The selected player is no longer connected" unless blessed($client);
+    $client = $client->master if $client->can('master');
+    my $track_count = eval { Slim::Player::Playlist::count($client) } || 0;
+    my $player_name = eval { $client->name } || $player_id;
+    my ($job_id, $dir, $semantic_path) =
+        _new_job_context($options->{preview_job_id});
+    my $job = _create_deferred_sequence_job(
+        $job_id,
+        'Queue snapshot: ' . $player_name . ' (' . ($scope || 'full') . ')',
+        $track_count,
+        $options,
+        {
+            playlist_id => 0,
+            source_mode => 'player_queue',
+            source_player_id => $player_id,
+            source_player_name => $player_name,
+            source_queue_scope => $scope || 'full',
+        },
+    );
+    _defer_web_preparation(
+        sub {
+            my $current = $jobs{$job_id};
+            return unless $current && ($current->{state} || '') eq 'running';
+            my $ok = eval {
+                my $built =
+                    Plugins::BetterCallBliss::RequestBuilder::build_queue_request(
+                        $player_id, $scope, $job_id, $semantic_path, $options,
+                    );
+                my $snapshot = $built->{queue_snapshot} || {};
+                _start_preview_from_built(
+                    $job_id, $dir, $semantic_path, $built,
+                    {
+                        playlist_id => 0,
+                        playlist_title => $built->{playlist_title},
+                        source_log => 'player_queue player=' . ($snapshot->{player_id} || $player_id)
+                            . ' scope=' . ($snapshot->{scope} || $scope || 'full')
+                            . ' captured_tracks=' . scalar(@{$built->{request}->{source_tracks} || []})
+                            . ' queue_count=' . (0 + ($snapshot->{queue_count} || 0))
+                            . ' current_index=' . (0 + ($snapshot->{current_index} || 0))
+                            . ' active=' . (($snapshot->{active} || 0) ? 1 : 0),
+                        source_mode => 'player_queue',
+                        source_player_id => $snapshot->{player_id} || $player_id,
+                        source_player_name => $snapshot->{player_name} || $player_id,
+                        source_queue_scope => $snapshot->{scope} || $scope || 'full',
+                        source_queue_count => 0 + ($snapshot->{queue_count} || 0),
+                        source_queue_current_index => 0 + ($snapshot->{current_index} || 0),
+                        source_queue_start_index => 0 + ($snapshot->{start_index} || 0),
+                        source_queue_active => ($snapshot->{active} || 0) ? 1 : 0,
+                        source_queue_track_urls => $snapshot->{track_urls} || [],
+                        source_queue_current_url => $snapshot->{current_url},
+                    },
+                );
+                1;
+            };
+            _fail_deferred_route_job($job_id, $@, 'PREVIEW_START_FAILED')
+                unless $ok;
+        },
+    );
+    return $job;
 }
 
 sub _create_deferred_route_job {

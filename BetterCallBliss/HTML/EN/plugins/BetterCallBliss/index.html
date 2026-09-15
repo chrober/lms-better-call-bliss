@@ -56,14 +56,8 @@
   <div class="bea-error"><b>Operation failed:</b> [% bettercallbliss_error | html %]</div>
 [% END %]
 
-[% IF bettercallbliss_job %]
-  [% IF bettercallbliss_job.state == 'running' %]
-    <div id="bea-live-status-banner" class="bea-info" data-job-id="[% bettercallbliss_job.id | html %]">
-      <b>Optimization is running.</b>
-      <span id="bea-live-status-text">[% bettercallbliss_job.stage | html %]</span>
-      <span id="bea-live-status-elapsed"></span>
-    </div>
-  [% ELSIF bettercallbliss_job.state == 'failed' %]
+[% IF bettercallbliss_job && bettercallbliss_job.state != 'running' %]
+  [% IF bettercallbliss_job.state == 'failed' %]
     <div class="bea-error bea-top-status">
       <b>Optimization failed - [% bettercallbliss_job.error_code | html %]:</b>
       [% bettercallbliss_job.error | html %]
@@ -92,7 +86,13 @@
     <div class="bea-ok bea-top-status"><b>Preview completed successfully.</b> Review the result below, then accept the selected output if it looks right.</div>
   [% END %]
 [% END %]
-[% IF !bettercallbliss_job || bettercallbliss_job.state != 'running' %]
+[% IF bettercallbliss_live_job %]
+  <div id="bea-live-status-banner" class="bea-info" data-job-id="[% bettercallbliss_live_job.id | html %]">
+    <b>Optimization is running.</b>
+    <span id="bea-live-status-text">[% bettercallbliss_live_job.live_status | html %]</span>
+    <span id="bea-live-status-elapsed"> (duration [% bettercallbliss_live_job.duration_text | html %])</span>
+  </div>
+[% ELSE %]
   <div id="bea-live-status-banner" class="bea-info bea-hidden" data-job-id="">
     <b>Optimization is running.</b>
     <span id="bea-live-status-text"></span>
@@ -638,6 +638,13 @@
 
     var startingPreviewTimer = null;
 
+    function stopStartingPreviewTimer() {
+      if (startingPreviewTimer) {
+        window.clearInterval(startingPreviewTimer);
+        startingPreviewTimer = null;
+      }
+    }
+
     function generatePreviewJobId() {
       var random = Math.floor(Math.random() * 0x7fffffff).toString(36);
       return 'preview-' + Math.floor(Date.now() / 1000) + '-web' + random;
@@ -656,11 +663,14 @@
     }
 
     function setPreviewStartButtons(disabled, label) {
-      var buttons = document.querySelectorAll('input[name="run_preview"], input[name="run_route_to_track_preview"]');
+      var buttons = document.querySelectorAll('input[type="submit"][name="run_preview"], input[type="submit"][name="run_route_to_track_preview"]');
       for (var i = 0; i < buttons.length; i++) {
+        if (!buttons[i].getAttribute('data-bea-original-label')) {
+          buttons[i].setAttribute('data-bea-original-label', buttons[i].value);
+        }
         buttons[i].disabled = disabled;
         buttons[i].toggleAttribute('aria-disabled', disabled);
-        if (label) buttons[i].value = label;
+        buttons[i].value = label || buttons[i].getAttribute('data-bea-original-label');
       }
     }
 
@@ -704,12 +714,10 @@
       startupCancelRequested = true;
       try {
         window.sessionStorage.removeItem('bettercallbliss_preview_started_ms');
+        window.sessionStorage.removeItem('bettercallbliss_preview_job_id');
       } catch (ignoreStorage) {
       }
-      if (startingPreviewTimer) {
-        window.clearInterval(startingPreviewTimer);
-        startingPreviewTimer = null;
-      }
+      stopStartingPreviewTimer();
       var banner = document.getElementById('bea-live-status-banner');
       if (banner) {
         banner.classList.remove('bea-hidden');
@@ -745,6 +753,7 @@
       var started = Date.now();
       try {
         window.sessionStorage.setItem('bettercallbliss_preview_started_ms', String(started));
+        window.sessionStorage.setItem('bettercallbliss_preview_job_id', startupJobId);
       } catch (ignoreStorage) {
       }
       var banner = document.getElementById('bea-live-status-banner');
@@ -1137,28 +1146,53 @@
         var actionName = submitter && submitter.name;
         if (actionName !== 'run_preview' && actionName !== 'run_route_to_track_preview') return;
         if ((submit && submit.disabled) || (submitter && submitter.disabled)) return;
+        event.preventDefault();
         if (submitter && submitter.name) {
+          var previousActions = mainForm.querySelectorAll('input[data-bea-preview-action]');
+          for (var a = 0; a < previousActions.length; a++) {
+            previousActions[a].parentNode.removeChild(previousActions[a]);
+          }
           var hidden = document.createElement('input');
           hidden.type = 'hidden';
           hidden.name = submitter.name;
           hidden.value = submitter.value || '1';
+          hidden.setAttribute('data-bea-preview-action', '1');
           mainForm.appendChild(hidden);
         }
         var previewJobId = generatePreviewJobId();
         setHiddenInput('preview_job_id', previewJobId);
         showStartingPreviewRow(previewJobId);
-        if (submit) {
-          submit.value = 'Preparing preview...';
-          submit.disabled = true;
-          submit.setAttribute('aria-disabled', 'true');
+        if (window.BetterCallBlissPreviewStatus) {
+          window.BetterCallBlissPreviewStatus.follow(previewJobId, true);
         }
-        if (submitter && submitter !== submit) {
-          submitter.value = 'Preparing preview...';
-          submitter.disabled = true;
-          submitter.setAttribute('aria-disabled', 'true');
-        }
+        setPreviewStartButtons(true, 'Preparing preview...');
+        var formData = new FormData(mainForm);
+        var encoded = new URLSearchParams();
+        formData.forEach(function (value, name) {
+          encoded.append(name, value);
+        });
+        fetch(mainForm.action, {
+          method: 'post',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+          body: encoded.toString()
+        }).then(function (response) {
+          if (!response.ok) throw new Error('HTTP error ' + response.status);
+          return response.text();
+        }).then(function (responseHtml) {
+          if (window.BetterCallBlissPreviewStatus) {
+            window.BetterCallBlissPreviewStatus.submissionFinished(previewJobId, responseHtml);
+          }
+        }).catch(function (error) {
+          if (window.BetterCallBlissPreviewStatus) {
+            window.BetterCallBlissPreviewStatus.submissionFailed(previewJobId, error.message);
+          }
+        });
       });
     }
+    window.BetterCallBlissPreviewPreparation = {
+      stopTimer: stopStartingPreviewTimer
+    };
     synchronizeControls();
     window.setTimeout(synchronizeControls, 0);
   }());
@@ -1400,15 +1434,15 @@
 
 
 
-[% IF bettercallbliss_job && bettercallbliss_job.state == 'running' %]
 <script>
   (function () {
-    var jobId = '[% bettercallbliss_job.id | html %]';
-    if (!jobId) return;
+    var jobId = '[% IF bettercallbliss_live_job %][% bettercallbliss_live_job.id | html %][% END %]';
 
     var serverJsonUrl = '[% webroot %]jsonrpc.js';
     var pollTimer;
     var finishing = false;
+    var waitingForRegistration = false;
+    var startupError = '';
 
     function text(value) {
       return value === undefined || value === null ? '' : String(value);
@@ -1427,6 +1461,8 @@
 
     function clientPreviewStartedMs() {
       try {
+        var storedJobId = window.sessionStorage.getItem('bettercallbliss_preview_job_id');
+        if (!storedJobId || storedJobId !== jobId) return 0;
         var stored = window.sessionStorage.getItem('bettercallbliss_preview_started_ms');
         var parsed = stored ? parseInt(stored, 10) : 0;
         return parsed > 0 ? parsed : 0;
@@ -1477,7 +1513,7 @@
     function renderRunningStatusTable(job) {
       return '<table class="bea-job-status-table">'
         + '<tr><td>Start:</td><td>' + escapeHtml(job.started_text || '') + '</td></tr>'
-        + '<tr><td>Duration:</td><td>' + escapeHtml(durationText(job, true)) + '</td></tr>'
+        + '<tr><td>Duration:</td><td>' + escapeHtml(durationText(job, text(job.id) === jobId)) + '</td></tr>'
         + '<tr><td>Status:</td><td>' + escapeHtml(liveStatusText(job)) + '</td></tr>'
         + '</table>';
     }
@@ -1578,8 +1614,14 @@
     }
 
     function resultUrl() {
-      var base = '[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% bettercallbliss_job.id | html %]';
-      return base + '#bea-preview-result';
+      try {
+        var url = new URL(window.location.href);
+        url.searchParams.set('job_id', jobId);
+        url.hash = 'bea-preview-result';
+        return url.pathname + url.search + url.hash;
+      } catch (ignoreUrl) {
+        return '[% webroot %]plugins/BetterCallBliss/index.html?job_id=' + encodeURIComponent(jobId) + '#bea-preview-result';
+      }
     }
 
     function finishWithServerRender() {
@@ -1593,9 +1635,16 @@
 
     function updateCurrentJob(job) {
       if (!job) return;
+      if (window.BetterCallBlissPreviewPreparation) {
+        window.BetterCallBlissPreviewPreparation.stopTimer();
+      }
       var state = text(job.state);
       var status = text(job.status || job.stage || state);
       var banner = document.getElementById('bea-live-status-banner');
+      if (banner) {
+        banner.classList.remove('bea-hidden');
+        banner.setAttribute('data-job-id', jobId);
+      }
       setText('bea-live-status-text', status);
       setText('bea-live-status-elapsed', elapsedText(job, true));
       setText('bea-preview-stage', text(job.stage || status));
@@ -1610,6 +1659,7 @@
 
       try {
         window.sessionStorage.removeItem('bettercallbliss_preview_started_ms');
+        window.sessionStorage.removeItem('bettercallbliss_preview_job_id');
       } catch (ignoreStorage) {
       }
       if (state === 'completed') {
@@ -1627,13 +1677,17 @@
     }
 
     function pollJob() {
+      if (!jobId) return;
       requestJob('status', jobId).then(function (response) {
         if (response && response.result) {
-          updateJobLists(response.result);
           if (response.result.job) {
+            updateJobLists(response.result);
             updateCurrentJob(response.result.job);
-          } else if (response.result.state === 'not_found') {
-            updateCurrentJob({ state: 'failed', status: response.result.error || 'Preview job is no longer available' });
+          } else if (response.result.state === 'not_found' && !waitingForRegistration) {
+            updateJobLists(response.result);
+            showStartupFailure(startupError || response.result.error || 'Preview job could not be started');
+          } else if (response.result.state !== 'not_found') {
+            updateJobLists(response.result);
           }
         }
       }).catch(function (error) {
@@ -1653,13 +1707,86 @@
       });
     }
 
+    function startPolling() {
+      if (pollTimer) window.clearInterval(pollTimer);
+      pollJob();
+      pollTimer = window.setInterval(pollJob, 1500);
+    }
+
+    function responseError(responseHtml) {
+      if (!responseHtml || typeof DOMParser === 'undefined') return '';
+      try {
+        var parsed = new DOMParser().parseFromString(responseHtml, 'text/html');
+        var error = parsed.querySelector('.bea-error');
+        return error ? error.textContent.replace(/\s+/g, ' ').trim() : '';
+      } catch (ignoreParse) {
+        return '';
+      }
+    }
+
+    function showStartupFailure(message) {
+      if (finishing) return;
+      if (window.BetterCallBlissPreviewPreparation) {
+        window.BetterCallBlissPreviewPreparation.stopTimer();
+      }
+      if (pollTimer) window.clearInterval(pollTimer);
+      pollTimer = null;
+      waitingForRegistration = false;
+      try {
+        window.sessionStorage.removeItem('bettercallbliss_preview_started_ms');
+        window.sessionStorage.removeItem('bettercallbliss_preview_job_id');
+      } catch (ignoreStorage) {
+      }
+      var banner = document.getElementById('bea-live-status-banner');
+      setClass(banner, 'bea-error');
+      if (banner) banner.classList.remove('bea-hidden');
+      setText('bea-live-status-text', message || 'Preview could not be started');
+      setText('bea-live-status-elapsed', '');
+      setText('bea-starting-status', message || 'Preview could not be started');
+      var cancel = document.getElementById('bea-starting-cancel');
+      if (cancel) cancel.disabled = true;
+      var buttons = document.querySelectorAll('input[type="submit"][name="run_preview"], input[type="submit"][name="run_route_to_track_preview"]');
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].disabled = false;
+        buttons[i].removeAttribute('aria-disabled');
+        var original = buttons[i].getAttribute('data-bea-original-label');
+        if (original) buttons[i].value = original;
+      }
+    }
+
+    window.BetterCallBlissPreviewStatus = {
+      follow: function (id, pendingRegistration) {
+        if (!id) return;
+        jobId = id;
+        waitingForRegistration = !!pendingRegistration;
+        startupError = '';
+        finishing = false;
+        var banner = document.getElementById('bea-live-status-banner');
+        if (banner) {
+          banner.classList.remove('bea-hidden');
+          banner.setAttribute('data-job-id', jobId);
+        }
+        startPolling();
+      },
+      submissionFinished: function (id, responseHtml) {
+        if (id !== jobId) return;
+        startupError = responseError(responseHtml);
+        waitingForRegistration = false;
+        pollJob();
+      },
+      submissionFailed: function (id, message) {
+        if (id !== jobId) return;
+        startupError = message || 'The preview request failed';
+        waitingForRegistration = false;
+        showStartupFailure(startupError);
+      }
+    };
+
     bindCancelForms(document);
 
-    pollJob();
-    pollTimer = window.setInterval(pollJob, 1500);
+    if (jobId) startPolling();
   }());
 </script>
-[% END %]
 
 <script>
   (function () {

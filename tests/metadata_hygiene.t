@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 96;
+use Test::More tests => 118;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -98,8 +98,38 @@ like(
 );
 like(
     $extras,
-    qr/mainForm\.addEventListener\('submit'.*?hidden\.name = submitter\.name.*?submit\.value = 'Preparing preview\.\.\.'/s,
+    qr/mainForm\.addEventListener\('submit'.*?hidden\.name = submitter\.name.*?setPreviewStartButtons\(true, 'Preparing preview\.\.\.'\)/s,
     'submit handler preserves the clicked preview action before disabling the button',
+);
+like(
+    $extras,
+    qr/mainForm\.addEventListener\('submit'.*?event\.preventDefault\(\).*?BetterCallBlissPreviewStatus\.follow\(previewJobId, true\).*?fetch\(mainForm\.action/s,
+    'preview submission remains in the Extras document while following the reserved job ID',
+);
+like(
+    $extras,
+    qr/function setPreviewStartButtons.*?input\[type="submit"\]\[name="run_preview"\].*?data-bea-preview-action.*?new FormData\(mainForm\)/s,
+    'disabling preview buttons leaves the hidden preview action eligible for FormData serialization',
+);
+like(
+    $extras,
+    qr/new URLSearchParams\(\).*?application\/x-www-form-urlencoded.*?body: encoded\.toString\(\)/s,
+    'AJAX preview submission uses the URL-encoded form format understood by LMS',
+);
+like(
+    $extras,
+    qr/var jobId = '\[% IF bettercallbliss_live_job %\].*?window\.BetterCallBlissPreviewStatus.*?if \(jobId\) startPolling\(\)/s,
+    'polling is available for a restored running job even when no result job is selected',
+);
+like(
+    $extras,
+    qr/new URL\(window\.location\.href\).*?searchParams\.set\('job_id', jobId\)/s,
+    'completed preview navigation retains the Material Extras URL context',
+);
+like(
+    $extras,
+    qr/if \(response\.result\.job\) \{\s*updateJobLists.*?else if \(response\.result\.state === 'not_found' && !waitingForRegistration\)/s,
+    'a provisional preparation row survives not-found polls until the reserved job is registered',
 );
 like(
     $extras,
@@ -266,6 +296,26 @@ like(
 my $jobs = slurp(File::Spec->catfile($plugin, 'Jobs.pm'));
 like(
     $jobs,
+    qr/sub start_reorder_preview.*?_create_deferred_sequence_job.*?_defer_web_preparation.*?build_reorder_request/s,
+    'saved-playlist previews register a visible job before deferred request preparation',
+);
+like(
+    $jobs,
+    qr/sub start_queue_preview.*?_create_deferred_sequence_job.*?_defer_web_preparation.*?build_queue_request/s,
+    'queue previews register a visible job before deferred snapshot preparation',
+);
+like(
+    $jobs,
+    qr/my \$existing_job = \$jobs\{\$job_id\}.*?my \$started_at.*?started_at => \$started_at/s,
+    'deferred preparation preserves the job start time shown to the user',
+);
+like(
+    $jobs,
+    qr/WEB_RESPONSE_GRACE\s*=>\s*2.*?sub note_web_activity.*?sub _schedule_web_preparation.*?WEB_RESPONSE_GRACE.*?sub _defer_web_preparation.*?pending_web_preparations.*?sub finish_web_response/s,
+    'HTML preview preparation waits until the initiating or reopened Extras response can finish',
+);
+like(
+    $jobs,
     qr/playingSongIndex\(\$client\).*?for my \$index \(\$first \.\. \$source_index\)/s,
     'now-playing capture excludes queued tracks after the selected route start',
 );
@@ -378,6 +428,11 @@ like(
     'Better Call Bliss resolves provider evidence to local candidate IDs before optimizer launch',
 );
 like(
+    $jobs . $candidate_guidance,
+    qr/CandidateGuidance::resolve_async.*?Slim::Utils::Timers::setTimer/s,
+    'large provider-to-library matching is split across LMS timer turns',
+);
+like(
     $extras,
     qr/name="playcount_influence".*?Current BlissMixer setting:.*?bettercallbliss_defaults\.playcount_influence/s,
     'Extras exposes a per-job play-count slider initialized from BlissMixer',
@@ -445,6 +500,67 @@ like(
     'Extras reports a quality-target miss as an explicit best-effort route',
 );
 my $web = slurp(File::Spec->catfile($plugin, 'Web.pm'));
+like(
+    $web,
+    qr/my \$live_job;.*?state.*?eq 'running'.*?\$live_job \|\|= \$running_jobs->\[0\].*?bettercallbliss_live_job/s,
+    'Web view exposes the selected or newest running preview independently of the opened result',
+);
+like(
+    $web,
+    qr/SELECT playlist, COUNT\(1\) FROM playlist_track GROUP BY playlist/s,
+    'Extras obtains playlist sizes in one query instead of one query per playlist',
+);
+like(
+    $web,
+    qr/elsif \(\$params->\{run_preview\}\).*?start_reorder_preview.*?my \$playlists = _playlists\(\)/s,
+    'preview jobs are registered before the Extras selection lists are rendered',
+);
+my $responsive_candidate_inventory = slurp(
+    File::Spec->catfile($plugin, 'CandidateInventory.pm'),
+);
+like(
+    $responsive_candidate_inventory,
+    qr/sub _candidate_library_membership.*?_yield_to_lms\(\)/s,
+    'virtual-library membership capture yields to LMS while walking large libraries',
+);
+like(
+    $responsive_candidate_inventory,
+    qr/SELECT tracks\.id.*?while.*?_yield_to_lms\(\)/s,
+    'candidate inventory construction yields while walking LMS tracks',
+);
+like(
+    $responsive_candidate_inventory,
+    qr/SELECT rowid, File, Title, Artist, Album.*?while.*?_yield_to_lms\(\)/s,
+    'candidate inventory construction yields while walking Bliss rows',
+);
+like(
+    $responsive_candidate_inventory,
+    qr/sub prepare_playcounts.*?while.*?_yield_to_lms\(\)/s,
+    'play-count snapshot construction yields while walking the LMS library',
+);
+like(
+    $responsive_candidate_inventory . $jobs,
+    qr/sub prepare_playcounts_async.*?Slim::Utils::Timers::setTimer.*?prepare_playcounts_async/s,
+    'preview preparation captures play counts asynchronously before optimizer launch',
+);
+like(
+    $responsive_candidate_inventory,
+    qr/_candidate_library_track_count.*?_load_cached_inventory\(.*?undef, \$membership_count/s,
+    'candidate inventory checks its persisted cache before walking full virtual-library membership',
+);
+my $responsive_candidate_guidance = slurp(
+    File::Spec->catfile($plugin, 'CandidateGuidance.pm'),
+);
+like(
+    $responsive_candidate_guidance,
+    qr/sub _index_candidates.*?_yield_to_lms\(\).*?sub resolve.*?_yield_to_lms\(\)/s,
+    'Last.fm candidate matching yields during both indexing and edge resolution',
+);
+like(
+    $responsive_candidate_inventory . $responsive_candidate_guidance,
+    qr/_write_identity_lookup.*?identity_lookup_path.*?_candidate_ids_for_lookup/s,
+    'persisted candidate identities avoid rebuilding the full Last.fm lookup index after restart',
+);
 like(
     $web,
     qr/route_best_effort.*?\$preview->\{best_effort\}/s,

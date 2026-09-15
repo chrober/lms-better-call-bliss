@@ -128,11 +128,16 @@ sub _route_context {
 }
 sub _playlists {
     my @rows;
+    my %track_count_for = map {
+        0 + $_->[0] => 0 + $_->[1]
+    } @{Slim::Schema->dbh->selectall_arrayref(
+        'SELECT playlist, COUNT(1) FROM playlist_track GROUP BY playlist'
+    ) || []};
     for my $playlist (sort {
         lc($a->title || $a->name || '') cmp lc($b->title || $b->name || '')
     } Slim::Schema->rs('Playlist')->getPlaylists('all')->all) {
         next unless $playlist && $playlist->can('tracks');
-        my $count = eval { $playlist->tracks->count } || 0;
+        my $count = $track_count_for{0 + $playlist->id} || 0;
         next unless $count >= 2;
         push @rows, {
             id => 0 + $playlist->id,
@@ -668,6 +673,7 @@ sub _result_view {
 sub handler {
     my ($client, $params) = @_;
     $params ||= {};
+    Plugins::BetterCallBliss::Jobs::note_web_activity();
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
     my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
     my $candidate_library_was_explicit =
@@ -704,9 +710,6 @@ sub handler {
     if (($params->{run_preview} || $params->{run_route_to_track_preview}) && $params->{lastfm_present}) {
         $form->{lastfm_enabled} = $params->{lastfm_enabled} ? 1 : 0;
     }
-    my $playlists = _playlists();
-    my $players = _players();
-
     my $trimmed_output_name = $form->{output_name} || '';
     $trimmed_output_name =~ s/^\s+|\s+$//g;
     $form->{output_name} = $trimmed_output_name;
@@ -791,11 +794,21 @@ sub handler {
         $error = 'Preview job is no longer available' unless $job;
     }
 
+    my $playlists = _playlists();
+    my $players = _players();
     $form = _form_from_job($job, $defaults) if $job;
 
     my ($running_jobs, $recent_jobs) = _job_lists();
     $params->{bettercallbliss_running_jobs} = $running_jobs;
     $params->{bettercallbliss_recent_jobs} = $recent_jobs;
+    my $live_job;
+    if ($job && ($job->{state} || '') eq 'running') {
+        ($live_job) = grep {
+            ($_->{id} || '') eq ($job->{id} || '')
+        } @$running_jobs;
+    }
+    $live_job ||= $running_jobs->[0] if @$running_jobs;
+    $params->{bettercallbliss_live_job} = $live_job;
 
     $params->{bettercallbliss_playlists} = $playlists;
     $params->{bettercallbliss_players} = $players;
@@ -836,7 +849,9 @@ sub handler {
         = Plugins::BetterCallBliss::CandidateInventory::status();
     $params->{bettercallbliss_job} = _result_view($job) if $job;
     $params->{bettercallbliss_error} = $error if $error;
-    return Slim::Web::HTTP::filltemplatefile($page, $params);
+    my $content = Slim::Web::HTTP::filltemplatefile($page, $params);
+    Plugins::BetterCallBliss::Jobs::finish_web_response();
+    return $content;
 }
 
 1;
