@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 122;
+use Test::More tests => 123;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -81,6 +81,11 @@ like(
 my $extras = slurp(File::Spec->catfile(
     $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'index.html',
 ));
+like(
+    $extras,
+    qr/guidance_summary.*?Guidance provider activity/s,
+    'Extras presents provider guidance separately from legacy semantic evidence',
+);
 like(
     $extras,
     qr/<select name="gap_context_mode".*?value="rolling".*?value="frozen"/s,

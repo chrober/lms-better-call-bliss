@@ -1270,6 +1270,10 @@
         <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Objective [% bettercallbliss_job.objective %]; worst transition [% bettercallbliss_job.worst_transition %].</div>
       [% END %]
 
+      [% IF bettercallbliss_job.guidance_summary.present %]
+        <p class="bea-note"><b>Guidance provider activity:</b> [% bettercallbliss_job.guidance_summary.text | html %]. Legacy semantic evidence remains reported separately below.</p>
+      [% END %]
+
       [% IF bettercallbliss_job.fixed_source_extension %]
         <p class="bea-note">The complete source-plus-addition membership was optimized together for transition flow.</p>
       [% ELSIF bettercallbliss_job.preserve_order %]
@@ -1297,12 +1301,12 @@
           <ul>
             [% FOREACH addition = bettercallbliss_job.additions %]
               [% IF bettercallbliss_job.fixed_source_extension %]
-                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-source Adaptive distance [% addition.relevance_distance %]; evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]); [% addition.semantic_summary | html %].</li>
+                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-source Adaptive distance [% addition.relevance_distance %]; legacy semantic evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]); [% addition.semantic_summary | html %].</li>
               [% ELSE %]
                 <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
                 "[% addition.left | html %]" and "[% addition.right | html %]";
                 direct gap [% addition.direct_percent %]th percentile;
-                evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]);
+                legacy semantic evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]);
                 [% addition.semantic_summary | html %].
               </li>
               [% END %]

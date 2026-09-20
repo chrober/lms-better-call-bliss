@@ -263,7 +263,7 @@ sub _job_lists {
 
 sub _semantic_evidence_summary {
     my $evidence = shift;
-    return 'Bliss only; no Last.fm edge was attached to this selection'
+    return 'No legacy semantic edge was attached; SPI guidance is reported separately'
         unless ref($evidence) eq 'ARRAY' && @$evidence;
     my @parts;
     for my $edge (@$evidence) {
@@ -281,7 +281,7 @@ sub _semantic_evidence_summary {
         push @parts, "$provider $kind$where$rank$score";
     }
     return @parts ? join('; ', @parts)
-        : 'Bliss only; no Last.fm edge was attached to this selection';
+        : 'No legacy semantic edge was attached; SPI guidance is reported separately';
 }
 
 sub _semantic_evidence_stats {
@@ -323,6 +323,42 @@ sub _semantic_evidence_stats {
     }
     return \%stats;
 }
+
+sub _guidance_summary {
+    my $artifact = shift || {};
+    my @diagnostics = @{ref($artifact->{guidance_addon_diagnostics}) eq 'ARRAY'
+        ? $artifact->{guidance_addon_diagnostics} : []};
+    return {present => 0} unless @diagnostics;
+
+    my @parts;
+    for my $diagnostic (@diagnostics) {
+        next unless ref($diagnostic) eq 'HASH';
+        my $provider = $diagnostic->{provider_id} || $diagnostic->{configured_id}
+            || 'guidance provider';
+        if (($diagnostic->{state} || '') eq 'prepared') {
+            push @parts, sprintf(
+                '%s: %d score batch%s, %d returned signal%s, %d accepted',
+                $provider,
+                0 + ($diagnostic->{score_batches} || 0),
+                (0 + ($diagnostic->{score_batches} || 0)) == 1 ? '' : 'es',
+                0 + ($diagnostic->{returned_signals} || 0),
+                (0 + ($diagnostic->{returned_signals} || 0)) == 1 ? '' : 's',
+                0 + ($diagnostic->{accepted_signals} || 0),
+            );
+        } else {
+            push @parts, sprintf(
+                '%s unavailable: %s',
+                $provider,
+                $diagnostic->{message} || 'no diagnostics available',
+            );
+        }
+    }
+    return {
+        present => @parts ? 1 : 0,
+        text => join('; ', @parts),
+    };
+}
+
 sub _result_view {
     my $job = shift;
     return unless $job;
@@ -584,6 +620,7 @@ sub _result_view {
                 }
             }
             $view->{semantic_mode} = $artifact->{semantic_mode};
+            $view->{guidance_summary} = _guidance_summary($artifact);
             my @additions;
             for my $addition (@{$job->{additions} || []}) {
                 my $label = $job->{labels}->{$addition->{track_id}} || {};

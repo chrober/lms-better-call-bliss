@@ -382,6 +382,7 @@ sub result_info_lines {
         0 + ($artifact->{frozen_reference_count} || 0),
         $artifact->{semantic_mode} || 'not applicable',
     );
+    push @lines, _guidance_addon_lines($artifact);
     my $provenance = _scoring_provenance($job);
     if (%$provenance) {
         push @lines, sprintf(
@@ -436,6 +437,33 @@ sub result_info_lines {
         $job, 'Selected route', _display_route_ids($job), INFO_TRACK_LIMIT, 0,
     );
     return \@lines;
+}
+
+sub _guidance_addon_lines {
+    my $artifact = shift || {};
+    my @lines;
+    for my $diagnostic (@{ref($artifact->{guidance_addon_diagnostics}) eq 'ARRAY'
+        ? $artifact->{guidance_addon_diagnostics} : []}) {
+        next unless ref($diagnostic) eq 'HASH';
+        my $provider = $diagnostic->{provider_id} || $diagnostic->{configured_id}
+            || 'guidance provider';
+        if (($diagnostic->{state} || '') eq 'prepared') {
+            push @lines, sprintf(
+                'Guidance provider %s: %d score batches, %d returned signals, %d accepted signals.',
+                $provider,
+                0 + ($diagnostic->{score_batches} || 0),
+                0 + ($diagnostic->{returned_signals} || 0),
+                0 + ($diagnostic->{accepted_signals} || 0),
+            );
+        } else {
+            push @lines, sprintf(
+                'Guidance provider %s unavailable: %s.',
+                $provider,
+                $diagnostic->{message} || 'no diagnostics available',
+            );
+        }
+    }
+    return @lines;
 }
 
 sub _quality_by_role {
