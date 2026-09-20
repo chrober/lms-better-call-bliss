@@ -152,13 +152,13 @@ like(join('; ', @{$without_base->{problems}}), qr/BlissMixer is not enabled/,
     'the missing required base plugin is a blocking problem');
 $Slim::Utils::PluginManager::enabled{'Plugins::BlissMixer::Plugin'} = 1;
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 0, 1, 1, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 0, 1, 1, {});
 my $incompatible = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok(!$incompatible->{ready}, 'an older optimizer is rejected instead of ignoring genre settings');
 like(join('; ', @{$incompatible->{problems}}), qr/does not support BlissMixer genre settings/,
     'the compatibility failure explains the required optimizer capability');
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 0, 1, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 0, 1, {});
 my $old_candidate_scope = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok(!$old_candidate_scope->{ready},
     'an optimizer without candidate-library scoping is rejected');
@@ -166,21 +166,13 @@ like(join('; ', @{$old_candidate_scope->{problems}}),
     qr/does not support candidate-library scoping/,
     'candidate-library compatibility failure names the missing capability');
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 0, 1);
-my $old_playcount = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
-ok(!$old_playcount->{ready},
-    'an optimizer without play-count guidance is rejected');
-like(join('; ', @{$old_playcount->{problems}}),
-    qr/does not support play-count guidance/,
-    'play-count compatibility failure names the missing capability');
-
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 0);
-my $old_candidate_guidance =
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 0, {});
+my $without_guidance_spi =
     Plugins::BetterCallBliss::BlissCompatibility::snapshot();
-ok(!$old_candidate_guidance->{ready},
-    'an optimizer without resolved candidate guidance is rejected');
-like(join('; ', @{$old_candidate_guidance->{problems}}),
-    qr/does not support caller-resolved candidate guidance/,
-    'candidate-guidance compatibility failure names the missing capability');
+ok(!$without_guidance_spi->{ready},
+    'an optimizer without guidance SPI v2 is rejected');
+like(join('; ', @{$without_guidance_spi->{problems}}),
+    qr/does not support guidance SPI v2/,
+    'guidance compatibility failure names the generic provider contract');
 
 done_testing();
