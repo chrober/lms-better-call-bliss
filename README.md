@@ -6,7 +6,14 @@
 
 **Better Call Bliss** is a Lyrion Music Server plugin that turns a saved playlist or a current player queue snapshot into a smoother listening journey. It can reorder the existing songs, insert suitable bridge tracks, preserve the original order while filling its gaps, extend a short source list to a chosen length, or rebuild the upcoming part of a live queue. Every job is previewed before anything is saved or sent to a player, and artist, album, and track repeat rules remain hard constraints.
 
-The plugin owns the Lyrion user interface, settings, Last.fm integration, provider-to-library identity resolution, background jobs, result review, playlist persistence, and player-queue output. CPU-intensive acoustic scoring and route search are delegated to the network-free Rust engine [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer), which is bundled with supported plugin packages.
+The plugin owns the Lyrion user interface, settings, Last.fm integration,
+provider-to-library identity resolution, background jobs, result review,
+playlist persistence, and player-queue output. CPU-intensive acoustic scoring
+and route search are delegated to the network-free Rust engine
+[bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer).
+Supported packages also bundle its trusted Rust guidance providers for Last.fm
+evidence and on-demand Lyrion play counts; none are committed to this source
+repository.
 
 ## What it does
 
@@ -119,14 +126,15 @@ without committing native binaries to this repository:
 1. Runs the lightweight Perl regression suite from `tests/`. The suite stubs
    LMS/LastMix APIs and checks request JSON typing, Last.fm evidence, per-job
    option normalization, localization metadata, and source-package hygiene.
-2. Reads the pinned `bliss-playlist-optimizer` release from
-   `BetterCallBliss/Bin/SOURCE.md`, unless an `optimizer_release` override is
+2. Reads pinned optimizer and guidance-provider releases from
+   `BetterCallBliss/Bin/SOURCE.md`, unless a workflow-dispatch override is
    supplied manually.
-3. Downloads the published optimizer binaries for `x86_64-linux`,
-   `aarch64-linux`, `armhf-linux`, `mac`, and `windows` from that release and
-   verifies their `.sha256` files.
-4. Copies those binaries into the matching `BetterCallBliss/Bin/<platform>/`
-   folders only inside the release workspace.
+3. Downloads the published binaries for `x86_64-linux`, `aarch64-linux`,
+   `armhf-linux`, `mac`, and `windows` from each release and verifies their
+   `.sha256` files.
+4. Copies the optimizer plus Last.fm and play-count guidance providers into the
+   matching `BetterCallBliss/Bin/<platform>/` folders only inside the release
+   workspace.
 5. Creates separate `lms-better-call-bliss-{linux,mac,windows}-<version>.zip`
    archives plus SHA-1 and SHA-256 files. Linux retains x86_64, AArch64, and
    ARMHF binaries; macOS and Windows retain only their matching binary.
@@ -145,11 +153,13 @@ creating a release or touching the plugin feed.
 - `BetterCallBliss/` is the installable Lyrion plugin source tree. It contains
   the Perl plugin modules, classic-web templates, settings page, strings,
   icons, and `install.xml` metadata.
-- The platform-specific `bliss-playlist-optimizer` executables are
+- The platform-specific optimizer and guidance-provider executables are
   intentionally not committed here. They are published by the separate
-  [chrober/bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer)
-  repository release workflow and copied into deployment/package artifacts by this plugin release workflow.
-  The expected optimizer release, supported package folders, and release
+  [optimizer](https://github.com/chrober/bliss-playlist-optimizer),
+  [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm), and
+  [play-count provider](https://github.com/chrober/bliss-guidance-playcounts)
+  release workflows and copied into deployment/package artifacts by this plugin
+  release workflow. The expected releases, supported package folders, and
   packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
   `.gitignore` prevents local executables from being accidentally committed.
 - `tests/` contains lightweight Perl regression tests for the plugin glue code

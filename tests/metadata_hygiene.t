@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 116;
+use Test::More tests => 118;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -596,3 +596,17 @@ find(
 );
 is_deeply(\@committed_binary_candidates, [],
     'source checkout does not commit native optimizer binaries');
+
+my $release_workflow = slurp(
+    File::Spec->catfile($root, '.github', 'workflows', 'release.yml'),
+);
+like(
+    $release_workflow,
+    qr/bliss-guidance-lastfm.*?bliss-guidance-playcounts/s,
+    'release workflow packages both trusted guidance providers',
+);
+like(
+    $release_workflow,
+    qr/bliss-guidance-lastfm-aarch64-linux.*?bliss-guidance-playcounts-aarch64-linux/s,
+    'release workflow includes AArch64 provider binaries for Lyrion appliances',
+);
