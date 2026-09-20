@@ -356,13 +356,8 @@ like(
 );
 like(
     $plugin_module,
-    qr/my \$optimizer_supports_play_count_guidance\s*=\s*_optimizerSupportsPlayCountGuidance.*?BlissCompatibility::init\(.*?\$optimizer_supports_play_count_guidance/s,
-    'plugin requires explicit optimizer support for play-count guidance',
-);
-like(
-    $plugin_module,
-    qr/my \$optimizer_supports_resolved_candidate_guidance\s*=\s*_optimizerSupportsResolvedCandidateGuidance.*?BlissCompatibility::init\(.*?\$optimizer_supports_resolved_candidate_guidance/s,
-    'plugin requires explicit optimizer support for caller-resolved candidate guidance',
+    qr/my \$optimizer_supports_guidance_spi_v2\s*=\s*_optimizerSupportsGuidanceSpiV2.*?BlissCompatibility::init\(.*?\$optimizer_supports_guidance_spi_v2/s,
+    'plugin requires the generic guidance SPI v2 contract rather than legacy source-specific flags',
 );
 my $compatibility = slurp(File::Spec->catfile($plugin, 'BlissCompatibility.pm'));
 like(
@@ -533,15 +528,10 @@ like(
     qr/SELECT rowid, File, Title, Artist, Album.*?while.*?_yield_to_lms\(\)/s,
     'candidate inventory construction yields while walking Bliss rows',
 );
-like(
-    $responsive_candidate_inventory,
-    qr/sub prepare_playcounts.*?while.*?_yield_to_lms\(\)/s,
-    'play-count snapshot construction yields while walking the LMS library',
-);
-like(
+unlike(
     $responsive_candidate_inventory . $jobs,
-    qr/sub prepare_playcounts_async.*?Slim::Utils::Timers::setTimer.*?prepare_playcounts_async/s,
-    'preview preparation captures play counts asynchronously before optimizer launch',
+    qr/prepare_playcounts(?:_async)?/,
+    'the plugin no longer walks the entire LMS library to create a play-count artifact',
 );
 like(
     $responsive_candidate_inventory,

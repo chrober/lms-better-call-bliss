@@ -34,6 +34,8 @@ my $log = Slim::Utils::Log->addLogCategory({
 my $prefs = preferences('plugin.bettercallbliss');
 my $initialized = 0;
 my $optimizer_binary;
+my $lastfm_guidance_binary;
+my $playcount_guidance_binary;
 my %optimizer_version_output;
 my $optimizer_supports_destination_blocks;
 
@@ -68,6 +70,8 @@ sub initPlugin {
         }
     }
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
+    $lastfm_guidance_binary = Slim::Utils::Misc::findbin('bliss-guidance-lastfm');
+    $playcount_guidance_binary = Slim::Utils::Misc::findbin('bliss-guidance-playcounts');
     my $optimizer_supports_progress = _optimizerSupportsProgress($optimizer_binary);
     my $optimizer_supports_trusted_request =
         _optimizerSupportsTrustedRequest($optimizer_binary);
@@ -75,18 +79,19 @@ sub initPlugin {
         _optimizerSupportsGenrePolicy($optimizer_binary);
     my $optimizer_supports_candidate_library_scope =
         _optimizerSupportsCandidateLibraryScope($optimizer_binary);
-    my $optimizer_supports_play_count_guidance =
-        _optimizerSupportsPlayCountGuidance($optimizer_binary);
-    my $optimizer_supports_resolved_candidate_guidance =
-        _optimizerSupportsResolvedCandidateGuidance($optimizer_binary);
+    my $optimizer_supports_guidance_spi_v2 =
+        _optimizerSupportsGuidanceSpiV2($optimizer_binary);
     $optimizer_supports_destination_blocks =
         _optimizerSupportsDestinationBlocks($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
         $optimizer_binary,
         $optimizer_supports_genre_policy,
         $optimizer_supports_candidate_library_scope,
-        $optimizer_supports_play_count_guidance,
-        $optimizer_supports_resolved_candidate_guidance,
+        $optimizer_supports_guidance_spi_v2,
+        {
+            lastfm => $lastfm_guidance_binary,
+            playcounts => $playcount_guidance_binary,
+        },
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -127,10 +132,12 @@ sub initPlugin {
         . ($optimizer_supports_genre_policy ? 'supported' : 'unsupported')
         . ' candidate_library_scope='
         . ($optimizer_supports_candidate_library_scope ? 'supported' : 'unsupported')
-        . ' play_count_guidance='
-        . ($optimizer_supports_play_count_guidance ? 'supported' : 'unsupported')
-        . ' resolved_candidate_guidance='
-        . ($optimizer_supports_resolved_candidate_guidance ? 'supported' : 'unsupported')
+        . ' guidance_spi_v2='
+        . ($optimizer_supports_guidance_spi_v2 ? 'supported' : 'unsupported')
+        . ' lastfm_guidance='
+        . ($lastfm_guidance_binary ? 'available' : 'missing')
+        . ' playcount_guidance='
+        . ($playcount_guidance_binary ? 'available' : 'missing')
         . ' destination_blocks='
         . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
     return 1;
@@ -170,16 +177,10 @@ sub _optimizerSupportsCandidateLibraryScope {
     return $output =~ /"candidate_library_scope"\s*:\s*true/ ? 1 : 0;
 }
 
-sub _optimizerSupportsPlayCountGuidance {
+sub _optimizerSupportsGuidanceSpiV2 {
     my $binary = shift;
     my $output = _optimizerVersionOutput($binary);
-    return $output =~ /"play_count_guidance"\s*:\s*true/ ? 1 : 0;
-}
-
-sub _optimizerSupportsResolvedCandidateGuidance {
-    my $binary = shift;
-    my $output = _optimizerVersionOutput($binary);
-    return $output =~ /"resolved_candidate_guidance"\s*:\s*true/ ? 1 : 0;
+    return $output =~ /"guidance_spi_v2"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerSupportsDestinationBlocks {

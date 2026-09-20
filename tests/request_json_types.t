@@ -34,6 +34,17 @@ BEGIN {
             track_window => '100',
             statistics_enabled => 1,
             playcount_influence => '-35',
+            guidance_providers => {
+                lastfm => {
+                    available => 1,
+                    program => '/trusted/plugin/bin/bliss-guidance-lastfm',
+                },
+                playcounts => {
+                    available => 1,
+                    program => '/trusted/plugin/bin/bliss-guidance-playcounts',
+                    persist_db => '/trusted/lms/persist.db',
+                },
+            },
             use_adaptive_weights => 1,
             use_forest => 0,
             filter_genres => 1,
@@ -144,6 +155,20 @@ require Plugins::BetterCallBliss::RequestBuilder;
 my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
     7, 'preview-json-types', '/tmp/semantic-evidence.json', {},
 );
+Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
+    $built->{request},
+    $built->{capability},
+    {
+        semantic_evidence => {
+            path => '/private/job/semantic-evidence.json',
+            sha256 => 'a' x 64,
+        },
+        candidate_identities => {
+            path => '/private/cache/candidate-identities.json',
+            sha256 => 'b' x 64,
+        },
+    },
+);
 my $logged_shortlist = "$built->{request}->{extension}->{shortlist_limit}";
 $built->{request}->{extension}->{allow_opening_track} = 0;
 Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(
@@ -165,12 +190,47 @@ unlike(
     qr/"shortlist_limit"\s*:\s*"256"/,
     'shortlist is never serialized as a JSON string',
 );
-is($request->{selection}->{recording_guidance_percent}, 75,
-    'recording guidance is a provider-neutral JSON integer');
-is($request->{selection}->{artist_guidance_percent}, 75,
-    'artist guidance is a provider-neutral JSON integer');
-is($request->{selection}->{playcount_influence}, -35,
-    'signed play-count influence is a JSON integer');
+ok(!exists $request->{selection}->{recording_guidance_percent},
+    'legacy Last.fm guidance is not carried in optimizer selection settings');
+ok(!exists $request->{selection}->{artist_guidance_percent},
+    'legacy artist guidance is not carried in optimizer selection settings');
+ok(!exists $request->{selection}->{playcount_influence},
+    'legacy play-count guidance is not carried in optimizer selection settings');
+is_deeply($request->{guidance_policy}, [
+    {provider_id => 'lastfm-guidance', channel => 'lastfm_track', weight => 0.75},
+    {provider_id => 'lastfm-guidance', channel => 'lastfm_artist', weight => 0.75},
+    {provider_id => 'playcount-guidance', channel => 'playcount', weight => -0.35},
+], 'job settings become generic bounded guidance weights');
+is_deeply($request->{guidance_addons}, [
+    {
+        id => 'lastfm-guidance',
+        program => '/trusted/plugin/bin/bliss-guidance-lastfm',
+        options => {},
+        artifacts => [{
+            kind => 'resolved-lastfm-evidence-v1',
+            path => '/private/job/semantic-evidence.json',
+            sha256 => 'a' x 64,
+        }],
+        resources => [],
+        timeout_ms => 5000,
+    },
+    {
+        id => 'playcount-guidance',
+        program => '/trusted/plugin/bin/bliss-guidance-playcounts',
+        options => {},
+        artifacts => [{
+            kind => 'eligible-candidate-identities-v1',
+            path => '/private/cache/candidate-identities.json',
+            sha256 => 'b' x 64,
+        }],
+        resources => [{
+            kind => 'lms-persist-sqlite-v1',
+            path => '/trusted/lms/persist.db',
+            access => 'read_only',
+        }],
+        timeout_ms => 5000,
+    },
+], 'only trusted capability paths produce provider descriptors');
 is($request->{scoring}->{captured_blissmixer_preferences}->{playcount_influence}, -35,
     'the inherited BlissMixer play-count default is captured for provenance');
 ok(JSON::XS::is_bool($request->{candidate_policy}->{genre}->{restrict_genres}),

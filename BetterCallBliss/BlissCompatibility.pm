@@ -5,6 +5,7 @@ use Slim::Music::Import;
 use Slim::Utils::Misc;
 use Slim::Utils::PluginManager;
 use Slim::Utils::Prefs;
+use Slim::Utils::SQLiteHelper;
 use Slim::Utils::Versions;
 
 my $bliss_prefs = preferences('plugin.blissmixer');
@@ -13,8 +14,8 @@ my $server_prefs = preferences('server');
 my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
-my $optimizer_supports_play_count_guidance;
-my $optimizer_supports_resolved_candidate_guidance;
+my $optimizer_supports_guidance_spi_v2;
+my $guidance_programs = {};
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
 use constant MIN_BLISSMIXERLAB_VERSION => '0.5.0';
@@ -23,8 +24,14 @@ sub init {
     $optimizer_binary = shift;
     $optimizer_supports_genre_policy = shift ? 1 : 0;
     $optimizer_supports_candidate_library_scope = shift ? 1 : 0;
-    $optimizer_supports_play_count_guidance = shift ? 1 : 0;
-    $optimizer_supports_resolved_candidate_guidance = shift ? 1 : 0;
+    $optimizer_supports_guidance_spi_v2 = shift ? 1 : 0;
+    $guidance_programs = shift || {};
+}
+
+sub _persistent_database_path {
+    return eval {
+        Slim::Utils::SQLiteHelper->dbFile('persist.db', 'persistent');
+    } || '';
 }
 
 sub _int_pref {
@@ -134,13 +141,9 @@ sub snapshot {
         if $optimizer_binary && -x $optimizer_binary
             && !$optimizer_supports_candidate_library_scope;
     push @problems,
-        'the installed bliss-playlist-optimizer does not support play-count guidance'
+        'the installed bliss-playlist-optimizer does not support guidance SPI v2'
         if $optimizer_binary && -x $optimizer_binary
-            && !$optimizer_supports_play_count_guidance;
-    push @problems,
-        'the installed bliss-playlist-optimizer does not support caller-resolved candidate guidance'
-        if $optimizer_binary && -x $optimizer_binary
-            && !$optimizer_supports_resolved_candidate_guidance;
+            && !$optimizer_supports_guidance_spi_v2;
     push @problems,
         'an LMS library scan is updating the catalog; preview will resume when it finishes'
         if $scanning;
@@ -172,6 +175,9 @@ sub snapshot {
 
     my $strategy = _strategy_from_prefs();
     my $statistics_enabled = main::STATISTICS ? 1 : 0;
+    my $persist_db = _persistent_database_path();
+    my $lastfm_guidance = $guidance_programs->{lastfm} || '';
+    my $playcount_guidance = $guidance_programs->{playcounts} || '';
     my $playcount_influence = $statistics_enabled
         ? _int_pref('playcount_influence', 0) : 0;
     $playcount_influence = -100 if $playcount_influence < -100;
@@ -209,6 +215,18 @@ sub snapshot {
         algorithm         => $strategy,
         statistics_enabled => $statistics_enabled,
         playcount_influence => $playcount_influence,
+        guidance_providers => {
+            lastfm => {
+                available => $lastfm_guidance && -x $lastfm_guidance ? 1 : 0,
+                program => $lastfm_guidance,
+            },
+            playcounts => {
+                available => $statistics_enabled && $playcount_guidance
+                    && -x $playcount_guidance && -r $persist_db ? 1 : 0,
+                program => $playcount_guidance,
+                persist_db => $persist_db,
+            },
+        },
         use_adaptive_weights => _int_pref('use_adaptive_weights', 0) ? 1 : 0,
         use_forest        => _int_pref('use_forest', 0) ? 1 : 0,
         static_weight_sliders => $static_weights->{raw},

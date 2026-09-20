@@ -19,7 +19,7 @@ use URI::Escape qw(uri_unescape);
 use Plugins::BetterCallBliss::CandidateIdentity;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
-use constant BUILDER_REVISION => 4;
+use constant BUILDER_REVISION => 5;
 my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
@@ -208,7 +208,7 @@ sub _load_cached_inventory {
         return $miss->('identity_index_invalid')
             unless ref($identity_index) eq 'HASH'
                 && ($identity_index->{schema_identity} || '')
-                    eq 'bettercallbliss-candidate-identities-v1'
+                    eq 'eligible-candidate-identities-v1'
                 && ($identity_index->{database_cache_identity} || '')
                     eq $database_identity
                 && 0 + ($identity_index->{lms_scan_time} || 0) == $scan_time
@@ -257,6 +257,11 @@ sub _load_cached_inventory {
         },
         status => $status,
         identities => $identity_index ? $identity_index->{candidates} : [],
+        identity_artifact => {
+            path => $identity_path,
+            sha256 => $state->{identity_sha256},
+            schema_identity => 'eligible-candidate-identities-v1',
+        },
         identity_lookup_path => $identity_lookup_path,
     };
 }
@@ -439,14 +444,14 @@ sub prepare {
     my $roots = $capability->{music_roots} || [];
     my $root_descriptors = _root_descriptors($roots);
     my $lms_sth = Slim::Schema->dbh->prepare(
-        'SELECT tracks.id, tracks.url, tracks.tracknum, tracks.musicbrainz_id, '
+        'SELECT tracks.id, tracks.url, tracks.tracknum, tracks.urlmd5, tracks.musicbrainz_id, '
         . 'contributors.musicbrainz_id FROM tracks '
         . 'LEFT JOIN contributors ON contributors.id = tracks.primary_artist '
         . 'WHERE tracks.remote = 0 AND tracks.audio = 1'
     );
     $lms_sth->execute;
     my $lms_row_count = 0;
-    while (my ($track_id, $url, $tracknum, $recording_mbid, $artist_mbid)
+    while (my ($track_id, $url, $tracknum, $urlmd5, $recording_mbid, $artist_mbid)
         = $lms_sth->fetchrow_array) {
         my $database_file = _database_file_for_url(
             $url, $tracknum, $root_descriptors, $roots,
@@ -458,6 +463,8 @@ sub prepare {
             $candidate_files{$database_file} = 1;
             $lms_identity_for{$database_file} = {
                 lms_track_id => 0 + $track_id,
+                defined $urlmd5 && length $urlmd5
+                    ? (lms_urlmd5 => "$urlmd5") : (),
                 defined $recording_mbid && length $recording_mbid
                     ? (recording_mbid => "$recording_mbid") : (),
                 defined $artist_mbid && length $artist_mbid
@@ -508,6 +515,8 @@ sub prepare {
                 candidate_id => 'bliss-row-' . (0 + $row_id),
                 row_id => 0 + $row_id,
                 lms_track_id => 0 + ($lms_identity->{lms_track_id} || 0),
+                defined $lms_identity->{lms_urlmd5}
+                    ? (lms_urlmd5 => $lms_identity->{lms_urlmd5}) : (),
                 title => defined $title ? $title : '',
                 artist => defined $artist ? $artist : '',
                 defined $lms_identity->{recording_mbid}
@@ -563,7 +572,7 @@ sub prepare {
     _write_atomic($path, $bytes) unless -r $path;
     my $identity_index = {
         schema_version => 1,
-        schema_identity => 'bettercallbliss-candidate-identities-v1',
+        schema_identity => 'eligible-candidate-identities-v1',
         generated_at => $now,
         database_cache_identity => $database_identity,
         lms_scan_time => $scan_time,
@@ -614,6 +623,11 @@ sub prepare {
         },
         status => $last_status,
         identities => \@candidate_identities,
+        identity_artifact => {
+            path => $identity_path,
+            sha256 => $identity_sha256,
+            schema_identity => 'eligible-candidate-identities-v1',
+        },
         identity_lookup_path => $identity_lookup_path,
     };
     _write_atomic($state_path, _json()->encode({
@@ -645,153 +659,6 @@ sub prepare {
         . " audit=$audit_path"
     );
     return $cached_result;
-}
-
-sub _playcount_query {
-    return Slim::Schema->dbh->prepare(
-        'SELECT tracks.url, tracks.tracknum, tracks_persistent.playcount '
-        . 'FROM tracks LEFT JOIN tracks_persistent '
-        . 'ON tracks_persistent.urlmd5 = tracks.urlmd5 '
-        . 'WHERE tracks.remote = 0 AND tracks.audio = 1'
-    );
-}
-
-sub _finish_playcount_snapshot {
-    my ($database_identity, $path, $seen, $playcount_for) = @_;
-    my @tracks = map {
-        {database_file => $_, play_count => $playcount_for->{$_}}
-    } sort keys %$seen;
-    my $known = scalar grep { defined $_->{play_count} } @tracks;
-    my $unknown = @tracks - $known;
-    my $payload = {
-        schema_version => 1,
-        schema_identity => 'lms-play-counts-v1',
-        generated_at => time(),
-        database_cache_identity => $database_identity,
-        tracks => \@tracks,
-    };
-    my $bytes = _json()->encode($payload);
-    _write_atomic($path, $bytes);
-    my $sha256 = sha256_hex($bytes);
-    $log->info(
-        'play_counts stage=Ready'
-        . ' tracks=' . scalar(@tracks)
-        . ' known=' . (0 + ($known || 0))
-        . ' unknown=' . (0 + ($unknown || 0))
-    );
-    return {
-        artifact => {
-            path => $path,
-            sha256 => $sha256,
-            schema_identity => 'lms-play-counts-v1',
-        },
-        status => {
-            track_count => scalar(@tracks),
-            known_count => 0 + ($known || 0),
-            unknown_count => 0 + ($unknown || 0),
-        },
-    };
-}
-
-sub _capture_playcount_row {
-    my ($row, $roots, $root_descriptors, $seen, $playcount_for) = @_;
-    my ($url, $tracknum, $playcount) = @$row;
-    my $database_file = _database_file_for_url(
-        $url, $tracknum, $root_descriptors, $roots,
-    );
-    return unless defined $database_file && length $database_file;
-    $seen->{$database_file} = 1;
-    $playcount_for->{$database_file} = 0 + $playcount
-        if defined $playcount
-            && (!defined $playcount_for->{$database_file}
-                || $playcount > $playcount_for->{$database_file});
-}
-
-sub prepare_playcounts {
-    my ($capability, $database_identity, $path) = @_;
-    die "Playback statistics are unavailable"
-        unless $capability->{statistics_enabled};
-    die "Play-count artifact path is required" unless length($path || '');
-    my $roots = $capability->{music_roots} || [];
-    my $root_descriptors = _root_descriptors($roots);
-    my $sth = _playcount_query();
-    $sth->execute;
-    my (%playcount_for, %seen);
-    my $row_count = 0;
-    while (my ($url, $tracknum, $playcount) = $sth->fetchrow_array) {
-        _capture_playcount_row(
-            [$url, $tracknum, $playcount], $roots, $root_descriptors,
-            \%seen, \%playcount_for,
-        );
-        _yield_to_lms() unless ++$row_count % YIELD_EVERY_ROWS;
-    }
-    $sth->finish;
-    return _finish_playcount_snapshot(
-        $database_identity, $path, \%seen, \%playcount_for,
-    );
-}
-
-sub prepare_playcounts_async {
-    my ($capability, $database_identity, $path, $callback, $should_continue) = @_;
-    die "Playback statistics are unavailable"
-        unless $capability->{statistics_enabled};
-    die "Play-count artifact path is required" unless length($path || '');
-    die "Play-count completion callback is required"
-        unless ref($callback) eq 'CODE';
-
-    my $roots = $capability->{music_roots} || [];
-    my $root_descriptors = _root_descriptors($roots);
-    my $sth = _playcount_query();
-    $sth->execute;
-    my (%playcount_for, %seen);
-    my $step;
-    $step = sub {
-        if (ref($should_continue) eq 'CODE' && !$should_continue->()) {
-            eval { $sth->finish };
-            $step = undef;
-            return;
-        }
-        my $done = 0;
-        my $error;
-        eval {
-            for (1 .. ASYNC_CHUNK_ROWS) {
-                my @row = $sth->fetchrow_array;
-                if (!@row) {
-                    $done = 1;
-                    last;
-                }
-                _capture_playcount_row(
-                    \@row, $roots, $root_descriptors,
-                    \%seen, \%playcount_for,
-                );
-            }
-            1;
-        } or $error = $@ || 'Could not capture play counts';
-        if ($error) {
-            eval { $sth->finish };
-            $step = undef;
-            return $callback->(undef, $error);
-        }
-        unless ($done) {
-            Slim::Utils::Timers::setTimer(
-                undef, time() + ASYNC_RESUME_DELAY, $step,
-            );
-            return;
-        }
-        $sth->finish;
-        $step = undef;
-        my $result = eval {
-            _finish_playcount_snapshot(
-                $database_identity, $path, \%seen, \%playcount_for,
-            );
-        };
-        return $callback->(undef, $@ || 'Could not publish play counts')
-            unless $result;
-        $callback->($result, undef);
-    };
-    Slim::Utils::Timers::setTimer(
-        undef, time() + ASYNC_RESUME_DELAY, $step,
-    );
 }
 
 sub status {
