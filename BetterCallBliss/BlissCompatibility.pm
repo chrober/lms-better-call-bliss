@@ -5,7 +5,6 @@ use Slim::Music::Import;
 use Slim::Utils::Misc;
 use Slim::Utils::PluginManager;
 use Slim::Utils::Prefs;
-use Slim::Utils::SQLiteHelper;
 use Slim::Utils::Versions;
 
 my $bliss_prefs = preferences('plugin.blissmixer');
@@ -30,6 +29,7 @@ sub init {
 
 sub _persistent_database_path {
     return eval {
+        require Slim::Utils::SQLiteHelper;
         Slim::Utils::SQLiteHelper->dbFile('persist.db', 'persistent');
     } || '';
 }

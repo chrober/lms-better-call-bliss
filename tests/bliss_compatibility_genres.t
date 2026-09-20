@@ -100,7 +100,7 @@ for my $path ($database, $matrix, $binary) {
 }
 chmod 0755, $binary;
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {});
 my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 
 ok($snapshot->{ready}, 'compatible optimizer and readable Bliss database are ready');
