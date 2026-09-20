@@ -94,7 +94,8 @@ $Slim::Utils::Prefs::directory = $temporary;
 my $database = File::Spec->catfile($temporary, 'bliss.db');
 my $matrix = File::Spec->catfile($temporary, 'learned_matrix.json');
 my $binary = File::Spec->catfile($temporary, 'bliss-playlist-optimizer');
-for my $path ($database, $matrix, $binary) {
+my $lastfm_guidance = File::Spec->catfile($temporary, 'bliss-guidance-lastfm');
+for my $path ($database, $matrix, $binary, $lastfm_guidance) {
     open my $fh, '>', $path or die "Cannot create $path: $!";
     close $fh;
 }
@@ -123,6 +124,18 @@ ok($snapshot->{use_track_genre}, 'per-track genre mode is captured');
 ok($snapshot->{statistics_enabled}, 'LMS playback statistics availability is captured');
 is($snapshot->{playcount_influence}, -40,
     'play-count influence is inherited from BlissMixer');
+
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {
+    lastfm => {
+        program => $lastfm_guidance,
+        spi_v2 => 1,
+    },
+});
+my $with_compatible_provider = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+ok(
+    $with_compatible_provider->{guidance_providers}->{lastfm}->{available},
+    'a bundled Last.fm provider is available only after the plugin verified its SPI v2 identity',
+);
 
 unlink $matrix or die "Cannot remove $matrix: $!";
 my $without_matrix = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
