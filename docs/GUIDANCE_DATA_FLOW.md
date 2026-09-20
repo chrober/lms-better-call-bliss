@@ -97,7 +97,7 @@ sequenceDiagram
     B->>B: Freeze candidate inventory and provider identities
     opt Last.fm enabled and provider available
         B->>X: Collect bounded similar-track and similar-artist results
-        X-->>B: Cached or fresh observations; failures are tolerated
+        X-->>B: Cached or fresh observations, failures are tolerated
         B->>B: Resolve relations to frozen local candidate IDs
     end
     B->>B: Write hash-bound artifacts and trusted request JSON
@@ -129,7 +129,7 @@ for SPI version `2`, the host-neutral protocol name
 ```mermaid
 sequenceDiagram
     participant B as Better Call Bliss
-    participant O as bliss-playlist-optimizer<br/>SPI host
+    participant O as bliss-playlist-optimizer SPI host
     participant LF as bliss-guidance-lastfm
     participant PC as bliss-guidance-playcounts
     participant DB as persist.db
@@ -141,7 +141,7 @@ sequenceDiagram
     PC-->>O: manifest: playcount-guidance, playcount channel
 
     O->>LF: prepare(resolved Last.fm artifact, anchors)
-    LF->>LF: Verify hash; index resolved local relations once
+    LF->>LF: Verify hash, index resolved local relations once
     LF-->>O: prepared diagnostics
 
     O->>PC: prepare(candidate-identity artifact, read-only persist.db)

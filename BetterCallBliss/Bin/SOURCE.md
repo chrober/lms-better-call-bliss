@@ -6,9 +6,9 @@ separate `chrober/bliss-playlist-optimizer` repository.
 
 Latest packaged optimizer source:
 
-- Optimizer release: `v0.1.13`
-- Optimizer commit: `5f3e958ddb67397d37413ab81f0d025636eb1118`
-- Program contract: `0.1.13`, core API `0.1`, guidance SPI `2`
+- Optimizer release: `v0.2.0`
+- Optimizer commit: `df5c902279b7cbe046a795b9223e2d1776e3e66f`
+- Program contract: `0.2.0`, core API `0.1`, guidance SPI `2`
 - Last.fm guidance release: `v0.1.0`
 - Last.fm guidance commit: `20c2782380f9f98de8c18aef2b44c2f467f90ac5`
 - Play-count guidance release: `v0.1.0`

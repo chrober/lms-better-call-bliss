@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 119;
+use Test::More tests => 122;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -130,6 +130,22 @@ like(
     $extras,
     qr/if \(response\.result\.job\) \{\s*updateJobLists.*?else if \(response\.result\.state === 'not_found' && !waitingForRegistration\)/s,
     'a provisional preparation row survives not-found polls until the reserved job is registered',
+);
+unlike(
+    $extras,
+    qr/window\.setInterval\(pollJob, 1500\)/,
+    'status polling does not overlap fixed-interval requests while LMS is busy',
+);
+like(
+    $extras,
+    qr/function pollJob\(\).*?pollInFlight = true;.*?pollInFlight = false;.*?schedulePoll\(1500\)/s,
+    'a settled status request schedules the next poll only after releasing its in-flight guard',
+);
+my $guidance_flow = slurp(File::Spec->catfile($root, 'docs', 'GUIDANCE_DATA_FLOW.md'));
+unlike(
+    $guidance_flow,
+    qr/sequenceDiagram.*?(?:-->>|->>).*?;/s,
+    'sequence-diagram messages do not use Mermaid statement separators',
 );
 like(
     $extras,

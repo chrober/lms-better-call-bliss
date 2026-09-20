@@ -1440,6 +1440,7 @@
 
     var serverJsonUrl = '[% webroot %]jsonrpc.js';
     var pollTimer;
+    var pollInFlight = false;
     var finishing = false;
     var waitingForRegistration = false;
     var startupError = '';
@@ -1627,7 +1628,7 @@
     function finishWithServerRender() {
       if (finishing) return;
       finishing = true;
-      if (pollTimer) window.clearInterval(pollTimer);
+      stopPolling();
       window.setTimeout(function () {
         window.location.replace(resultUrl());
       }, 700);
@@ -1677,7 +1678,8 @@
     }
 
     function pollJob() {
-      if (!jobId) return;
+      if (!jobId || finishing || pollInFlight) return;
+      pollInFlight = true;
       requestJob('status', jobId).then(function (response) {
         if (response && response.result) {
           if (response.result.job) {
@@ -1691,7 +1693,12 @@
           }
         }
       }).catch(function (error) {
-        setText('bea-live-status-elapsed', ' (status update failed: ' + error.message + ')');
+        if (window.console && window.console.warn) {
+          window.console.warn('Better Call Bliss status update will be retried:', error);
+        }
+      }).then(function () {
+        pollInFlight = false;
+        if (!finishing) schedulePoll(1500);
       });
     }
 
@@ -1708,9 +1715,19 @@
     }
 
     function startPolling() {
-      if (pollTimer) window.clearInterval(pollTimer);
+      stopPolling();
       pollJob();
-      pollTimer = window.setInterval(pollJob, 1500);
+    }
+
+    function schedulePoll(delay) {
+      if (!jobId || finishing) return;
+      if (pollTimer) window.clearTimeout(pollTimer);
+      pollTimer = window.setTimeout(pollJob, delay || 1500);
+    }
+
+    function stopPolling() {
+      if (pollTimer) window.clearTimeout(pollTimer);
+      pollTimer = null;
     }
 
     function responseError(responseHtml) {
@@ -1729,8 +1746,7 @@
       if (window.BetterCallBlissPreviewPreparation) {
         window.BetterCallBlissPreviewPreparation.stopTimer();
       }
-      if (pollTimer) window.clearInterval(pollTimer);
-      pollTimer = null;
+      stopPolling();
       waitingForRegistration = false;
       try {
         window.sessionStorage.removeItem('bettercallbliss_preview_started_ms');
