@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace Better Call Bliss's direct Last.fm and full-library play-count ranking paths with deterministic, provider-backed guidance that keeps Bliss as the acoustic authority.
+**Goal:** Replace Better Call Bliss's direct Last.fm and full-library play-count ranking paths with deterministic, provider-backed guidance that keeps Bliss as the exclusive candidate-discovery and acoustic authority while applying additional hints during native pathfinding.
 
 **Architecture:** Better Call Bliss continues to collect and resolve Last.fm relations through LastMix, then supplies a frozen artifact to `bliss-guidance-lastfm`. It supplies a frozen eligible identity artifact and trusted Lyrion `persist.db` descriptor to `bliss-guidance-playcounts`; that provider reads only bounded candidate values during scoring, against one job-scoped SQLite snapshot. The optimizer owns provider lifecycle, shared shortlist-ranking boundaries, bounded aggregation, and result provenance.
 
@@ -21,6 +21,8 @@
 - Use `rusqlite` read-only access, `PRAGMA query_only=ON`, finite busy timeouts, bounded `urlmd5` batches, and no SQLite `immutable=1` flag.
 - Normalize play counts against the frozen selected candidate library, treating absent counts as zero and equal counts with an average-rank percentile.
 - Reuse one provider process per job; JSONL score payloads contain bounded shortlists only.
+- Providers never nominate candidates or enlarge the Bliss-derived shortlist. Guidance is applied before expansion selection, beam/frontier pruning, and completed-route comparison, not after the optimizer has produced a route.
+- Planners consume only generic `(provider_id, channel)` signals and capability scopes; adding another provider must not require planner-specific code.
 - Parallelize only independent CPU-bound work where profiling proves a benefit; preserve byte-stable order and results across Rayon worker counts.
 - Do not duplicate decoded Bliss feature vectors or materialize a full-library play-count JSON/object map in a provider.
 - Provider failures, timeouts, bad artifacts, schema mismatch, locked database, and no matches are neutral; hard constraints remain intact.
@@ -30,6 +32,8 @@
 - A valid virtual-library candidate with no `tracks_persistent` row must receive the same zero-count percentile as an explicit zero, not be silently dropped.
 - Two equal play counts in different score batches must yield the same score and tie behavior as they would in one batch.
 - A provider must never return an ID not present in the optimizer's current shortlist; the host must discard such output and record a failure.
+- Guidance must be visible in partial-path retention and completed-route selection tests, while a candidate excluded from the Bliss shortlist remains impossible to select regardless of provider score.
+- Provider manifests, policies, telemetry, and aggregation must use `(provider_id, channel)` identity rather than hard-coded Last.fm or play-count branches in planner code.
 - A Last.fm artifact hash or play-count identity artifact hash change after preparation must neutralize only that provider, not abort the playlist job.
 - A live LMS update during a route must not change play-count scores after the provider's snapshot begins, and cancellation must release that snapshot.
 
@@ -62,9 +66,10 @@
 - Modify: `D:/LMS/bliss-playlist-guidance-spi/README.md`
 
 **Interfaces:**
-- Produces `SPI_VERSION: u16 = 2` and `PROTOCOL_NAME: "bliss-playlist-optimizer-guidance-jsonl-v2"`.
+- Produces `SPI_VERSION: u16 = 2` and the host-neutral `PROTOCOL_NAME: "bliss-guidance-jsonl-v2"`, suitable for both `bliss-playlist-optimizer` and a later `bliss-mixer` host.
 - Produces `ArtifactDescriptor { kind, path, sha256 }` and `ResourceDescriptor { kind, path, access }`.
 - Produces `GuidanceRequest::Prepare { job_id, options, artifacts, resources, anchors }`; it intentionally has no full candidate inventory.
+- Produces manifest-declared global/edge capabilities, stable channel descriptors, required candidate identity fields, accepted artifact/resource kinds, and optional configuration schema.
 - Produces `Candidate { candidate_id, lms_urlmd5, database_file, title, artist, album, recording_mbid, artist_mbids }` for bounded `score` batches.
 
 - [ ] **Step 1: Write failing protocol round-trip tests**
@@ -94,7 +99,7 @@ pub struct ResourceDescriptor { pub kind: String, pub path: String, pub access: 
 pub enum ResourceAccess { ReadOnly }
 ```
 
-Keep provider-specific options as `Value`, reject wrong SPI versions, and document that `Prepare` never carries a decoded Bliss inventory or an unbounded candidate list.
+Keep provider-specific options as `Value`, reject wrong SPI versions, and document that `Prepare` never carries a decoded Bliss inventory or an unbounded candidate list. Channel names are provider-local and are identified by `(provider_id, channel)` at the host boundary.
 
 - [ ] **Step 4: Run protocol and schema tests**
 
@@ -247,7 +252,7 @@ Replace `Session::prepare(job_id, candidates, anchors)` with a provider-specific
 
 - [ ] **Step 4: Add deterministic aggregation and provider telemetry**
 
-Use stable candidate IDs and sorted channel/provider order. Aggregate only valid signals:
+Use stable candidate IDs and sorted `(provider_id, channel)` order. Resolve channel weights through generic registered policy rather than source-specific host branches. Aggregate only valid signals:
 
 ```rust
 let adjustment = signals.iter()
@@ -289,7 +294,7 @@ git -C D:/LMS/bliss-playlist-optimizer commit -m "feat: host bounded guidance SP
 
 - [ ] **Step 1: Add failing planner-boundary tests**
 
-Test automatic extension, exact extension, spacing repair, preserved-order gap repair, and destination routing with equal Bliss candidates. Give the fixture provider one positive and one negative signal and assert guidance changes their order without admitting a non-shortlisted candidate.
+Test automatic extension, exact extension, spacing repair, preserved-order gap repair, and destination routing with equal Bliss candidates. Give the fixture provider one positive and one negative signal and assert guidance changes expansion order, beam retention, and the selected completed route without admitting a non-shortlisted candidate.
 
 ```rust
 assert_eq!(selection.added_track_ids, vec!["bliss-row-2"]);
@@ -308,7 +313,7 @@ Add a request artifact for `eligible-candidate-identities-v1`. Validate its SHA-
 
 - [ ] **Step 4: Introduce one shared guided ranking boundary**
 
-Create a helper that receives an acoustic shortlist and route context, asks providers for bounded signals before CPU-parallel candidate evaluation, then passes an immutable adjustment map into parallel ranking:
+Create a helper that receives a Bliss-derived acoustic shortlist and route context, asks providers for bounded signals before CPU-parallel candidate evaluation, then passes an immutable adjustment map into parallel ranking:
 
 ```rust
 fn rank_guided_shortlist(
@@ -318,11 +323,11 @@ fn rank_guided_shortlist(
 ) -> Result<Vec<CandidateEvaluation>, CommandFailure>;
 ```
 
-Use stable row-ID ordering before and after Rayon work. Call it from automatic/exact extensions, spacing repair, preserved-order gaps, and destination/A-to-B routes. Do not call a provider from inside a Rayon closure.
+Use stable row-ID ordering before and after Rayon work. Call it from automatic/exact extensions, spacing repair, preserved-order gaps, and destination/A-to-B routes. Apply the guided loss before expansion selection, partial-path accumulation, beam/frontier truncation, and completed-route comparison. Do not call a provider from inside a Rayon closure or after a final route has already been selected.
 
 - [ ] **Step 5: Delete direct semantic and play-count ranking**
 
-Remove `load_play_counts`, `PlayCountInventory`, `PlayCountTrack`, `RouteTrack::play_count_percentile` initialization, `GuidanceConfig` direct fields, and planner uses of `SemanticPool` as candidate admission/reranking. Keep only result-level provider provenance; candidate discovery is Bliss shortlist discovery.
+Remove `load_play_counts`, `PlayCountInventory`, `PlayCountTrack`, `RouteTrack::play_count_percentile` initialization, `GuidanceConfig` direct fields, and planner uses of `SemanticPool` as candidate admission/reranking. Keep only result-level provider provenance; candidate discovery remains exclusively Bliss shortlist discovery, and provider guidance operates only within that pool.
 
 - [ ] **Step 6: Update schemas and result provenance tests**
 
@@ -523,4 +528,5 @@ git -C D:/LMS/lms-better-call-bliss commit -m "build: package matched guidance p
 - [ ] Deploy the matching plugin and binaries to a test Lyrion server without restarting an actively playing server until the user approves.
 - [ ] Run one Last.fm-enabled extension, one negative play-count-preference extension, one destination route, one locked/missing-database neutral fallback, and one cancelled preview.
 - [ ] Compare INFO/DEBUG logs and preview provenance to verify that observed guidance, applied guidance, cache state, provider timing, and neutral failure behavior are clear without leaking private paths at INFO.
+- [ ] Run a fixture provider with an unknown provider ID and both global and edge channels; verify it affects every applicable planner through manifest capabilities and registered policy without planner code changes.
 - [ ] Merge only the tested migration branches; remove no stable-main implementation until that branch is accepted.

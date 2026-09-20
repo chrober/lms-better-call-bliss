@@ -4,6 +4,10 @@
 
 Better Call Bliss must use external, non-acoustic knowledge to **guide** candidate choice while keeping Bliss the authority for acoustic distance, eligible-library membership, route feasibility, and repeat windows. The first supported guidance sources are Last.fm track/artist relations and LMS play counts.
 
+This is intentionally a **Bliss-first** design. Bliss alone discovers and acoustically ranks the bounded candidate pool. A guidance provider cannot nominate a track, enlarge that pool, or rescue a candidate rejected by Bliss or by a hard constraint. Guidance supplies additional hints only while the optimizer chooses among candidates already admitted to the Bliss-derived pool.
+
+Guidance is nevertheless part of optimization rather than Perl-side post-processing. The optimizer applies it before candidate selection, partial-path retention, beam pruning, and completed-route comparison. It is therefore able to influence which acoustically eligible bridges and paths survive the search, but it cannot replace the acoustic search or alter the resulting playlist after the optimizer has finished.
+
 The target design replaces the current direct semantic and play-count selection path in a Better Call Bliss migration branch. It must avoid parallel ranking implementations, avoid sending a 64k–200k-track library through a child-process pipe, preserve deterministic results, and report which guidance actually affected a result. The current main branches remain unchanged until the migration is proven.
 
 The migration deliberately uses a hybrid acquisition model:
@@ -25,7 +29,7 @@ The migration is successful when the direct ranking path has been removed, no pe
 | **Guidance provider** | A Rust process that consumes declared evidence artifacts or trusted resources and returns bounded candidate-level preference signals. |
 | **Guidance signal** | A signed, confidence-weighted preference for a candidate within a declared channel. |
 | **Guidance aggregation** | The optimizer's deterministic combination of Bliss ranking and permitted provider signals. |
-| **Reranking** | Applying the aggregated guidance adjustment to an acoustically eligible candidate ordering. |
+| **Reranking** | Applying the aggregated guidance adjustment to a Bliss-derived candidate ordering inside the active planner, before search states or completed routes are selected. |
 
 Bliss hard constraints always run before guidance. Guidance can neither admit a non-local track nor allow a repeat-window violation nor turn an acoustically invalid route into a valid one.
 
@@ -109,6 +113,36 @@ The play-count provider must:
 
 The optimizer does not fetch Last.fm data and contains no Lyrion-specific database queries. Only the play-count provider opens `persist.db`.
 
+### Extensibility contract
+
+The optimizer and its planners must not contain a list of known providers or source-specific channels. Provider identity is the pair `(provider_id, provider_version)`, and signal identity is `(provider_id, channel)`. A provider manifest declares:
+
+- its stable provider ID and protocol version;
+- whether it supplies global candidate guidance, edge candidate guidance, or both;
+- its stable channels and the scopes supported by each channel;
+- the candidate identity fields it requires;
+- the artifact and trusted-resource kinds it accepts; and
+- an optional schema for its provider-specific configuration.
+
+Better Call Bliss owns the trusted provider registry, packaging, administrator-visible settings, and per-job weights. The optimizer owns generic lifecycle, validation, aggregation, caching, and planner integration. Adding a provider such as ListenBrainz, or adding a source such as last-played time, rating, or skip history, may require a new provider binary and Better Call Bliss configuration, but must not require changes to optimizer planner code.
+
+All providers remain advisory. Relational sources such as Last.fm or ListenBrainz normally return edge-scoped hints for the current neighbors; unary sources such as play count or last-played time normally return global hints for a candidate. Both use the same bounded signal and aggregation mechanism.
+
+### Future `bliss-mixer` host
+
+The SPI and provider binaries are also intended for a later integration into the Rust `bliss-mixer` fork in `D:/LMS/bliss-mixer`, which is consumed by the `D:/LMS/lms-blissmixer` fork. This is a second host for the same guidance ecosystem, not a second set of Last.fm and listening-history integrations.
+
+The two hosts use the same provider contract at different decision points:
+
+- `bliss-playlist-optimizer` applies guidance repeatedly within bridge building, partial-path retention, beam pruning, and whole-route comparison.
+- `bliss-mixer` first creates its bounded Bliss-derived DSTM candidate pool, then applies the same bounded provider signals while ranking candidates in that pool before returning them to the Perl plugin.
+
+In both cases Bliss remains responsible for candidate discovery and acoustic eligibility. A provider cannot introduce a candidate absent from the host's Bliss-derived pool. The difference is only that the playlist optimizer performs a multi-step search while `bliss-mixer` ranks a single candidate pool.
+
+SPI v2 must therefore be host-neutral. Its protocol name, schemas, Rust types, manifests, and provider implementations must not refer to `bliss-playlist-optimizer` as the only possible host or depend on optimizer-specific route structures. Host-specific context is expressed through the generic global and edge scopes. Shared conformance fixtures should be reusable by both binaries.
+
+Implementing the `bliss-mixer` host and replacing the `lms-blissmixer` fork's current Perl-side Last.fm/play-count reranking are follow-up work. They are not required to complete the first Better Call Bliss migration, but the v2 contract created by that migration must not prevent them.
+
 ## SPI v2 shape
 
 The existing v1 experiment prepares every provider with full candidates and anchors, then scores the full decoded library for diagnostics. The migration introduces a breaking v2 contract; no compatibility shim is needed on the migration branches.
@@ -174,6 +208,8 @@ The Last.fm provider opens and indexes only its evidence artifact during `prepar
 The optimizer sends a bounded candidate batch together with the planner's actual context. The batch contains stable candidate identity and only provider-needed fields. For play-count guidance this includes `lms_urlmd5`; for Last.fm it includes the identities needed to match the resolved artifact. An edge request identifies its frozen left and right anchor and may include a small ordered context suffix.
 
 Providers return only signals for IDs in that batch. Every signal declares a stable **channel**, initially `lastfm_track`, `lastfm_artist`, or `playcount`, and has bounded `score` (`-1..1`) and `confidence` (`0..1`). Missing signals are neutral.
+
+The host identifies a channel by `(provider_id, channel)` and applies only policy explicitly registered for that pair. Unknown providers or channels are neutral and recorded diagnostically. Channel names are not globally reserved, and adding a channel does not add source-specific branching to a planner.
 
 Only bounded shortlists cross the JSONL process boundary. The candidate identity artifact is opened through its verified artifact descriptor during preparation and is never serialized wholesale through provider standard input.
 
@@ -258,6 +294,10 @@ Guidance is invoked at shared candidate-ranking boundaries rather than separatel
 
 Each boundary passes only the currently evaluated candidate shortlist. Providers are never called over the whole library merely to generate diagnostics. The planner first applies membership, uniqueness, genre/virtual-library, and repeat constraints, then Bliss scoring and acceptance gates, then bounded guidance reranking among the remaining candidates.
 
+That ordering is deliberate. The shortlist is discovered exclusively through Bliss; providers cannot add candidates to it. Once the Bliss-derived shortlist exists, guidance is evaluated before the planner commits to an expansion or discards a search state. The bounded guided loss participates in expansion ordering, partial-path accumulation, beam/frontier pruning, and comparison of completed valid routes. The final route is therefore guidance-aware, but every route member and transition remains acoustically admitted by Bliss.
+
+The same rule applies to all modes. There is no Perl-side result reranker and no mode-specific provider shortcut. Provider calls are batched and cached by provider, context, and candidate set so that guidance can participate in iterative search without one child-process round trip for every candidate or inner-loop comparison.
+
 ## Non-functional requirements
 
 ### Runtime performance and scalability
@@ -330,6 +370,8 @@ The implementation plan must include at least these regression checks:
 12. Cancellation closes provider processes and the SQLite read snapshot without waiting for the normal job timeout.
 13. A 200,000-track fixture and performance harness verify bounded provider memory, bounded JSONL payloads, indexed/batched database access, multi-core scaling where applicable, and measured latency for destination routes and playlist extensions.
 14. Memory profiling confirms that providers do not duplicate the decoded Bliss feature inventory and that play-count memory is limited to the compact distribution plus bounded requested-value cache.
+15. A provider cannot nominate or admit a candidate absent from the Bliss-derived shortlist, while its signal can still change expansion order, beam retention, and the winning completed route within that shortlist.
+16. A fixture provider with an otherwise unknown provider ID and channel participates through manifest-declared global and edge capabilities without changes to any optimizer planner.
 
 ## Out of scope
 
@@ -337,6 +379,7 @@ The implementation plan must include at least these regression checks:
 - A new Lyrion CLI/JSON-RPC batch endpoint for play counts.
 - Alternative Play Count signals in the first migration.
 - ListenBrainz or other new guidance providers.
+- The initial `bliss-mixer` and `lms-blissmixer` host integration; SPI v2 is designed to support that follow-up without a protocol redesign.
 - Changing Bliss acoustic feature extraction or `bliss-mixer-core` distance semantics.
 - User-configurable external executable or resource paths.
 - Retaining the v1 experimental SPI or direct selection implementation inside the migration branch.

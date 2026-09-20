@@ -41,7 +41,7 @@ repository.
 Better Call Bliss deliberately builds on and credits the original [lms-blissmixer](https://github.com/CDrummond/lms-blissmixer) feature
 **Create bliss mix**. That BlissMixer action already generates immediate Bliss-based mixes from a selected track, artist, album, or genre context. Better Call Bliss is a companion workflow around the same Bliss ecosystem: it previews auditable saved-playlist and player-queue transformations, exposes per-job constraints, and lets the user choose whether to save, overwrite, or send the accepted result to a player.
 
-See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly explanations, technical flowcharts, option ranges, and the exact boundary between working and planned modes. See [UX status](docs/UX_STATUS.md) for the complete feature matrix.
+See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly explanations, technical flowcharts, option ranges, and the exact boundary between working and planned modes. See [Guidance data flow](docs/GUIDANCE_DATA_FLOW.md) for the end-to-end Better Call Bliss, optimizer, and provider information flow. See [UX status](docs/UX_STATUS.md) for the complete feature matrix.
 
 ## Requirements
 
