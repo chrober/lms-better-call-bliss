@@ -34,6 +34,18 @@ sub _persistent_database_path {
     } || '';
 }
 
+sub _guidance_program {
+    my ($name) = @_;
+    my $entry = $guidance_programs->{$name};
+    return ref($entry) eq 'HASH' ? ($entry->{program} || '') : ($entry || '');
+}
+
+sub _guidance_spi_v2 {
+    my ($name) = @_;
+    my $entry = $guidance_programs->{$name};
+    return ref($entry) eq 'HASH' ? ($entry->{spi_v2} ? 1 : 0) : 1;
+}
+
 sub _int_pref {
     my ($name, $fallback) = @_;
     my $value = $bliss_prefs->get($name);
@@ -176,8 +188,8 @@ sub snapshot {
     my $strategy = _strategy_from_prefs();
     my $statistics_enabled = main::STATISTICS ? 1 : 0;
     my $persist_db = _persistent_database_path();
-    my $lastfm_guidance = $guidance_programs->{lastfm} || '';
-    my $playcount_guidance = $guidance_programs->{playcounts} || '';
+    my $lastfm_guidance = _guidance_program('lastfm');
+    my $playcount_guidance = _guidance_program('playcounts');
     my $playcount_influence = $statistics_enabled
         ? _int_pref('playcount_influence', 0) : 0;
     $playcount_influence = -100 if $playcount_influence < -100;
@@ -217,12 +229,14 @@ sub snapshot {
         playcount_influence => $playcount_influence,
         guidance_providers => {
             lastfm => {
-                available => $lastfm_guidance && -x $lastfm_guidance ? 1 : 0,
+                available => $lastfm_guidance && -x $lastfm_guidance
+                    && _guidance_spi_v2('lastfm') ? 1 : 0,
                 program => $lastfm_guidance,
             },
             playcounts => {
                 available => $statistics_enabled && $playcount_guidance
-                    && -x $playcount_guidance && -r $persist_db ? 1 : 0,
+                    && -x $playcount_guidance && -r $persist_db
+                    && _guidance_spi_v2('playcounts') ? 1 : 0,
                 program => $playcount_guidance,
                 persist_db => $persist_db,
             },

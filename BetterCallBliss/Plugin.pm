@@ -36,7 +36,7 @@ my $initialized = 0;
 my $optimizer_binary;
 my $lastfm_guidance_binary;
 my $playcount_guidance_binary;
-my %optimizer_version_output;
+my %binary_version_output;
 my $optimizer_supports_destination_blocks;
 
 sub getDisplayName { return 'PLUGIN_BETTERCALLBLISS_NAME'; }
@@ -81,6 +81,12 @@ sub initPlugin {
         _optimizerSupportsCandidateLibraryScope($optimizer_binary);
     my $optimizer_supports_guidance_spi_v2 =
         _optimizerSupportsGuidanceSpiV2($optimizer_binary);
+    my $lastfm_guidance_spi_v2 = _guidanceProviderSupports(
+        $lastfm_guidance_binary, 'lastfm-guidance',
+    );
+    my $playcount_guidance_spi_v2 = _guidanceProviderSupports(
+        $playcount_guidance_binary, 'playcount-guidance',
+    );
     $optimizer_supports_destination_blocks =
         _optimizerSupportsDestinationBlocks($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
@@ -89,8 +95,14 @@ sub initPlugin {
         $optimizer_supports_candidate_library_scope,
         $optimizer_supports_guidance_spi_v2,
         {
-            lastfm => $lastfm_guidance_binary,
-            playcounts => $playcount_guidance_binary,
+            lastfm => {
+                program => $lastfm_guidance_binary,
+                spi_v2 => $lastfm_guidance_spi_v2,
+            },
+            playcounts => {
+                program => $playcount_guidance_binary,
+                spi_v2 => $playcount_guidance_spi_v2,
+            },
         },
     );
     Plugins::BetterCallBliss::Jobs::init(
@@ -135,9 +147,11 @@ sub initPlugin {
         . ' guidance_spi_v2='
         . ($optimizer_supports_guidance_spi_v2 ? 'supported' : 'unsupported')
         . ' lastfm_guidance='
-        . ($lastfm_guidance_binary ? 'available' : 'missing')
+        . (!$lastfm_guidance_binary ? 'missing'
+            : $lastfm_guidance_spi_v2 ? 'available' : 'incompatible')
         . ' playcount_guidance='
-        . ($playcount_guidance_binary ? 'available' : 'missing')
+        . (!$playcount_guidance_binary ? 'missing'
+            : $playcount_guidance_spi_v2 ? 'available' : 'incompatible')
         . ' destination_blocks='
         . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
     return 1;
@@ -145,7 +159,7 @@ sub initPlugin {
 
 sub _optimizerSupportsProgress {
     my $binary = shift;
-    my $output = _optimizerVersionOutput($binary);
+    my $output = _binaryVersionOutput($binary);
     return 1 if $output =~ /"progress_sidecar"\s*:\s*true/;
     my $version;
     if ($output =~ /"version"\s*:\s*"(\d+)\.(\d+)\.(\d+)"/) {
@@ -161,42 +175,49 @@ sub _optimizerSupportsProgress {
 
 sub _optimizerSupportsTrustedRequest {
     my $binary = shift;
-    my $output = _optimizerVersionOutput($binary);
+    my $output = _binaryVersionOutput($binary);
     return $output =~ /"trusted_request"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerSupportsGenrePolicy {
     my $binary = shift;
-    my $output = _optimizerVersionOutput($binary);
+    my $output = _binaryVersionOutput($binary);
     return $output =~ /"genre_policy"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerSupportsCandidateLibraryScope {
     my $binary = shift;
-    my $output = _optimizerVersionOutput($binary);
+    my $output = _binaryVersionOutput($binary);
     return $output =~ /"candidate_library_scope"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerSupportsGuidanceSpiV2 {
     my $binary = shift;
-    my $output = _optimizerVersionOutput($binary);
+    my $output = _binaryVersionOutput($binary);
     return $output =~ /"guidance_spi_v2"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _optimizerSupportsDestinationBlocks {
     my $binary = shift;
-    my $output = _optimizerVersionOutput($binary);
+    my $output = _binaryVersionOutput($binary);
     return $output =~ /"destination_blocks"\s*:\s*true/ ? 1 : 0;
 }
 
-sub _optimizerVersionOutput {
+sub _guidanceProviderSupports {
+    my ($binary, $expected_provider_id) = @_;
+    my $output = _binaryVersionOutput($binary);
+    return 0 unless $output =~ /"provider_id"\s*:\s*"\Q$expected_provider_id\E"/;
+    return $output =~ /"spi_version"\s*:\s*2/ ? 1 : 0;
+}
+
+sub _binaryVersionOutput {
     my $binary = shift;
     return 0 unless $binary && -x $binary;
-    return $optimizer_version_output{$binary}
-        if exists $optimizer_version_output{$binary};
+    return $binary_version_output{$binary}
+        if exists $binary_version_output{$binary};
     my $quoted = $binary;
     $quoted =~ s/"/\\"/g;
-    return $optimizer_version_output{$binary} =
+    return $binary_version_output{$binary} =
         eval { qx("$quoted" version --json) } || '';
 }
 
