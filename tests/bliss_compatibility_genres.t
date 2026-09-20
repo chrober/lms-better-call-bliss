@@ -100,6 +100,7 @@ for my $path ($database, $matrix, $binary, $lastfm_guidance) {
     close $fh;
 }
 chmod 0755, $binary;
+chmod 0755, $lastfm_guidance;
 
 Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {});
 my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
