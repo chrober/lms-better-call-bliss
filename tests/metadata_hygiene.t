@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 118;
+use Test::More tests => 119;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -607,6 +607,11 @@ like(
 );
 like(
     $release_workflow,
-    qr/bliss-guidance-lastfm-aarch64-linux.*?bliss-guidance-playcounts-aarch64-linux/s,
+    qr/bliss-guidance-lastfm-aarch64-linux/s,
     'release workflow includes AArch64 provider binaries for Lyrion appliances',
+);
+like(
+    $release_workflow,
+    qr/bliss-guidance-playcounts-aarch64-linux/s,
+    'release workflow includes the AArch64 play-count provider',
 );
