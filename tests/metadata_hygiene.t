@@ -607,11 +607,11 @@ like(
 );
 like(
     $release_workflow,
-    qr/bliss-guidance-lastfm-aarch64-linux/s,
+    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-lastfm-\$platform/s,
     'release workflow includes AArch64 provider binaries for Lyrion appliances',
 );
 like(
     $release_workflow,
-    qr/bliss-guidance-playcounts-aarch64-linux/s,
+    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-playcounts-\$platform/s,
     'release workflow includes the AArch64 play-count provider',
 );
