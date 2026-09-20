@@ -144,7 +144,7 @@ like(
 my $guidance_flow = slurp(File::Spec->catfile($root, 'docs', 'GUIDANCE_DATA_FLOW.md'));
 unlike(
     $guidance_flow,
-    qr/sequenceDiagram.*?(?:-->>|->>).*?;/s,
+    qr/^\s*\w+(?:-->>|->>)[^\n;]*;/m,
     'sequence-diagram messages do not use Mermaid statement separators',
 );
 like(
