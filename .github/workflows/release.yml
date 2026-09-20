@@ -317,6 +317,7 @@ jobs:
             gh release upload "$TAG" dist/*.zip dist/*.sha1 dist/*.sha256 --clobber
           else
             gh release create "$TAG" dist/*.zip dist/*.sha1 dist/*.sha256 \
+              --target "$GITHUB_SHA" \
               --title "Better Call Bliss $VERSION" \
               --notes-file "$notes" \
               "${prerelease_flag[@]}"
