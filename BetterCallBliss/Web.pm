@@ -155,7 +155,7 @@ sub _form_from_params {
     for my $name (qw(
         source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_target_album_id route_target_album_track_count route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
-        variation_percent generation_seed playcount_influence lastfm_enabled
+        variation_percent generation_seed playcount_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
@@ -359,7 +359,6 @@ sub _result_view {
         variation_percent => $job->{options}->{variation_percent},
         generation_seed => $job->{options}->{generation_seed},
         playcount_influence => $job->{options}->{playcount_influence},
-        lastfm_enabled => $job->{options}->{lastfm_enabled},
         lastfm_track_guidance_percent =>
             $job->{options}->{lastfm_track_guidance_percent},
         lastfm_artist_guidance_percent =>
@@ -633,7 +632,10 @@ sub _result_view {
                 };
             }
             $view->{additions} = \@additions;
-            $view->{guidance_stats} = _guidance_stats(\@additions);
+            # Display rows deliberately retain only presentation fields. Count
+            # optional guidance from the native additions so their structured
+            # provider contributions are not lost before the result summary.
+            $view->{guidance_stats} = _guidance_stats($job->{additions});
 
             my @decisions;
             for my $decision (@{$preview->{decisions} || []}) {
@@ -719,9 +721,6 @@ sub handler {
         $form->{output_mode} = 'player_queue';
         $form->{ordering_policy} = 'preserve_order';
         $form->{extension_mode} = 'destination_route';
-    }
-    if (($params->{run_preview} || $params->{run_route_to_track_preview}) && $params->{lastfm_present}) {
-        $form->{lastfm_enabled} = $params->{lastfm_enabled} ? 1 : 0;
     }
     my $trimmed_output_name = $form->{output_name} || '';
     $trimmed_output_name =~ s/^\s+|\s+$//g;

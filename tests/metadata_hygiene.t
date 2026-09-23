@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 123;
+use Test::More tests => 124;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -219,10 +219,10 @@ like(
     qr/mskslider\..*?updateRouteLengthPolicy.*?route_min_intermediates.*?route_max_intermediates.*?route_exact_intermediates.*?route_direct_caution/s,
     'route policy disables both inapplicable inputs and Material sliders',
 );
-like(
-    $settings,
-    qr/updateLastFmGuidance.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent/s,
-    'both independent Better Call Bliss guidance inputs follow their enable checkbox',
+unlike(
+    $settings . $extras,
+    qr/lastfm_enabled|updateLastFmGuidance/,
+    'Last.fm target controls have no separate enable checkbox',
 );
 like(
     $defaults_module,
@@ -241,8 +241,8 @@ like(
 );
 like(
     $strings,
-    qr/This is not BlissMixerLab's immediate-mix sampling weight.*?This is not BlissMixer's target proportion/s,
-    'setting help distinguishes Better Call Bliss guidance from provider sampling controls',
+    qr/target share.*?Zero disables.*?target share.*?Zero disables/s,
+    'setting help describes independent Last.fm target shares and their zero-value disable rule',
 );
 like(
     $plugin_module,
@@ -596,6 +596,11 @@ like(
     $web,
     qr/route_model_comparison.*?static-weights.*?learned-matrix/s,
     'Web view maps both acoustic views for destination-route diagnostics',
+);
+like(
+    $web,
+    qr/\$view->\{additions\}\s*=\s*\\\@additions;.*?\$view->\{guidance_stats\}\s*=\s*_guidance_stats\(\$job->\{additions\}\);/s,
+    'guidance totals are calculated from native additions before display rows omit their contribution details',
 );
 like(
     $extras,

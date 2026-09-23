@@ -33,6 +33,60 @@ The migration is successful when the direct ranking path has been removed, no pe
 
 Bliss hard constraints always run before guidance. Guidance can neither admit a non-local track nor allow a repeat-window violation nor turn an acoustically invalid route into a valid one.
 
+## Last.fm target-share policy
+
+Better Call Bliss uses two independent Last.fm channels: `lastfm_track` and
+`lastfm_artist`.  Their job controls are percentages in the inclusive range
+`0..100`, and deliberately use the same user-facing idea as BlissMixer's
+Last.fm artist probability: a percentage is a **best-effort target share of
+chosen additions** supported by that channel, rather than a vague score
+strength.
+
+- `0%` disables that channel.  There is no separate Last.fm enable/disable
+  checkbox: Last.fm acquisition is skipped when both channel targets are zero.
+- A non-zero track target asks the planner to select that proportion of
+  additions with usable `lastfm_track` support where acoustically eligible
+  candidates exist.
+- A non-zero artist target does the same for `lastfm_artist` support.
+- One candidate can satisfy both targets.  The optimizer therefore treats the
+  two targets as a deterministic, best-effort multi-channel selection goal,
+  not mutually exclusive quotas.
+- If the current local, repeat-safe, Bliss-qualified pool cannot support a
+  target, the optimizer selects the best feasible route. It never lowers
+  acoustic gates or repeat constraints merely to meet a target.
+
+The guided pool must remain Bliss-first but be wide enough for the target to
+matter.  Whenever either Last.fm target is non-zero, the shared candidate
+selection boundary expands its Bliss-ranked pool by at least the same 10x
+multiplier used by BlissMixer DSTM.  Play-count guidance may request a larger
+existing multiplier.  Providers score only this bounded expanded pool; they
+cannot introduce a track outside it.  The planner then combines acoustic loss,
+repeat feasibility, and calibrated channel multipliers to choose additions and
+route expansions.  Stable candidate identity breaks ties, so a fixed request
+remains reproducible.
+
+This replaces the present model where guidance only applies a small bounded
+rank adjustment after a narrow shortlist has already been selected.  That
+model can correctly report Last.fm signals while still making endorsed tracks
+practically impossible to choose.
+
+### Target application at different planner boundaries
+
+The first implementation applies a DSTM-style calibrated multiplier at each
+shared **bounded selection boundary**, rather than tracking a route-wide hard
+quota in every path or beam state. Candidate lists are already ordered by
+Bliss, and the multiplier favors candidates with positive support for each
+active target; a candidate with both kinds of support receives both
+preferences. This preserves deterministic, bounded routing and makes targets
+materially influential without weakening Bliss constraints.
+
+It is deliberately best effort, not an exact final-route percentage guarantee:
+later repeat feasibility, adjacent-path quality, and route search can prevent a
+locally supported candidate from becoming a final member. A future refinement
+may carry selected-channel counters in route/beam state and report requested,
+available, and achieved shares at completion. A single intermediate bridge
+remains an acoustically qualified choice, not an artificial quota.
+
 ## Architecture decision
 
 The first migration keeps **Last.fm evidence acquisition** inside Better Call Bliss but moves **play-count acquisition**, evidence interpretation, and candidate guidance into independent Rust providers.

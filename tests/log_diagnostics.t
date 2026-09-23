@@ -267,8 +267,8 @@ like($start, qr/Seed Artist - Tail Song.*Target Artist - Destination Song/,
     'information log identifies both destination-route endpoints');
 like($start, qr/Mixing strategy: adaptive.*learned matrix available/,
     'information log explains the effective acoustic strategy');
-like($start, qr/similar tracks 25%.*similar artists 25%/,
-    'information log exposes both Last.fm guidance settings');
+like($start, qr/similar-track target 25%.*similar-artist target 25%/,
+    'information log exposes both Last.fm target shares');
 like($start, qr/Play-count guidance.*?-40.*?63000 known tracks.*?1128 tracks/s,
     'information log reports the per-job influence and snapshot coverage');
 like($start, qr/destination route \(automatic, 0-4 intermediate tracks, fast effort, target 70%, cautious direct-transition caution\)/,
@@ -313,6 +313,39 @@ like($result, qr/Cautious consensus result: worst available-model adjacent perce
 like($result, qr/Selected route \(3\):.*Tail Song.*Bridge Song.*Destination Song/s,
     'destination logging omits earlier context and lists only the audible route');
 unlike($result, qr/Context Song/, 'earlier queue context is absent from the audible route');
+
+my $fixed_source_guidance = {
+    %$job,
+    options => {%{$job->{options}}, extension_mode => 'fixed_source_extension'},
+    artifact => {
+        %{$job->{artifact}},
+        selection_preview => {
+            guidance_candidate_pool => {
+                bliss_ranked_candidate_count => 64125,
+                baseline_candidate_pool_count => 350,
+                provider_scored_candidate_count => 2560,
+                selected_candidate_pool_count => 527,
+                expanded_for_target_support => 1,
+                target_channels => [{
+                    provider_id => 'lastfm-guidance',
+                    channel => 'lastfm_artist',
+                    target_percent => 75,
+                    supported_candidate_count => 27,
+                    multiplier => 12.5,
+                }],
+            },
+        },
+    },
+};
+my $fixed_source_guidance_result = join "\n",
+    @{Plugins::BetterCallBliss::LogDiagnostics::result_info_lines(
+        $fixed_source_guidance,
+    )};
+like(
+    $fixed_source_guidance_result,
+    qr/Guidance candidate pool: 64125 Bliss-ranked; baseline 350; providers scored 2560; selection pool 527 \(expanded for target support\)\.\s+lastfm-guidance\/lastfm_artist target 75%: 27 supported, multiplier 12\.500\./,
+    'information log explains the bounded target-guidance candidate pool',
+);
 
 my $debug = join "\n",
     @{Plugins::BetterCallBliss::LogDiagnostics::result_debug_lines($job)};

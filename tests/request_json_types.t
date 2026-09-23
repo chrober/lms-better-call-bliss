@@ -197,10 +197,30 @@ ok(!exists $request->{selection}->{artist_guidance_percent},
 ok(!exists $request->{selection}->{playcount_influence},
     'legacy play-count guidance is not carried in optimizer selection settings');
 is_deeply($request->{guidance_policy}, [
-    {provider_id => 'lastfm-guidance', channel => 'lastfm_track', weight => 0.75},
-    {provider_id => 'lastfm-guidance', channel => 'lastfm_artist', weight => 0.75},
+    {provider_id => 'lastfm-guidance', channel => 'lastfm_track', weight => 1, target_percent => 75},
+    {provider_id => 'lastfm-guidance', channel => 'lastfm_artist', weight => 1, target_percent => 75},
     {provider_id => 'playcount-guidance', channel => 'playcount', weight => -0.35},
-], 'job settings become generic bounded guidance weights');
+], 'Last.fm settings become target-share policies while play-count remains signed guidance');
+
+my $zero_lastfm_request = {
+    selection => {
+        recording_guidance_percent => 0,
+        artist_guidance_percent => 0,
+        playcount_influence => 0,
+    },
+};
+Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
+    $zero_lastfm_request,
+    $built->{capability},
+    {
+        semantic_evidence => {
+            path => '/private/job/semantic-evidence.json',
+            sha256 => 'a' x 64,
+        },
+    },
+);
+is_deeply($zero_lastfm_request->{guidance_addons}, [],
+    'zero Last.fm targets do not start the Last.fm provider');
 is_deeply($request->{guidance_addons}, [
     {
         id => 'lastfm-guidance',

@@ -46,7 +46,7 @@ sub defaults {
         playcount_influence => int($capability->{playcount_influence} || 0),
         generation_seed => '',
         generation_seed_supplied => 0,
-        lastfm_enabled => $plugin_prefs->get('lastfm_enabled') ? 1 : 0,
+        lastfm_enabled => ($lastfm_track_guidance || $lastfm_artist_guidance) ? 1 : 0,
         lastfm_track_guidance_percent => int($lastfm_track_guidance),
         lastfm_artist_guidance_percent => int($lastfm_artist_guidance),
         max_added_tracks => int($bridge_budget),
@@ -212,8 +212,6 @@ sub normalize {
         $options->{generation_seed} = undef;
         $options->{generation_seed_supplied} = 0;
     }
-    $options->{lastfm_enabled} = $input->{lastfm_enabled} ? 1 : 0
-        if exists $input->{lastfm_enabled};
     $options->{lastfm_track_guidance_percent} = _integer(
         $input, 'lastfm_track_guidance_percent', 0, 100,
         $options->{lastfm_track_guidance_percent},
@@ -222,6 +220,13 @@ sub normalize {
         $input, 'lastfm_artist_guidance_percent', 0, 100,
         $options->{lastfm_artist_guidance_percent},
     );
+    # The two target shares are the complete public control surface.  Keep the
+    # derived flag for downstream acquisition and diagnostics, but never let a
+    # retired checkbox override a non-zero per-job target.
+    $options->{lastfm_enabled} = (
+        ($options->{lastfm_track_guidance_percent} || 0)
+        || ($options->{lastfm_artist_guidance_percent} || 0)
+    ) ? 1 : 0;
     $options->{max_added_tracks} = _integer(
         $input, 'max_added_tracks', 0, 100, $options->{max_added_tracks},
     );

@@ -54,7 +54,7 @@ job. The resulting request is immutable for the optimizer process lifetime.
 | --- | --- | --- | --- |
 | Strategy, Static weights, Adaptive context, repeat windows and genre policy | BlissMixer current settings, with Better Call Bliss job overrides | Better Call Bliss, then optimizer | Shapes the acoustic matrix, hard repeat checks, and the frozen eligible candidate library. |
 | Learned matrix and blend | Optional BlissMixerLab | Better Call Bliss, then optimizer | Supplies an optional matrix artifact and learned blend for Adaptive scoring. Its absence uses the documented Bliss fallback. |
-| Last.fm enabled; similar-track and similar-artist percentages | Better Call Bliss job settings | Better Call Bliss, then optimizer guidance policy | Enables LastMix acquisition and produces two independent policy weights: `lastfm_track` and `lastfm_artist`. The Last.fm provider itself receives no UI setting. |
+| Similar-track and similar-artist target shares | Better Call Bliss job settings | Better Call Bliss, then optimizer guidance policy | Each non-zero target enables its LastMix channel and produces a `target_percent` policy for `lastfm_track` or `lastfm_artist`; zero disables that channel. The Last.fm provider itself receives no UI setting. |
 | Play-count influence, from -100 to 100 | Better Call Bliss job setting, initialized from BlissMixer | Better Call Bliss, then optimizer guidance policy | Becomes a signed `playcount` policy weight. Negative prefers lower counts; positive prefers higher counts; zero means the provider is not started. |
 | Candidate library | Active Lyrion virtual library, source exclusions, LMS membership, and captured genre policy | Better Call Bliss, then optimizer | Determines which *generated* tracks are eligible. It is frozen before native search starts. |
 
@@ -201,7 +201,11 @@ may return signals only for IDs in that request. Omitted IDs are neutral.
 The optimizer aggregates only declared channels:
 
 - `lastfm_track` and `lastfm_artist` are independent positive supporting
-  signals. Their per-job percentages become separate policy weights.
+  signals. Their per-job percentages become separate best-effort target shares.
+  The optimizer expands its Bliss-ranked pool at least tenfold while either is
+  active, then derives deterministic calibrated multipliers inside that bounded
+  pool. Overlapping evidence contributes to both targets; Bliss constraints and
+  acoustic qualification always remain authoritative.
 - `playcount` is a normalized unary signal. The signed per-job policy weight
   determines whether the same count favors less- or more-played tracks.
 

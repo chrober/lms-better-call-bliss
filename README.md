@@ -22,7 +22,7 @@ repository.
 - Adds spacing tracks as needed when repeated source artists or albums need more room to satisfy the selected repeat windows.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
-- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm similar-track and similar-artist guidance, and per-job play-count guidance initialized from BlissMixer.
+- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm similar-track and similar-artist target shares, and per-job play-count guidance initialized from BlissMixer.
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
 - Offers three destination shortcuts on a local track or album in this menu order. An album destination always plays every local audio track in disc and track order:
 
@@ -55,8 +55,8 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 - [BlissMixerLab](https://github.com/chrober/lms-blissmixer-lab) is optional.
   When enabled, it contributes `learned_matrix.json`, its learned-blend
   preference, and its immediate-mix extensions. Better Call Bliss keeps separate
-  Last.fm route and playlist guidance defaults because the similarly named
-  provider controls have different algorithmic meanings. It does not treat a stray
+  Last.fm route and playlist target-share defaults because its candidates and
+  route planner are distinct. It does not treat a stray
   matrix file as active personalization when BlissMixerLab is unavailable.
 - A readable `learned_matrix.json` is optional. When present through
   BlissMixerLab, Adaptive can blend it with dynamic variance. When absent,

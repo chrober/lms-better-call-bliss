@@ -404,23 +404,18 @@
 
   <fieldset class="bea-section" id="lastfm_guidance_fields">
     <legend>Last.fm guidance</legend>
-    <input type="hidden" name="lastfm_present" value="1">
     <div class="bea-row">
-      <label for="lastfm_enabled">Use Last.fm guidance</label>
-      <input type="checkbox" name="lastfm_enabled" id="lastfm_enabled" value="1"[% IF bettercallbliss_form.lastfm_enabled %] checked[% END %][% UNLESS bettercallbliss_lastmix_available %] disabled[% END %]>
-      [% UNLESS bettercallbliss_lastmix_available %]<span class="bea-disabled">Requires the LastMix plugin to be installed and enabled.</span>[% END %]
-    </div>
-    <div class="bea-row">
-      <label for="lastfm_track_guidance_percent">Similar-track guidance (%)</label>
+      <label for="lastfm_track_guidance_percent">Similar-track target share (%)</label>
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% bettercallbliss_form.lastfm_track_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
       <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.lastfm_track_guidance_percent %]</span>
     </div>
     <div class="bea-row">
-      <label for="lastfm_artist_guidance_percent">Similar-artist guidance (%)</label>
+      <label for="lastfm_artist_guidance_percent">Similar-artist target share (%)</label>
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% bettercallbliss_form.lastfm_artist_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
       <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.lastfm_artist_guidance_percent %]</span>
     </div>
-    <p class="bea-note">Better Call Bliss asks LastMix for tracks and artists related to the complete original playlist. For an individual gap, track evidence from both neighboring songs is strongest, followed by one neighbor, similar artists, and the original artist collection as fallback. These percentages set bounded influence, not ownership of the choice: candidates must still be local, repeat-safe, and pass Bliss acoustic checks. Zero ignores that evidence type. Network/API failures fall back to Bliss without failing the job.</p>
+    [% UNLESS bettercallbliss_lastmix_available %]<p class="bea-disabled">Requires the LastMix plugin to be installed and enabled.</p>[% END %]
+    <p class="bea-note">Each value is a best-effort target share among added tracks selected from the expanded Bliss-qualified pool, comparable to BlissMixer's Last.fm target. Track and artist support are independent and may overlap. Candidates still have to be local, repeat-safe, and acoustically suitable; zero disables that evidence channel. Network/API failures fall back to Bliss without failing the job.</p>
   </fieldset>
 
   <fieldset class="bea-section" id="playcount_guidance_fields">
@@ -589,7 +584,7 @@
     var advancedSearch = document.getElementById('advanced_search');
     var warning = document.getElementById('mode_combination_warning');
     var lastFmFields = document.getElementById('lastfm_guidance_fields');
-    var lastFmEnabled = document.getElementById('lastfm_enabled');
+    var lastFmAvailable = [% IF bettercallbliss_lastmix_available %]true[% ELSE %]false[% END %];
     var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
     var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
     var playcountFields = document.getElementById('playcount_guidance_fields');
@@ -982,7 +977,7 @@
         setVisible(playcountFields, true);
         setVisible(candidateLibraryRow, true);
         setVisible(candidateLibraryNote, true);
-        var routeLastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
+        var routeLastFmInactive = !lastFmAvailable;
         setReadOnlyWithSlider(lastFmTrackGuidance, routeLastFmInactive);
         setReadOnlyWithSlider(lastFmArtistGuidance, routeLastFmInactive);
         setVisible(gapContextModeRow, false);
@@ -1087,7 +1082,7 @@
         : 'Choose a source to see the calculated final size.';
       submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble;
 
-      var lastFmInactive = !lastFmEnabled || lastFmEnabled.disabled || !lastFmEnabled.checked;
+      var lastFmInactive = !lastFmAvailable;
       setVisible(lastFmFields, additions);
       setVisible(playcountFields, additions);
       setVisible(candidateLibraryRow, additions);
@@ -1139,7 +1134,6 @@
     if (routeMinimum) routeMinimum.addEventListener('input', synchronizeControls);
     if (routeMaximum) routeMaximum.addEventListener('input', synchronizeControls);
     if (routeExact) routeExact.addEventListener('input', synchronizeControls);
-    if (lastFmEnabled) lastFmEnabled.addEventListener('change', synchronizeControls);
     if (mainForm && submit) {
       mainForm.addEventListener('submit', function (event) {
         var submitter = event.submitter || document.activeElement;

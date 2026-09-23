@@ -233,7 +233,7 @@ sub start_info_lines {
     }
     if ($options->{lastfm_enabled}) {
         push @lines, sprintf(
-            'Last.fm guidance: enabled; similar tracks %d%%, similar artists %d%%; failures fall back to Bliss.',
+            'Last.fm guidance: enabled; similar-track target %d%%, similar-artist target %d%%; failures fall back to Bliss.',
             0 + ($options->{lastfm_track_guidance_percent} || 0),
             0 + ($options->{lastfm_artist_guidance_percent} || 0),
         );
@@ -380,6 +380,7 @@ sub result_info_lines {
         $artifact->{semantic_mode} || 'not applicable',
     );
     push @lines, _guidance_addon_lines($artifact);
+    push @lines, _guidance_candidate_pool_lines($artifact);
     my $provenance = _scoring_provenance($job);
     if (%$provenance) {
         push @lines, sprintf(
@@ -459,6 +460,39 @@ sub _guidance_addon_lines {
                 $diagnostic->{message} || 'no diagnostics available',
             );
         }
+    }
+    return @lines;
+}
+
+sub _guidance_candidate_pool_lines {
+    my $artifact = shift || {};
+    my $preview = ref($artifact->{selection_preview}) eq 'HASH'
+        ? $artifact->{selection_preview} : {};
+    my $pool = ref($preview->{guidance_candidate_pool}) eq 'HASH'
+        ? $preview->{guidance_candidate_pool} : {};
+    return () unless %$pool;
+
+    my $expansion = $pool->{expanded_for_target_support}
+        ? 'expanded for target support' : 'baseline sufficient';
+    my @lines = (sprintf(
+        'Guidance candidate pool: %d Bliss-ranked; baseline %d; providers scored %d; selection pool %d (%s).',
+        0 + ($pool->{bliss_ranked_candidate_count} || 0),
+        0 + ($pool->{baseline_candidate_pool_count} || 0),
+        0 + ($pool->{provider_scored_candidate_count} || 0),
+        0 + ($pool->{selected_candidate_pool_count} || 0),
+        $expansion,
+    ));
+    for my $channel (@{ref($pool->{target_channels}) eq 'ARRAY'
+        ? $pool->{target_channels} : []}) {
+        next unless ref($channel) eq 'HASH';
+        push @lines, sprintf(
+            '%s/%s target %d%%: %d supported, multiplier %.3f.',
+            $channel->{provider_id} || 'guidance provider',
+            $channel->{channel} || 'unknown channel',
+            0 + ($channel->{target_percent} || 0),
+            0 + ($channel->{supported_candidate_count} || 0),
+            0 + ($channel->{multiplier} || 0),
+        );
     }
     return @lines;
 }

@@ -132,19 +132,15 @@
 
   <b style="font-size:125%" id="lastfm-section-header" class="hidden-section" onclick="toggleSection('lastfm-section')">Last.fm guidance</b><br><br>
   <div id="lastfm-section" class="hidden">
-    <p>Every job can override these Better Call Bliss defaults. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. These controls are independent from BlissMixer's artist-selection target and BlissMixerLab's immediate-mix track weighting because Better Call Bliss applies bounded evidence to complete playlist and route searches. They influence only candidates that have already passed the local-library, repeat, and Bliss acoustic checks.</p>
-
-    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC" %]
-      <input type="checkbox" name="pref_lastfm_enabled" id="lastfm_enabled" value="1" [% IF prefs.lastfm_enabled %]checked="checked"[% END %] [% UNLESS lastmix_available %]disabled[% END %] onchange="updateLastFmGuidance()">
-      [% UNLESS lastmix_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE" | string %]</div>[% END %]
-    [% END %]
+    <p>Every job can override these Better Call Bliss defaults. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. Each slider is a best-effort target share for additions with the indicated Last.fm support, comparable to BlissMixer's Last.fm target. Track and artist support can overlap. Only local, repeat-safe, Bliss-qualified candidates participate; zero disables that evidence channel.</p>
+    [% UNLESS lastmix_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE" | string %]</div>[% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC" %]
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6"[% UNLESS lastmix_available && prefs.lastfm_enabled %] disabled[% END %]>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6"[% UNLESS lastmix_available %] disabled[% END %]>
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC" %]
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6"[% UNLESS lastmix_available && prefs.lastfm_enabled %] disabled[% END %]>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6"[% UNLESS lastmix_available %] disabled[% END %]>
     [% END %]
   </div>
 
@@ -234,13 +230,6 @@
     }
   }
 
-  function updateLastFmGuidance() {
-    var checkbox = document.getElementById('lastfm_enabled');
-    var enabled = checkbox && checkbox.checked && !checkbox.disabled;
-    setInputAndSliderEnabled('lastfm_track_guidance_percent', enabled);
-    setInputAndSliderEnabled('lastfm_artist_guidance_percent', enabled);
-  }
-
   window.addEventListener('load', function () {
     var defaults = {
       'compatibility-section': true,
@@ -262,10 +251,8 @@
       });
     }
     updateRouteLengthPolicy();
-    updateLastFmGuidance();
     window.setTimeout(function () {
       updateRouteLengthPolicy();
-      updateLastFmGuidance();
     }, 0);
   });
 </script>

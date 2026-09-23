@@ -182,29 +182,21 @@ PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES_DESC
 	EN	Total number requested when the intermediate-track policy is Exact. It is independent from Automatic's maximum. For and back again, the optimizer distributes this total between both legs.
 	DE	Gesamtzahl bei der Regel Exakt. Sie ist vom Maximum der automatischen Suche unabhängig. Bei „...und wieder zurück“ verteilt der Optimierer diese Gesamtzahl auf beide Teilstrecken.
 
-PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED
-	EN	Use Last.fm guidance
-	DE	Last.fm-Hinweise verwenden
-
-PLUGIN_BETTERCALLBLISS_LASTFM_ENABLED_DESC
-	EN	Uses LastMix track and artist similarity as bounded supporting evidence after Bliss qualification. Each job can override this default. Failures fall back to Bliss.
-	DE	Verwendet Titel- und Interpretenähnlichkeit von LastMix als begrenzten Zusatzhinweis nach der Bliss-Prüfung. Pro Vorgang änderbar; Fehler fallen auf Bliss zurück.
-
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE
-	EN	Similar-track guidance (%)
-	DE	Hinweisstärke ähnlicher Titel (%)
+	EN	Similar-track target share (%)
+	DE	Zielanteil ähnlicher Titel (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC
-	EN	Better Call Bliss influence of Last.fm track.getSimilar evidence among candidates that pass Bliss acoustic checks. This is not BlissMixerLab's immediate-mix sampling weight. Zero ignores track evidence. Default: 25.
-	DE	Better-Call-Bliss-Einfluss von Last.fm-track.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Dies ist nicht die Gewichtung für Sofort-Mixe von BlissMixerLab. Null ignoriert Titelhinweise. Standard: 25.
+	EN	Best-effort target share of added tracks supported by Last.fm track similarity. Only local, repeat-safe, Bliss-qualified candidates participate. Zero disables this channel. Default: 25.
+	DE	Bestmöglicher Zielanteil hinzugefügter Titel mit Unterstützung durch ähnliche Last.fm-Titel. Nur lokale, wiederholungsregelkonforme und Bliss-qualifizierte Kandidaten nehmen teil. Null deaktiviert diesen Kanal. Standard: 25.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE
-	EN	Similar-artist guidance (%)
-	DE	Hinweisstärke ähnlicher Interpreten (%)
+	EN	Similar-artist target share (%)
+	DE	Zielanteil ähnlicher Interpreten (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC
-	EN	Better Call Bliss influence of Last.fm artist.getSimilar evidence among candidates that pass Bliss acoustic checks. This is not BlissMixer's target proportion of selected artists. Zero ignores artist evidence. Default: 25.
-	DE	Better-Call-Bliss-Einfluss von Last.fm-artist.getSimilar-Hinweisen auf Kandidaten, die die akustische Bliss-Prüfung bestehen. Dies ist nicht der Zielanteil ausgewählter Interpreten von BlissMixer. Null ignoriert Interpretenhinweise. Standard: 25.
+	EN	Best-effort target share of added tracks supported by Last.fm artist similarity. Only local, repeat-safe, Bliss-qualified candidates participate. Zero disables this channel. Default: 25.
+	DE	Bestmöglicher Zielanteil hinzugefügter Titel mit Unterstützung durch ähnliche Last.fm-Interpreten. Nur lokale, wiederholungsregelkonforme und Bliss-qualifizierte Kandidaten nehmen teil. Null deaktiviert diesen Kanal. Standard: 25.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE
 	EN	Requires the LastMix plugin to be installed and enabled.

@@ -127,8 +127,16 @@ sub normalize_request_types {
         ),
     );
     for my $entry (@{$request->{guidance_policy} || []}) {
-        next unless ref($entry) eq 'HASH' && exists $entry->{weight};
-        $entry->{weight} = _json_number($entry->{weight}, 'guidance weight');
+        next unless ref($entry) eq 'HASH';
+        $entry->{weight} = _json_number($entry->{weight}, 'guidance weight')
+            if exists $entry->{weight};
+        $entry->{target_percent} = _json_integer(
+            $entry->{target_percent}, 'guidance target_percent',
+        ) if exists $entry->{target_percent};
+        die 'guidance target_percent must be between 0 and 100'
+            if exists $entry->{target_percent}
+                && ($entry->{target_percent} < 0
+                    || $entry->{target_percent} > 100);
     }
     _normalize_integers(
         $request->{route}->{search},
@@ -292,17 +300,26 @@ sub configure_guidance_addons {
     my @addons;
 
     my $lastfm = $providers->{lastfm} || {};
-    my $track_weight = 0 + ($selection->{recording_guidance_percent} || 0) / 100;
-    my $artist_weight = 0 + ($selection->{artist_guidance_percent} || 0) / 100;
+    my $track_target = _json_integer(
+        $selection->{recording_guidance_percent} || 0,
+        'recording_guidance_percent',
+    );
+    my $artist_target = _json_integer(
+        $selection->{artist_guidance_percent} || 0,
+        'artist_guidance_percent',
+    );
     my $semantic = $artifacts->{semantic_evidence};
     if ($lastfm->{available} && $lastfm->{program}
         && ref($semantic) eq 'HASH' && $semantic->{path} && $semantic->{sha256}
-        && ($track_weight || $artist_weight)) {
-        push @policy,
-            {provider_id => 'lastfm-guidance', channel => 'lastfm_track',
-                weight => $track_weight},
-            {provider_id => 'lastfm-guidance', channel => 'lastfm_artist',
-                weight => $artist_weight};
+        && ($track_target || $artist_target)) {
+        push @policy, {
+            provider_id => 'lastfm-guidance', channel => 'lastfm_track',
+            weight => 1, target_percent => $track_target,
+        } if $track_target;
+        push @policy, {
+            provider_id => 'lastfm-guidance', channel => 'lastfm_artist',
+            weight => 1, target_percent => $artist_target,
+        } if $artist_target;
         push @addons, {
             id => 'lastfm-guidance',
             program => $lastfm->{program},
@@ -633,11 +650,9 @@ sub _build_sequence_request {
             ),
             playcount_influence => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{playcount_influence}) : 0,
-            recording_guidance_percent => $options->{lastfm_enabled}
-                && $options->{extension_mode} ne 'none'
+            recording_guidance_percent => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_track_guidance_percent}) : 0,
-            artist_guidance_percent => $options->{lastfm_enabled}
-                && $options->{extension_mode} ne 'none'
+            artist_guidance_percent => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_artist_guidance_percent}) : 0,
         },
         route => {

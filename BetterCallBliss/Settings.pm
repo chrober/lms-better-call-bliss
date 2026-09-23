@@ -39,7 +39,6 @@ sub prefs {
         report_retention_days
         semantic_cache_days
         semantic_stale_days
-        lastfm_enabled
         lastfm_track_guidance_percent
         lastfm_artist_guidance_percent
         listenbrainz_enabled
