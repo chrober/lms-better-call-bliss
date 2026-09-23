@@ -17,6 +17,7 @@ use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
+use Plugins::BetterCallBliss::GuidanceReporting;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::LastFmEvidence;
@@ -261,65 +262,40 @@ sub _job_lists {
     return (\@running, \@recent);
 }
 
-sub _semantic_evidence_summary {
-    my $evidence = shift;
-    return 'No legacy semantic edge was attached; SPI guidance is reported separately'
-        unless ref($evidence) eq 'ARRAY' && @$evidence;
-    my @parts;
-    for my $edge (@$evidence) {
-        next unless ref($edge) eq 'HASH';
-        my $provider = $edge->{provider} || 'semantic';
-        my $raw_kind = lc($edge->{kind} || '');
-        my $kind = ($raw_kind eq 'track' || $raw_kind eq 'recording')
-            ? 'similar track' : 'similar artist';
-        my $source = $edge->{source_endpoint} || $edge->{scope} || '';
-        $source =~ s/_/ /g;
-        my $where = length $source ? " from $source" : '';
-        my $rank = defined $edge->{raw_rank} ? ', rank ' . $edge->{raw_rank} : '';
-        my $score = defined $edge->{raw_score}
-            ? sprintf(', score %.2f', 0 + $edge->{raw_score}) : '';
-        push @parts, "$provider $kind$where$rank$score";
-    }
-    return @parts ? join('; ', @parts)
-        : 'No legacy semantic edge was attached; SPI guidance is reported separately';
-}
-
-sub _semantic_evidence_stats {
+sub _guidance_stats {
     my $additions = shift;
     my %stats = (
         total => 0,
-        bliss_only => 0,
         lastfm_any => 0,
         lastfm_artist => 0,
         lastfm_track => 0,
-        lastfm_edges => 0,
-        other_semantic => 0,
+        playcount => 0,
+        none => 0,
     );
     for my $addition (@{$additions || []}) {
         next unless ref($addition) eq 'HASH';
         $stats{total}++;
-        my ($lastfm_any, $lastfm_artist, $lastfm_track, $other_semantic) = (0, 0, 0, 0);
-        for my $edge (@{$addition->{semantic_evidence} || []}) {
-            next unless ref($edge) eq 'HASH';
-            my $provider = lc($edge->{provider} || '');
-            my $kind = lc($edge->{kind} || '');
-            if ($provider eq 'last.fm') {
+        my ($lastfm_any, $lastfm_artist, $lastfm_track, $playcount) = (0, 0, 0, 0);
+        for my $contribution (@{$addition->{guidance_contributions} || []}) {
+            next unless ref($contribution) eq 'HASH';
+            my $provider = lc($contribution->{provider_id} || '');
+            my $channel = lc($contribution->{channel} || '');
+            if ($provider eq 'lastfm-guidance') {
                 $lastfm_any = 1;
-                $stats{lastfm_edges}++;
-                if ($kind eq 'recording' || $kind eq 'track') {
+                if ($channel eq 'lastfm_track') {
                     $lastfm_track = 1;
-                } elsif ($kind eq 'artist') {
+                } elsif ($channel eq 'lastfm_artist') {
                     $lastfm_artist = 1;
                 }
-            } else {
-                $other_semantic = 1;
             }
+            $playcount = 1 if $provider eq 'playcount-guidance'
+                && $channel eq 'playcount';
         }
         $stats{lastfm_any}++ if $lastfm_any;
         $stats{lastfm_artist}++ if $lastfm_artist;
         $stats{lastfm_track}++ if $lastfm_track;
-        $stats{other_semantic}++ if $other_semantic;
-        $stats{bliss_only}++ unless $lastfm_any || $other_semantic;
+        $stats{playcount}++ if $playcount;
+        $stats{none}++ unless $lastfm_any || $playcount;
     }
     return \%stats;
 }
@@ -633,8 +609,8 @@ sub _result_view {
                         ),
                         semantic_tier => $addition->{semantic_tier} || 'bliss_only',
                         semantic_pool => $addition->{semantic_pool} || 'bliss_only',
-                        semantic_summary => _semantic_evidence_summary(
-                            $addition->{semantic_evidence},
+                        guidance_summary => Plugins::BetterCallBliss::GuidanceReporting::summary(
+                            $addition->{guidance_contributions},
                         ),
                     };
                     next;
@@ -651,13 +627,13 @@ sub _result_view {
                     ),
                     semantic_pool => $addition->{semantic_pool} || 'bliss_only',
                     semantic_tier => $addition->{semantic_tier} || 'bliss_only',
-                    semantic_summary => _semantic_evidence_summary(
-                        $addition->{semantic_evidence},
+                    guidance_summary => Plugins::BetterCallBliss::GuidanceReporting::summary(
+                        $addition->{guidance_contributions},
                     ),
                 };
             }
             $view->{additions} = \@additions;
-            $view->{semantic_stats} = _semantic_evidence_stats(\@additions);
+            $view->{guidance_stats} = _guidance_stats(\@additions);
 
             my @decisions;
             for my $decision (@{$preview->{decisions} || []}) {

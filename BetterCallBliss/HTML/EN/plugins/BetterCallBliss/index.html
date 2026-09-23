@@ -1271,7 +1271,7 @@
       [% END %]
 
       [% IF bettercallbliss_job.guidance_summary.present %]
-        <p class="bea-note"><b>Guidance provider activity:</b> [% bettercallbliss_job.guidance_summary.text | html %]. Legacy semantic evidence remains reported separately below.</p>
+        <p class="bea-note"><b>Guidance provider activity:</b> [% bettercallbliss_job.guidance_summary.text | html %]. Providers only reorder Bliss-qualified candidates; the applied adjustment for each selected addition is shown below.</p>
       [% END %]
 
       [% IF bettercallbliss_job.fixed_source_extension %]
@@ -1289,11 +1289,12 @@
         [% END %]
       </ol>
       [% IF bettercallbliss_job.bridge_extension %]
-        [% IF bettercallbliss_job.semantic_stats.total %]
-          <p class="bea-note"><b>Evidence used by additions:</b>
-            [% bettercallbliss_job.semantic_stats.lastfm_any %] of [% bettercallbliss_job.semantic_stats.total %] addition[% IF bettercallbliss_job.semantic_stats.total != 1 %]s[% END %] used Last.fm evidence
-            ([% bettercallbliss_job.semantic_stats.lastfm_track %] similar-track, [% bettercallbliss_job.semantic_stats.lastfm_artist %] similar-artist);
-            [% bettercallbliss_job.semantic_stats.bliss_only %] Bliss-only.
+        [% IF bettercallbliss_job.guidance_stats.total %]
+          <p class="bea-note"><b>Optional guidance applied to additions:</b>
+            [% bettercallbliss_job.guidance_stats.lastfm_any %] of [% bettercallbliss_job.guidance_stats.total %] addition[% IF bettercallbliss_job.guidance_stats.total != 1 %]s[% END %] used Last.fm guidance
+            ([% bettercallbliss_job.guidance_stats.lastfm_track %] similar-track, [% bettercallbliss_job.guidance_stats.lastfm_artist %] similar-artist);
+            [% bettercallbliss_job.guidance_stats.playcount %] used play-count guidance;
+            [% bettercallbliss_job.guidance_stats.none %] had no optional guidance adjustment.
           </p>
         [% END %]
         <h4>[% IF bettercallbliss_job.constraint_spacing_extension %]Selected spacing additions[% ELSIF bettercallbliss_job.fixed_source_extension %]Selected extension additions[% ELSE %]Additions and reasons[% END %]</h4>
@@ -1301,13 +1302,11 @@
           <ul>
             [% FOREACH addition = bettercallbliss_job.additions %]
               [% IF bettercallbliss_job.fixed_source_extension %]
-                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-source Adaptive distance [% addition.relevance_distance %]; legacy semantic evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]); [% addition.semantic_summary | html %].</li>
+                <li><b>[% addition.artist | html %] - [% addition.title | html %]</b>; fixed-source Adaptive distance [% addition.relevance_distance %]; guidance: [% addition.guidance_summary | html %].</li>
               [% ELSE %]
                 <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
                 "[% addition.left | html %]" and "[% addition.right | html %]";
-                direct gap [% addition.direct_percent %]th percentile;
-                legacy semantic evidence [% addition.semantic_tier | html %] ([% addition.semantic_pool | html %]);
-                [% addition.semantic_summary | html %].
+                direct gap [% addition.direct_percent %]th percentile; guidance: [% addition.guidance_summary | html %].
               </li>
               [% END %]
             [% END %]

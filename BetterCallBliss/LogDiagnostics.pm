@@ -1,6 +1,7 @@
 package Plugins::BetterCallBliss::LogDiagnostics;
 
 use strict;
+use Plugins::BetterCallBliss::GuidanceReporting;
 use Plugins::BetterCallBliss::RouteMode;
 
 use constant INFO_TRACK_LIMIT => 100;
@@ -107,37 +108,33 @@ sub _display_route_ids {
     return \@ids;
 }
 
-sub _semantic_counts {
+sub _guidance_counts {
     my $job = shift;
-    my ($recording, $artist, $bliss_only) = (0, 0, 0);
+    my ($track, $artist, $playcount, $neutral) = (0, 0, 0, 0);
     for my $addition (@{ref($job->{additions}) eq 'ARRAY' ? $job->{additions} : []}) {
-        my ($has_recording, $has_artist) = (0, 0);
-        for my $evidence (@{ref($addition->{semantic_evidence}) eq 'ARRAY'
-            ? $addition->{semantic_evidence} : []}) {
-            next unless ($evidence->{provider} || '') =~ /^last\.fm/i;
-            $has_recording = 1 if ($evidence->{kind} || '') eq 'recording';
-            $has_artist = 1 if ($evidence->{kind} || '') eq 'artist';
+        my ($has_track, $has_artist, $has_playcount) = (0, 0, 0);
+        for my $contribution (@{ref($addition->{guidance_contributions}) eq 'ARRAY'
+            ? $addition->{guidance_contributions} : []}) {
+            next unless ref($contribution) eq 'HASH';
+            my $provider = $contribution->{provider_id} || '';
+            my $channel = $contribution->{channel} || '';
+            $has_track = 1 if $provider eq 'lastfm-guidance' && $channel eq 'lastfm_track';
+            $has_artist = 1 if $provider eq 'lastfm-guidance' && $channel eq 'lastfm_artist';
+            $has_playcount = 1 if $provider eq 'playcount-guidance' && $channel eq 'playcount';
         }
-        $recording++ if $has_recording;
+        $track++ if $has_track;
         $artist++ if $has_artist;
-        $bliss_only++ unless $has_recording || $has_artist;
+        $playcount++ if $has_playcount;
+        $neutral++ unless $has_track || $has_artist || $has_playcount;
     }
-    return ($recording, $artist, $bliss_only);
+    return ($track, $artist, $playcount, $neutral);
 }
 
-sub _evidence_label {
+sub _guidance_label {
     my $addition = shift;
-    my ($recording, $artist) = (0, 0);
-    for my $evidence (@{ref($addition->{semantic_evidence}) eq 'ARRAY'
-        ? $addition->{semantic_evidence} : []}) {
-        next unless ($evidence->{provider} || '') =~ /^last\.fm/i;
-        $recording = 1 if ($evidence->{kind} || '') eq 'recording';
-        $artist = 1 if ($evidence->{kind} || '') eq 'artist';
-    }
-    return 'Last.fm track and artist similarity' if $recording && $artist;
-    return 'Last.fm track similarity' if $recording;
-    return 'Last.fm artist similarity' if $artist;
-    return 'Bliss acoustic evidence only';
+    return Plugins::BetterCallBliss::GuidanceReporting::summary(
+        $addition->{guidance_contributions},
+    );
 }
 
 sub start_info_lines {
@@ -411,21 +408,21 @@ sub result_info_lines {
         0 + ($search->{structural_upper_bound} || 0),
     ) if %$search;
     push @lines, _provider_lines($job) if ($job->{options} || {})->{lastfm_enabled};
-    my ($recording, $artist, $bliss_only) = _semantic_counts($job);
+    my ($track, $artist, $playcount, $neutral) = _guidance_counts($job);
     if ($job->{added_track_count}) {
         push @lines, ($job->{options} || {})->{lastfm_enabled}
             ? sprintf(
-                'Last.fm contribution: %d added tracks supported by track similarity, %d by artist similarity; %d additions used Bliss acoustic evidence only.',
-                $recording, $artist, $bliss_only,
+                'Optional guidance: %d added tracks received Last.fm similar-track guidance, %d similar-artist guidance, %d play-count guidance; %d received no optional adjustment.',
+                $track, $artist, $playcount, $neutral,
             )
-            : sprintf('Addition evidence: %d additions used Bliss acoustic evidence.',
+            : sprintf('Optional guidance: %d additions received no enabled guidance adjustment.',
                 0 + ($job->{added_track_count} || 0));
     }
     push @lines, _destination_quality_lines($job);
     my $addition_index = 0;
     for my $addition (@{ref($job->{additions}) eq 'ARRAY' ? $job->{additions} : []}) {
         $addition_index++;
-        my $detail = _evidence_label($addition);
+        my $detail = _guidance_label($addition);
         $detail .= sprintf('; relevance distance %.4f', $addition->{relevance_distance})
             if defined $addition->{relevance_distance};
         push @lines, sprintf(
@@ -588,26 +585,25 @@ sub result_debug_lines {
     }
 
     for my $addition (@{ref($job->{additions}) eq 'ARRAY' ? $job->{additions} : []}) {
-        my $evidence = ref($addition->{semantic_evidence}) eq 'ARRAY'
-            ? $addition->{semantic_evidence} : [];
-        if (!@$evidence) {
-            push @lines, 'Addition evidence: ' . _label($job, $addition->{track_id})
-                . '; Bliss acoustic evidence only.';
+        my $contributions = ref($addition->{guidance_contributions}) eq 'ARRAY'
+            ? $addition->{guidance_contributions} : [];
+        if (!@$contributions) {
+            push @lines, 'Addition guidance: ' . _label($job, $addition->{track_id})
+                . '; no optional adjustment.';
             next;
         }
-        for my $item (@$evidence) {
+        for my $item (@$contributions) {
             push @lines, sprintf(
-                'Addition evidence: %s; provider=%s algorithm=%s kind=%s scope=%s endpoint=%s rank=%s score=%s confidence=%s cache=%s.',
+                'Addition guidance: %s; provider=%s channel=%s scope=%s signal_score=%s confidence=%s policy_weight=%s contribution=%s rationale=%s.',
                 _label($job, $addition->{track_id}),
-                $item->{provider} || 'unknown',
-                $item->{dataset_or_algorithm} || 'unknown',
-                $item->{kind} || 'unknown',
+                $item->{provider_id} || 'unknown',
+                $item->{channel} || 'unknown',
                 $item->{scope} || 'unknown',
-                $item->{source_endpoint} || 'unknown',
-                defined $item->{raw_rank} ? $item->{raw_rank} : 'n/a',
-                defined $item->{raw_score} ? $item->{raw_score} : 'n/a',
-                defined $item->{identity_confidence} ? $item->{identity_confidence} : 'n/a',
-                $item->{cache_state} || 'unknown',
+                defined $item->{signal_score} ? $item->{signal_score} : 'n/a',
+                defined $item->{confidence} ? $item->{confidence} : 'n/a',
+                defined $item->{policy_weight} ? $item->{policy_weight} : 'n/a',
+                defined $item->{contribution} ? $item->{contribution} : 'n/a',
+                $item->{rationale} || 'n/a',
             );
         }
     }

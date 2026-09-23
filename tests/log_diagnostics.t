@@ -72,6 +72,22 @@ my $job = {
     },
     additions => [{
         track_id => 'bridge',
+        guidance_contributions => [{
+            provider_id => 'lastfm-guidance',
+            channel => 'lastfm_track',
+            contribution => 0.182,
+            rationale => 'Last.fm similar recording',
+        }, {
+            provider_id => 'lastfm-guidance',
+            channel => 'lastfm_artist',
+            contribution => 0.120,
+            rationale => 'Last.fm similar artist',
+        }, {
+            provider_id => 'playcount-guidance',
+            channel => 'playcount',
+            contribution => 0.200,
+            rationale => 'LMS play-count percentile 0.250',
+        }],
         semantic_evidence => [{
             provider => 'last.fm',
             dataset_or_algorithm => 'LastMix track.getSimilar',
@@ -278,8 +294,10 @@ like($result, qr/Native optimizer performance: 1488 ms total; database cache hit
     'information log reports native runtime and cache state');
 like($result, qr/235 states evaluated, 91 retained; maximum additions found 4/,
     'information log reports bounded selection-search statistics');
-like($result, qr/1 added tracks supported by track similarity, 1 by artist similarity/,
-    'information log counts selected additions supported by Last.fm');
+like($result, qr/1 added tracks received Last\.fm similar-track guidance, 1 similar-artist guidance, 1 play-count guidance; 0 received no optional adjustment/,
+    'information log counts applied provider guidance for selected additions');
+like($result, qr/Addition 1: Bridge Artist - Bridge Song \[.*Last\.fm similar-track boost \+0\.1820.*play-count boost \+0\.2000.*LMS play-count percentile 0\.250/s,
+    'information log reports applied Last.fm and play-count guidance for each selected addition');
 like($result, qr/Adaptive destination matrix: blended\(learned=20%\) from 2\/3 recent analyzed seed tracks; configured learned share 20%/,
     'information log explains the effective adaptive destination matrix');
 like($result, qr/Direct transition acoustic comparison: adaptive-context 88\.0%.*static-weights 61\.0%.*learned-matrix 76\.0%/,
@@ -304,8 +322,8 @@ like($debug, qr/Route leg 1:.*adaptive-context \(governing\).*static-weights \(c
     'debug log marks both model measurements as part of cautious consensus');
 like($debug, qr/Gap 1:.*direct distance=2\.4000 percentile=88\.0%.*candidates=120 evaluated=128 accepted=12.*shortlist_excluded=63997/,
     'debug log reports per-gap candidate and rejection aggregates');
-like($debug, qr/Addition evidence: Bridge Artist.*kind=recording.*rank=4/s,
-    'debug log reports detailed Last.fm recording evidence');
+like($debug, qr/Addition guidance: Bridge Artist.*channel=lastfm_track.*contribution=0\.182.*Last\.fm similar recording/s,
+    'debug log reports applied Last.fm guidance');
 like($debug, qr/id=bridge; url=file:\/\/\/bridge\.flac/,
     'debug route details include stable identity and LMS URL');
 
