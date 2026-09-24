@@ -141,7 +141,7 @@ sequenceDiagram
     PC-->>O: manifest: playcount-guidance, playcount channel
 
     O->>LF: prepare(resolved Last.fm artifact, anchors)
-    LF->>LF: Verify hash; index resolved local relations and anchor artist IDs
+    LF->>LF: Verify hash and index resolved local relations and anchor artist IDs
     LF-->>O: prepared diagnostics
 
     O->>PC: prepare(candidate-identity artifact, read-only persist.db)
