@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 124;
+use Test::More tests => 125;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -315,6 +315,11 @@ like(
     'the one-way context actions submit distinct route sources',
 );
 my $jobs = slurp(File::Spec->catfile($plugin, 'Jobs.pm'));
+like(
+    $jobs,
+    qr/use Plugins::BetterCallBliss::RepeatConflicts;.*?\$effective->\{ordering_policy\}.*?'preserve_order'.*?\$effective->\{extension_mode\}.*?'automatic'.*?RepeatConflicts::first_preserved_order_conflict.*?PRESERVED_ANCHOR_REPEAT_CONFLICT.*?if \(\$native_command eq 'bridge'\).*?CandidateInventory::prepare/s,
+    'preserved-order difficult-transition conflicts are rejected before candidate capture',
+);
 like(
     $jobs,
     qr/sub start_reorder_preview.*?_create_deferred_sequence_job.*?_defer_web_preparation.*?build_reorder_request/s,

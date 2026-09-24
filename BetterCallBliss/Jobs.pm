@@ -29,6 +29,7 @@ use Plugins::BetterCallBliss::LogDiagnostics;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
 use Plugins::BetterCallBliss::QueueWriter;
+use Plugins::BetterCallBliss::RepeatConflicts;
 use Plugins::BetterCallBliss::RouteMode;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
@@ -631,6 +632,26 @@ sub _start_preview_from_built {
     }
 
     my $effective = $built->{options};
+    if (($effective->{ordering_policy} || '') eq 'preserve_order'
+        && ($effective->{extension_mode} || '') eq 'automatic') {
+        my $conflict =
+            Plugins::BetterCallBliss::RepeatConflicts::first_preserved_order_conflict(
+                $built->{request}->{source_tracks},
+                $effective->{artist_window},
+                $effective->{album_window},
+            );
+        if ($conflict) {
+            _fail_deferred_route_job(
+                $job_id,
+                Plugins::BetterCallBliss::RepeatConflicts::preserved_order_conflict_message(
+                    $conflict,
+                ),
+                'PRESERVED_ANCHOR_REPEAT_CONFLICT',
+            );
+            return $jobs{$job_id};
+        }
+    }
+
     if ($native_command eq 'bridge') {
         $jobs{$job_id}->{stage} = 'Capturing candidate library';
         my $candidate_ok = eval {
