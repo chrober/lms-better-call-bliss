@@ -9,8 +9,8 @@ Latest packaged optimizer source:
 - Optimizer release: `v0.2.2`
 - Optimizer commit: `5bc528c5f2b382e0210934dfcaa84a00676df5a7`
 - Program contract: `0.2.2`, core API `0.1`, guidance SPI `2`
-- Last.fm guidance release: `v0.1.1`
-- Last.fm guidance commit: `1895172a3065f4f1e8ee23655f7e2357c7b32561`
+- Last.fm guidance release: `v0.1.2`
+- Last.fm guidance commit: `e278f4742cdef5eaafd99ae1a7fc866b7977c003`
 - Play-count guidance release: `v0.1.1`
 - Play-count guidance commit: `08f371774236651f8aa2252e99d7081bfac6ba22`
 
