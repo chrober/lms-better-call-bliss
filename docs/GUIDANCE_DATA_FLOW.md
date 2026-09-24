@@ -141,7 +141,7 @@ sequenceDiagram
     PC-->>O: manifest: playcount-guidance, playcount channel
 
     O->>LF: prepare(resolved Last.fm artifact, anchors)
-    LF->>LF: Verify hash, index resolved local relations once
+    LF->>LF: Verify hash; index resolved local relations and anchor artist IDs
     LF-->>O: prepared diagnostics
 
     O->>PC: prepare(candidate-identity artifact, read-only persist.db)
@@ -161,7 +161,7 @@ and continues with Bliss-only search.
 
 | Provider | Data acquisition | `prepare` work | `score` work |
 | --- | --- | --- | --- |
-| `bliss-guidance-lastfm` | Better Call Bliss collects through LastMix before Rust launches. The provider makes no network request. | Verifies and indexes the resolved Last.fm artifact by source/anchor, local candidate, and channel. | Reads the actual edge anchors and bounded candidate batch; emits positive edge-scoped `lastfm_track` and/or `lastfm_artist` signals where evidence exists. |
+| `bliss-guidance-lastfm` | Better Call Bliss collects through LastMix before Rust launches. The provider makes no network request. | Verifies and indexes the resolved Last.fm artifact by source, local candidate, and channel. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. |
 | `bliss-guidance-playcounts` | The provider itself opens the trusted `persist.db` path. Better Call Bliss does not build a play-count JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build a compact count distribution. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits normalized `playcount` signals. |
 
 The play-count distribution is calculated from the complete frozen eligible
@@ -169,6 +169,31 @@ candidate population so that a candidate's percentile is comparable across
 different planner batches. The provider does **not** retain a whole-library
 `urlmd5 -> playcount` map; it keeps only the distribution plus a bounded cache
 of values actually requested during scoring.
+
+### Why Last.fm artist evidence needs an identity bridge
+
+The optimizer's route context always consists of local track IDs. Last.fm
+artist relations cannot use those IDs directly: the artifact's artist edge is
+keyed by its Last.fm artist source ID. Better Call Bliss supplies the missing
+cross-source information as SPI anchors during provider preparation.
+
+```mermaid
+flowchart LR
+    T["Optimizer context<br/>lms-track-123"] --> A["SPI anchor<br/>artist MBID and name"]
+    A -->|MBID first| L["Last.fm artist source<br/>artist:normalized-name"]
+    A -.->|only when MBID unavailable| N["normalized artist-name fallback"]
+    L --> C["resolved eligible candidate<br/>bliss-row-456"]
+    N --> C
+```
+
+The Last.fm provider creates this mapping once in `prepare` and reports its
+size as `track_artist_mappings`. During `score`, it expands both global
+`context_track_ids` and the two edge endpoints through the prepared mapping,
+while retaining the original track IDs for recording-level relationships. It
+returns only the already-resolved `bliss-row-*` candidate IDs. Thus an artist
+source ID never becomes a playlist track, route anchor, or new candidate; it is
+only the internal bridge between local Lyrion metadata and frozen Last.fm
+evidence.
 
 ## Phase 3: Bliss-first candidate search, then bounded guidance
 

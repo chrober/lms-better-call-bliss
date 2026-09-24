@@ -686,7 +686,7 @@ Better Call Bliss uses the installed LastMix plugin without user credentials. It
 
 The per-job **Similar-track target share** and **Similar-artist target share** controls range from 0 to 100 and start with independent Better Call Bliss defaults of 25. Better Call Bliss first matches Last.fm recording or artist results to explicit `bliss-row-N` identities from the frozen LMS candidate inventory. A non-zero channel expands the Bliss-ranked selection boundary at least tenfold, then the optimizer uses calibrated deterministic preference inside that still Bliss-qualified pool to pursue the requested share of chosen additions. A candidate may satisfy both channels. Even 100 cannot make a rejected acoustic candidate acceptable. Zero disables that evidence type without disabling the other one.
 
-These percentages intentionally remain separate preferences because each host has its own candidates and planner. Their user-facing meaning now aligns with BlissMixer's **Last.fm artist probability**: a best-effort target share of selected additions carrying that support. BlissMixerLab's track control still changes immediate-mix sampling odds, so it is not the same control.
+These percentages intentionally remain separate preferences because each host has its own candidates and planner. Their user-facing meaning aligns with BlissMixer's **Last.fm artist probability**: a best-effort target share of selected additions carrying that support. BlissMixerLab's track control still changes immediate-mix sampling odds, so it is not the same control.
 
 Bridge modes use the resolved signal to rank admissible two-leg insertions. Extend playlist uses resolved track and artist evidence from the complete immutable source set to support membership ranking inside its Bliss-qualified pool. Selected additions retain that evidence in the native result, so the review page and logs report what actually influenced selection. Last.fm has no effect on fixed-membership Reorder only jobs.
 
@@ -700,14 +700,27 @@ Bliss changes only that job and never writes a Better Call Bliss default or
 modifies BlissMixer. Negative values prefer tracks with lower LMS play counts,
 positive values prefer higher counts, and zero disables the signal.
 
-When the value is non-zero, the plugin freezes a checksum-protected snapshot of
-current LMS play counts for the job. Unknown counts remain distinct in the
-artifact and rank with zero plays. The optimizer converts counts to tied library
-percentiles and applies bounded guidance after local membership, genre,
-acoustic, uniqueness, and repeat qualification. It cannot admit an otherwise
-rejected track. Reorder only has fixed membership and does not apply the signal.
-If Lyrion playback statistics are disabled, the effective value is forced to
-zero and the job control is read-only.
+When the value is non-zero, Better Call Bliss freezes a checksum-protected list
+of eligible candidate identities and gives the play-count provider the trusted,
+read-only Lyrion `persist.db` path. The provider opens one SQLite read snapshot,
+streams that frozen identity population to establish tied play-count percentiles,
+then looks up only the bounded Bliss-qualified candidates that the optimizer
+actually scores. Missing counts rank as zero plays. The optimizer applies the
+result as bounded guidance after local membership, genre, acoustic, uniqueness,
+and repeat qualification. It cannot admit an otherwise rejected track. Reorder
+only has fixed membership and does not apply the signal. If Lyrion playback
+statistics are disabled, the effective value is forced to zero and the job
+control is read-only.
+
+This has the same user-facing direction as BlissMixer and BlissMixerLab's shared
+play-count preference: `-100` favors less-played tracks, `+100` favors
+more-played tracks, and `0` disables it. Both use tied percentile ranks and
+treat an unavailable count as zero. The mechanics are deliberately not
+identical: BlissMixer/Lab samples its live Bliss/DSTM candidate pool with the
+shared `CandidateSelection` weighting, whereas Better Call Bliss applies one
+provider signal inside a multi-step route or extension planner, using a frozen
+eligible-library percentile scale. Consequently, equal values express the same
+preference but cannot promise the same probability or the same chosen tracks.
 
 ### Safety and result proofs
 
