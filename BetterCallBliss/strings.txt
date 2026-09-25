@@ -114,6 +114,22 @@ PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT_DESC
 	EN	Bounded reproducible variation used by new Extras jobs and Bliss me there previews. Zero always chooses the strict best-ranked result.
 	DE	Begrenzte reproduzierbare Variation für neue Extras-Vorgänge und Bliss-me-there-Vorschauen. Null wählt immer das streng bestplatzierte Ergebnis.
 
+PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE
+	EN	Last-played influence
+	DE	Einfluss des letzten Abspielens
+
+PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE_DESC
+	EN	Default signed preference for added tracks: negative favors tracks unheard for longer, positive favors recently played tracks, and zero is neutral. Uses standard Lyrion playback statistics.
+	DE	Standardwert für hinzugefügte Titel: Negativ bevorzugt länger nicht gehörte Titel, positiv kürzlich gespielte Titel, null ist neutral. Verwendet die Standard-Abspielstatistik von Lyrion.
+
+PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_INFLUENCE
+	EN	Library-age influence
+	DE	Einfluss des Bibliotheksalters
+
+PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_INFLUENCE_DESC
+	EN	Default signed preference for added tracks: negative favors older library additions, positive favors newer additions, and zero is neutral. Uses Lyrion's preserved first-seen date.
+	DE	Standardwert für hinzugefügte Titel: Negativ bevorzugt ältere Bibliothekseinträge, positiv neuere Einträge, null ist neutral. Verwendet Lyrions erhaltenes Datum der ersten Erfassung.
+
 PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY
 	EN	Intermediate-track policy
 	DE	Regel für Zwischentitel

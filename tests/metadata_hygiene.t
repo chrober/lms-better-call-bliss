@@ -230,6 +230,16 @@ like(
     'new installations default both independent Last.fm guidance controls to 25 percent',
 );
 like(
+    $settings_module,
+    qr/last_played_influence\s+library_age_influence/s,
+    'settings persist the two local library-signal defaults',
+);
+like(
+    $settings,
+    qr/last_played_influence.*?library_age_influence/s,
+    'settings expose independent defaults for recency and library age',
+);
+like(
     $plugin_module,
     qr/preference_defaults_version.*?<\s*2.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent.*?set\(\$name,\s*25\).*?==\s*75/s,
     'legacy untouched 75 percent guidance defaults migrate once to 25 percent',

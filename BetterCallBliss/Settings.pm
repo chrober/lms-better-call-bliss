@@ -41,6 +41,8 @@ sub prefs {
         semantic_stale_days
         lastfm_track_guidance_percent
         lastfm_artist_guidance_percent
+        last_played_influence
+        library_age_influence
         listenbrainz_enabled
     ));
 }
@@ -105,6 +107,8 @@ sub handler {
     _clamp($params, 'pref_semantic_stale_days', 1, 3650);
     _clamp($params, 'pref_lastfm_track_guidance_percent', 0, 100);
     _clamp($params, 'pref_lastfm_artist_guidance_percent', 0, 100);
+    _clamp($params, 'pref_last_played_influence', -100, 100);
+    _clamp($params, 'pref_library_age_influence', -100, 100);
     if (defined $params->{pref_semantic_cache_days}
         && defined $params->{pref_semantic_stale_days}
         && $params->{pref_semantic_stale_days} < $params->{pref_semantic_cache_days}) {

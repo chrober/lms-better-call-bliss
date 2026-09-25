@@ -68,6 +68,14 @@
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_variation_percent" id="variation_percent" value="[% prefs.variation_percent %]" size="6">
     [% END %]
 
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE" desc="PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE_DESC" %]
+      <input type="number" min="-100" max="100" class="stdedit sliderInput_-100_100_1" name="pref_last_played_influence" id="last_played_influence" value="[% prefs.last_played_influence %]" size="6">
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_INFLUENCE" desc="PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_INFLUENCE_DESC" %]
+      <input type="number" min="-100" max="100" class="stdedit sliderInput_-100_100_1" name="pref_library_age_influence" id="library_age_influence" value="[% prefs.library_age_influence %]" size="6">
+    [% END %]
+
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC" %]
       <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
     [% END %]
