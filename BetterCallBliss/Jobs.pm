@@ -712,6 +712,10 @@ sub _start_preview_from_built {
         . " variation=$effective->{variation_percent}"
         . ' playcount_influence=' . ($effective->{extension_mode} ne 'none'
             ? $effective->{playcount_influence} : 0)
+        . ' last_played_influence=' . ($effective->{extension_mode} ne 'none'
+            ? $effective->{last_played_influence} : 0)
+        . ' library_age_influence=' . ($effective->{extension_mode} ne 'none'
+            ? $effective->{library_age_influence} : 0)
         . " generation_seed=$effective->{generation_seed}"
         . ($effective->{extension_mode} eq 'destination_route'
             ? " search_effort=$effective->{route_search_effort}"
@@ -798,6 +802,10 @@ sub _start_preview_from_built {
             . " repeat_track=$effective->{track_window}"
             . ' playcount_influence=' . ($effective->{extension_mode} ne 'none'
                 ? $effective->{playcount_influence} : 0)
+            . ' last_played_influence=' . ($effective->{extension_mode} ne 'none'
+                ? $effective->{last_played_influence} : 0)
+            . ' library_age_influence=' . ($effective->{extension_mode} ne 'none'
+                ? $effective->{library_age_influence} : 0)
             . " output_mode=$effective->{output_mode}"
         );
     }

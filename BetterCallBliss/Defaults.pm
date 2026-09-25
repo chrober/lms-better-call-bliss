@@ -28,6 +28,8 @@ my %PREFERENCE_DEFAULTS = (
     semantic_stale_days => 90,
     lastfm_track_guidance_percent => 25,
     lastfm_artist_guidance_percent => 25,
+    last_played_influence => 0,
+    library_age_influence => 0,
     listenbrainz_enabled => 0,
 );
 
@@ -48,6 +50,8 @@ my %EMPTY_VALUE_IS_MISSING = map { $_ => 1 } qw(
     semantic_stale_days
     lastfm_track_guidance_percent
     lastfm_artist_guidance_percent
+    last_played_influence
+    library_age_influence
     listenbrainz_enabled
 );
 

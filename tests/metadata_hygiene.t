@@ -633,7 +633,7 @@ my $release_workflow = slurp(
 );
 like(
     $release_workflow,
-    qr/bliss-guidance-lastfm.*?bliss-guidance-playcounts/s,
+    qr/bliss-guidance-lastfm.*?bliss-guidance-library-signals/s,
     'release workflow packages both trusted guidance providers',
 );
 like(
@@ -643,6 +643,6 @@ like(
 );
 like(
     $release_workflow,
-    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-playcounts-\$platform/s,
-    'release workflow includes the AArch64 play-count provider',
+    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-library-signals-\$platform/s,
+    'release workflow includes the AArch64 local-library-signals provider',
 );

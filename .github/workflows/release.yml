@@ -15,8 +15,8 @@ on:
         description: "bliss-guidance-lastfm release tag. Empty reads BetterCallBliss/Bin/SOURCE.md."
         required: false
         default: ""
-      playcount_guidance_release:
-        description: "bliss-guidance-playcounts release tag. Empty reads BetterCallBliss/Bin/SOURCE.md."
+      library_signals_guidance_release:
+        description: "bliss-guidance-library-signals release tag. Empty reads BetterCallBliss/Bin/SOURCE.md."
         required: false
         default: ""
       prerelease:
@@ -45,7 +45,7 @@ permissions:
 env:
   OPTIMIZER_REPO: chrober/bliss-playlist-optimizer
   LASTFM_GUIDANCE_REPO: chrober/bliss-guidance-lastfm
-  PLAYCOUNT_GUIDANCE_REPO: chrober/bliss-guidance-playcounts
+  LIBRARY_SIGNALS_GUIDANCE_REPO: chrober/bliss-guidance-library-signals
   PLUGIN_REPO: chrober/lms-plugins
 
 jobs:
@@ -92,7 +92,7 @@ jobs:
           VERSION_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}
           OPTIMIZER_RELEASE_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.optimizer_release || '' }}
           LASTFM_GUIDANCE_RELEASE_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.lastfm_guidance_release || '' }}
-          PLAYCOUNT_GUIDANCE_RELEASE_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.playcount_guidance_release || '' }}
+          LIBRARY_SIGNALS_GUIDANCE_RELEASE_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.library_signals_guidance_release || '' }}
         run: |
           set -euo pipefail
           version="$VERSION_INPUT"
@@ -132,12 +132,12 @@ jobs:
             exit 1
           fi
 
-          playcount_guidance_release="$PLAYCOUNT_GUIDANCE_RELEASE_INPUT"
-          if [ -z "$playcount_guidance_release" ]; then
-            playcount_guidance_release="$(python -c 'import pathlib,re; text=pathlib.Path("BetterCallBliss/Bin/SOURCE.md").read_text(encoding="utf-8"); match=re.search(r"Play-count guidance release:\s*`([^`]+)`", text); print(match.group(1) if match else "")')"
+          library_signals_guidance_release="$LIBRARY_SIGNALS_GUIDANCE_RELEASE_INPUT"
+          if [ -z "$library_signals_guidance_release" ]; then
+            library_signals_guidance_release="$(python -c 'import pathlib,re; text=pathlib.Path("BetterCallBliss/Bin/SOURCE.md").read_text(encoding="utf-8"); match=re.search(r"Library-signals guidance release:\s*`([^`]+)`", text); print(match.group(1) if match else "")')"
           fi
-          if [ -z "$playcount_guidance_release" ]; then
-            echo "Could not determine play-count guidance release tag" >&2
+          if [ -z "$library_signals_guidance_release" ]; then
+            echo "Could not determine library-signals guidance release tag" >&2
             exit 1
           fi
 
@@ -152,7 +152,7 @@ jobs:
             echo "tag=$tag"
             echo "optimizer_release=$optimizer_release"
             echo "lastfm_guidance_release=$lastfm_guidance_release"
-            echo "playcount_guidance_release=$playcount_guidance_release"
+            echo "library_signals_guidance_release=$library_signals_guidance_release"
             echo "linux_asset=$linux_asset"
             echo "mac_asset=$mac_asset"
             echo "windows_asset=$windows_asset"
@@ -179,20 +179,20 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           LASTFM_GUIDANCE_RELEASE: ${{ steps.meta.outputs.lastfm_guidance_release }}
-          PLAYCOUNT_GUIDANCE_RELEASE: ${{ steps.meta.outputs.playcount_guidance_release }}
+          LIBRARY_SIGNALS_GUIDANCE_RELEASE: ${{ steps.meta.outputs.library_signals_guidance_release }}
         run: |
           set -euo pipefail
-          mkdir -p lastfm-guidance-assets playcount-guidance-assets
+          mkdir -p lastfm-guidance-assets library-signals-guidance-assets
           gh release download "$LASTFM_GUIDANCE_RELEASE" \
             --repo "$LASTFM_GUIDANCE_REPO" \
             --dir lastfm-guidance-assets \
             --pattern 'bliss-guidance-lastfm-*'
-          gh release download "$PLAYCOUNT_GUIDANCE_RELEASE" \
-            --repo "$PLAYCOUNT_GUIDANCE_REPO" \
-            --dir playcount-guidance-assets \
-            --pattern 'bliss-guidance-playcounts-*'
+          gh release download "$LIBRARY_SIGNALS_GUIDANCE_RELEASE" \
+            --repo "$LIBRARY_SIGNALS_GUIDANCE_REPO" \
+            --dir library-signals-guidance-assets \
+            --pattern 'bliss-guidance-library-signals-*'
           (cd lastfm-guidance-assets && sha256sum -c *.sha256)
-          (cd playcount-guidance-assets && sha256sum -c *.sha256)
+          (cd library-signals-guidance-assets && sha256sum -c *.sha256)
 
       - name: Install optimizer binaries into plugin tree
         run: |
@@ -209,12 +209,12 @@ jobs:
           set -euo pipefail
           for platform in aarch64-linux armhf-linux x86_64-linux; do
             install -m 0755 "lastfm-guidance-assets/bliss-guidance-lastfm-$platform" "BetterCallBliss/Bin/$platform/bliss-guidance-lastfm"
-            install -m 0755 "playcount-guidance-assets/bliss-guidance-playcounts-$platform" "BetterCallBliss/Bin/$platform/bliss-guidance-playcounts"
+            install -m 0755 "library-signals-guidance-assets/bliss-guidance-library-signals-$platform" "BetterCallBliss/Bin/$platform/bliss-guidance-library-signals"
           done
           install -m 0755 lastfm-guidance-assets/bliss-guidance-lastfm-mac BetterCallBliss/Bin/mac/bliss-guidance-lastfm
-          install -m 0755 playcount-guidance-assets/bliss-guidance-playcounts-mac BetterCallBliss/Bin/mac/bliss-guidance-playcounts
+          install -m 0755 library-signals-guidance-assets/bliss-guidance-library-signals-mac BetterCallBliss/Bin/mac/bliss-guidance-library-signals
           install -m 0644 lastfm-guidance-assets/bliss-guidance-lastfm-windows.exe BetterCallBliss/Bin/windows/bliss-guidance-lastfm.exe
-          install -m 0644 playcount-guidance-assets/bliss-guidance-playcounts-windows.exe BetterCallBliss/Bin/windows/bliss-guidance-playcounts.exe
+          install -m 0644 library-signals-guidance-assets/bliss-guidance-library-signals-windows.exe BetterCallBliss/Bin/windows/bliss-guidance-library-signals.exe
           find BetterCallBliss/Bin -maxdepth 2 -type f -print
 
       - name: Verify bundled native contracts
@@ -222,7 +222,7 @@ jobs:
           set -euo pipefail
           BetterCallBliss/Bin/x86_64-linux/bliss-playlist-optimizer version --json
           BetterCallBliss/Bin/x86_64-linux/bliss-guidance-lastfm version --json
-          BetterCallBliss/Bin/x86_64-linux/bliss-guidance-playcounts version --json
+          BetterCallBliss/Bin/x86_64-linux/bliss-guidance-library-signals version --json
 
       - name: Package platform plugin archives
         id: package
@@ -267,13 +267,13 @@ jobs:
           unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/aarch64-linux/bliss-playlist-optimizer'
           unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/armhf-linux/bliss-playlist-optimizer'
           unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/aarch64-linux/bliss-guidance-lastfm'
-          unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/aarch64-linux/bliss-guidance-playcounts'
+          unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/aarch64-linux/bliss-guidance-library-signals'
           unzip -l "dist/$MAC_ASSET" | grep 'BetterCallBliss/Bin/mac/bliss-playlist-optimizer'
           unzip -l "dist/$MAC_ASSET" | grep 'BetterCallBliss/Bin/mac/bliss-guidance-lastfm'
-          unzip -l "dist/$MAC_ASSET" | grep 'BetterCallBliss/Bin/mac/bliss-guidance-playcounts'
+          unzip -l "dist/$MAC_ASSET" | grep 'BetterCallBliss/Bin/mac/bliss-guidance-library-signals'
           unzip -l "dist/$WINDOWS_ASSET" | grep 'BetterCallBliss/Bin/windows/bliss-playlist-optimizer.exe'
           unzip -l "dist/$WINDOWS_ASSET" | grep 'BetterCallBliss/Bin/windows/bliss-guidance-lastfm.exe'
-          unzip -l "dist/$WINDOWS_ASSET" | grep 'BetterCallBliss/Bin/windows/bliss-guidance-playcounts.exe'
+          unzip -l "dist/$WINDOWS_ASSET" | grep 'BetterCallBliss/Bin/windows/bliss-guidance-library-signals.exe'
           if unzip -Z1 "dist/$LINUX_ASSET" | grep -Eq 'Bin/(mac|windows)/'; then exit 1; fi
           if unzip -Z1 "dist/$MAC_ASSET" | grep -Eq 'Bin/(windows|x86_64-linux|aarch64-linux|armhf-linux)/'; then exit 1; fi
           if unzip -Z1 "dist/$WINDOWS_ASSET" | grep -Eq 'Bin/(mac|x86_64-linux|aarch64-linux|armhf-linux)/'; then exit 1; fi
@@ -293,7 +293,7 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
           OPTIMIZER_RELEASE: ${{ steps.meta.outputs.optimizer_release }}
           LASTFM_GUIDANCE_RELEASE: ${{ steps.meta.outputs.lastfm_guidance_release }}
-          PLAYCOUNT_GUIDANCE_RELEASE: ${{ steps.meta.outputs.playcount_guidance_release }}
+          LIBRARY_SIGNALS_GUIDANCE_RELEASE: ${{ steps.meta.outputs.library_signals_guidance_release }}
           PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
         run: |
           set -euo pipefail
@@ -301,11 +301,11 @@ jobs:
           {
             echo "# Better Call Bliss $VERSION"
             echo
-            echo "Platform-specific installable LMS plugin packages. Each archive bundles the optimizer and its trusted Last.fm and play-count guidance providers for its supported platform family."
+            echo "Platform-specific installable LMS plugin packages. Each archive bundles the optimizer and its trusted Last.fm and local-library-signals guidance providers for its supported platform family."
             echo
             echo "Bundled optimizer release: $OPTIMIZER_RELEASE"
             echo "Bundled Last.fm guidance release: $LASTFM_GUIDANCE_RELEASE"
-            echo "Bundled play-count guidance release: $PLAYCOUNT_GUIDANCE_RELEASE"
+            echo "Bundled local-library-signals guidance release: $LIBRARY_SIGNALS_GUIDANCE_RELEASE"
           } > "$notes"
 
           prerelease_flag=()

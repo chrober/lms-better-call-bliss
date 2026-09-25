@@ -32,7 +32,7 @@ flowchart TB
 
     O --> C["bliss-mixer-core<br/>Bliss distance / Adaptive matrix"]
     O <-->|"bliss-guidance-jsonl-v2<br/>bounded JSONL batches"| L["bliss-guidance-lastfm"]
-    O <-->|"bliss-guidance-jsonl-v2<br/>bounded JSONL batches"| P["bliss-guidance-playcounts"]
+    O <-->|"bliss-guidance-jsonl-v2<br/>bounded JSONL batches"| P["bliss-guidance-library-signals"]
     DB[("Lyrion persist.db<br/>read-only snapshot")] --> P
 
     O --> A["Result, progress and guidance provenance"]
@@ -42,7 +42,7 @@ flowchart TB
 ```
 
 Only Better Call Bliss talks to LMS, LastMix, the browser UI, and playlist or
-queue persistence. Only the play-count provider opens `persist.db`; the
+queue persistence. Only the local-library-signals provider opens `persist.db`; the
 optimizer itself is network-free and has no Lyrion-specific SQLite queries.
 
 ## Who consumes each setting, and when?
@@ -55,7 +55,7 @@ job. The resulting request is immutable for the optimizer process lifetime.
 | Strategy, Static weights, Adaptive context, repeat windows and genre policy | BlissMixer current settings, with Better Call Bliss job overrides | Better Call Bliss, then optimizer | Shapes the acoustic matrix, hard repeat checks, and the frozen eligible candidate library. |
 | Learned matrix and blend | Optional BlissMixerLab | Better Call Bliss, then optimizer | Supplies an optional matrix artifact and learned blend for Adaptive scoring. Its absence uses the documented Bliss fallback. |
 | Similar-track and similar-artist target shares | Better Call Bliss job settings | Better Call Bliss, then optimizer guidance policy | Each non-zero target enables its LastMix channel and produces a `target_percent` policy for `lastfm_track` or `lastfm_artist`; zero disables that channel. The Last.fm provider itself receives no UI setting. |
-| Play-count influence, from -100 to 100 | Better Call Bliss job setting, initialized from BlissMixer | Better Call Bliss, then optimizer guidance policy | Becomes a signed `playcount` policy weight. Negative prefers lower counts; positive prefers higher counts; zero means the provider is not started. |
+| Local listening and library influences, each from -100 to 100 | Better Call Bliss job settings; play count starts from the current BlissMixer setting, last played and library age default to zero | Better Call Bliss, then optimizer guidance policy | Non-zero values become signed `playcount`, `last_played`, and/or `library_age` policy weights. Negative/positive directions are shown in the job editor; all zero means the provider is not started. |
 | Candidate library | Active Lyrion virtual library, source exclusions, LMS membership, and captured genre policy | Better Call Bliss, then optimizer | Determines which *generated* tracks are eligible. It is frozen before native search starts. |
 
 The provider executables do not read preferences or web-form values. Better Call
@@ -76,7 +76,7 @@ and effective settings. It also constructs two distinct local-library artifacts:
   captured genre policy.
 - `eligible-candidate-identities-v1` is a compact provider-facing identity list.
   It contains the optimizer candidate ID and Lyrion URL MD5 needed by the
-  play-count provider. It does not contain decoded Bliss feature vectors.
+  local-library-signals provider. It does not contain decoded Bliss feature vectors.
 
 The optimizer validates these hash- and database-bound artifacts. It can use a
 private decoded-library cache, but a changed `bliss.db` or LMS library scan is a
@@ -131,25 +131,25 @@ sequenceDiagram
     participant B as Better Call Bliss
     participant O as bliss-playlist-optimizer SPI host
     participant LF as bliss-guidance-lastfm
-    participant PC as bliss-guidance-playcounts
+    participant LS as bliss-guidance-library-signals
     participant DB as persist.db
 
     B->>O: Request + guidance policy + trusted descriptors
     O->>LF: describe
     LF-->>O: manifest: lastfm-guidance, track/artist channels
-    O->>PC: describe
-    PC-->>O: manifest: playcount-guidance, playcount channel
+    O->>LS: describe
+    LS-->>O: manifest: library-signals-guidance, playcount/last_played/library_age channels
 
     O->>LF: prepare(resolved Last.fm artifact, anchors)
     LF->>LF: Verify hash and index resolved local relations and anchor artist IDs
     LF-->>O: prepared diagnostics
 
-    O->>PC: prepare(candidate-identity artifact, read-only persist.db)
-    PC->>PC: Verify hash and SQLite schema
-    PC->>DB: Begin one read-only SQLite snapshot
-    PC->>DB: Stream eligible URL MD5s in batches of at most 900
-    PC->>PC: Retain only compact count distribution
-    PC-->>O: prepared diagnostics
+    O->>LS: prepare(candidate-identity artifact, read-only persist.db)
+    LS->>LS: Verify hash and SQLite schema
+    LS->>DB: Begin one read-only SQLite snapshot
+    LS->>DB: Stream eligible URL MD5s in batches of at most 900
+    LS->>LS: Retain compact distributions for all three channels
+    LS-->>O: prepared diagnostics
 ```
 
 Provider failure is advisory. A bad manifest, timeout, malformed JSONL response,
@@ -162,13 +162,14 @@ and continues with Bliss-only search.
 | Provider | Data acquisition | `prepare` work | `score` work |
 | --- | --- | --- | --- |
 | `bliss-guidance-lastfm` | Better Call Bliss collects through LastMix before Rust launches. The provider makes no network request. | Verifies and indexes the resolved Last.fm artifact by source, local candidate, and channel. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. |
-| `bliss-guidance-playcounts` | The provider itself opens the trusted `persist.db` path. Better Call Bliss does not build a play-count JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build a compact count distribution. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits normalized `playcount` signals. |
+| `bliss-guidance-library-signals` | The provider itself opens the trusted `persist.db` path. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
 
-The play-count distribution is calculated from the complete frozen eligible
-candidate population so that a candidate's percentile is comparable across
-different planner batches. The provider does **not** retain a whole-library
-`urlmd5 -> playcount` map; it keeps only the distribution plus a bounded cache
-of values actually requested during scoring.
+Each distribution is calculated from the complete frozen eligible candidate
+population so that a candidate's percentile is comparable across planner
+batches. The provider does **not** retain a whole-library `urlmd5 -> signals`
+map; it keeps distributions plus a bounded cache of values actually requested
+during scoring. It deliberately does not use Alternative Play Count (APC);
+APC-based guidance is separate future provider work.
 
 ### Why Last.fm artist evidence needs an identity bridge
 
@@ -231,8 +232,11 @@ The optimizer aggregates only declared channels:
   active, then derives deterministic calibrated multipliers inside that bounded
   pool. Overlapping evidence contributes to both targets; Bliss constraints and
   acoustic qualification always remain authoritative.
-- `playcount` is a normalized unary signal. The signed per-job policy weight
-  determines whether the same count favors less- or more-played tracks.
+- `playcount`, `last_played`, and `library_age` are normalized unary signals.
+  Their signed per-job policy weights determine whether lower or higher values
+  are preferred. `last_played = 0` represents never played; a missing
+  persistence row or missing library-age timestamp is neutral rather than
+  ranked.
 
 After aggregation, the adjustment participates in the existing planner's
 candidate ordering, path expansion, beam/frontier pruning, and completed-route
@@ -247,7 +251,9 @@ stderr, and best-effort progress to the job-local sidecar. Its result contains
 the selected route, acoustic quality information, provider preparation and
 score diagnostics, an aggregate guidance-signal count, and stable opaque
 candidate identities. It does not return the providers' raw evidence artifacts.
-The provider sessions are then closed; the play-count provider releases its
+SQLite snapshot and cache.
+The provider sessions are then closed; the local-library-signals provider
+releases its SQLite snapshot and cache.
 SQLite snapshot and cache.
 
 ```mermaid
@@ -302,5 +308,5 @@ path or turn guidance into a substitute for acoustic evidence.
 - [Guidance SPI v2](https://github.com/chrober/bliss-playlist-guidance-spi/blob/feature/guidance-spi-v2/SPI.md): normative JSONL protocol and schemas.
 - [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm):
   artifact-backed Last.fm guidance behavior.
-- [Play-count provider](https://github.com/chrober/bliss-guidance-playcounts):
+- [Local library-signals provider](https://github.com/chrober/bliss-guidance-library-signals):
   read-only SQLite snapshot and bounded cache behavior.

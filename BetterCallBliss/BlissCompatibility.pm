@@ -189,7 +189,7 @@ sub snapshot {
     my $statistics_enabled = main::STATISTICS ? 1 : 0;
     my $persist_db = _persistent_database_path();
     my $lastfm_guidance = _guidance_program('lastfm');
-    my $playcount_guidance = _guidance_program('playcounts');
+    my $library_signals_guidance = _guidance_program('library_signals');
     my $playcount_influence = $statistics_enabled
         ? _int_pref('playcount_influence', 0) : 0;
     $playcount_influence = -100 if $playcount_influence < -100;
@@ -227,17 +227,20 @@ sub snapshot {
         algorithm         => $strategy,
         statistics_enabled => $statistics_enabled,
         playcount_influence => $playcount_influence,
+        library_signals_available => $library_signals_guidance
+            && -x $library_signals_guidance && -r $persist_db
+            && _guidance_spi_v2('library_signals') ? 1 : 0,
         guidance_providers => {
             lastfm => {
                 available => $lastfm_guidance && -x $lastfm_guidance
                     && _guidance_spi_v2('lastfm') ? 1 : 0,
                 program => $lastfm_guidance,
             },
-            playcounts => {
-                available => $statistics_enabled && $playcount_guidance
-                    && -x $playcount_guidance && -r $persist_db
-                    && _guidance_spi_v2('playcounts') ? 1 : 0,
-                program => $playcount_guidance,
+            library_signals => {
+                available => $library_signals_guidance
+                    && -x $library_signals_guidance && -r $persist_db
+                    && _guidance_spi_v2('library_signals') ? 1 : 0,
+                program => $library_signals_guidance,
                 persist_db => $persist_db,
             },
         },

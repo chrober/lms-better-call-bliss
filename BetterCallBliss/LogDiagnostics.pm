@@ -110,9 +110,9 @@ sub _display_route_ids {
 
 sub _guidance_counts {
     my $job = shift;
-    my ($track, $artist, $playcount, $neutral) = (0, 0, 0, 0);
+    my ($track, $artist, $playcount, $last_played, $library_age, $neutral) = (0, 0, 0, 0, 0, 0);
     for my $addition (@{ref($job->{additions}) eq 'ARRAY' ? $job->{additions} : []}) {
-        my ($has_track, $has_artist, $has_playcount) = (0, 0, 0);
+        my ($has_track, $has_artist, $has_playcount, $has_last_played, $has_library_age) = (0, 0, 0, 0, 0);
         for my $contribution (@{ref($addition->{guidance_contributions}) eq 'ARRAY'
             ? $addition->{guidance_contributions} : []}) {
             next unless ref($contribution) eq 'HASH';
@@ -120,14 +120,18 @@ sub _guidance_counts {
             my $channel = $contribution->{channel} || '';
             $has_track = 1 if $provider eq 'lastfm-guidance' && $channel eq 'lastfm_track';
             $has_artist = 1 if $provider eq 'lastfm-guidance' && $channel eq 'lastfm_artist';
-            $has_playcount = 1 if $provider eq 'playcount-guidance' && $channel eq 'playcount';
+            $has_playcount = 1 if $provider eq 'library-signals-guidance' && $channel eq 'playcount';
+            $has_last_played = 1 if $provider eq 'library-signals-guidance' && $channel eq 'last_played';
+            $has_library_age = 1 if $provider eq 'library-signals-guidance' && $channel eq 'library_age';
         }
         $track++ if $has_track;
         $artist++ if $has_artist;
         $playcount++ if $has_playcount;
-        $neutral++ unless $has_track || $has_artist || $has_playcount;
+        $last_played++ if $has_last_played;
+        $library_age++ if $has_library_age;
+        $neutral++ unless $has_track || $has_artist || $has_playcount || $has_last_played || $has_library_age;
     }
-    return ($track, $artist, $playcount, $neutral);
+    return ($track, $artist, $playcount, $last_played, $library_age, $neutral);
 }
 
 sub _guidance_label {
@@ -185,12 +189,14 @@ sub start_info_lines {
         0 + ($options->{max_added_tracks} || 0),
     ) if ($options->{addition_purpose} || '') eq 'satisfy_constraints';
     if ($mode eq 'none') {
-        push @lines, 'Play-count guidance: not applied because this job adds no tracks.';
+        push @lines, 'Local library guidance: not applied because this job adds no tracks.';
     } else {
         push @lines, sprintf(
-            'Play-count guidance for generated tracks: influence %+d; LMS statistics %s.',
+            'Local library guidance for generated tracks: play count %+d, last played %+d, library age %+d; provider %s.',
             0 + ($options->{playcount_influence} || 0),
-            $capability->{statistics_enabled} ? 'available' : 'disabled',
+            0 + ($options->{last_played_influence} || 0),
+            0 + ($options->{library_age_influence} || 0),
+            $capability->{library_signals_available} ? 'available' : 'unavailable',
         );
     }
     if ($mode ne 'none' && $options->{playcount_influence}
@@ -408,13 +414,17 @@ sub result_info_lines {
         0 + ($search->{maximum_additions_found} || 0),
         0 + ($search->{structural_upper_bound} || 0),
     ) if %$search;
-    push @lines, _provider_lines($job) if ($job->{options} || {})->{lastfm_enabled};
-    my ($track, $artist, $playcount, $neutral) = _guidance_counts($job);
+    push @lines, _provider_lines($job)
+        if ($job->{options} || {})->{lastfm_enabled}
+            || ($job->{options} || {})->{playcount_influence}
+            || ($job->{options} || {})->{last_played_influence}
+            || ($job->{options} || {})->{library_age_influence};
+    my ($track, $artist, $playcount, $last_played, $library_age, $neutral) = _guidance_counts($job);
     if ($job->{added_track_count}) {
         push @lines, ($job->{options} || {})->{lastfm_enabled}
             ? sprintf(
-                'Optional guidance: %d added tracks received Last.fm similar-track guidance, %d similar-artist guidance, %d play-count guidance; %d received no optional adjustment.',
-                $track, $artist, $playcount, $neutral,
+                'Optional guidance: %d added tracks received Last.fm similar-track guidance, %d similar-artist guidance, %d play-count guidance, %d last-played guidance, %d library-age guidance; %d received no optional adjustment.',
+                $track, $artist, $playcount, $last_played, $library_age, $neutral,
             )
             : sprintf('Optional guidance: %d additions received no enabled guidance adjustment.',
                 0 + ($job->{added_track_count} || 0));

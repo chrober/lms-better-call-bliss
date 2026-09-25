@@ -155,7 +155,7 @@ sub _form_from_params {
     for my $name (qw(
         source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_target_album_id route_target_album_track_count route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
-        variation_percent generation_seed playcount_influence
+        variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
@@ -270,12 +270,14 @@ sub _guidance_stats {
         lastfm_artist => 0,
         lastfm_track => 0,
         playcount => 0,
+        last_played => 0,
+        library_age => 0,
         none => 0,
     );
     for my $addition (@{$additions || []}) {
         next unless ref($addition) eq 'HASH';
         $stats{total}++;
-        my ($lastfm_any, $lastfm_artist, $lastfm_track, $playcount) = (0, 0, 0, 0);
+        my ($lastfm_any, $lastfm_artist, $lastfm_track, $playcount, $last_played, $library_age) = (0, 0, 0, 0, 0, 0);
         for my $contribution (@{$addition->{guidance_contributions} || []}) {
             next unless ref($contribution) eq 'HASH';
             my $provider = lc($contribution->{provider_id} || '');
@@ -288,14 +290,20 @@ sub _guidance_stats {
                     $lastfm_artist = 1;
                 }
             }
-            $playcount = 1 if $provider eq 'playcount-guidance'
+            $playcount = 1 if $provider eq 'library-signals-guidance'
                 && $channel eq 'playcount';
+            $last_played = 1 if $provider eq 'library-signals-guidance'
+                && $channel eq 'last_played';
+            $library_age = 1 if $provider eq 'library-signals-guidance'
+                && $channel eq 'library_age';
         }
         $stats{lastfm_any}++ if $lastfm_any;
         $stats{lastfm_artist}++ if $lastfm_artist;
         $stats{lastfm_track}++ if $lastfm_track;
         $stats{playcount}++ if $playcount;
-        $stats{none}++ unless $lastfm_any || $playcount;
+        $stats{last_played}++ if $last_played;
+        $stats{library_age}++ if $library_age;
+        $stats{none}++ unless $lastfm_any || $playcount || $last_played || $library_age;
     }
     return \%stats;
 }
@@ -359,6 +367,8 @@ sub _result_view {
         variation_percent => $job->{options}->{variation_percent},
         generation_seed => $job->{options}->{generation_seed},
         playcount_influence => $job->{options}->{playcount_influence},
+        last_played_influence => $job->{options}->{last_played_influence},
+        library_age_influence => $job->{options}->{library_age_influence},
         lastfm_track_guidance_percent =>
             $job->{options}->{lastfm_track_guidance_percent},
         lastfm_artist_guidance_percent =>

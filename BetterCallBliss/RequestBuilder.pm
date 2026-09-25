@@ -123,7 +123,7 @@ sub normalize_request_types {
         qw(
             variation_percent generation_seed
             recording_guidance_percent artist_guidance_percent
-            playcount_influence
+            playcount_influence last_played_influence library_age_influence
         ),
     );
     for my $entry (@{$request->{guidance_policy} || []}) {
@@ -333,20 +333,31 @@ sub configure_guidance_addons {
         };
     }
 
-    my $playcounts = $providers->{playcounts} || {};
+    my $library_signals = $providers->{library_signals} || {};
     my $playcount_weight = 0 + ($selection->{playcount_influence} || 0) / 100;
+    my $last_played_weight = 0 + ($selection->{last_played_influence} || 0) / 100;
+    my $library_age_weight = 0 + ($selection->{library_age_influence} || 0) / 100;
     my $identities = $artifacts->{candidate_identities};
-    if ($playcounts->{available} && $playcounts->{program}
-        && $playcounts->{persist_db}
+    if ($library_signals->{available} && $library_signals->{program}
+        && $library_signals->{persist_db}
         && ref($identities) eq 'HASH' && $identities->{path}
-        && $identities->{sha256} && $playcount_weight) {
+        && $identities->{sha256}
+        && ($playcount_weight || $last_played_weight || $library_age_weight)) {
         push @policy, {
-            provider_id => 'playcount-guidance', channel => 'playcount',
+            provider_id => 'library-signals-guidance', channel => 'playcount',
             weight => $playcount_weight,
-        };
+        } if $playcount_weight;
+        push @policy, {
+            provider_id => 'library-signals-guidance', channel => 'last_played',
+            weight => $last_played_weight,
+        } if $last_played_weight;
+        push @policy, {
+            provider_id => 'library-signals-guidance', channel => 'library_age',
+            weight => $library_age_weight,
+        } if $library_age_weight;
         push @addons, {
-            id => 'playcount-guidance',
-            program => $playcounts->{program},
+            id => 'library-signals-guidance',
+            program => $library_signals->{program},
             options => {},
             artifacts => [{
                 kind => 'eligible-candidate-identities-v1',
@@ -354,7 +365,7 @@ sub configure_guidance_addons {
             }],
             resources => [{
                 kind => 'lms-persist-sqlite-v1',
-                path => $playcounts->{persist_db}, access => 'read_only',
+                path => $library_signals->{persist_db}, access => 'read_only',
             }],
             timeout_ms => 5000,
         };
@@ -362,6 +373,7 @@ sub configure_guidance_addons {
 
     delete @{$selection}{qw(
         recording_guidance_percent artist_guidance_percent playcount_influence
+        last_played_influence library_age_influence
     )};
     $request->{guidance_policy} = \@policy;
     $request->{guidance_addons} = \@addons;
@@ -650,6 +662,10 @@ sub _build_sequence_request {
             ),
             playcount_influence => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{playcount_influence}) : 0,
+            last_played_influence => $options->{extension_mode} ne 'none'
+                ? _json_integer($options->{last_played_influence}) : 0,
+            library_age_influence => $options->{extension_mode} ne 'none'
+                ? _json_integer($options->{library_age_influence}) : 0,
             recording_guidance_percent => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_track_guidance_percent}) : 0,
             artist_guidance_percent => $options->{extension_mode} ne 'none'

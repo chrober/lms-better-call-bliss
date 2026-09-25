@@ -11,8 +11,8 @@ Latest packaged optimizer source:
 - Program contract: `0.2.2`, core API `0.1`, guidance SPI `2`
 - Last.fm guidance release: `v0.1.2`
 - Last.fm guidance commit: `e278f4742cdef5eaafd99ae1a7fc866b7977c003`
-- Play-count guidance release: `v0.1.1`
-- Play-count guidance commit: `08f371774236651f8aa2252e99d7081bfac6ba22`
+- Library-signals guidance release: `v0.1.0`
+- Library-signals guidance commit: `bf984ee`
 
 The GitHub release workflow downloads the optimizer and both guidance-provider
 releases above, verifies each published `.sha256` file, places the binaries below the matching
@@ -33,7 +33,7 @@ Supported package folders:
 Each matching platform folder also contains:
 
 - `bliss-guidance-lastfm` (`bliss-guidance-lastfm.exe` on Windows)
-- `bliss-guidance-playcounts` (`bliss-guidance-playcounts.exe` on Windows)
+- `bliss-guidance-library-signals` (`bliss-guidance-library-signals.exe` on Windows)
 
 If a newer native release is used, update its release tag and commit above.
 The native release workflows own their build and test gates; the plugin release

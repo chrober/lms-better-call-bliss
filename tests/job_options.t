@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 52;
+use Test::More tests => 54;
 
 BEGIN {
     package TestPrefs;
@@ -43,6 +43,7 @@ my $capability = {
     album_window => '10',
     track_window => '100',
     statistics_enabled => 1,
+    library_signals_available => 1,
     playcount_influence => '-30',
 };
 
@@ -71,6 +72,14 @@ is(Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, {playcount_influence => '45'},
     )->{playcount_influence}, 45,
     'play-count influence can be overridden for one job');
+is(Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {last_played_influence => '-80'},
+    )->{last_played_influence}, -80,
+    'last-played influence can prefer long-unheard tracks per job');
+is(Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {library_age_influence => '45'},
+    )->{library_age_influence}, 45,
+    'library-age influence can prefer newer additions per job');
 is(Plugins::BetterCallBliss::JobOptions::normalize(
         {%$capability, statistics_enabled => 0},
         {playcount_influence => '45'},

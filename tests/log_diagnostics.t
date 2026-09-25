@@ -83,7 +83,7 @@ my $job = {
             contribution => 0.120,
             rationale => 'Last.fm similar artist',
         }, {
-            provider_id => 'playcount-guidance',
+            provider_id => 'library-signals-guidance',
             channel => 'playcount',
             contribution => 0.200,
             rationale => 'LMS play-count percentile 0.250',
@@ -294,7 +294,7 @@ like($result, qr/Native optimizer performance: 1488 ms total; database cache hit
     'information log reports native runtime and cache state');
 like($result, qr/235 states evaluated, 91 retained; maximum additions found 4/,
     'information log reports bounded selection-search statistics');
-like($result, qr/1 added tracks received Last\.fm similar-track guidance, 1 similar-artist guidance, 1 play-count guidance; 0 received no optional adjustment/,
+like($result, qr/1 added tracks received Last\.fm similar-track guidance, 1 similar-artist guidance, 1 play-count guidance, 0 last-played guidance, 0 library-age guidance; 0 received no optional adjustment/,
     'information log counts applied provider guidance for selected additions');
 like($result, qr/Addition 1: Bridge Artist - Bridge Song \[.*Last\.fm similar-track boost \+0\.1820.*play-count boost \+0\.2000.*LMS play-count percentile 0\.250/s,
     'information log reports applied Last.fm and play-count guidance for each selected addition');

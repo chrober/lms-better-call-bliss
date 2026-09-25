@@ -12,6 +12,8 @@ sub summary {
         next unless ref($item) eq 'HASH';
         my $channel = $item->{channel} || '';
         my $label = $channel eq 'playcount' ? 'play-count'
+            : $channel eq 'last_played' ? 'last-played'
+            : $channel eq 'library_age' ? 'library-age'
             : $channel eq 'lastfm_track' ? 'Last.fm similar-track'
             : $channel eq 'lastfm_artist' ? 'Last.fm similar-artist'
             : ($item->{provider_id} || 'optional guidance') . " $channel";

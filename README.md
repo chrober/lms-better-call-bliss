@@ -22,7 +22,7 @@ repository.
 - Adds spacing tracks as needed when repeated source artists or albums need more room to satisfy the selected repeat windows.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
-- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm similar-track and similar-artist target shares, and per-job play-count guidance initialized from BlissMixer.
+- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm target shares, and optional local Lyrion listening/library guidance (play count, last played, and library age).
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
 - Offers three destination shortcuts on a local track or album in this menu order. An album destination always plays every local audio track in disc and track order:
 
@@ -132,7 +132,7 @@ without committing native binaries to this repository:
 3. Downloads the published binaries for `x86_64-linux`, `aarch64-linux`,
    `armhf-linux`, `mac`, and `windows` from each release and verifies their
    `.sha256` files.
-4. Copies the optimizer plus Last.fm and play-count guidance providers into the
+4. Copies the optimizer plus Last.fm and local-library-signals guidance providers into the
    matching `BetterCallBliss/Bin/<platform>/` folders only inside the release
    workspace.
 5. Creates separate `lms-better-call-bliss-{linux,mac,windows}-<version>.zip`
@@ -157,7 +157,7 @@ creating a release or touching the plugin feed.
   intentionally not committed here. They are published by the separate
   [optimizer](https://github.com/chrober/bliss-playlist-optimizer),
   [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm), and
-  [play-count provider](https://github.com/chrober/bliss-guidance-playcounts)
+  [local library-signals provider](https://github.com/chrober/bliss-guidance-library-signals)
   release workflows and copied into deployment/package artifacts by this plugin
   release workflow. The expected releases, supported package folders, and
   packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
