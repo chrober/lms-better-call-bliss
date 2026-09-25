@@ -269,8 +269,8 @@ like($start, qr/Mixing strategy: adaptive.*learned matrix available/,
     'information log explains the effective acoustic strategy');
 like($start, qr/similar-track target 25%.*similar-artist target 25%/,
     'information log exposes both Last.fm target shares');
-like($start, qr/Play-count guidance.*?-40.*?63000 known tracks.*?1128 tracks/s,
-    'information log reports the per-job influence and snapshot coverage');
+like($start, qr/Local library guidance.*?play count -40, last played \+0, library age \+0.*?Play-count snapshot.*?63000 known tracks.*?1128 tracks/s,
+    'information log reports the per-job local-library influences and snapshot coverage');
 like($start, qr/destination route \(automatic, 0-4 intermediate tracks, fast effort, target 70%, cautious direct-transition caution\)/,
     'information log explains destination length, effort, and target settings');
 like($start, qr/Candidate library: All tracks; 64128 local LMS-matched Bliss candidates; 0 Bliss rows outside the selected virtual library; 1 non-LMS rows excluded; cache memory/,
