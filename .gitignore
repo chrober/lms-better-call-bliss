@@ -1,7 +1,9 @@
 /build/
 /dist/
 /.local-test/
+/.tmp-pi-guidance-proof/
 BetterCallBliss/Bin/**/bliss-playlist-optimizer*
+BetterCallBliss/Bin/**/bliss-guidance-*
 /.tmp/
 /.work/
 /.worktrees/
