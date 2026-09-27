@@ -123,9 +123,21 @@ sub normalize_request_types {
         qw(
             variation_percent generation_seed
             recording_guidance_percent artist_guidance_percent
-            playcount_influence
+            playcount_influence last_played_influence library_age_influence
         ),
     );
+    for my $entry (@{$request->{guidance_policy} || []}) {
+        next unless ref($entry) eq 'HASH';
+        $entry->{weight} = _json_number($entry->{weight}, 'guidance weight')
+            if exists $entry->{weight};
+        $entry->{target_percent} = _json_integer(
+            $entry->{target_percent}, 'guidance target_percent',
+        ) if exists $entry->{target_percent};
+        die 'guidance target_percent must be between 0 and 100'
+            if exists $entry->{target_percent}
+                && ($entry->{target_percent} < 0
+                    || $entry->{target_percent} > 100);
+    }
     _normalize_integers(
         $request->{route}->{search},
         qw(
@@ -272,6 +284,101 @@ sub _track_bundle {
     }
 
     return (\@source_tracks, \%labels, \%original_positions, \%track_urls);
+}
+
+sub configure_guidance_addons {
+    my ($request, $capability, $artifacts) = @_;
+    die 'Optimizer request must be an object'
+        unless ref($request) eq 'HASH';
+    $capability ||= {};
+    $artifacts ||= {};
+
+    my $selection = $request->{selection} ||= {};
+    my $providers = ref($capability->{guidance_providers}) eq 'HASH'
+        ? $capability->{guidance_providers} : {};
+    my @policy;
+    my @addons;
+
+    my $lastfm = $providers->{lastfm} || {};
+    my $track_target = _json_integer(
+        $selection->{recording_guidance_percent} || 0,
+        'recording_guidance_percent',
+    );
+    my $artist_target = _json_integer(
+        $selection->{artist_guidance_percent} || 0,
+        'artist_guidance_percent',
+    );
+    my $semantic = $artifacts->{semantic_evidence};
+    if ($lastfm->{available} && $lastfm->{program}
+        && ref($semantic) eq 'HASH' && $semantic->{path} && $semantic->{sha256}
+        && ($track_target || $artist_target)) {
+        push @policy, {
+            provider_id => 'lastfm-guidance', channel => 'lastfm_track',
+            weight => 1, target_percent => $track_target,
+        } if $track_target;
+        push @policy, {
+            provider_id => 'lastfm-guidance', channel => 'lastfm_artist',
+            weight => 1, target_percent => $artist_target,
+        } if $artist_target;
+        push @addons, {
+            id => 'lastfm-guidance',
+            program => $lastfm->{program},
+            options => {},
+            artifacts => [{
+                kind => 'resolved-lastfm-evidence-v1',
+                path => $semantic->{path}, sha256 => $semantic->{sha256},
+            }],
+            resources => [],
+            timeout_ms => 5000,
+        };
+    }
+
+    my $library_signals = $providers->{library_signals} || {};
+    my $playcount_weight = 0 + ($selection->{playcount_influence} || 0) / 100;
+    my $last_played_weight = 0 + ($selection->{last_played_influence} || 0) / 100;
+    my $library_age_weight = 0 + ($selection->{library_age_influence} || 0) / 100;
+    my $identities = $artifacts->{candidate_identities};
+    if ($library_signals->{available} && $library_signals->{program}
+        && $library_signals->{persist_db}
+        && ref($identities) eq 'HASH' && $identities->{path}
+        && $identities->{sha256}
+        && ($playcount_weight || $last_played_weight || $library_age_weight)) {
+        push @policy, {
+            provider_id => 'library-signals-guidance', channel => 'playcount',
+            weight => $playcount_weight,
+        } if $playcount_weight;
+        push @policy, {
+            provider_id => 'library-signals-guidance', channel => 'last_played',
+            weight => $last_played_weight,
+        } if $last_played_weight;
+        push @policy, {
+            provider_id => 'library-signals-guidance', channel => 'library_age',
+            weight => $library_age_weight,
+        } if $library_age_weight;
+        push @addons, {
+            id => 'library-signals-guidance',
+            program => $library_signals->{program},
+            options => {},
+            artifacts => [{
+                kind => 'eligible-candidate-identities-v1',
+                path => $identities->{path}, sha256 => $identities->{sha256},
+            }],
+            resources => [{
+                kind => 'lms-persist-sqlite-v1',
+                path => $library_signals->{persist_db}, access => 'read_only',
+            }],
+            timeout_ms => 5000,
+        };
+    }
+
+    delete @{$selection}{qw(
+        recording_guidance_percent artist_guidance_percent playcount_influence
+        last_played_influence library_age_influence
+    )};
+    $request->{guidance_policy} = \@policy;
+    $request->{guidance_addons} = \@addons;
+    normalize_request_types($request);
+    return $request;
 }
 
 sub _repeat_key {
@@ -555,11 +662,13 @@ sub _build_sequence_request {
             ),
             playcount_influence => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{playcount_influence}) : 0,
-            recording_guidance_percent => $options->{lastfm_enabled}
-                && $options->{extension_mode} ne 'none'
+            last_played_influence => $options->{extension_mode} ne 'none'
+                ? _json_integer($options->{last_played_influence}) : 0,
+            library_age_influence => $options->{extension_mode} ne 'none'
+                ? _json_integer($options->{library_age_influence}) : 0,
+            recording_guidance_percent => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_track_guidance_percent}) : 0,
-            artist_guidance_percent => $options->{lastfm_enabled}
-                && $options->{extension_mode} ne 'none'
+            artist_guidance_percent => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_artist_guidance_percent}) : 0,
         },
         route => {

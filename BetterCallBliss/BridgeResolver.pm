@@ -338,6 +338,7 @@ sub resolve_bridge_preview {
                     semantic_pool => $extension_selection_for{$id}->{semantic_pool} || 'bliss_only',
                     semantic_tier => $extension_selection_for{$id}->{semantic_tier} || 'bliss_only',
                     semantic_evidence => $extension_selection_for{$id}->{semantic_evidence} || [],
+                    guidance_contributions => $extension_selection_for{$id}->{guidance_contributions} || [],
                 };
             } else {
                 my $decision = $decision_for{$id};
@@ -350,6 +351,7 @@ sub resolve_bridge_preview {
                     semantic_pool => $decision->{semantic_pool} || 'bliss_only',
                     semantic_tier => $selected_bridge->{semantic_tier} || 'bliss_only',
                     semantic_evidence => $selected_bridge->{semantic_evidence} || [],
+                    guidance_contributions => $selected_bridge->{guidance_contributions} || [],
                 };
             }
         }

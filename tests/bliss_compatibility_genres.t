@@ -94,13 +94,15 @@ $Slim::Utils::Prefs::directory = $temporary;
 my $database = File::Spec->catfile($temporary, 'bliss.db');
 my $matrix = File::Spec->catfile($temporary, 'learned_matrix.json');
 my $binary = File::Spec->catfile($temporary, 'bliss-playlist-optimizer');
-for my $path ($database, $matrix, $binary) {
+my $lastfm_guidance = File::Spec->catfile($temporary, 'bliss-guidance-lastfm');
+for my $path ($database, $matrix, $binary, $lastfm_guidance) {
     open my $fh, '>', $path or die "Cannot create $path: $!";
     close $fh;
 }
 chmod 0755, $binary;
+chmod 0755, $lastfm_guidance;
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {});
 my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 
 ok($snapshot->{ready}, 'compatible optimizer and readable Bliss database are ready');
@@ -123,6 +125,18 @@ ok($snapshot->{use_track_genre}, 'per-track genre mode is captured');
 ok($snapshot->{statistics_enabled}, 'LMS playback statistics availability is captured');
 is($snapshot->{playcount_influence}, -40,
     'play-count influence is inherited from BlissMixer');
+
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {
+    lastfm => {
+        program => $lastfm_guidance,
+        spi_v2 => 1,
+    },
+});
+my $with_compatible_provider = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+ok(
+    $with_compatible_provider->{guidance_providers}->{lastfm}->{available},
+    'a bundled Last.fm provider is available only after the plugin verified its SPI v2 identity',
+);
 
 unlink $matrix or die "Cannot remove $matrix: $!";
 my $without_matrix = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
@@ -152,13 +166,13 @@ like(join('; ', @{$without_base->{problems}}), qr/BlissMixer is not enabled/,
     'the missing required base plugin is a blocking problem');
 $Slim::Utils::PluginManager::enabled{'Plugins::BlissMixer::Plugin'} = 1;
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 0, 1, 1, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 0, 1, 1, {});
 my $incompatible = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok(!$incompatible->{ready}, 'an older optimizer is rejected instead of ignoring genre settings');
 like(join('; ', @{$incompatible->{problems}}), qr/does not support BlissMixer genre settings/,
     'the compatibility failure explains the required optimizer capability');
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 0, 1, 1);
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 0, 1, {});
 my $old_candidate_scope = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok(!$old_candidate_scope->{ready},
     'an optimizer without candidate-library scoping is rejected');
@@ -166,21 +180,13 @@ like(join('; ', @{$old_candidate_scope->{problems}}),
     qr/does not support candidate-library scoping/,
     'candidate-library compatibility failure names the missing capability');
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 0, 1);
-my $old_playcount = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
-ok(!$old_playcount->{ready},
-    'an optimizer without play-count guidance is rejected');
-like(join('; ', @{$old_playcount->{problems}}),
-    qr/does not support play-count guidance/,
-    'play-count compatibility failure names the missing capability');
-
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 0);
-my $old_candidate_guidance =
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 0, {});
+my $without_guidance_spi =
     Plugins::BetterCallBliss::BlissCompatibility::snapshot();
-ok(!$old_candidate_guidance->{ready},
-    'an optimizer without resolved candidate guidance is rejected');
-like(join('; ', @{$old_candidate_guidance->{problems}}),
-    qr/does not support caller-resolved candidate guidance/,
-    'candidate-guidance compatibility failure names the missing capability');
+ok(!$without_guidance_spi->{ready},
+    'an optimizer without guidance SPI v2 is rejected');
+like(join('; ', @{$without_guidance_spi->{problems}}),
+    qr/does not support guidance SPI v2/,
+    'guidance compatibility failure names the generic provider contract');
 
 done_testing();

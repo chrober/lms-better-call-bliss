@@ -1,14 +1,14 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 50;
+use Test::More tests => 54;
 
 BEGIN {
     package TestPrefs;
     our %values = (
         auto_bridge_budget => '12',
         auto_trigger_percent => '65',
-        lastfm_enabled => 1,
+        lastfm_enabled => 0,
         lastfm_track_guidance_percent => '75',
         lastfm_artist_guidance_percent => '75',
         restart_count => '80',
@@ -43,6 +43,7 @@ my $capability = {
     album_window => '10',
     track_window => '100',
     statistics_enabled => 1,
+    library_signals_available => 1,
     playcount_influence => '-30',
 };
 
@@ -52,7 +53,7 @@ is($defaults->{algorithm}, 'adaptive',
 is($defaults->{restart_count}, 80,
     'restart count default is read from plugin preferences');
 is($defaults->{lastfm_enabled}, 1,
-    'Last.fm default is read from plugin preferences');
+    'non-zero Last.fm targets enable guidance even when the retired checkbox preference is off');
 is($defaults->{lastfm_track_guidance_percent}, 75,
     'explicit track-guidance preference is retained');
 is($defaults->{lastfm_artist_guidance_percent}, 75,
@@ -71,6 +72,14 @@ is(Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, {playcount_influence => '45'},
     )->{playcount_influence}, 45,
     'play-count influence can be overridden for one job');
+is(Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {last_played_influence => '-80'},
+    )->{last_played_influence}, -80,
+    'last-played influence can prefer long-unheard tracks per job');
+is(Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {library_age_influence => '45'},
+    )->{library_age_influence}, 45,
+    'library-age influence can prefer newer additions per job');
 is(Plugins::BetterCallBliss::JobOptions::normalize(
         {%$capability, statistics_enabled => 0},
         {playcount_influence => '45'},
@@ -118,6 +127,28 @@ is($fallback_defaults->{lastfm_artist_guidance_percent}, 25,
     'missing artist-guidance preference falls back to 25');
 $TestPrefs::values{lastfm_track_guidance_percent} = $saved_track_guidance;
 $TestPrefs::values{lastfm_artist_guidance_percent} = $saved_artist_guidance;
+
+my $targets_override_retired_toggle = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {
+        lastfm_enabled => 0,
+        lastfm_track_guidance_percent => '30',
+        lastfm_artist_guidance_percent => '0',
+    },
+);
+is($targets_override_retired_toggle->{lastfm_enabled}, 1,
+    'a non-zero per-job Last.fm target activates guidance regardless of the retired toggle value');
+
+my $zero_targets_disable_lastfm = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {
+        lastfm_enabled => 1,
+        lastfm_track_guidance_percent => '0',
+        lastfm_artist_guidance_percent => '0',
+    },
+);
+is($zero_targets_disable_lastfm->{lastfm_enabled}, 0,
+    'zero per-job Last.fm targets disable guidance regardless of the retired toggle value');
 
 my $legacy_exact = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

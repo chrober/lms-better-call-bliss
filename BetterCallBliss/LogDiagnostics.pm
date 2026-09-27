@@ -1,6 +1,7 @@
 package Plugins::BetterCallBliss::LogDiagnostics;
 
 use strict;
+use Plugins::BetterCallBliss::GuidanceReporting;
 use Plugins::BetterCallBliss::RouteMode;
 
 use constant INFO_TRACK_LIMIT => 100;
@@ -107,37 +108,37 @@ sub _display_route_ids {
     return \@ids;
 }
 
-sub _semantic_counts {
+sub _guidance_counts {
     my $job = shift;
-    my ($recording, $artist, $bliss_only) = (0, 0, 0);
+    my ($track, $artist, $playcount, $last_played, $library_age, $neutral) = (0, 0, 0, 0, 0, 0);
     for my $addition (@{ref($job->{additions}) eq 'ARRAY' ? $job->{additions} : []}) {
-        my ($has_recording, $has_artist) = (0, 0);
-        for my $evidence (@{ref($addition->{semantic_evidence}) eq 'ARRAY'
-            ? $addition->{semantic_evidence} : []}) {
-            next unless ($evidence->{provider} || '') =~ /^last\.fm/i;
-            $has_recording = 1 if ($evidence->{kind} || '') eq 'recording';
-            $has_artist = 1 if ($evidence->{kind} || '') eq 'artist';
+        my ($has_track, $has_artist, $has_playcount, $has_last_played, $has_library_age) = (0, 0, 0, 0, 0);
+        for my $contribution (@{ref($addition->{guidance_contributions}) eq 'ARRAY'
+            ? $addition->{guidance_contributions} : []}) {
+            next unless ref($contribution) eq 'HASH';
+            my $provider = $contribution->{provider_id} || '';
+            my $channel = $contribution->{channel} || '';
+            $has_track = 1 if $provider eq 'lastfm-guidance' && $channel eq 'lastfm_track';
+            $has_artist = 1 if $provider eq 'lastfm-guidance' && $channel eq 'lastfm_artist';
+            $has_playcount = 1 if $provider eq 'library-signals-guidance' && $channel eq 'playcount';
+            $has_last_played = 1 if $provider eq 'library-signals-guidance' && $channel eq 'last_played';
+            $has_library_age = 1 if $provider eq 'library-signals-guidance' && $channel eq 'library_age';
         }
-        $recording++ if $has_recording;
+        $track++ if $has_track;
         $artist++ if $has_artist;
-        $bliss_only++ unless $has_recording || $has_artist;
+        $playcount++ if $has_playcount;
+        $last_played++ if $has_last_played;
+        $library_age++ if $has_library_age;
+        $neutral++ unless $has_track || $has_artist || $has_playcount || $has_last_played || $has_library_age;
     }
-    return ($recording, $artist, $bliss_only);
+    return ($track, $artist, $playcount, $last_played, $library_age, $neutral);
 }
 
-sub _evidence_label {
+sub _guidance_label {
     my $addition = shift;
-    my ($recording, $artist) = (0, 0);
-    for my $evidence (@{ref($addition->{semantic_evidence}) eq 'ARRAY'
-        ? $addition->{semantic_evidence} : []}) {
-        next unless ($evidence->{provider} || '') =~ /^last\.fm/i;
-        $recording = 1 if ($evidence->{kind} || '') eq 'recording';
-        $artist = 1 if ($evidence->{kind} || '') eq 'artist';
-    }
-    return 'Last.fm track and artist similarity' if $recording && $artist;
-    return 'Last.fm track similarity' if $recording;
-    return 'Last.fm artist similarity' if $artist;
-    return 'Bliss acoustic evidence only';
+    return Plugins::BetterCallBliss::GuidanceReporting::summary(
+        $addition->{guidance_contributions},
+    );
 }
 
 sub start_info_lines {
@@ -188,12 +189,14 @@ sub start_info_lines {
         0 + ($options->{max_added_tracks} || 0),
     ) if ($options->{addition_purpose} || '') eq 'satisfy_constraints';
     if ($mode eq 'none') {
-        push @lines, 'Play-count guidance: not applied because this job adds no tracks.';
+        push @lines, 'Local library guidance: not applied because this job adds no tracks.';
     } else {
         push @lines, sprintf(
-            'Play-count guidance for generated tracks: influence %+d; LMS statistics %s.',
+            'Local library guidance for generated tracks: play count %+d, last played %+d, library age %+d; provider %s.',
             0 + ($options->{playcount_influence} || 0),
-            $capability->{statistics_enabled} ? 'available' : 'disabled',
+            0 + ($options->{last_played_influence} || 0),
+            0 + ($options->{library_age_influence} || 0),
+            $capability->{library_signals_available} ? 'available' : 'unavailable',
         );
     }
     if ($mode ne 'none' && $options->{playcount_influence}
@@ -236,7 +239,7 @@ sub start_info_lines {
     }
     if ($options->{lastfm_enabled}) {
         push @lines, sprintf(
-            'Last.fm guidance: enabled; similar tracks %d%%, similar artists %d%%; failures fall back to Bliss.',
+            'Last.fm guidance: enabled; similar-track target %d%%, similar-artist target %d%%; failures fall back to Bliss.',
             0 + ($options->{lastfm_track_guidance_percent} || 0),
             0 + ($options->{lastfm_artist_guidance_percent} || 0),
         );
@@ -382,6 +385,8 @@ sub result_info_lines {
         0 + ($artifact->{frozen_reference_count} || 0),
         $artifact->{semantic_mode} || 'not applicable',
     );
+    push @lines, _guidance_addon_lines($artifact);
+    push @lines, _guidance_candidate_pool_lines($artifact);
     my $provenance = _scoring_provenance($job);
     if (%$provenance) {
         push @lines, sprintf(
@@ -409,22 +414,26 @@ sub result_info_lines {
         0 + ($search->{maximum_additions_found} || 0),
         0 + ($search->{structural_upper_bound} || 0),
     ) if %$search;
-    push @lines, _provider_lines($job) if ($job->{options} || {})->{lastfm_enabled};
-    my ($recording, $artist, $bliss_only) = _semantic_counts($job);
+    push @lines, _provider_lines($job)
+        if ($job->{options} || {})->{lastfm_enabled}
+            || ($job->{options} || {})->{playcount_influence}
+            || ($job->{options} || {})->{last_played_influence}
+            || ($job->{options} || {})->{library_age_influence};
+    my ($track, $artist, $playcount, $last_played, $library_age, $neutral) = _guidance_counts($job);
     if ($job->{added_track_count}) {
         push @lines, ($job->{options} || {})->{lastfm_enabled}
             ? sprintf(
-                'Last.fm contribution: %d added tracks supported by track similarity, %d by artist similarity; %d additions used Bliss acoustic evidence only.',
-                $recording, $artist, $bliss_only,
+                'Optional guidance: %d added tracks received Last.fm similar-track guidance, %d similar-artist guidance, %d play-count guidance, %d last-played guidance, %d library-age guidance; %d received no optional adjustment.',
+                $track, $artist, $playcount, $last_played, $library_age, $neutral,
             )
-            : sprintf('Addition evidence: %d additions used Bliss acoustic evidence.',
+            : sprintf('Optional guidance: %d additions received no enabled guidance adjustment.',
                 0 + ($job->{added_track_count} || 0));
     }
     push @lines, _destination_quality_lines($job);
     my $addition_index = 0;
     for my $addition (@{ref($job->{additions}) eq 'ARRAY' ? $job->{additions} : []}) {
         $addition_index++;
-        my $detail = _evidence_label($addition);
+        my $detail = _guidance_label($addition);
         $detail .= sprintf('; relevance distance %.4f', $addition->{relevance_distance})
             if defined $addition->{relevance_distance};
         push @lines, sprintf(
@@ -436,6 +445,66 @@ sub result_info_lines {
         $job, 'Selected route', _display_route_ids($job), INFO_TRACK_LIMIT, 0,
     );
     return \@lines;
+}
+
+sub _guidance_addon_lines {
+    my $artifact = shift || {};
+    my @lines;
+    for my $diagnostic (@{ref($artifact->{guidance_addon_diagnostics}) eq 'ARRAY'
+        ? $artifact->{guidance_addon_diagnostics} : []}) {
+        next unless ref($diagnostic) eq 'HASH';
+        my $provider = $diagnostic->{provider_id} || $diagnostic->{configured_id}
+            || 'guidance provider';
+        if (($diagnostic->{state} || '') eq 'prepared') {
+            push @lines, sprintf(
+                'Guidance provider %s: %d score batches, %d returned signals, %d accepted signals.',
+                $provider,
+                0 + ($diagnostic->{score_batches} || 0),
+                0 + ($diagnostic->{returned_signals} || 0),
+                0 + ($diagnostic->{accepted_signals} || 0),
+            );
+        } else {
+            push @lines, sprintf(
+                'Guidance provider %s unavailable: %s.',
+                $provider,
+                $diagnostic->{message} || 'no diagnostics available',
+            );
+        }
+    }
+    return @lines;
+}
+
+sub _guidance_candidate_pool_lines {
+    my $artifact = shift || {};
+    my $preview = ref($artifact->{selection_preview}) eq 'HASH'
+        ? $artifact->{selection_preview} : {};
+    my $pool = ref($preview->{guidance_candidate_pool}) eq 'HASH'
+        ? $preview->{guidance_candidate_pool} : {};
+    return () unless %$pool;
+
+    my $expansion = $pool->{expanded_for_target_support}
+        ? 'expanded for target support' : 'baseline sufficient';
+    my @lines = (sprintf(
+        'Guidance candidate pool: %d Bliss-ranked; baseline %d; providers scored %d; selection pool %d (%s).',
+        0 + ($pool->{bliss_ranked_candidate_count} || 0),
+        0 + ($pool->{baseline_candidate_pool_count} || 0),
+        0 + ($pool->{provider_scored_candidate_count} || 0),
+        0 + ($pool->{selected_candidate_pool_count} || 0),
+        $expansion,
+    ));
+    for my $channel (@{ref($pool->{target_channels}) eq 'ARRAY'
+        ? $pool->{target_channels} : []}) {
+        next unless ref($channel) eq 'HASH';
+        push @lines, sprintf(
+            '%s/%s target %d%%: %d supported, multiplier %.3f.',
+            $channel->{provider_id} || 'guidance provider',
+            $channel->{channel} || 'unknown channel',
+            0 + ($channel->{target_percent} || 0),
+            0 + ($channel->{supported_candidate_count} || 0),
+            0 + ($channel->{multiplier} || 0),
+        );
+    }
+    return @lines;
 }
 
 sub _quality_by_role {
@@ -560,26 +629,25 @@ sub result_debug_lines {
     }
 
     for my $addition (@{ref($job->{additions}) eq 'ARRAY' ? $job->{additions} : []}) {
-        my $evidence = ref($addition->{semantic_evidence}) eq 'ARRAY'
-            ? $addition->{semantic_evidence} : [];
-        if (!@$evidence) {
-            push @lines, 'Addition evidence: ' . _label($job, $addition->{track_id})
-                . '; Bliss acoustic evidence only.';
+        my $contributions = ref($addition->{guidance_contributions}) eq 'ARRAY'
+            ? $addition->{guidance_contributions} : [];
+        if (!@$contributions) {
+            push @lines, 'Addition guidance: ' . _label($job, $addition->{track_id})
+                . '; no optional adjustment.';
             next;
         }
-        for my $item (@$evidence) {
+        for my $item (@$contributions) {
             push @lines, sprintf(
-                'Addition evidence: %s; provider=%s algorithm=%s kind=%s scope=%s endpoint=%s rank=%s score=%s confidence=%s cache=%s.',
+                'Addition guidance: %s; provider=%s channel=%s scope=%s signal_score=%s confidence=%s policy_weight=%s contribution=%s rationale=%s.',
                 _label($job, $addition->{track_id}),
-                $item->{provider} || 'unknown',
-                $item->{dataset_or_algorithm} || 'unknown',
-                $item->{kind} || 'unknown',
+                $item->{provider_id} || 'unknown',
+                $item->{channel} || 'unknown',
                 $item->{scope} || 'unknown',
-                $item->{source_endpoint} || 'unknown',
-                defined $item->{raw_rank} ? $item->{raw_rank} : 'n/a',
-                defined $item->{raw_score} ? $item->{raw_score} : 'n/a',
-                defined $item->{identity_confidence} ? $item->{identity_confidence} : 'n/a',
-                $item->{cache_state} || 'unknown',
+                defined $item->{signal_score} ? $item->{signal_score} : 'n/a',
+                defined $item->{confidence} ? $item->{confidence} : 'n/a',
+                defined $item->{policy_weight} ? $item->{policy_weight} : 'n/a',
+                defined $item->{contribution} ? $item->{contribution} : 'n/a',
+                $item->{rationale} || 'n/a',
             );
         }
     }

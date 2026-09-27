@@ -3,7 +3,7 @@ use warnings;
 use FindBin;
 use File::Find;
 use File::Spec;
-use Test::More tests => 118;
+use Test::More tests => 127;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -83,6 +83,11 @@ my $extras = slurp(File::Spec->catfile(
 ));
 like(
     $extras,
+    qr/guidance_summary.*?Guidance provider activity/s,
+    'Extras presents provider guidance separately from legacy semantic evidence',
+);
+like(
+    $extras,
     qr/<select name="gap_context_mode".*?value="rolling".*?value="frozen"/s,
     'Extras offers rolling and frozen adaptive gap-context policies',
 );
@@ -130,6 +135,22 @@ like(
     $extras,
     qr/if \(response\.result\.job\) \{\s*updateJobLists.*?else if \(response\.result\.state === 'not_found' && !waitingForRegistration\)/s,
     'a provisional preparation row survives not-found polls until the reserved job is registered',
+);
+unlike(
+    $extras,
+    qr/window\.setInterval\(pollJob, 1500\)/,
+    'status polling does not overlap fixed-interval requests while LMS is busy',
+);
+like(
+    $extras,
+    qr/function pollJob\(\).*?pollInFlight = true;.*?pollInFlight = false;.*?schedulePoll\(1500\)/s,
+    'a settled status request schedules the next poll only after releasing its in-flight guard',
+);
+my $guidance_flow = slurp(File::Spec->catfile($root, 'docs', 'GUIDANCE_DATA_FLOW.md'));
+unlike(
+    $guidance_flow,
+    qr/^\s*\w+(?:-->>|->>)[^\n;]*;/m,
+    'sequence-diagram messages do not use Mermaid statement separators',
 );
 like(
     $extras,
@@ -198,15 +219,25 @@ like(
     qr/mskslider\..*?updateRouteLengthPolicy.*?route_min_intermediates.*?route_max_intermediates.*?route_exact_intermediates.*?route_direct_caution/s,
     'route policy disables both inapplicable inputs and Material sliders',
 );
-like(
-    $settings,
-    qr/updateLastFmGuidance.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent/s,
-    'both independent Better Call Bliss guidance inputs follow their enable checkbox',
+unlike(
+    $settings . $extras,
+    qr/lastfm_enabled|updateLastFmGuidance/,
+    'Last.fm target controls have no separate enable checkbox',
 );
 like(
     $defaults_module,
     qr/lastfm_track_guidance_percent\s*=>\s*25,.*?lastfm_artist_guidance_percent\s*=>\s*25,/s,
     'new installations default both independent Last.fm guidance controls to 25 percent',
+);
+like(
+    $settings_module,
+    qr/last_played_influence\s+library_age_influence/s,
+    'settings persist the two local library-signal defaults',
+);
+like(
+    $settings,
+    qr/last_played_influence.*?library_age_influence/s,
+    'settings expose independent defaults for recency and library age',
 );
 like(
     $plugin_module,
@@ -220,8 +251,8 @@ like(
 );
 like(
     $strings,
-    qr/This is not BlissMixerLab's immediate-mix sampling weight.*?This is not BlissMixer's target proportion/s,
-    'setting help distinguishes Better Call Bliss guidance from provider sampling controls',
+    qr/target share.*?Zero disables.*?target share.*?Zero disables/s,
+    'setting help describes independent Last.fm target shares and their zero-value disable rule',
 );
 like(
     $plugin_module,
@@ -296,6 +327,11 @@ like(
 my $jobs = slurp(File::Spec->catfile($plugin, 'Jobs.pm'));
 like(
     $jobs,
+    qr/use Plugins::BetterCallBliss::RepeatConflicts;.*?\$effective->\{ordering_policy\}.*?'preserve_order'.*?\$effective->\{extension_mode\}.*?'automatic'.*?RepeatConflicts::first_preserved_order_conflict.*?PRESERVED_ANCHOR_REPEAT_CONFLICT.*?if \(\$native_command eq 'bridge'\).*?CandidateInventory::prepare/s,
+    'preserved-order difficult-transition conflicts are rejected before candidate capture',
+);
+like(
+    $jobs,
     qr/sub start_reorder_preview.*?_create_deferred_sequence_job.*?_defer_web_preparation.*?build_reorder_request/s,
     'saved-playlist previews register a visible job before deferred request preparation',
 );
@@ -356,13 +392,8 @@ like(
 );
 like(
     $plugin_module,
-    qr/my \$optimizer_supports_play_count_guidance\s*=\s*_optimizerSupportsPlayCountGuidance.*?BlissCompatibility::init\(.*?\$optimizer_supports_play_count_guidance/s,
-    'plugin requires explicit optimizer support for play-count guidance',
-);
-like(
-    $plugin_module,
-    qr/my \$optimizer_supports_resolved_candidate_guidance\s*=\s*_optimizerSupportsResolvedCandidateGuidance.*?BlissCompatibility::init\(.*?\$optimizer_supports_resolved_candidate_guidance/s,
-    'plugin requires explicit optimizer support for caller-resolved candidate guidance',
+    qr/my \$optimizer_supports_guidance_spi_v2\s*=\s*_optimizerSupportsGuidanceSpiV2.*?BlissCompatibility::init\(.*?\$optimizer_supports_guidance_spi_v2/s,
+    'plugin requires the generic guidance SPI v2 contract rather than legacy source-specific flags',
 );
 my $compatibility = slurp(File::Spec->catfile($plugin, 'BlissCompatibility.pm'));
 like(
@@ -533,15 +564,10 @@ like(
     qr/SELECT rowid, File, Title, Artist, Album.*?while.*?_yield_to_lms\(\)/s,
     'candidate inventory construction yields while walking Bliss rows',
 );
-like(
-    $responsive_candidate_inventory,
-    qr/sub prepare_playcounts.*?while.*?_yield_to_lms\(\)/s,
-    'play-count snapshot construction yields while walking the LMS library',
-);
-like(
+unlike(
     $responsive_candidate_inventory . $jobs,
-    qr/sub prepare_playcounts_async.*?Slim::Utils::Timers::setTimer.*?prepare_playcounts_async/s,
-    'preview preparation captures play counts asynchronously before optimizer launch',
+    qr/prepare_playcounts(?:_async)?/,
+    'the plugin no longer walks the entire LMS library to create a play-count artifact',
 );
 like(
     $responsive_candidate_inventory,
@@ -587,6 +613,11 @@ like(
     'Web view maps both acoustic views for destination-route diagnostics',
 );
 like(
+    $web,
+    qr/\$view->\{additions\}\s*=\s*\\\@additions;.*?\$view->\{guidance_stats\}\s*=\s*_guidance_stats\(\$job->\{additions\}\);/s,
+    'guidance totals are calculated from native additions before display rows omit their contribution details',
+);
+like(
     $extras,
     qr/Acoustic model check:.*?configured adaptive context.*?governed this route/s,
     'destination-route result explains that the configured adaptive context governed',
@@ -606,3 +637,22 @@ find(
 );
 is_deeply(\@committed_binary_candidates, [],
     'source checkout does not commit native optimizer binaries');
+
+my $release_workflow = slurp(
+    File::Spec->catfile($root, '.github', 'workflows', 'release.yml'),
+);
+like(
+    $release_workflow,
+    qr/bliss-guidance-lastfm.*?bliss-guidance-library-signals/s,
+    'release workflow packages both trusted guidance providers',
+);
+like(
+    $release_workflow,
+    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-lastfm-\$platform/s,
+    'release workflow includes AArch64 provider binaries for Lyrion appliances',
+);
+like(
+    $release_workflow,
+    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-library-signals-\$platform/s,
+    'release workflow includes the AArch64 local-library-signals provider',
+);

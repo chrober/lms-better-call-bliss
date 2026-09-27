@@ -6,7 +6,14 @@
 
 **Better Call Bliss** is a Lyrion Music Server plugin that turns a saved playlist or a current player queue snapshot into a smoother listening journey. It can reorder the existing songs, insert suitable bridge tracks, preserve the original order while filling its gaps, extend a short source list to a chosen length, or rebuild the upcoming part of a live queue. Every job is previewed before anything is saved or sent to a player, and artist, album, and track repeat rules remain hard constraints.
 
-The plugin owns the Lyrion user interface, settings, Last.fm integration, provider-to-library identity resolution, background jobs, result review, playlist persistence, and player-queue output. CPU-intensive acoustic scoring and route search are delegated to the network-free Rust engine [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer), which is bundled with supported plugin packages.
+The plugin owns the Lyrion user interface, settings, Last.fm integration,
+provider-to-library identity resolution, background jobs, result review,
+playlist persistence, and player-queue output. CPU-intensive acoustic scoring
+and route search are delegated to the network-free Rust engine
+[bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer).
+Supported packages also bundle its trusted Rust guidance providers for Last.fm
+evidence and on-demand Lyrion play counts; none are committed to this source
+repository.
 
 ## What it does
 
@@ -15,7 +22,7 @@ The plugin owns the Lyrion user interface, settings, Last.fm integration, provid
 - Adds spacing tracks as needed when repeated source artists or albums need more room to satisfy the selected repeat windows.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
-- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm similar-track and similar-artist guidance, and per-job play-count guidance initialized from BlissMixer.
+- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm target shares, and optional local Lyrion listening/library guidance (play count, last played, and library age).
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
 - Offers three destination shortcuts on a local track or album in this menu order. An album destination always plays every local audio track in disc and track order:
 
@@ -34,7 +41,7 @@ The plugin owns the Lyrion user interface, settings, Last.fm integration, provid
 Better Call Bliss deliberately builds on and credits the original [lms-blissmixer](https://github.com/CDrummond/lms-blissmixer) feature
 **Create bliss mix**. That BlissMixer action already generates immediate Bliss-based mixes from a selected track, artist, album, or genre context. Better Call Bliss is a companion workflow around the same Bliss ecosystem: it previews auditable saved-playlist and player-queue transformations, exposes per-job constraints, and lets the user choose whether to save, overwrite, or send the accepted result to a player.
 
-See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly explanations, technical flowcharts, option ranges, and the exact boundary between working and planned modes. See [UX status](docs/UX_STATUS.md) for the complete feature matrix.
+See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly explanations, technical flowcharts, option ranges, and the exact boundary between working and planned modes. See [Guidance data flow](docs/GUIDANCE_DATA_FLOW.md) for the end-to-end Better Call Bliss, optimizer, and provider information flow. See [UX status](docs/UX_STATUS.md) for the complete feature matrix.
 
 ## Requirements
 
@@ -48,8 +55,8 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 - [BlissMixerLab](https://github.com/chrober/lms-blissmixer-lab) is optional.
   When enabled, it contributes `learned_matrix.json`, its learned-blend
   preference, and its immediate-mix extensions. Better Call Bliss keeps separate
-  Last.fm route and playlist guidance defaults because the similarly named
-  provider controls have different algorithmic meanings. It does not treat a stray
+  Last.fm route and playlist target-share defaults because its candidates and
+  route planner are distinct. It does not treat a stray
   matrix file as active personalization when BlissMixerLab is unavailable.
 - A readable `learned_matrix.json` is optional. When present through
   BlissMixerLab, Adaptive can blend it with dynamic variance. When absent,
@@ -119,14 +126,15 @@ without committing native binaries to this repository:
 1. Runs the lightweight Perl regression suite from `tests/`. The suite stubs
    LMS/LastMix APIs and checks request JSON typing, Last.fm evidence, per-job
    option normalization, localization metadata, and source-package hygiene.
-2. Reads the pinned `bliss-playlist-optimizer` release from
-   `BetterCallBliss/Bin/SOURCE.md`, unless an `optimizer_release` override is
+2. Reads pinned optimizer and guidance-provider releases from
+   `BetterCallBliss/Bin/SOURCE.md`, unless a workflow-dispatch override is
    supplied manually.
-3. Downloads the published optimizer binaries for `x86_64-linux`,
-   `aarch64-linux`, `armhf-linux`, `mac`, and `windows` from that release and
-   verifies their `.sha256` files.
-4. Copies those binaries into the matching `BetterCallBliss/Bin/<platform>/`
-   folders only inside the release workspace.
+3. Downloads the published binaries for `x86_64-linux`, `aarch64-linux`,
+   `armhf-linux`, `mac`, and `windows` from each release and verifies their
+   `.sha256` files.
+4. Copies the optimizer plus Last.fm and local-library-signals guidance providers into the
+   matching `BetterCallBliss/Bin/<platform>/` folders only inside the release
+   workspace.
 5. Creates separate `lms-better-call-bliss-{linux,mac,windows}-<version>.zip`
    archives plus SHA-1 and SHA-256 files. Linux retains x86_64, AArch64, and
    ARMHF binaries; macOS and Windows retain only their matching binary.
@@ -145,11 +153,13 @@ creating a release or touching the plugin feed.
 - `BetterCallBliss/` is the installable Lyrion plugin source tree. It contains
   the Perl plugin modules, classic-web templates, settings page, strings,
   icons, and `install.xml` metadata.
-- The platform-specific `bliss-playlist-optimizer` executables are
+- The platform-specific optimizer and guidance-provider executables are
   intentionally not committed here. They are published by the separate
-  [chrober/bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer)
-  repository release workflow and copied into deployment/package artifacts by this plugin release workflow.
-  The expected optimizer release, supported package folders, and release
+  [optimizer](https://github.com/chrober/bliss-playlist-optimizer),
+  [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm), and
+  [local library-signals provider](https://github.com/chrober/bliss-guidance-library-signals)
+  release workflows and copied into deployment/package artifacts by this plugin
+  release workflow. The expected releases, supported package folders, and
   packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
   `.gitignore` prevents local executables from being accidentally committed.
 - `tests/` contains lightweight Perl regression tests for the plugin glue code

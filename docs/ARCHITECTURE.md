@@ -23,6 +23,11 @@ route search, bridge selection, repeat-window enforcement, deterministic
 verification, and result/progress JSON. It never performs network requests or
 writes an LMS playlist.
 
+The complete runtime flow—including how Better Call Bliss translates job
+settings into provider policy, prepares Last.fm evidence, gives the play-count
+provider a read-only SQLite resource, and consumes guidance diagnostics—is
+documented in [Guidance data flow](GUIDANCE_DATA_FLOW.md).
+
 Destination routes can carry either one selected track or an immutable ordered
 destination block. The plugin resolves a selected album into all of its local
 audio tracks in canonical disc/track order and sends those identities as route
@@ -119,8 +124,9 @@ Bliss mirrors the fallback shape in the native optimizer:
 contexts with at least two tracks can use variance-based weighting alone, while
 one-track contexts use the Static BlissMixer feature-weight matrix when no
 learned matrix is available. If the user selects Static explicitly, that same
-fixed matrix is used for every contextual distance. Semantic providers are
-outside the native process and remain optional and failure-tolerant.
+fixed matrix is used for every contextual distance. Last.fm acquisition remains
+outside the native process, while optional guidance providers run under the
+optimizer's failure-tolerant local SPI.
 
 LMS ties `STDERR` to its logging adapter. Native jobs therefore follow LMS's
 scanner pattern: open private output handles, temporarily untie `STDERR`, fork

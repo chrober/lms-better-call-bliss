@@ -121,12 +121,18 @@ is_deeply(
     $first->{identities},
     [{
         candidate_id => 'bliss-row-1', row_id => 1, lms_track_id => 1,
+        lms_urlmd5 => 'allowed',
         title => 'Allowed', artist => 'A',
         recording_mbid => '11111111-1111-4111-8111-111111111111',
         artist_mbid => '22222222-2222-4222-8222-222222222222',
     }],
     'the cached inventory exposes local identities for plugin-side guidance resolution',
 );
+is($first->{identity_artifact}->{schema_identity},
+    'eligible-candidate-identities-v1',
+    'the provider-facing identity artifact uses the optimizer schema identity');
+ok(-r $first->{identity_artifact}->{path},
+    'the provider-facing identity artifact is persisted separately from the allowlist');
 open my $inventory_fh, '<:raw', $first->{artifact}->{path}
     or die "Cannot read $first->{artifact}->{path}: $!";
 my $inventory_payload = JSON::XS->new->decode(do { local $/; <$inventory_fh> });
@@ -164,6 +170,8 @@ is_deeply($disk_cached->{identities}, [],
     'a persisted cache hit avoids decoding the large legacy identity JSON');
 is($disk_cached->{identity_lookup_path}, $first->{identity_lookup_path},
     'a persisted cache hit exposes the indexed identity sidecar');
+is_deeply($disk_cached->{identity_artifact}, $first->{identity_artifact},
+    'a persisted cache hit retains the hash-bound provider identity artifact');
 
 $Slim::Schema::dbh->do(
     q{INSERT INTO library_track VALUES ('4d2ba37f', 2)}
@@ -176,63 +184,10 @@ is($second->{status}->{allowed_row_count}, 2,
 is($second->{status}->{cache_state}, 'miss',
     'membership changes force a fresh inventory even without an LMS scan');
 
-my $playcount_path = File::Spec->catfile($root, 'play-counts.json');
-my $playcounts = Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts(
-    {%$capability, statistics_enabled => 1},
-    'bliss-fixture-v1',
-    $playcount_path,
-);
-is($playcounts->{artifact}->{schema_identity}, 'lms-play-counts-v1',
-    'the fresh play-count snapshot declares its schema identity');
-is($playcounts->{status}->{known_count}, 1,
-    'a persisted LMS play count is reported as known');
-is($playcounts->{status}->{unknown_count}, 1,
-    'a local track without persistent statistics remains explicitly unknown');
-open my $playcount_fh, '<:raw', $playcount_path
-    or die "Cannot read $playcount_path: $!";
-local $/;
-my $playcount_payload = JSON::XS->new->decode(<$playcount_fh>);
-close $playcount_fh;
-is($playcount_payload->{database_cache_identity}, 'bliss-fixture-v1',
-    'the play-count snapshot is bound to the guarded Bliss database identity');
-is_deeply(
-    [map { $_->{play_count} } @{$playcount_payload->{tracks}}],
-    [7, undef],
-    'known and unknown play counts retain distinct JSON values',
-);
-
-my ($async_playcounts, $async_error);
-my $async_playcount_path = File::Spec->catfile(
-    $root, 'play-counts-async.json',
-);
-Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts_async(
-    {%$capability, statistics_enabled => 1},
-    'bliss-fixture-v1',
-    $async_playcount_path,
-    sub { ($async_playcounts, $async_error) = @_ },
-);
-while (my $callback = shift @Slim::Utils::Timers::pending) {
-    $callback->();
-}
-is($async_error, undef, 'asynchronous play-count capture succeeds');
-is_deeply($async_playcounts->{status}, $playcounts->{status},
-    'asynchronous play-count capture produces the synchronous statistics');
-ok(-f $async_playcount_path,
-    'asynchronous play-count capture publishes its artifact');
-
-my $cancelled_playcount_callback_ran = 0;
-Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts_async(
-    {%$capability, statistics_enabled => 1},
-    'bliss-fixture-v1',
-    File::Spec->catfile($root, 'cancelled-play-counts.json'),
-    sub { $cancelled_playcount_callback_ran = 1 },
-    sub { 0 },
-);
-while (my $callback = shift @Slim::Utils::Timers::pending) {
-    $callback->();
-}
-ok(!$cancelled_playcount_callback_ran,
-    'cancelled play-count capture stops without completing stale work');
+ok(!Plugins::BetterCallBliss::CandidateInventory->can('prepare_playcounts'),
+    'the plugin no longer exposes a full-library play-count artifact collector');
+ok(!Plugins::BetterCallBliss::CandidateInventory->can('prepare_playcounts_async'),
+    'preview preparation no longer schedules full-library play-count collection');
 
 $Slim::Schema::dbh->disconnect;
 done_testing();

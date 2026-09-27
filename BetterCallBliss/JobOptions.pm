@@ -17,6 +17,10 @@ sub defaults {
     my $lastfm_artist_guidance =
         $plugin_prefs->get('lastfm_artist_guidance_percent');
     $lastfm_artist_guidance = 25 unless defined $lastfm_artist_guidance;
+    my $last_played_influence = $plugin_prefs->get('last_played_influence');
+    $last_played_influence = 0 unless defined $last_played_influence;
+    my $library_age_influence = $plugin_prefs->get('library_age_influence');
+    $library_age_influence = 0 unless defined $library_age_influence;
     my $default_algorithm = $capability->{algorithm} || 'adaptive';
     $default_algorithm = 'adaptive' if $default_algorithm eq 'forest';
     my $variation_percent = $plugin_prefs->get('variation_percent');
@@ -44,9 +48,11 @@ sub defaults {
         restart_count => int($plugin_prefs->get('restart_count') || 50),
         variation_percent => int($variation_percent),
         playcount_influence => int($capability->{playcount_influence} || 0),
+        last_played_influence => int($last_played_influence),
+        library_age_influence => int($library_age_influence),
         generation_seed => '',
         generation_seed_supplied => 0,
-        lastfm_enabled => $plugin_prefs->get('lastfm_enabled') ? 1 : 0,
+        lastfm_enabled => ($lastfm_track_guidance || $lastfm_artist_guidance) ? 1 : 0,
         lastfm_track_guidance_percent => int($lastfm_track_guidance),
         lastfm_artist_guidance_percent => int($lastfm_artist_guidance),
         max_added_tracks => int($bridge_budget),
@@ -203,6 +209,19 @@ sub normalize {
     );
     $options->{playcount_influence} = 0
         unless $capability->{statistics_enabled};
+    $options->{last_played_influence} = _signed_integer(
+        $input, 'last_played_influence', -100, 100,
+        $options->{last_played_influence},
+    );
+    $options->{library_age_influence} = _signed_integer(
+        $input, 'library_age_influence', -100, 100,
+        $options->{library_age_influence},
+    );
+    unless ($capability->{library_signals_available}) {
+        $options->{playcount_influence} = 0;
+        $options->{last_played_influence} = 0;
+        $options->{library_age_influence} = 0;
+    }
     if (defined $input->{generation_seed} && length "$input->{generation_seed}") {
         $options->{generation_seed} = _integer(
             $input, 'generation_seed', 0, 4294967295, 0,
@@ -212,8 +231,6 @@ sub normalize {
         $options->{generation_seed} = undef;
         $options->{generation_seed_supplied} = 0;
     }
-    $options->{lastfm_enabled} = $input->{lastfm_enabled} ? 1 : 0
-        if exists $input->{lastfm_enabled};
     $options->{lastfm_track_guidance_percent} = _integer(
         $input, 'lastfm_track_guidance_percent', 0, 100,
         $options->{lastfm_track_guidance_percent},
@@ -222,6 +239,13 @@ sub normalize {
         $input, 'lastfm_artist_guidance_percent', 0, 100,
         $options->{lastfm_artist_guidance_percent},
     );
+    # The two target shares are the complete public control surface.  Keep the
+    # derived flag for downstream acquisition and diagnostics, but never let a
+    # retired checkbox override a non-zero per-job target.
+    $options->{lastfm_enabled} = (
+        ($options->{lastfm_track_guidance_percent} || 0)
+        || ($options->{lastfm_artist_guidance_percent} || 0)
+    ) ? 1 : 0;
     $options->{max_added_tracks} = _integer(
         $input, 'max_added_tracks', 0, 100, $options->{max_added_tracks},
     );

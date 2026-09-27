@@ -17,6 +17,7 @@ use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
+use Plugins::BetterCallBliss::GuidanceReporting;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::LastFmEvidence;
@@ -154,7 +155,7 @@ sub _form_from_params {
     for my $name (qw(
         source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_target_album_id route_target_album_track_count route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
         learned_percent artist_window album_window track_window restart_count
-        variation_percent generation_seed playcount_influence lastfm_enabled
+        variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
@@ -261,68 +262,87 @@ sub _job_lists {
     return (\@running, \@recent);
 }
 
-sub _semantic_evidence_summary {
-    my $evidence = shift;
-    return 'Bliss only; no Last.fm edge was attached to this selection'
-        unless ref($evidence) eq 'ARRAY' && @$evidence;
-    my @parts;
-    for my $edge (@$evidence) {
-        next unless ref($edge) eq 'HASH';
-        my $provider = $edge->{provider} || 'semantic';
-        my $raw_kind = lc($edge->{kind} || '');
-        my $kind = ($raw_kind eq 'track' || $raw_kind eq 'recording')
-            ? 'similar track' : 'similar artist';
-        my $source = $edge->{source_endpoint} || $edge->{scope} || '';
-        $source =~ s/_/ /g;
-        my $where = length $source ? " from $source" : '';
-        my $rank = defined $edge->{raw_rank} ? ', rank ' . $edge->{raw_rank} : '';
-        my $score = defined $edge->{raw_score}
-            ? sprintf(', score %.2f', 0 + $edge->{raw_score}) : '';
-        push @parts, "$provider $kind$where$rank$score";
-    }
-    return @parts ? join('; ', @parts)
-        : 'Bliss only; no Last.fm edge was attached to this selection';
-}
-
-sub _semantic_evidence_stats {
+sub _guidance_stats {
     my $additions = shift;
     my %stats = (
         total => 0,
-        bliss_only => 0,
         lastfm_any => 0,
         lastfm_artist => 0,
         lastfm_track => 0,
-        lastfm_edges => 0,
-        other_semantic => 0,
+        playcount => 0,
+        last_played => 0,
+        library_age => 0,
+        none => 0,
     );
     for my $addition (@{$additions || []}) {
         next unless ref($addition) eq 'HASH';
         $stats{total}++;
-        my ($lastfm_any, $lastfm_artist, $lastfm_track, $other_semantic) = (0, 0, 0, 0);
-        for my $edge (@{$addition->{semantic_evidence} || []}) {
-            next unless ref($edge) eq 'HASH';
-            my $provider = lc($edge->{provider} || '');
-            my $kind = lc($edge->{kind} || '');
-            if ($provider eq 'last.fm') {
+        my ($lastfm_any, $lastfm_artist, $lastfm_track, $playcount, $last_played, $library_age) = (0, 0, 0, 0, 0, 0);
+        for my $contribution (@{$addition->{guidance_contributions} || []}) {
+            next unless ref($contribution) eq 'HASH';
+            my $provider = lc($contribution->{provider_id} || '');
+            my $channel = lc($contribution->{channel} || '');
+            if ($provider eq 'lastfm-guidance') {
                 $lastfm_any = 1;
-                $stats{lastfm_edges}++;
-                if ($kind eq 'recording' || $kind eq 'track') {
+                if ($channel eq 'lastfm_track') {
                     $lastfm_track = 1;
-                } elsif ($kind eq 'artist') {
+                } elsif ($channel eq 'lastfm_artist') {
                     $lastfm_artist = 1;
                 }
-            } else {
-                $other_semantic = 1;
             }
+            $playcount = 1 if $provider eq 'library-signals-guidance'
+                && $channel eq 'playcount';
+            $last_played = 1 if $provider eq 'library-signals-guidance'
+                && $channel eq 'last_played';
+            $library_age = 1 if $provider eq 'library-signals-guidance'
+                && $channel eq 'library_age';
         }
         $stats{lastfm_any}++ if $lastfm_any;
         $stats{lastfm_artist}++ if $lastfm_artist;
         $stats{lastfm_track}++ if $lastfm_track;
-        $stats{other_semantic}++ if $other_semantic;
-        $stats{bliss_only}++ unless $lastfm_any || $other_semantic;
+        $stats{playcount}++ if $playcount;
+        $stats{last_played}++ if $last_played;
+        $stats{library_age}++ if $library_age;
+        $stats{none}++ unless $lastfm_any || $playcount || $last_played || $library_age;
     }
     return \%stats;
 }
+
+sub _guidance_summary {
+    my $artifact = shift || {};
+    my @diagnostics = @{ref($artifact->{guidance_addon_diagnostics}) eq 'ARRAY'
+        ? $artifact->{guidance_addon_diagnostics} : []};
+    return {present => 0} unless @diagnostics;
+
+    my @parts;
+    for my $diagnostic (@diagnostics) {
+        next unless ref($diagnostic) eq 'HASH';
+        my $provider = $diagnostic->{provider_id} || $diagnostic->{configured_id}
+            || 'guidance provider';
+        if (($diagnostic->{state} || '') eq 'prepared') {
+            push @parts, sprintf(
+                '%s: %d score batch%s, %d returned signal%s, %d accepted',
+                $provider,
+                0 + ($diagnostic->{score_batches} || 0),
+                (0 + ($diagnostic->{score_batches} || 0)) == 1 ? '' : 'es',
+                0 + ($diagnostic->{returned_signals} || 0),
+                (0 + ($diagnostic->{returned_signals} || 0)) == 1 ? '' : 's',
+                0 + ($diagnostic->{accepted_signals} || 0),
+            );
+        } else {
+            push @parts, sprintf(
+                '%s unavailable: %s',
+                $provider,
+                $diagnostic->{message} || 'no diagnostics available',
+            );
+        }
+    }
+    return {
+        present => @parts ? 1 : 0,
+        text => join('; ', @parts),
+    };
+}
+
 sub _result_view {
     my $job = shift;
     return unless $job;
@@ -347,7 +367,8 @@ sub _result_view {
         variation_percent => $job->{options}->{variation_percent},
         generation_seed => $job->{options}->{generation_seed},
         playcount_influence => $job->{options}->{playcount_influence},
-        lastfm_enabled => $job->{options}->{lastfm_enabled},
+        last_played_influence => $job->{options}->{last_played_influence},
+        library_age_influence => $job->{options}->{library_age_influence},
         lastfm_track_guidance_percent =>
             $job->{options}->{lastfm_track_guidance_percent},
         lastfm_artist_guidance_percent =>
@@ -584,6 +605,7 @@ sub _result_view {
                 }
             }
             $view->{semantic_mode} = $artifact->{semantic_mode};
+            $view->{guidance_summary} = _guidance_summary($artifact);
             my @additions;
             for my $addition (@{$job->{additions} || []}) {
                 my $label = $job->{labels}->{$addition->{track_id}} || {};
@@ -596,8 +618,8 @@ sub _result_view {
                         ),
                         semantic_tier => $addition->{semantic_tier} || 'bliss_only',
                         semantic_pool => $addition->{semantic_pool} || 'bliss_only',
-                        semantic_summary => _semantic_evidence_summary(
-                            $addition->{semantic_evidence},
+                        guidance_summary => Plugins::BetterCallBliss::GuidanceReporting::summary(
+                            $addition->{guidance_contributions},
                         ),
                     };
                     next;
@@ -614,13 +636,16 @@ sub _result_view {
                     ),
                     semantic_pool => $addition->{semantic_pool} || 'bliss_only',
                     semantic_tier => $addition->{semantic_tier} || 'bliss_only',
-                    semantic_summary => _semantic_evidence_summary(
-                        $addition->{semantic_evidence},
+                    guidance_summary => Plugins::BetterCallBliss::GuidanceReporting::summary(
+                        $addition->{guidance_contributions},
                     ),
                 };
             }
             $view->{additions} = \@additions;
-            $view->{semantic_stats} = _semantic_evidence_stats(\@additions);
+            # Display rows deliberately retain only presentation fields. Count
+            # optional guidance from the native additions so their structured
+            # provider contributions are not lost before the result summary.
+            $view->{guidance_stats} = _guidance_stats($job->{additions});
 
             my @decisions;
             for my $decision (@{$preview->{decisions} || []}) {
@@ -706,9 +731,6 @@ sub handler {
         $form->{output_mode} = 'player_queue';
         $form->{ordering_policy} = 'preserve_order';
         $form->{extension_mode} = 'destination_route';
-    }
-    if (($params->{run_preview} || $params->{run_route_to_track_preview}) && $params->{lastfm_present}) {
-        $form->{lastfm_enabled} = $params->{lastfm_enabled} ? 1 : 0;
     }
     my $trimmed_output_name = $form->{output_name} || '';
     $trimmed_output_name =~ s/^\s+|\s+$//g;

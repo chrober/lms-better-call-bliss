@@ -6,12 +6,16 @@ separate `chrober/bliss-playlist-optimizer` repository.
 
 Latest packaged optimizer source:
 
-- Optimizer release: `v0.1.12`
-- Optimizer commit: `5039992a0766211898db9a05aa96ca2d7029d581`
-- Program contract: `0.1.12`, core API `0.1`
+- Optimizer release: `v0.2.2`
+- Optimizer commit: `5bc528c5f2b382e0210934dfcaa84a00676df5a7`
+- Program contract: `0.2.2`, core API `0.1`, guidance SPI `2`
+- Last.fm guidance release: `v0.1.2`
+- Last.fm guidance commit: `e278f4742cdef5eaafd99ae1a7fc866b7977c003`
+- Library-signals guidance release: `v0.1.0`
+- Library-signals guidance commit: `bf984ee`
 
-The GitHub release workflow downloads the optimizer release above, verifies each
-published `.sha256` file, places the binaries below the matching
+The GitHub release workflow downloads the optimizer and both guidance-provider
+releases above, verifies each published `.sha256` file, places the binaries below the matching
 `BetterCallBliss/Bin/<platform>/` folders in the release workspace, and creates
 separate Linux, macOS, and Windows archives. The Linux archive contains the
 x86_64, AArch64, and ARMHF binaries; macOS and Windows each contain only their
@@ -26,6 +30,11 @@ Supported package folders:
 - `mac/bliss-playlist-optimizer`
 - `windows/bliss-playlist-optimizer.exe`
 
-If a newer optimizer release is used, update the release tag and commit above.
-The optimizer release workflow owns the native build and test gate; the plugin
-release workflow consumes only successful published optimizer assets.
+Each matching platform folder also contains:
+
+- `bliss-guidance-lastfm` (`bliss-guidance-lastfm.exe` on Windows)
+- `bliss-guidance-library-signals` (`bliss-guidance-library-signals.exe` on Windows)
+
+If a newer native release is used, update its release tag and commit above.
+The native release workflows own their build and test gates; the plugin release
+workflow consumes only successful published artifacts.

@@ -1,6 +1,7 @@
 package Plugins::BetterCallBliss::Jobs;
 
 use strict;
+use Digest::SHA qw(sha256_hex);
 use File::Basename qw(basename);
 use File::Path qw(make_path);
 use File::Slurp qw(read_file write_file);
@@ -28,6 +29,7 @@ use Plugins::BetterCallBliss::LogDiagnostics;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
 use Plugins::BetterCallBliss::QueueWriter;
+use Plugins::BetterCallBliss::RepeatConflicts;
 use Plugins::BetterCallBliss::RouteMode;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
@@ -100,6 +102,15 @@ sub _json {
 sub _write_json {
     my ($path, $value) = @_;
     write_file($path, {binmode => ':raw'}, _json()->encode($value));
+}
+
+sub _artifact_descriptor {
+    my ($path) = @_;
+    my $bytes = read_file($path, binmode => ':raw');
+    return {
+        path => $path,
+        sha256 => sha256_hex($bytes),
+    };
 }
 
 sub _file_identity {
@@ -403,6 +414,13 @@ sub _read_progress {
 sub _launch_optimizer {
     my ($job, $built, $semantic_bundle) = @_;
     _write_json($job->{semantic_path}, $semantic_bundle);
+    Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
+        $built->{request}, $built->{capability}, {
+            semantic_evidence => _artifact_descriptor($job->{semantic_path}),
+            candidate_identities => $built->{request}->{artifacts}
+                ->{candidate_identities},
+        },
+    );
     Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(
         $built->{request},
     );
@@ -614,6 +632,26 @@ sub _start_preview_from_built {
     }
 
     my $effective = $built->{options};
+    if (($effective->{ordering_policy} || '') eq 'preserve_order'
+        && ($effective->{extension_mode} || '') eq 'automatic') {
+        my $conflict =
+            Plugins::BetterCallBliss::RepeatConflicts::first_preserved_order_conflict(
+                $built->{request}->{source_tracks},
+                $effective->{artist_window},
+                $effective->{album_window},
+            );
+        if ($conflict) {
+            _fail_deferred_route_job(
+                $job_id,
+                Plugins::BetterCallBliss::RepeatConflicts::preserved_order_conflict_message(
+                    $conflict,
+                ),
+                'PRESERVED_ANCHOR_REPEAT_CONFLICT',
+            );
+            return $jobs{$job_id};
+        }
+    }
+
     if ($native_command eq 'bridge') {
         $jobs{$job_id}->{stage} = 'Capturing candidate library';
         my $candidate_ok = eval {
@@ -624,6 +662,8 @@ sub _start_preview_from_built {
                 );
             $built->{request}->{artifacts}->{local_candidate_inventory}
                 = $candidate_inventory->{artifact};
+            $built->{request}->{artifacts}->{candidate_identities}
+                = $candidate_inventory->{identity_artifact};
             $jobs{$job_id}->{candidate_inventory}
                 = $candidate_inventory->{status};
             1;
@@ -646,55 +686,6 @@ sub _start_preview_from_built {
         }
         return $jobs{$job_id}
             unless ($jobs{$job_id}->{state} || '') eq 'running';
-        if ($built->{options}->{playcount_influence}
-            && !$fields->{playcount_prepared}) {
-            $jobs{$job_id}->{stage} = 'Preparing play-count guidance';
-            my $async_ok = eval {
-                Plugins::BetterCallBliss::CandidateInventory::prepare_playcounts_async(
-                    $built->{capability}, $database_identity,
-                    $dir . '/play-counts.json',
-                    sub {
-                        my ($playcounts, $error) = @_;
-                        my $job = $jobs{$job_id} || return;
-                        return unless ($job->{state} || '') eq 'running';
-                        if ($error || !$playcounts) {
-                            _fail_deferred_route_job(
-                                $job_id,
-                                $error || 'Could not capture play-count guidance',
-                                'PLAYCOUNT_PREPARATION_FAILED',
-                            );
-                            return;
-                        }
-                        $built->{request}->{artifacts}->{play_counts}
-                            = $playcounts->{artifact};
-                        $fields->{playcount_status} = $playcounts->{status};
-                        $fields->{playcount_prepared} = 1;
-                        $job->{playcount_status} = $fields->{playcount_status};
-                        my $continued = eval {
-                            _start_preview_from_built(
-                                $job_id, $dir, $semantic_path, $built, $fields,
-                            );
-                            1;
-                        };
-                        _fail_deferred_route_job(
-                            $job_id, $@, 'PREVIEW_START_FAILED',
-                        ) unless $continued;
-                    },
-                    sub {
-                        my $current = $jobs{$job_id};
-                        return $current
-                            && ($current->{state} || '') eq 'running';
-                    },
-                );
-                1;
-            };
-            unless ($async_ok) {
-                _fail_deferred_route_job(
-                    $job_id, $@, 'PLAYCOUNT_PREPARATION_FAILED',
-                );
-            }
-            return $jobs{$job_id};
-        }
     }
     $jobs{$job_id}->{stage} = $lastfm_applies
         ? 'Preparing Last.fm track and artist evidence' : 'Preparing request';
@@ -721,6 +712,10 @@ sub _start_preview_from_built {
         . " variation=$effective->{variation_percent}"
         . ' playcount_influence=' . ($effective->{extension_mode} ne 'none'
             ? $effective->{playcount_influence} : 0)
+        . ' last_played_influence=' . ($effective->{extension_mode} ne 'none'
+            ? $effective->{last_played_influence} : 0)
+        . ' library_age_influence=' . ($effective->{extension_mode} ne 'none'
+            ? $effective->{library_age_influence} : 0)
         . " generation_seed=$effective->{generation_seed}"
         . ($effective->{extension_mode} eq 'destination_route'
             ? " search_effort=$effective->{route_search_effort}"
@@ -807,6 +802,10 @@ sub _start_preview_from_built {
             . " repeat_track=$effective->{track_window}"
             . ' playcount_influence=' . ($effective->{extension_mode} ne 'none'
                 ? $effective->{playcount_influence} : 0)
+            . ' last_played_influence=' . ($effective->{extension_mode} ne 'none'
+                ? $effective->{last_played_influence} : 0)
+            . ' library_age_influence=' . ($effective->{extension_mode} ne 'none'
+                ? $effective->{library_age_influence} : 0)
             . " output_mode=$effective->{output_mode}"
         );
     }

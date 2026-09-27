@@ -34,6 +34,17 @@ BEGIN {
             track_window => '100',
             statistics_enabled => 1,
             playcount_influence => '-35',
+            guidance_providers => {
+                lastfm => {
+                    available => 1,
+                    program => '/trusted/plugin/bin/bliss-guidance-lastfm',
+                },
+                library_signals => {
+                    available => 1,
+                    program => '/trusted/plugin/bin/bliss-guidance-library-signals',
+                    persist_db => '/trusted/lms/persist.db',
+                },
+            },
             use_adaptive_weights => 1,
             use_forest => 0,
             filter_genres => 1,
@@ -85,6 +96,8 @@ BEGIN {
             restart_count => '50',
             variation_percent => '25',
             playcount_influence => '-35',
+            last_played_influence => '-80',
+            library_age_influence => '45',
             generation_seed => '123456',
             generation_seed_supplied => 1,
             lastfm_enabled => 1,
@@ -144,6 +157,20 @@ require Plugins::BetterCallBliss::RequestBuilder;
 my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
     7, 'preview-json-types', '/tmp/semantic-evidence.json', {},
 );
+Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
+    $built->{request},
+    $built->{capability},
+    {
+        semantic_evidence => {
+            path => '/private/job/semantic-evidence.json',
+            sha256 => 'a' x 64,
+        },
+        candidate_identities => {
+            path => '/private/cache/candidate-identities.json',
+            sha256 => 'b' x 64,
+        },
+    },
+);
 my $logged_shortlist = "$built->{request}->{extension}->{shortlist_limit}";
 $built->{request}->{extension}->{allow_opening_track} = 0;
 Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(
@@ -165,12 +192,94 @@ unlike(
     qr/"shortlist_limit"\s*:\s*"256"/,
     'shortlist is never serialized as a JSON string',
 );
-is($request->{selection}->{recording_guidance_percent}, 75,
-    'recording guidance is a provider-neutral JSON integer');
-is($request->{selection}->{artist_guidance_percent}, 75,
-    'artist guidance is a provider-neutral JSON integer');
-is($request->{selection}->{playcount_influence}, -35,
-    'signed play-count influence is a JSON integer');
+ok(!exists $request->{selection}->{recording_guidance_percent},
+    'legacy Last.fm guidance is not carried in optimizer selection settings');
+ok(!exists $request->{selection}->{artist_guidance_percent},
+    'legacy artist guidance is not carried in optimizer selection settings');
+ok(!exists $request->{selection}->{playcount_influence},
+    'local listening guidance is not carried in optimizer selection settings');
+ok(!exists $request->{selection}->{last_played_influence},
+    'last-played guidance is not carried in optimizer selection settings');
+ok(!exists $request->{selection}->{library_age_influence},
+    'library-age guidance is not carried in optimizer selection settings');
+is_deeply($request->{guidance_policy}, [
+    {provider_id => 'lastfm-guidance', channel => 'lastfm_track', weight => 1, target_percent => 75},
+    {provider_id => 'lastfm-guidance', channel => 'lastfm_artist', weight => 1, target_percent => 75},
+    {provider_id => 'library-signals-guidance', channel => 'playcount', weight => -0.35},
+    {provider_id => 'library-signals-guidance', channel => 'last_played', weight => -0.8},
+    {provider_id => 'library-signals-guidance', channel => 'library_age', weight => 0.45},
+], 'Last.fm targets and signed local-library preferences become separate policies');
+
+my $zero_lastfm_request = {
+    selection => {
+        recording_guidance_percent => 0,
+        artist_guidance_percent => 0,
+        playcount_influence => 0,
+        last_played_influence => 0,
+        library_age_influence => 0,
+    },
+};
+Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
+    $zero_lastfm_request,
+    $built->{capability},
+    {
+        semantic_evidence => {
+            path => '/private/job/semantic-evidence.json',
+            sha256 => 'a' x 64,
+        },
+    },
+);
+is_deeply($zero_lastfm_request->{guidance_addons}, [],
+    'zero Last.fm targets do not start the Last.fm provider');
+is_deeply($request->{guidance_addons}, [
+    {
+        id => 'lastfm-guidance',
+        program => '/trusted/plugin/bin/bliss-guidance-lastfm',
+        options => {},
+        artifacts => [{
+            kind => 'resolved-lastfm-evidence-v1',
+            path => '/private/job/semantic-evidence.json',
+            sha256 => 'a' x 64,
+        }],
+        resources => [],
+        timeout_ms => 5000,
+    },
+    {
+        id => 'library-signals-guidance',
+        program => '/trusted/plugin/bin/bliss-guidance-library-signals',
+        options => {},
+        artifacts => [{
+            kind => 'eligible-candidate-identities-v1',
+            path => '/private/cache/candidate-identities.json',
+            sha256 => 'b' x 64,
+        }],
+        resources => [{
+            kind => 'lms-persist-sqlite-v1',
+            path => '/trusted/lms/persist.db',
+            access => 'read_only',
+        }],
+        timeout_ms => 5000,
+    },
+], 'only trusted capability paths produce provider descriptors');
+my $zero_local_request = {
+    selection => {
+        playcount_influence => 0,
+        last_played_influence => 0,
+        library_age_influence => 0,
+    },
+};
+Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
+    $zero_local_request,
+    $built->{capability},
+    {
+        candidate_identities => {
+            path => '/private/cache/candidate-identities.json',
+            sha256 => 'b' x 64,
+        },
+    },
+);
+is_deeply($zero_local_request->{guidance_addons}, [],
+    'all-zero local-library controls do not start the library-signals provider');
 is($request->{scoring}->{captured_blissmixer_preferences}->{playcount_influence}, -35,
     'the inherited BlissMixer play-count default is captured for provenance');
 ok(JSON::XS::is_bool($request->{candidate_policy}->{genre}->{restrict_genres}),
