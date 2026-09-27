@@ -1,9 +1,8 @@
 use strict;
 use warnings;
 use FindBin;
-use File::Find;
 use File::Spec;
-use Test::More tests => 127;
+use Test::More tests => 128;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -245,14 +244,19 @@ like(
     'legacy untouched 75 percent guidance defaults migrate once to 25 percent',
 );
 like(
+    $plugin_module,
+    qr/preference_defaults_version\s*<\s*3.*?set\('preference_defaults_version',\s*3\)/s,
+    'policy and saturation defaults advance the explicit preference migration version',
+);
+like(
     $extras,
     qr/Better Call Bliss default:.*?lastfm_track_guidance_percent.*?Better Call Bliss default:.*?lastfm_artist_guidance_percent/s,
     'Extras attributes both per-job Last.fm defaults to Better Call Bliss',
 );
 like(
     $strings,
-    qr/target share.*?Zero disables.*?target share.*?Zero disables/s,
-    'setting help describes independent Last.fm target shares and their zero-value disable rule',
+    qr/Target share deliberately seeks.*?Bounded influence gives.*?Zero disables/s,
+    'setting help describes the artist policy tradeoff and zero-value disable rule',
 );
 like(
     $plugin_module,
@@ -623,20 +627,12 @@ like(
     'destination-route result explains that the configured adaptive context governed',
 );
 
-my @committed_binary_candidates;
-find(
-    {
-        wanted => sub {
-            return unless -f $_;
-            return unless $File::Find::name =~ m{[\\/]Bin[\\/][^\\/]+[\\/]bliss-playlist-optimizer(?:\.exe)?$};
-            push @committed_binary_candidates, $File::Find::name;
-        },
-        no_chdir => 1,
-    },
-    $plugin,
-);
+my $tracked = qx{git -C "$root" ls-files -- BetterCallBliss/Bin};
+my @committed_binary_candidates = grep {
+    m{^BetterCallBliss/Bin/[^/]+/bliss-playlist-optimizer(?:\.exe)?$}
+} split /\r?\n/, $tracked;
 is_deeply(\@committed_binary_candidates, [],
-    'source checkout does not commit native optimizer binaries');
+    'source checkout does not track native optimizer binaries');
 
 my $release_workflow = slurp(
     File::Spec->catfile($root, '.github', 'workflows', 'release.yml'),

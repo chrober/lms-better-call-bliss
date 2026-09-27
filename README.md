@@ -22,7 +22,7 @@ repository.
 - Adds spacing tracks as needed when repeated source artists or albums need more room to satisfy the selected repeat windows.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
-- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm target shares, and optional local Lyrion listening/library guidance (play count, last played, and library age).
+- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional bounded Last.fm track guidance plus selectable Last.fm artist policy, and optional local Lyrion listening/library guidance (play count, last played, and library age).
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
 - Offers three destination shortcuts on a local track or album in this menu order. An album destination always plays every local audio track in disc and track order:
 

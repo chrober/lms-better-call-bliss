@@ -123,6 +123,8 @@ sub normalize_request_types {
         qw(
             variation_percent generation_seed
             recording_guidance_percent artist_guidance_percent
+            guidance_as_of_unix_seconds last_played_horizon_days
+            library_age_horizon_days
             playcount_influence last_played_influence library_age_influence
         ),
     );
@@ -308,17 +310,22 @@ sub configure_guidance_addons {
         $selection->{artist_guidance_percent} || 0,
         'artist_guidance_percent',
     );
+    my $artist_mode = $selection->{artist_guidance_mode} || 'target_share';
+    die 'artist_guidance_mode must be target_share or bounded_influence'
+        unless $artist_mode =~ /^(?:target_share|bounded_influence)$/;
     my $semantic = $artifacts->{semantic_evidence};
     if ($lastfm->{available} && $lastfm->{program}
         && ref($semantic) eq 'HASH' && $semantic->{path} && $semantic->{sha256}
         && ($track_target || $artist_target)) {
         push @policy, {
             provider_id => 'lastfm-guidance', channel => 'lastfm_track',
-            weight => 1, target_percent => $track_target,
+            weight => $track_target / 100,
         } if $track_target;
         push @policy, {
             provider_id => 'lastfm-guidance', channel => 'lastfm_artist',
-            weight => 1, target_percent => $artist_target,
+            weight => $artist_mode eq 'target_share' ? 1 : $artist_target / 100,
+            ($artist_mode eq 'target_share'
+                ? (target_percent => $artist_target) : ()),
         } if $artist_target;
         push @addons, {
             id => 'lastfm-guidance',
@@ -358,7 +365,20 @@ sub configure_guidance_addons {
         push @addons, {
             id => 'library-signals-guidance',
             program => $library_signals->{program},
-            options => {},
+            options => {
+                as_of_unix_seconds => _json_integer(
+                    $selection->{guidance_as_of_unix_seconds},
+                    'guidance_as_of_unix_seconds',
+                ),
+                last_played_horizon_days => _json_integer(
+                    $selection->{last_played_horizon_days},
+                    'last_played_horizon_days',
+                ),
+                library_age_horizon_days => _json_integer(
+                    $selection->{library_age_horizon_days},
+                    'library_age_horizon_days',
+                ),
+            },
             artifacts => [{
                 kind => 'eligible-candidate-identities-v1',
                 path => $identities->{path}, sha256 => $identities->{sha256},
@@ -372,8 +392,9 @@ sub configure_guidance_addons {
     }
 
     delete @{$selection}{qw(
-        recording_guidance_percent artist_guidance_percent playcount_influence
-        last_played_influence library_age_influence
+        recording_guidance_percent artist_guidance_percent artist_guidance_mode
+        guidance_as_of_unix_seconds last_played_horizon_days library_age_horizon_days
+        playcount_influence last_played_influence library_age_influence
     )};
     $request->{guidance_policy} = \@policy;
     $request->{guidance_addons} = \@addons;
@@ -456,6 +477,11 @@ sub _build_sequence_request {
     my $options = Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, $job_input,
     );
+    # Guidance providers must see the same reference instant for every
+    # bounded batch in this job. This is deliberately captured once before
+    # candidate inventory preparation, not recomputed in a provider.
+    $options->{guidance_as_of_unix_seconds} = int(time())
+        unless defined $options->{guidance_as_of_unix_seconds};
     my $candidate_library =
         Plugins::BetterCallBliss::CandidateLibrary::describe(
             $options->{candidate_library_id},
@@ -670,6 +696,19 @@ sub _build_sequence_request {
                 ? _json_integer($options->{lastfm_track_guidance_percent}) : 0,
             artist_guidance_percent => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_artist_guidance_percent}) : 0,
+            artist_guidance_mode => $options->{lastfm_artist_mode},
+            guidance_as_of_unix_seconds => _json_integer(
+                $options->{guidance_as_of_unix_seconds},
+                'guidance_as_of_unix_seconds',
+            ),
+            last_played_horizon_days => _json_integer(
+                $options->{last_played_horizon_days},
+                'last_played_horizon_days',
+            ),
+            library_age_horizon_days => _json_integer(
+                $options->{library_age_horizon_days},
+                'library_age_horizon_days',
+            ),
         },
         route => {
             ordering_policy => $options->{extension_mode} eq 'destination_route'

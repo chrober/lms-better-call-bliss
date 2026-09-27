@@ -60,9 +60,15 @@ my $job = {
         restart_count => 50,
         variation_percent => 25,
         playcount_influence => -40,
+        last_played_influence => -60,
+        library_age_influence => 70,
+        last_played_horizon_days => 180,
+        library_age_horizon_days => 365,
+        guidance_as_of_unix_seconds => 1790294400,
         lastfm_enabled => 1,
         lastfm_track_guidance_percent => 25,
         lastfm_artist_guidance_percent => 25,
+        lastfm_artist_mode => 'target_share',
         route_length_policy => 'automatic',
         route_direct_caution => 'cautious',
         route_min_intermediates => 0,
@@ -267,9 +273,9 @@ like($start, qr/Seed Artist - Tail Song.*Target Artist - Destination Song/,
     'information log identifies both destination-route endpoints');
 like($start, qr/Mixing strategy: adaptive.*learned matrix available/,
     'information log explains the effective acoustic strategy');
-like($start, qr/similar-track target 25%.*similar-artist target 25%/,
-    'information log exposes both Last.fm target shares');
-like($start, qr/Local library guidance.*?play count -40, last played \+0, library age \+0.*?Play-count snapshot.*?63000 known tracks.*?1128 tracks/s,
+like($start, qr/similar-track bounded influence 25%.*similar-artist target share 25%/,
+    'information log exposes the effective Last.fm policy for both channels');
+like($start, qr/Local library guidance.*?play count -40, last played -60 \(horizon 180d\), library age \+70 \(horizon 365d\); frozen as of 1790294400.*?Play-count snapshot.*?63000 known tracks.*?1128 tracks/s,
     'information log reports the per-job local-library influences and snapshot coverage');
 like($start, qr/destination route \(automatic, 0-4 intermediate tracks, fast effort, target 70%, cautious direct-transition caution\)/,
     'information log explains destination length, effort, and target settings');

@@ -76,6 +76,14 @@
       <input type="number" min="-100" max="100" class="stdedit sliderInput_-100_100_1" name="pref_library_age_influence" id="library_age_influence" value="[% prefs.library_age_influence %]" size="6">
     [% END %]
 
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LAST_PLAYED_HORIZON" desc="PLUGIN_BETTERCALLBLISS_LAST_PLAYED_HORIZON_DESC" %]
+      <input type="number" min="30" max="1825" class="stdedit" name="pref_last_played_horizon_days" id="last_played_horizon_days" value="[% prefs.last_played_horizon_days %]" size="6">
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_HORIZON" desc="PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_HORIZON_DESC" %]
+      <input type="number" min="30" max="3650" class="stdedit" name="pref_library_age_horizon_days" id="library_age_horizon_days" value="[% prefs.library_age_horizon_days %]" size="6">
+    [% END %]
+
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC" %]
       <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
     [% END %]
@@ -140,15 +148,23 @@
 
   <b style="font-size:125%" id="lastfm-section-header" class="hidden-section" onclick="toggleSection('lastfm-section')">Last.fm guidance</b><br><br>
   <div id="lastfm-section" class="hidden">
-    <p>Every job can override these Better Call Bliss defaults. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. Each slider is a best-effort target share for additions with the indicated Last.fm support, comparable to BlissMixer's Last.fm target. Track and artist support can overlap. Only local, repeat-safe, Bliss-qualified candidates participate; zero disables that evidence channel.</p>
+    <p>Every job can override these Better Call Bliss defaults. LastMix prepares the Last.fm evidence; request failures fall back to Bliss. Similar-track guidance is a bounded boost for acoustically suitable local candidates. Similar-artist guidance can either pursue a target share or add a bounded boost that competes with the local listening signals. Zero disables the corresponding channel.</p>
     [% UNLESS lastmix_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE" | string %]</div>[% END %]
+    [% IF lastmix_available && !lastfm_guidance_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_GUIDANCE_UNAVAILABLE" | string %]</div>[% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC" %]
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6"[% UNLESS lastmix_available %] disabled[% END %]>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6"[% UNLESS lastmix_available && lastfm_guidance_available %] disabled[% END %]>
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_DESC" %]
+      <select class="stdedit" name="pref_lastfm_artist_mode" id="lastfm_artist_mode"[% UNLESS lastmix_available && lastfm_guidance_available %] disabled[% END %]>
+        [% IF lastfm_artist_target_available %]<option value="target_share"[% IF prefs.lastfm_artist_mode == 'target_share' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_TARGET" | string %]</option>[% END %]
+        [% IF lastfm_artist_bounded_available %]<option value="bounded_influence"[% IF prefs.lastfm_artist_mode == 'bounded_influence' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_BOUNDED" | string %]</option>[% END %]
+      </select>
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC" %]
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6"[% UNLESS lastmix_available %] disabled[% END %]>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6"[% UNLESS lastmix_available && lastfm_guidance_available %] disabled[% END %]>
     [% END %]
   </div>
 

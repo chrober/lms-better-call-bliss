@@ -189,6 +189,10 @@ sub snapshot {
     my $statistics_enabled = main::STATISTICS ? 1 : 0;
     my $persist_db = _persistent_database_path();
     my $lastfm_guidance = _guidance_program('lastfm');
+    my $lastfm_entry = $guidance_programs->{lastfm};
+    my $lastfm_policies = ref($lastfm_entry) eq 'HASH'
+        && ref($lastfm_entry->{policies}) eq 'HASH'
+            ? $lastfm_entry->{policies} : {};
     my $library_signals_guidance = _guidance_program('library_signals');
     my $playcount_influence = $statistics_enabled
         ? _int_pref('playcount_influence', 0) : 0;
@@ -235,6 +239,7 @@ sub snapshot {
                 available => $lastfm_guidance && -x $lastfm_guidance
                     && _guidance_spi_v2('lastfm') ? 1 : 0,
                 program => $lastfm_guidance,
+                policies => $lastfm_policies,
             },
             library_signals => {
                 available => $library_signals_guidance

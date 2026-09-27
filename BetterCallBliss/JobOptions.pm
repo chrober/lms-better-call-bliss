@@ -17,10 +17,18 @@ sub defaults {
     my $lastfm_artist_guidance =
         $plugin_prefs->get('lastfm_artist_guidance_percent');
     $lastfm_artist_guidance = 25 unless defined $lastfm_artist_guidance;
+    my $lastfm_artist_mode = $plugin_prefs->get('lastfm_artist_mode')
+        || 'target_share';
+    $lastfm_artist_mode = 'target_share'
+        unless $lastfm_artist_mode =~ /^(?:bounded_influence|target_share)$/;
     my $last_played_influence = $plugin_prefs->get('last_played_influence');
     $last_played_influence = 0 unless defined $last_played_influence;
     my $library_age_influence = $plugin_prefs->get('library_age_influence');
     $library_age_influence = 0 unless defined $library_age_influence;
+    my $last_played_horizon_days = $plugin_prefs->get('last_played_horizon_days');
+    $last_played_horizon_days = 180 unless defined $last_played_horizon_days;
+    my $library_age_horizon_days = $plugin_prefs->get('library_age_horizon_days');
+    $library_age_horizon_days = 365 unless defined $library_age_horizon_days;
     my $default_algorithm = $capability->{algorithm} || 'adaptive';
     $default_algorithm = 'adaptive' if $default_algorithm eq 'forest';
     my $variation_percent = $plugin_prefs->get('variation_percent');
@@ -55,6 +63,9 @@ sub defaults {
         lastfm_enabled => ($lastfm_track_guidance || $lastfm_artist_guidance) ? 1 : 0,
         lastfm_track_guidance_percent => int($lastfm_track_guidance),
         lastfm_artist_guidance_percent => int($lastfm_artist_guidance),
+        lastfm_artist_mode => $lastfm_artist_mode,
+        last_played_horizon_days => int($last_played_horizon_days),
+        library_age_horizon_days => int($library_age_horizon_days),
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
         gap_context_mode => 'rolling',
@@ -239,9 +250,40 @@ sub normalize {
         $input, 'lastfm_artist_guidance_percent', 0, 100,
         $options->{lastfm_artist_guidance_percent},
     );
-    # The two target shares are the complete public control surface.  Keep the
-    # derived flag for downstream acquisition and diagnostics, but never let a
-    # retired checkbox override a non-zero per-job target.
+    $options->{lastfm_artist_mode} = $input->{lastfm_artist_mode}
+        if defined $input->{lastfm_artist_mode};
+    die 'Last.fm artist guidance strategy must be Target share or Bounded influence'
+        unless $options->{lastfm_artist_mode} =~ /^(?:target_share|bounded_influence)$/;
+    $options->{last_played_horizon_days} = _integer(
+        $input, 'last_played_horizon_days', 30, 1825,
+        $options->{last_played_horizon_days},
+    );
+    $options->{library_age_horizon_days} = _integer(
+        $input, 'library_age_horizon_days', 30, 3650,
+        $options->{library_age_horizon_days},
+    );
+    $options->{guidance_as_of_unix_seconds} = _integer(
+        $input, 'guidance_as_of_unix_seconds', 0, 4294967295,
+        undef,
+    );
+    my $lastfm_policies = ref($capability->{guidance_providers}) eq 'HASH'
+        && ref($capability->{guidance_providers}->{lastfm}) eq 'HASH'
+        && ref($capability->{guidance_providers}->{lastfm}->{policies}) eq 'HASH'
+            ? $capability->{guidance_providers}->{lastfm}->{policies} : {};
+    my %artist_policy_supported = map { $_ => 1 }
+        @{ref($lastfm_policies->{lastfm_artist}) eq 'ARRAY'
+            ? $lastfm_policies->{lastfm_artist} : []};
+    if ($options->{lastfm_artist_guidance_percent}
+        && !$artist_policy_supported{$options->{lastfm_artist_mode}}) {
+        $options->{lastfm_artist_policy_unavailable} =
+            $options->{lastfm_artist_mode};
+        $options->{lastfm_artist_guidance_percent} = 0;
+    }
+    # The two Last.fm levels are the public control surface. Track guidance is
+    # always bounded; the separately captured artist policy decides whether its
+    # level is a target share or a bounded boost. Keep the derived flag for
+    # downstream acquisition and diagnostics, but never let a retired checkbox
+    # override a non-zero per-job level.
     $options->{lastfm_enabled} = (
         ($options->{lastfm_track_guidance_percent} || 0)
         || ($options->{lastfm_artist_guidance_percent} || 0)

@@ -41,8 +41,11 @@ sub prefs {
         semantic_stale_days
         lastfm_track_guidance_percent
         lastfm_artist_guidance_percent
+        lastfm_artist_mode
         last_played_influence
         library_age_influence
+        last_played_horizon_days
+        library_age_horizon_days
         listenbrainz_enabled
     ));
 }
@@ -59,6 +62,20 @@ sub beforeRender {
     ) ? 1 : 0;
     $params->{bliss_compatibility} =
         Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+    my $guidance_providers = ref($params->{bliss_compatibility}->{guidance_providers}) eq 'HASH'
+        ? $params->{bliss_compatibility}->{guidance_providers} : {};
+    my $lastfm = ref($guidance_providers->{lastfm}) eq 'HASH'
+        ? $guidance_providers->{lastfm} : {};
+    my $policies = ref($lastfm->{policies}) eq 'HASH'
+        ? $lastfm->{policies} : {};
+    my %artist_policies = map { $_ => 1 }
+        @{ref($policies->{lastfm_artist}) eq 'ARRAY'
+            ? $policies->{lastfm_artist} : []};
+    $params->{lastfm_guidance_available} = $lastfm->{available} ? 1 : 0;
+    $params->{lastfm_artist_target_available}
+        = $artist_policies{target_share} ? 1 : 0;
+    $params->{lastfm_artist_bounded_available}
+        = $artist_policies{bounded_influence} ? 1 : 0;
 }
 
 sub _clamp {
@@ -109,6 +126,13 @@ sub handler {
     _clamp($params, 'pref_lastfm_artist_guidance_percent', 0, 100);
     _clamp($params, 'pref_last_played_influence', -100, 100);
     _clamp($params, 'pref_library_age_influence', -100, 100);
+    _clamp($params, 'pref_last_played_horizon_days', 30, 1825);
+    _clamp($params, 'pref_library_age_horizon_days', 30, 3650);
+    if (defined $params->{pref_lastfm_artist_mode}
+        && $params->{pref_lastfm_artist_mode} ne 'target_share'
+        && $params->{pref_lastfm_artist_mode} ne 'bounded_influence') {
+        $params->{pref_lastfm_artist_mode} = 'target_share';
+    }
     if (defined $params->{pref_semantic_cache_days}
         && defined $params->{pref_semantic_stale_days}
         && $params->{pref_semantic_stale_days} < $params->{pref_semantic_cache_days}) {

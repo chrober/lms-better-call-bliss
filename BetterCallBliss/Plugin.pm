@@ -2,6 +2,7 @@ package Plugins::BetterCallBliss::Plugin;
 
 use strict;
 use base qw(Slim::Plugin::Base);
+use JSON::XS ();
 
 use File::Basename qw(dirname);
 use Config qw(%Config);
@@ -58,6 +59,12 @@ sub initPlugin {
         }
         $prefs->set('preference_defaults_version', 2);
     }
+    if ($preference_defaults_version < 3) {
+        # New policy and saturation preferences are backfilled by
+        # ensure_preference_defaults above. Record that this installation has
+        # seen their defaults so future migrations can remain explicit.
+        $prefs->set('preference_defaults_version', 3);
+    }
     my $dir = dirname(__FILE__);
     _loadStrings($dir);
     if (main::ISWINDOWS) {
@@ -84,6 +91,9 @@ sub initPlugin {
     my $lastfm_guidance_spi_v2 = _guidanceProviderSupports(
         $lastfm_guidance_binary, 'lastfm-guidance',
     );
+    my $lastfm_guidance_policies = _guidanceProviderPolicies(
+        $lastfm_guidance_binary, 'lastfm-guidance',
+    );
     my $library_signals_guidance_spi_v2 = _guidanceProviderSupports(
         $library_signals_guidance_binary, 'library-signals-guidance',
     );
@@ -98,6 +108,7 @@ sub initPlugin {
             lastfm => {
                 program => $lastfm_guidance_binary,
                 spi_v2 => $lastfm_guidance_spi_v2,
+                policies => $lastfm_guidance_policies,
             },
             library_signals => {
                 program => $library_signals_guidance_binary,
@@ -208,6 +219,28 @@ sub _guidanceProviderSupports {
     my $output = _binaryVersionOutput($binary);
     return 0 unless $output =~ /"provider_id"\s*:\s*"\Q$expected_provider_id\E"/;
     return $output =~ /"spi_version"\s*:\s*2/ ? 1 : 0;
+}
+
+sub _guidanceProviderPolicies {
+    my ($binary, $expected_provider_id) = @_;
+    my $output = _binaryVersionOutput($binary);
+    my $metadata = eval { JSON::XS::decode_json($output) };
+    return {} unless ref($metadata) eq 'HASH'
+        && ($metadata->{provider_id} || '') eq ($expected_provider_id || '')
+        && 0 + ($metadata->{spi_version} || 0) == 2;
+    my $channels = $metadata->{channel_policies};
+    return {} unless ref($channels) eq 'HASH';
+    my %policies;
+    for my $channel (keys %$channels) {
+        my $declared = $channels->{$channel};
+        next unless ref($declared) eq 'ARRAY';
+        my %seen;
+        $policies{$channel} = [
+            grep { /^(?:bounded_influence|target_share)$/ && !$seen{$_}++ }
+            @$declared
+        ];
+    }
+    return \%policies;
 }
 
 sub _binaryVersionOutput {

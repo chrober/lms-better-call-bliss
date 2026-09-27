@@ -38,6 +38,9 @@ BEGIN {
                 lastfm => {
                     available => 1,
                     program => '/trusted/plugin/bin/bliss-guidance-lastfm',
+                    policies => {
+                        lastfm_artist => [qw(bounded_influence target_share)],
+                    },
                 },
                 library_signals => {
                     available => 1,
@@ -103,6 +106,10 @@ BEGIN {
             lastfm_enabled => 1,
             lastfm_track_guidance_percent => '75',
             lastfm_artist_guidance_percent => '75',
+            lastfm_artist_mode => 'target_share',
+            last_played_horizon_days => '180',
+            library_age_horizon_days => '365',
+            guidance_as_of_unix_seconds => '1790208000',
             max_added_tracks => $max_added_tracks,
             trigger_percent => '70',
             gap_context_mode => 'frozen',
@@ -203,12 +210,12 @@ ok(!exists $request->{selection}->{last_played_influence},
 ok(!exists $request->{selection}->{library_age_influence},
     'library-age guidance is not carried in optimizer selection settings');
 is_deeply($request->{guidance_policy}, [
-    {provider_id => 'lastfm-guidance', channel => 'lastfm_track', weight => 1, target_percent => 75},
+    {provider_id => 'lastfm-guidance', channel => 'lastfm_track', weight => 0.75},
     {provider_id => 'lastfm-guidance', channel => 'lastfm_artist', weight => 1, target_percent => 75},
     {provider_id => 'library-signals-guidance', channel => 'playcount', weight => -0.35},
     {provider_id => 'library-signals-guidance', channel => 'last_played', weight => -0.8},
     {provider_id => 'library-signals-guidance', channel => 'library_age', weight => 0.45},
-], 'Last.fm targets and signed local-library preferences become separate policies');
+], 'Last.fm policy kinds and signed local-library preferences become separate policies');
 
 my $zero_lastfm_request = {
     selection => {
@@ -247,7 +254,11 @@ is_deeply($request->{guidance_addons}, [
     {
         id => 'library-signals-guidance',
         program => '/trusted/plugin/bin/bliss-guidance-library-signals',
-        options => {},
+        options => {
+            as_of_unix_seconds => 1790208000,
+            last_played_horizon_days => 180,
+            library_age_horizon_days => 365,
+        },
         artifacts => [{
             kind => 'eligible-candidate-identities-v1',
             path => '/private/cache/candidate-identities.json',
