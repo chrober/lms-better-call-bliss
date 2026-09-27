@@ -1,26 +1,27 @@
 # Better Call Bliss improvement backlog
 
 This is a concise, re-orderable view of potential Better Call Bliss work.  
-**Row order is the priority order:** move a complete row up or down to change
-priority. The linked source remains authoritative for scope, rationale, and
-acceptance criteria; this file intentionally does not duplicate those details.  
+**Row order in the active table is the priority order:** move a complete row up
+or down to change priority. The linked source remains authoritative for scope,
+rationale, and acceptance criteria; this file intentionally does not duplicate
+those details.
 
 The **size** is a rough engineering estimate, not priority or elapsed time:
 **S** is a contained plugin change, **M** spans one component with tests,
 **L** crosses components or needs substantial verification, and **XL** changes
 architecture, algorithms, or several repositories.  
 
+## Active improvements
+
 | Improvement | Intended outcome | Size | Status | Authoritative source |
 | --- | --- | ---: | --- | --- |
+| Port Lab reranking semantics to Rust guidance hosts | Give Better Call Bliss, the native guidance SPI, playlist optimizer, and future Bliss Mixer host the same bounded Last.fm artist mode, target-share compatibility mode, and saturating last-played/library-age calculations currently proven in BlissMixerLab. | XL | Planned | [Rust guidance migration design](https://github.com/chrober/lms-blissmixer-lab/blob/feature/local-library-signals/RUST_GUIDANCE_MIGRATION.md), [guidance SPI migration design](docs/superpowers/specs/2026-09-19-guidance-spi-migration-design.md) |
+| Discoverable Lyrion guidance-provider plugins | Ship independently installable providers with their own settings pages and a shared discovery registry. Hosts default each provider to disabled, inherit its current guidance defaults, and allow explicit per-host/per-job overrides through schema-rendered controls; credentials and source configuration remain provider-owned. | XL | Proposed design; reviewed 2026-09-27 | [Lyrion guidance-provider discovery design](https://github.com/chrober/bliss-similarity-design/blob/main/docs/superpowers/specs/2026-09-26-lyrion-guidance-provider-discovery-design.md) |
 | Selectable Last.fm acquisition: **LastMix** or **API Key** | Let administrators choose the established LastMix integration or direct public Last.fm access with their own API key, while retaining identical Bliss-first guidance semantics. | XL | Approved design | [Last.fm guidance acquisition plan](https://github.com/chrober/bliss-similarity-design/blob/main/LASTFM_GUIDANCE_ACQUISITION_PLAN.md) |
 | Direct Last.fm provider cache and offline behaviour | Provide durable cache freshness, stale-offline policy, timeouts, rate limits, cancellation, and clear diagnostics for semantic guidance. | L | Planned | [Last.fm guidance acquisition plan](https://github.com/chrober/bliss-similarity-design/blob/main/LASTFM_GUIDANCE_ACQUISITION_PLAN.md), [product roadmap](https://github.com/chrober/bliss-similarity-design/blob/feature/playlist-optimization/BLISS_PLAYLIST_OPTIMIZER_IMPLEMENTATION_PLAN.md) |
-| Local listening and library-signals provider | Replace the narrowly scoped play-count provider with one reusable, Bliss-first source for local play, recency, freshness, skip, and recent-affinity guidance. | XL | Proposed | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
-| Favor long-unheard or recently played tracks | Add a signed per-job last-played preference, allowing rediscovery of unheard tracks or intentional recent-listening momentum. | M | Proposed | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
-| Favor older or newer library additions | Add a signed per-job library-age preference using Lyrion's durable first-seen time rather than catalog scan time. | M | Proposed | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
 | Avoid skips and favor recent affinity | Use APC skip history as a one-way avoidance signal and positive DPSV as an optional recent-enjoyment boost. | L | Proposed | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
 | Player-specific history and ratings | Evaluate player affinity and explicit ratings only after a privacy, coverage, and source-policy design. | L | Deferred | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
 | Fill every source gap with N bridge tracks | Preserve source order and insert exactly the configured bridge count into every original transition, with global repeat and unique-membership validation. | XL | Planned | [Product roadmap](https://github.com/chrober/bliss-similarity-design/blob/feature/playlist-optimization/BLISS_PLAYLIST_OPTIMIZER_IMPLEMENTATION_PLAN.md), [UX status](docs/UX_STATUS.md) |
-| Repeat-window spacer repair | Add only as many tracks as necessary to make an otherwise immutable source order satisfy artist and album spacing constraints. | XL | Planned | [Product roadmap](https://github.com/chrober/bliss-similarity-design/blob/feature/playlist-optimization/BLISS_PLAYLIST_OPTIMIZER_IMPLEMENTATION_PLAN.md), [UX status](docs/UX_STATUS.md) |
 | Duration-based targets | Extend playlists to a chosen or doubled playback duration, with explicit duration tolerance and quality trade-offs. | L | Planned | [Product roadmap](https://github.com/chrober/bliss-similarity-design/blob/feature/playlist-optimization/BLISS_PLAYLIST_OPTIMIZER_IMPLEMENTATION_PLAN.md), [UX status](docs/UX_STATUS.md) |
 | Playlist provenance and parameter restoration | Embed reproducible Better Call Bliss metadata in generated M3U files, then offer to restore those parameters when the playlist is reused as input. | M | Planned | [Product roadmap](https://github.com/chrober/bliss-similarity-design/blob/feature/playlist-optimization/BLISS_PLAYLIST_OPTIMIZER_IMPLEMENTATION_PLAN.md) |
 | Durable preview history and reports | Retain job history across LMS restarts, make reports downloadable/searchable, and support explicit result disposal. | L | Planned | [UX status](docs/UX_STATUS.md), [product roadmap](https://github.com/chrober/bliss-similarity-design/blob/feature/playlist-optimization/BLISS_PLAYLIST_OPTIMIZER_IMPLEMENTATION_PLAN.md) |
@@ -34,6 +35,19 @@ architecture, algorithms, or several repositories.
 | Richer transition evidence and listener evaluation | Test directional/boundary-aware acoustic evidence and listener-reviewed quality before treating whole-track similarity as transition truth. | XL | Planned research | [Transition-quality experiment plan](https://github.com/chrober/bliss-similarity-design/blob/main/BLISS_TRANSITION_QUALITY_EXPERIMENT_PLAN.md), [mixing roadmap](https://github.com/chrober/bliss-similarity-design/blob/main/docs/evaluation/mixing-roadmap.md) |
 | ListenBrainz guidance provider | Add an optional, failure-tolerant semantic source through the reusable guidance-provider architecture. | L | Planned | [UX status](docs/UX_STATUS.md), [guidance data flow](docs/GUIDANCE_DATA_FLOW.md) |
 | Reuse guidance providers from `bliss-mixer` | Let `bliss-mixer` host the same Bliss-first guidance SPI while ranking its existing candidate pool. | XL | Follow-up | [Guidance data flow](docs/GUIDANCE_DATA_FLOW.md) |
+
+## Implemented work
+
+This table is historical, not prioritized. **Implemented on feature branch**
+means the work is pushed and tested on its named feature branch but is not yet
+merged into the normal Better Call Bliss release path.
+
+| Improvement | Delivered outcome | Size | Status | Authoritative source |
+| --- | --- | ---: | --- | --- |
+| Local listening and library-signals foundation | Generalizes the play-count provider into reusable Bliss-first `playcount`, `last_played`, and `library_age` channels from a bounded read-only Lyrion `persist.db` snapshot. APC skip history and recent-affinity guidance remain separate active work above. | XL | Implemented on feature branch | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
+| Favor long-unheard or recently played tracks | Adds a signed per-job `last_played` preference, supplied from Lyrion's `tracks_persistent.lastPlayed` value. | M | Implemented on feature branch | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
+| Favor older or newer library additions | Adds a signed per-job `library_age` preference, supplied from Lyrion's durable `tracks_persistent.added` value rather than catalog scan time. | M | Implemented on feature branch | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
+| Repeat-window spacer repair | **Add spacing tracks as needed** adds only enough tracks to make the selected artist and album repeat windows feasible, within its configured maximum-additions budget. | XL | Working | [Product roadmap](https://github.com/chrober/bliss-similarity-design/blob/feature/playlist-optimization/BLISS_PLAYLIST_OPTIMIZER_IMPLEMENTATION_PLAN.md), [UX status](docs/UX_STATUS.md) |
 
 ## Maintenance rule
 
