@@ -11,8 +11,8 @@ Latest packaged optimizer source:
 - Program contract: `0.2.2`, core API `0.1`, guidance SPI `2`
 - Last.fm guidance release: `v0.1.2`
 - Last.fm guidance commit: `e278f4742cdef5eaafd99ae1a7fc866b7977c003`
-- Library-signals guidance release: `v0.1.0`
-- Library-signals guidance commit: `bf984ee`
+- Library-signals guidance release: `v0.1.2`
+- Library-signals guidance commit: `f78378e`
 
 The GitHub release workflow downloads the optimizer and both guidance-provider
 releases above, verifies each published `.sha256` file, places the binaries below the matching
