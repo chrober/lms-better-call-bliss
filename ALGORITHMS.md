@@ -692,25 +692,28 @@ Bridge modes use the resolved signal to rank admissible two-leg insertions. Exte
 
 Provider responses are frozen with their raw score or rank so the report can explain the support used by that run. Missing LastMix, no Internet access, malformed responses, and provider errors fall back to Bliss without failing the playlist job. Service-wide offline, unavailable, and rate-limit errors open a per-job circuit breaker so the remaining track and artist requests are not repeated.
 
-### Play-count guidance
+### Local listening and library guidance
 
-Play-count influence is a post-qualification signal for newly generated tracks.
-A new job starts with BlissMixer's current value, but changing it in Better Call
-Bliss changes only that job and never writes a Better Call Bliss default or
-modifies BlissMixer. Negative values prefer tracks with lower LMS play counts,
-positive values prefer higher counts, and zero disables the signal.
+The optional **Library Signals** Lyrion provider contributes post-qualification
+signals for newly generated tracks: play count, last played, and library age.
+Its own settings page owns the saved defaults. Better Call Bliss discovers the
+provider, leaves it disabled by default, and can apply sparse host or per-job
+overrides after you enable it. Negative play-count values prefer tracks with
+lower LMS play counts, positive values prefer higher counts, and zero disables
+that channel. Last-played and library-age use the same signed direction and
+their configured saturation horizons.
 
-When the value is non-zero, Better Call Bliss freezes a checksum-protected list
-of eligible candidate identities and gives the play-count provider the trusted,
-read-only Lyrion `persist.db` path. The provider opens one SQLite read snapshot,
-streams that frozen identity population to establish tied play-count percentiles,
-then looks up only the bounded Bliss-qualified candidates that the optimizer
-actually scores. Missing counts rank as zero plays. The optimizer applies the
-result as bounded guidance after local membership, genre, acoustic, uniqueness,
-and repeat qualification. It cannot admit an otherwise rejected track. Reorder
-only has fixed membership and does not apply the signal. If Lyrion playback
-statistics are disabled, the effective value is forced to zero and the job
-control is read-only.
+When any of its channels is non-zero, Better Call Bliss freezes a
+checksum-protected list of eligible candidate identities and asks the provider
+factory to return its trusted binary and read-only Lyrion `persist.db` resource.
+The provider opens one SQLite read snapshot, streams that frozen identity
+population to establish tied play-count and time-signal distributions, then
+looks up only the bounded Bliss-qualified candidates that the optimizer actually
+scores. Missing counts rank as zero plays; unknown dates remain neutral. The
+optimizer applies the result as bounded guidance after local membership, genre,
+acoustic, uniqueness, and repeat qualification. It cannot admit an otherwise
+rejected track. Reorder only has fixed membership and does not apply these
+signals.
 
 This has the same user-facing direction as BlissMixer and BlissMixerLab's shared
 play-count preference: `-100` favors less-played tracks, `+100` favors
