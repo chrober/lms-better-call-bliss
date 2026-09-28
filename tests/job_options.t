@@ -46,8 +46,32 @@ my $capability = {
     album_window => '10',
     track_window => '100',
     statistics_enabled => 1,
-    library_signals_available => 1,
     playcount_influence => '-30',
+    discovered_guidance_providers => [{
+        provider_id => 'library-signals',
+        available => 1,
+        descriptor => {
+            settings_schema_version => 1,
+            controls => [
+                {key => 'playcount_influence', type => 'integer', minimum => -100, maximum => 100, factory_default => 0, host_overridable => 1, guidance_channel => 'playcount'},
+                {key => 'last_played_influence', type => 'integer', minimum => -100, maximum => 100, factory_default => 0, host_overridable => 1, guidance_channel => 'last_played'},
+                {key => 'last_played_horizon_days', type => 'integer', minimum => 30, maximum => 1825, factory_default => 180, host_overridable => 1},
+                {key => 'library_age_influence', type => 'integer', minimum => -100, maximum => 100, factory_default => 0, host_overridable => 1, guidance_channel => 'library_age'},
+                {key => 'library_age_horizon_days', type => 'integer', minimum => 30, maximum => 3650, factory_default => 365, host_overridable => 1},
+            ],
+        },
+        host_state => {enabled => 1, overrides => {}},
+        host_policy => {
+            valid => 1, enabled => 1,
+            effective => {
+                playcount_influence => -30,
+                last_played_influence => -20,
+                last_played_horizon_days => 240,
+                library_age_influence => 40,
+                library_age_horizon_days => 720,
+            },
+        },
+    }],
     guidance_providers => {
         lastfm => {
             policies => {
@@ -71,9 +95,9 @@ is($defaults->{lastfm_artist_guidance_percent}, 75,
 is($defaults->{lastfm_artist_mode}, 'target_share',
     'artist guidance defaults to the existing target-share behavior');
 is($defaults->{last_played_horizon_days}, 240,
-    'last-played saturation horizon is read from plugin preferences');
+    'last-played saturation horizon is inherited from the enabled provider');
 is($defaults->{library_age_horizon_days}, 720,
-    'library-age saturation horizon is read from plugin preferences');
+    'library-age saturation horizon is inherited from the enabled provider');
 is($defaults->{max_added_tracks}, 12,
     'automatic addition budget default is read from plugin preferences');
 is($defaults->{trigger_percent}, 65,
@@ -83,30 +107,30 @@ is($defaults->{gap_context_mode}, 'rolling',
 is($defaults->{variation_percent}, 35,
     'variation default is read from plugin preferences');
 is($defaults->{playcount_influence}, -30,
-    'play-count default is inherited from BlissMixer capability');
+    'play-count default is inherited from the enabled library-signals provider');
 is(Plugins::BetterCallBliss::JobOptions::normalize(
-        $capability, {playcount_influence => '45'},
+        $capability, {'guidance_provider_library-signals_playcount_influence' => '45'},
     )->{playcount_influence}, 45,
     'play-count influence can be overridden for one job');
 is(Plugins::BetterCallBliss::JobOptions::normalize(
-        $capability, {last_played_influence => '-80'},
+        $capability, {'guidance_provider_library-signals_last_played_influence' => '-80'},
     )->{last_played_influence}, -80,
     'last-played influence can prefer long-unheard tracks per job');
 is(Plugins::BetterCallBliss::JobOptions::normalize(
-        $capability, {library_age_influence => '45'},
+        $capability, {'guidance_provider_library-signals_library_age_influence' => '45'},
     )->{library_age_influence}, 45,
     'library-age influence can prefer newer additions per job');
 is(Plugins::BetterCallBliss::JobOptions::normalize(
         {%$capability, statistics_enabled => 0},
-        {playcount_influence => '45'},
-    )->{playcount_influence}, 0,
-    'play-count influence is forced to zero when LMS statistics are disabled');
+        {'guidance_provider_library-signals_playcount_influence' => '45'},
+    )->{playcount_influence}, 45,
+    'provider-owned play-count guidance does not depend on the host statistics gate');
 eval {
     Plugins::BetterCallBliss::JobOptions::normalize(
-        $capability, {playcount_influence => '-101'},
+        $capability, {'guidance_provider_library-signals_playcount_influence' => '-101'},
     );
 };
-like($@, qr/playcount_influence must be between -100 and 100/,
+like($@, qr/playcount_influence.*below its minimum/,
     'out-of-range signed play-count influence is rejected');
 is($defaults->{route_length_policy}, 'exact',
     'destination route policy is read from plugin preferences');
@@ -171,8 +195,8 @@ my $bounded_artist = Plugins::BetterCallBliss::JobOptions::normalize(
     {
         lastfm_artist_mode => 'bounded_influence',
         lastfm_artist_guidance_percent => '40',
-        last_played_horizon_days => '180',
-        library_age_horizon_days => '365',
+        'guidance_provider_library-signals_last_played_horizon_days' => '180',
+        'guidance_provider_library-signals_library_age_horizon_days' => '365',
     },
 );
 is($bounded_artist->{lastfm_artist_mode}, 'bounded_influence',

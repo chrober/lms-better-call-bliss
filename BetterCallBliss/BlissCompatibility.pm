@@ -30,13 +30,6 @@ sub init {
     $guidance_programs = shift || {};
 }
 
-sub _persistent_database_path {
-    return eval {
-        require Slim::Utils::SQLiteHelper;
-        Slim::Utils::SQLiteHelper->dbFile('persist.db', 'persistent');
-    } || '';
-}
-
 sub _guidance_program {
     my ($name) = @_;
     my $entry = $guidance_programs->{$name};
@@ -190,17 +183,11 @@ sub snapshot {
 
     my $strategy = _strategy_from_prefs();
     my $statistics_enabled = main::STATISTICS ? 1 : 0;
-    my $persist_db = _persistent_database_path();
     my $lastfm_guidance = _guidance_program('lastfm');
     my $lastfm_entry = $guidance_programs->{lastfm};
     my $lastfm_policies = ref($lastfm_entry) eq 'HASH'
         && ref($lastfm_entry->{policies}) eq 'HASH'
             ? $lastfm_entry->{policies} : {};
-    my $library_signals_guidance = _guidance_program('library_signals');
-    my $playcount_influence = $statistics_enabled
-        ? _int_pref('playcount_influence', 0) : 0;
-    $playcount_influence = -100 if $playcount_influence < -100;
-    $playcount_influence = 100 if $playcount_influence > 100;
     my $static_weights = _static_slider_weights();
     my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
     my $month = (localtime())[4] + 1;
@@ -217,6 +204,9 @@ sub snapshot {
         );
         push @discovered_providers, {
             %$provider,
+            host_state => Plugins::BetterCallBliss::GuidanceProviderPolicy::host_state(
+                $all_host_state, $provider->{provider_id},
+            ),
             host_policy => $policy,
         };
     }
@@ -249,23 +239,12 @@ sub snapshot {
         track_window      => _int_pref('no_repeat_track', 0),
         algorithm         => $strategy,
         statistics_enabled => $statistics_enabled,
-        playcount_influence => $playcount_influence,
-        library_signals_available => $library_signals_guidance
-            && -x $library_signals_guidance && -r $persist_db
-            && _guidance_spi_v2('library_signals') ? 1 : 0,
         guidance_providers => {
             lastfm => {
                 available => $lastfm_guidance && -x $lastfm_guidance
                     && _guidance_spi_v2('lastfm') ? 1 : 0,
                 program => $lastfm_guidance,
                 policies => $lastfm_policies,
-            },
-            library_signals => {
-                available => $library_signals_guidance
-                    && -x $library_signals_guidance && -r $persist_db
-                    && _guidance_spi_v2('library_signals') ? 1 : 0,
-                program => $library_signals_guidance,
-                persist_db => $persist_db,
             },
         },
         discovered_guidance_providers => \@discovered_providers,

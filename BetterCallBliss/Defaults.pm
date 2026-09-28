@@ -30,10 +30,6 @@ my %PREFERENCE_DEFAULTS = (
     lastfm_track_guidance_percent => 25,
     lastfm_artist_guidance_percent => 25,
     lastfm_artist_mode => 'target_share',
-    last_played_influence => 0,
-    library_age_influence => 0,
-    last_played_horizon_days => 180,
-    library_age_horizon_days => 365,
     guidance_provider_state => { schema_version => 1, providers => {} },
     listenbrainz_enabled => 0,
 );
@@ -56,10 +52,6 @@ my %EMPTY_VALUE_IS_MISSING = map { $_ => 1 } qw(
     lastfm_track_guidance_percent
     lastfm_artist_guidance_percent
     lastfm_artist_mode
-    last_played_influence
-    library_age_influence
-    last_played_horizon_days
-    library_age_horizon_days
     guidance_provider_state
     listenbrainz_enabled
 );

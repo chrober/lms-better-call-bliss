@@ -10,6 +10,7 @@ use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
+use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::JobOptions;
 
 sub _job_seed {
@@ -101,7 +102,6 @@ sub normalize_request_types {
             num_seed_tracks no_repeat_artist
             no_repeat_album no_repeat_track weight_tempo weight_timbre
             weight_loudness weight_chroma
-            playcount_influence
         ),
     );
     _normalize_booleans(
@@ -340,55 +340,53 @@ sub configure_guidance_addons {
         };
     }
 
-    my $library_signals = $providers->{library_signals} || {};
-    my $playcount_weight = 0 + ($selection->{playcount_influence} || 0) / 100;
-    my $last_played_weight = 0 + ($selection->{last_played_influence} || 0) / 100;
-    my $library_age_weight = 0 + ($selection->{library_age_influence} || 0) / 100;
-    my $identities = $artifacts->{candidate_identities};
-    if ($library_signals->{available} && $library_signals->{program}
-        && $library_signals->{persist_db}
-        && ref($identities) eq 'HASH' && $identities->{path}
-        && $identities->{sha256}
-        && ($playcount_weight || $last_played_weight || $library_age_weight)) {
-        push @policy, {
-            provider_id => 'library-signals-guidance', channel => 'playcount',
-            weight => $playcount_weight,
-        } if $playcount_weight;
-        push @policy, {
-            provider_id => 'library-signals-guidance', channel => 'last_played',
-            weight => $last_played_weight,
-        } if $last_played_weight;
-        push @policy, {
-            provider_id => 'library-signals-guidance', channel => 'library_age',
-            weight => $library_age_weight,
-        } if $library_age_weight;
-        push @addons, {
-            id => 'library-signals-guidance',
-            program => $library_signals->{program},
-            options => {
-                as_of_unix_seconds => _json_integer(
-                    $selection->{guidance_as_of_unix_seconds},
-                    'guidance_as_of_unix_seconds',
-                ),
-                last_played_horizon_days => _json_integer(
-                    $selection->{last_played_horizon_days},
-                    'last_played_horizon_days',
-                ),
-                library_age_horizon_days => _json_integer(
-                    $selection->{library_age_horizon_days},
-                    'library_age_horizon_days',
-                ),
-            },
-            artifacts => [{
-                kind => 'eligible-candidate-identities-v1',
-                path => $identities->{path}, sha256 => $identities->{sha256},
-            }],
-            resources => [{
-                kind => 'lms-persist-sqlite-v1',
-                path => $library_signals->{persist_db}, access => 'read_only',
-            }],
-            timeout_ms => 5000,
+    my $provider_policies = ref($artifacts->{provider_policies}) eq 'HASH'
+        ? $artifacts->{provider_policies} : {};
+    for my $provider (@{ref($capability->{discovered_guidance_providers}) eq 'ARRAY'
+        ? $capability->{discovered_guidance_providers} : []}) {
+        next unless ref($provider) eq 'HASH' && $provider->{available};
+        my $provider_id = $provider->{provider_id} || next;
+        my $resolved = $provider_policies->{$provider_id};
+        next unless ref($resolved) eq 'HASH' && $resolved->{valid}
+            && $resolved->{enabled} && ref($resolved->{effective}) eq 'HASH';
+        my $descriptor = $provider->{descriptor} || {};
+        my $native = $descriptor->{native_spi} || {};
+        my @provider_policy;
+        for my $control (@{$descriptor->{controls} || []}) {
+            next unless ref($control) eq 'HASH' && $control->{guidance_channel};
+            my $value = $resolved->{effective}->{$control->{key}};
+            next unless defined $value && $value =~ /^-?\d+$/ && $value;
+            push @provider_policy, {
+                provider_id => $native->{provider_id},
+                channel => $control->{guidance_channel},
+                weight => int($value) / 100,
+            };
+        }
+        next unless @provider_policy;
+        next unless ref($artifacts->{candidate_identities}) eq 'HASH'
+            && $artifacts->{candidate_identities}->{path}
+            && $artifacts->{candidate_identities}->{sha256};
+        my $config = eval {
+            Plugins::BetterCallBliss::GuidanceProviderDiscovery::native_spi_config(
+                $provider, $resolved->{effective}, {
+                    candidate_identity_artifact => $artifacts->{candidate_identities},
+                    as_of_unix_seconds => _json_integer(
+                        $selection->{guidance_as_of_unix_seconds},
+                        'guidance_as_of_unix_seconds',
+                    ),
+                },
+            );
         };
+        if (!$config || $@) {
+            push @{$artifacts->{guidance_provider_diagnostics}}, {
+                provider_id => $provider_id,
+                state => 'neutral_failure',
+                message => 'native provider configuration was unavailable',
+            };
+            next;
+        }
+        push @policy, @provider_policy;
+        push @addons, $config;
     }
 
     delete @{$selection}{qw(
@@ -660,9 +658,6 @@ sub _build_sequence_request {
                 ),
                 weight_chroma => _json_integer(
                     $capability->{static_weight_sliders}->{chroma},
-                ),
-                playcount_influence => _json_integer(
-                    $capability->{playcount_influence},
                 ),
             },
         },

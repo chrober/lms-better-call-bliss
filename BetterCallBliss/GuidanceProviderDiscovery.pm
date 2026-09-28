@@ -145,6 +145,10 @@ sub _validate_descriptor {
                     && $control->{minimum} <= $control->{factory_default}
                     && $control->{factory_default} <= $control->{maximum};
         }
+        if (exists $control->{guidance_channel}) {
+            return 'control guidance_channel is invalid'
+                unless $control->{guidance_channel} =~ /^[a-z][a-z0-9_]{1,63}$/;
+        }
     }
     my $native = $descriptor->{native_spi};
     return 'native_spi is not an object' unless ref($native) eq 'HASH';
@@ -156,6 +160,13 @@ sub _validate_descriptor {
         unless ($native->{protocol} || '') eq NATIVE_PROTOCOL;
     return 'native channel mapping is missing'
         unless ref($native->{channels}) eq 'HASH' && keys %{$native->{channels}};
+    my %native_channels = map { $native->{channels}->{$_} => 1 }
+        keys %{$native->{channels}};
+    for my $control (@$controls) {
+        next unless exists $control->{guidance_channel};
+        return 'control guidance_channel is not declared by native_spi'
+            unless $native_channels{$control->{guidance_channel}};
+    }
     for my $kind (qw(artifact_kinds resource_kinds)) {
         return "$kind must be an array"
             unless ref($native->{$kind}) eq 'ARRAY';

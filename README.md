@@ -156,10 +156,12 @@ creating a release or touching the plugin feed.
 - The platform-specific optimizer and guidance-provider executables are
   intentionally not committed here. They are published by the separate
   [optimizer](https://github.com/chrober/bliss-playlist-optimizer),
-  [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm), and
-  [local library-signals provider](https://github.com/chrober/bliss-guidance-library-signals)
+  [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm)
   release workflows and copied into deployment/package artifacts by this plugin
-  release workflow. The expected releases, supported package folders, and
+  release workflow. The optional
+  [local library-signals provider](https://github.com/chrober/lms-guidance-library-signals)
+  is a separately installed Lyrion plugin, discovered at runtime rather than
+  bundled. The expected binary releases, supported package folders, and
   packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
   `.gitignore` prevents local executables from being accidentally committed.
 - `tests/` contains lightweight Perl regression tests for the plugin glue code

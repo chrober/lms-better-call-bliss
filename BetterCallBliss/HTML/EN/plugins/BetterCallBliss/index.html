@@ -425,38 +425,32 @@
     <p class="bea-note">Similar-track evidence adds a bounded boost. Similar-artist target share intentionally seeks Last.fm-supported candidates within the Bliss-qualified pool; bounded influence instead cooperates with play count, last played, and library age. Track and artist support may overlap. Zero disables that channel. Network/API failures fall back to Bliss without failing the job.</p>
   </fieldset>
 
-  <fieldset class="bea-section" id="library_signals_guidance_fields">
-    <legend>Local listening and library guidance</legend>
-    <div class="bea-row">
-      <label for="playcount_influence">Play-count influence</label>
-      <input type="number" min="-100" max="100" step="1" class="stdedit sliderInput_-100_100_1" name="playcount_influence" id="playcount_influence" value="[% bettercallbliss_form.playcount_influence %]" required[% UNLESS bettercallbliss_capability.library_signals_available && bettercallbliss_capability.statistics_enabled %] readonly[% END %]>
-      [% IF bettercallbliss_capability.library_signals_available && bettercallbliss_capability.statistics_enabled %]
-        <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.playcount_influence %]</span>
-      [% ELSE %]
-        <span class="bea-disabled">Requires Lyrion playback statistics and the local library-signals provider; this job uses 0.</span>
+  [% FOREACH provider IN bettercallbliss_guidance_provider_sections %]
+  <fieldset class="bea-section guidance_provider_fields" id="guidance_provider_[% provider.provider_id | html %]_fields">
+    <legend>[% provider.display_name | html %]</legend>
+    [% IF provider.available && provider.enabled && provider.valid %]
+      [% FOREACH control IN provider.controls %]
+      <div class="bea-row">
+        <label for="[% control.field_name | html %]">[% control.label_token | string %]</label>
+        [% IF control.type == 'boolean' %]
+          <input type="checkbox" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="1"[% IF control.value %] checked="checked"[% END %]>
+        [% ELSIF control.type == 'enum' %]
+          <select name="[% control.field_name | html %]" id="[% control.field_name | html %]">
+            [% FOREACH option IN control.enum_values %]<option value="[% option | html %]"[% IF control.value == option %] selected[% END %]>[% option | html %]</option>[% END %]
+          </select>
+        [% ELSE %]
+          <input type="number" min="[% control.minimum %]" max="[% control.maximum %]" step="1" class="stdedit sliderInput_[% control.minimum %]_[% control.maximum %]_1" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="[% control.value %]" required>
+        [% END %]
+        [% IF control.help_token %]<span class="bea-note">[% control.help_token | string %]</span>[% END %]
+      </div>
       [% END %]
-    </div>
-    <div class="bea-row">
-      <label for="last_played_influence">Last-played influence</label>
-      <input type="number" min="-100" max="100" step="1" class="stdedit sliderInput_-100_100_1" name="last_played_influence" id="last_played_influence" value="[% bettercallbliss_form.last_played_influence %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
-      <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.last_played_influence %]</span>
-    </div>
-    <div class="bea-row">
-      <label for="last_played_horizon_days">Last-played saturation horizon (days)</label>
-      <input type="number" min="30" max="1825" step="1" class="stdedit" name="last_played_horizon_days" id="last_played_horizon_days" value="[% bettercallbliss_form.last_played_horizon_days %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
-    </div>
-    <div class="bea-row">
-      <label for="library_age_influence">Library-age influence</label>
-      <input type="number" min="-100" max="100" step="1" class="stdedit sliderInput_-100_100_1" name="library_age_influence" id="library_age_influence" value="[% bettercallbliss_form.library_age_influence %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
-      <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.library_age_influence %]</span>
-    </div>
-    <div class="bea-row">
-      <label for="library_age_horizon_days">Library-age saturation horizon (days)</label>
-      <input type="number" min="30" max="3650" step="1" class="stdedit" name="library_age_horizon_days" id="library_age_horizon_days" value="[% bettercallbliss_form.library_age_horizon_days %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
-    </div>
-    [% UNLESS bettercallbliss_capability.library_signals_available %]<p class="bea-disabled">Requires the installed local library-signals provider and Lyrion's readable persist.db.</p>[% END %]
-    <p class="bea-note">Negative play-count values prefer less-played additions; positive values prefer frequently played additions. Negative last-played values prefer tracks unheard for longer (including never-played rows); positive values prefer recently played tracks. Negative library-age values prefer older Lyrion first-seen tracks; positive values prefer newer ones. Zero disables each channel. These values affect only newly added tracks; no Alternative Play Count data is used.</p>
+    [% ELSIF provider.available %]
+      <p class="bea-disabled">Enable this provider on the Better Call Bliss settings page to apply its defaults or per-job overrides.</p>
+    [% ELSE %]
+      <p class="bea-disabled">[% provider.diagnostic | html %]</p>
+    [% END %]
   </fieldset>
+  [% END %]
 
 
   <fieldset class="bea-section" id="mixing_strategy_fields">
@@ -613,7 +607,7 @@
     var lastFmAvailable = [% IF bettercallbliss_lastmix_available %]true[% ELSE %]false[% END %];
     var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
     var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
-    var playcountFields = document.getElementById('library_signals_guidance_fields');
+    var guidanceProviderFields = document.querySelectorAll('.guidance_provider_fields');
     var submit = document.getElementById('run_preview');
     var mainForm = document.getElementById('bea-main-form');
     var candidateLibrary = document.getElementById('candidate_library_id');
@@ -1000,7 +994,9 @@
         if (routeExact) routeExact.readOnly = !exactRoute;
         submit.disabled = !capabilityReady || invalidRoute;
         setVisible(lastFmFields, true);
-        setVisible(playcountFields, true);
+        for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
+          setVisible(guidanceProviderFields[providerIndex], true);
+        }
         setVisible(candidateLibraryRow, true);
         setVisible(candidateLibraryNote, true);
         var routeLastFmInactive = !lastFmAvailable;
@@ -1110,7 +1106,9 @@
 
       var lastFmInactive = !lastFmAvailable;
       setVisible(lastFmFields, additions);
-      setVisible(playcountFields, additions);
+      for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
+        setVisible(guidanceProviderFields[providerIndex], additions);
+      }
       setVisible(candidateLibraryRow, additions);
       setVisible(candidateLibraryNote, additions);
       setReadOnlyWithSlider(lastFmTrackGuidance, lastFmInactive);

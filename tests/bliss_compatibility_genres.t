@@ -71,6 +71,7 @@ BEGIN {
         return {version => $versions{$_[1]}} if exists $versions{$_[1]};
         return undef;
     }
+    sub enabledPlugins { return () }
     $INC{'Slim/Utils/PluginManager.pm'} = __FILE__;
 
     package Slim::Utils::Versions;
@@ -123,8 +124,8 @@ is_deeply(
 ok($snapshot->{match_all_genres}, 'match-all mode is captured');
 ok($snapshot->{use_track_genre}, 'per-track genre mode is captured');
 ok($snapshot->{statistics_enabled}, 'LMS playback statistics availability is captured');
-is($snapshot->{playcount_influence}, -40,
-    'play-count influence is inherited from BlissMixer');
+ok(!exists $snapshot->{playcount_influence},
+    'play-count influence is owned by discovered guidance providers');
 
 Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {
     lastfm => {

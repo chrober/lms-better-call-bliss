@@ -45,10 +45,6 @@ sub prefs {
         lastfm_track_guidance_percent
         lastfm_artist_guidance_percent
         lastfm_artist_mode
-        last_played_influence
-        library_age_influence
-        last_played_horizon_days
-        library_age_horizon_days
         listenbrainz_enabled
     ));
 }
@@ -132,10 +128,6 @@ sub handler {
     _clamp($params, 'pref_semantic_stale_days', 1, 3650);
     _clamp($params, 'pref_lastfm_track_guidance_percent', 0, 100);
     _clamp($params, 'pref_lastfm_artist_guidance_percent', 0, 100);
-    _clamp($params, 'pref_last_played_influence', -100, 100);
-    _clamp($params, 'pref_library_age_influence', -100, 100);
-    _clamp($params, 'pref_last_played_horizon_days', 30, 1825);
-    _clamp($params, 'pref_library_age_horizon_days', 30, 3650);
     if (defined $params->{pref_lastfm_artist_mode}
         && $params->{pref_lastfm_artist_mode} ne 'target_share'
         && $params->{pref_lastfm_artist_mode} ne 'bounded_influence') {

@@ -191,6 +191,11 @@ sub start_info_lines {
     if ($mode eq 'none') {
         push @lines, 'Local library guidance: not applied because this job adds no tracks.';
     } else {
+        my $library_policy = ref($options->{guidance_provider_policies}) eq 'HASH'
+            ? $options->{guidance_provider_policies}->{'library-signals'} : {};
+        my $provider_state = ref($library_policy) eq 'HASH'
+            && $library_policy->{enabled} && $library_policy->{valid}
+                ? 'enabled' : 'disabled or unavailable';
         push @lines, sprintf(
             'Local library guidance for generated tracks: play count %+d, last played %+d (horizon %dd), library age %+d (horizon %dd); frozen as of %d; provider %s.',
             0 + ($options->{playcount_influence} || 0),
@@ -199,7 +204,7 @@ sub start_info_lines {
             0 + ($options->{library_age_influence} || 0),
             0 + ($options->{library_age_horizon_days} || 0),
             0 + ($options->{guidance_as_of_unix_seconds} || 0),
-            $capability->{library_signals_available} ? 'available' : 'unavailable',
+            $provider_state,
         );
     }
     if ($mode ne 'none' && $options->{playcount_influence}

@@ -421,6 +421,7 @@ sub _launch_optimizer {
             semantic_evidence => _artifact_descriptor($job->{semantic_path}),
             candidate_identities => $built->{request}->{artifacts}
                 ->{candidate_identities},
+            provider_policies => $built->{options}->{guidance_provider_policies},
         },
     );
     Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(

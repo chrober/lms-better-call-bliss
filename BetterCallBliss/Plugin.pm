@@ -37,7 +37,6 @@ my $prefs = preferences('plugin.bettercallbliss');
 my $initialized = 0;
 my $optimizer_binary;
 my $lastfm_guidance_binary;
-my $library_signals_guidance_binary;
 my %binary_version_output;
 my $optimizer_supports_destination_blocks;
 
@@ -80,7 +79,6 @@ sub initPlugin {
     }
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
     $lastfm_guidance_binary = Slim::Utils::Misc::findbin('bliss-guidance-lastfm');
-    $library_signals_guidance_binary = Slim::Utils::Misc::findbin('bliss-guidance-library-signals');
     my $optimizer_supports_progress = _optimizerSupportsProgress($optimizer_binary);
     my $optimizer_supports_trusted_request =
         _optimizerSupportsTrustedRequest($optimizer_binary);
@@ -96,9 +94,6 @@ sub initPlugin {
     my $lastfm_guidance_policies = _guidanceProviderPolicies(
         $lastfm_guidance_binary, 'lastfm-guidance',
     );
-    my $library_signals_guidance_spi_v2 = _guidanceProviderSupports(
-        $library_signals_guidance_binary, 'library-signals-guidance',
-    );
     $optimizer_supports_destination_blocks =
         _optimizerSupportsDestinationBlocks($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
@@ -111,10 +106,6 @@ sub initPlugin {
                 program => $lastfm_guidance_binary,
                 spi_v2 => $lastfm_guidance_spi_v2,
                 policies => $lastfm_guidance_policies,
-            },
-            library_signals => {
-                program => $library_signals_guidance_binary,
-                spi_v2 => $library_signals_guidance_spi_v2,
             },
         },
     );
@@ -162,9 +153,6 @@ sub initPlugin {
         . ' lastfm_guidance='
         . (!$lastfm_guidance_binary ? 'missing'
             : $lastfm_guidance_spi_v2 ? 'available' : 'incompatible')
-        . ' library_signals_guidance='
-        . (!$library_signals_guidance_binary ? 'missing'
-            : $library_signals_guidance_spi_v2 ? 'available' : 'incompatible')
         . ' destination_blocks='
         . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
     return 1;
@@ -572,13 +560,6 @@ sub statusCommand {
     );
     $request->addResult(
         'learned_matrix_available', 0 + $status->{matrix_available},
-    );
-    $request->addResult(
-        'statistics_enabled', 0 + $status->{statistics_enabled},
-    );
-    $request->addResult(
-        'blissmixer_playcount_influence',
-        0 + ($status->{playcount_influence} || 0),
     );
     my $inventory = Plugins::BetterCallBliss::CandidateInventory::status();
     $request->addResult('candidate_inventory_ready', 0 + $inventory->{ready});

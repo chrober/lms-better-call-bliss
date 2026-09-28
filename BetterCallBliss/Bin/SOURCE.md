@@ -11,11 +11,9 @@ Latest packaged optimizer source:
 - Program contract: `0.2.2`, core API `0.1`, guidance SPI `2`
 - Last.fm guidance release: `v0.1.2`
 - Last.fm guidance commit: `e278f4742cdef5eaafd99ae1a7fc866b7977c003`
-- Library-signals guidance release: `v0.1.2`
-- Library-signals guidance commit: `f78378e`
 
-The GitHub release workflow downloads the optimizer and both guidance-provider
-releases above, verifies each published `.sha256` file, places the binaries below the matching
+The GitHub release workflow downloads the optimizer and the bundled Last.fm
+guidance-provider release above, verifies each published `.sha256` file, places the binaries below the matching
 `BetterCallBliss/Bin/<platform>/` folders in the release workspace, and creates
 separate Linux, macOS, and Windows archives. The Linux archive contains the
 x86_64, AArch64, and ARMHF binaries; macOS and Windows each contain only their
@@ -33,7 +31,10 @@ Supported package folders:
 Each matching platform folder also contains:
 
 - `bliss-guidance-lastfm` (`bliss-guidance-lastfm.exe` on Windows)
-- `bliss-guidance-library-signals` (`bliss-guidance-library-signals.exe` on Windows)
+
+The separately installable Library Signals provider owns
+`bliss-guidance-library-signals`; Better Call Bliss discovers it through the
+Lyrion guidance-provider contract and does not bundle its binary.
 
 If a newer native release is used, update its release tag and commit above.
 The native release workflows own their build and test gates; the plugin release

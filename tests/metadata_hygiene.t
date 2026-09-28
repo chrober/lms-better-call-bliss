@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 129;
+use Test::More tests => 128;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -230,13 +230,13 @@ like(
 );
 like(
     $settings_module,
-    qr/last_played_influence\s+library_age_influence/s,
-    'settings persist the two local library-signal defaults',
+    qr/_apply_guidance_provider_settings.*?guidance_provider_state/s,
+    'settings persist provider-owned guidance overrides through host state',
 );
 like(
     $settings,
-    qr/last_played_influence.*?library_age_influence/s,
-    'settings expose independent defaults for recency and library age',
+    qr/guidance_provider_sections.*?provider\.controls/s,
+    'settings render discovered provider controls from their descriptor',
 );
 like(
     $plugin_module,
@@ -255,8 +255,8 @@ like(
 );
 like(
     $extras,
-    qr/name="last_played_influence".*?name="last_played_horizon_days".*?name="library_age_influence".*?name="library_age_horizon_days"/s,
-    'Extras groups each local signal directly with its saturation horizon',
+    qr/bettercallbliss_guidance_provider_sections.*?guidance_provider_.*?control\.field_name/s,
+    'Extras renders per-job guidance controls from discovered provider descriptors',
 );
 like(
     $strings,
@@ -427,8 +427,8 @@ like(
 );
 like(
     $compatibility,
-    qr/main::STATISTICS.*?_int_pref\('playcount_influence',\s*0\).*?playcount_influence\s*=>\s*\$playcount_influence/s,
-    'the job default reads play-count influence from BlissMixer only when LMS statistics are active',
+    qr/GuidanceProviderDiscovery::discover\(\).*?GuidanceProviderPolicy::resolve.*?discovered_guidance_providers/s,
+    'compatibility discovers provider-owned guidance and resolves host policy',
 );
 my $request_builder = slurp(File::Spec->catfile($plugin, 'RequestBuilder.pm'));
 like(
@@ -443,8 +443,8 @@ like(
 );
 like(
     $request_builder,
-    qr/selection\s*=>\s*\{.*?playcount_influence\s*=>\s*\$options->\{extension_mode\} ne 'none'/s,
-    'the request applies the per-job play-count override only to track-adding jobs',
+    qr/provider_policies.*?guidance_channel.*?native_spi_config/s,
+    'the request applies per-job provider controls through the trusted native factory',
 );
 like(
     $request_builder,
@@ -474,8 +474,8 @@ like(
 );
 like(
     $extras,
-    qr/name="playcount_influence".*?Current BlissMixer setting:.*?bettercallbliss_defaults\.playcount_influence/s,
-    'Extras exposes a per-job play-count slider initialized from BlissMixer',
+    qr/guidance_provider_\[\% provider\.provider_id.*?control\.field_name/s,
+    'Extras exposes descriptor-driven per-job provider controls',
 );
 my $settings_page = slurp(File::Spec->catfile(
     $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'settings',
@@ -483,7 +483,7 @@ my $settings_page = slurp(File::Spec->catfile(
 ));
 unlike(
     $settings_module . $settings_page . $defaults_module,
-    qr/playcount_influence/,
+    qr/\bpref_playcount_influence\b/,
     'Better Call Bliss does not persist a competing plugin-wide play-count setting',
 );
 like(
@@ -644,16 +644,11 @@ my $release_workflow = slurp(
 );
 like(
     $release_workflow,
-    qr/bliss-guidance-lastfm.*?bliss-guidance-library-signals/s,
-    'release workflow packages both trusted guidance providers',
-);
-like(
-    $release_workflow,
     qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-lastfm-\$platform/s,
     'release workflow includes AArch64 provider binaries for Lyrion appliances',
 );
-like(
+unlike(
     $release_workflow,
-    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-library-signals-\$platform/s,
-    'release workflow includes the AArch64 local-library-signals provider',
+    qr/bliss-guidance-library-signals/,
+    'release workflow does not bundle separately installed local-library guidance',
 );
