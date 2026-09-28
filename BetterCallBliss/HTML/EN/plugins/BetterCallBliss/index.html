@@ -442,13 +442,13 @@
       <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.last_played_influence %]</span>
     </div>
     <div class="bea-row">
+      <label for="last_played_horizon_days">Last-played saturation horizon (days)</label>
+      <input type="number" min="30" max="1825" step="1" class="stdedit" name="last_played_horizon_days" id="last_played_horizon_days" value="[% bettercallbliss_form.last_played_horizon_days %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
+    </div>
+    <div class="bea-row">
       <label for="library_age_influence">Library-age influence</label>
       <input type="number" min="-100" max="100" step="1" class="stdedit sliderInput_-100_100_1" name="library_age_influence" id="library_age_influence" value="[% bettercallbliss_form.library_age_influence %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
       <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.library_age_influence %]</span>
-    </div>
-    <div class="bea-row">
-      <label for="last_played_horizon_days">Last-played saturation horizon (days)</label>
-      <input type="number" min="30" max="1825" step="1" class="stdedit" name="last_played_horizon_days" id="last_played_horizon_days" value="[% bettercallbliss_form.last_played_horizon_days %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
     </div>
     <div class="bea-row">
       <label for="library_age_horizon_days">Library-age saturation horizon (days)</label>

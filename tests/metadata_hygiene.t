@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 128;
+use Test::More tests => 129;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -252,6 +252,11 @@ like(
     $extras,
     qr/Better Call Bliss default:.*?lastfm_track_guidance_percent.*?Better Call Bliss default:.*?lastfm_artist_guidance_percent/s,
     'Extras attributes both per-job Last.fm defaults to Better Call Bliss',
+);
+like(
+    $extras,
+    qr/name="last_played_influence".*?name="last_played_horizon_days".*?name="library_age_influence".*?name="library_age_horizon_days"/s,
+    'Extras groups each local signal directly with its saturation horizon',
 );
 like(
     $strings,
