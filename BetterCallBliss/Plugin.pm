@@ -21,6 +21,7 @@ use Plugins::BetterCallBliss::ContextMenu;
 use Plugins::BetterCallBliss::Defaults qw(
     preference_defaults
     ensure_preference_defaults
+    ensure_guidance_provider_state
 );
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::RouteMode;
@@ -50,6 +51,7 @@ sub initPlugin {
         $prefs->get('preference_defaults_version') || 0;
     $prefs->init(preference_defaults());
     ensure_preference_defaults($prefs);
+    ensure_guidance_provider_state($prefs);
     if ($preference_defaults_version < 2) {
         for my $name (qw(
             lastfm_track_guidance_percent

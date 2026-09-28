@@ -285,3 +285,39 @@ PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS
 PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC
 	EN	Stored for future persistent reports; results are currently session-only.
 	DE	Für künftige dauerhafte Berichte gespeichert; Ergebnisse existieren derzeit nur pro Sitzung.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS
+	EN	Optional guidance providers
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_DESC
+	EN	Installed providers contribute bounded secondary guidance only after you enable them here. Bliss remains responsible for eligibility and acoustic ranking. Provider settings supply defaults; values changed here are Better Call Bliss overrides.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_NONE
+	EN	No enabled Lyrion plugin currently publishes a compatible guidance-provider descriptor.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE
+	EN	Provider backend is available.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE
+	EN	Provider backend is unavailable: %s
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS
+	EN	Open provider settings
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED
+	EN	Use this provider
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC
+	EN	Providers are disabled in Better Call Bliss by default. Enabling one allows its bounded guidance to affect newly started jobs.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_DISABLED
+	EN	Disabled
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_VALUE
+	EN	Enabled
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN
+	EN	Effective value source: %s.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET
+	EN	Use inherited default

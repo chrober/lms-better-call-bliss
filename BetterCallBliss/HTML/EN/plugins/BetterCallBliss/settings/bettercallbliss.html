@@ -170,6 +170,49 @@
 
   <br><hr style="opacity:0.4" class="sub-sep"><br>
 
+  <b style="font-size:125%" id="guidance-providers-section-header" class="hidden-section" onclick="toggleSection('guidance-providers-section')">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS" | string %]</b><br><br>
+  <div id="guidance-providers-section" class="hidden">
+    <p>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_DESC" | string %]</p>
+    [% IF guidance_provider_sections.size %]
+      [% FOREACH provider IN guidance_provider_sections %]
+        <h3>[% provider.display_name | html %]</h3>
+        [% IF provider.available %]
+          <p style="color:#398439">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE" | string %]</p>
+        [% ELSE %]
+          <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE" | string(provider.diagnostic) %]</p>
+        [% END %]
+        [% IF provider.settings_uri %]
+          <p><a href="/[% provider.settings_uri | html %]">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS" | string %]</a></p>
+        [% END %]
+        [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED" desc="PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC" %]
+          <select class="stdedit" name="[% provider.enable_field_name | html %]"[% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
+            <option value="0"[% UNLESS provider.enabled %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_DISABLED" | string %]</option>
+            <option value="1"[% IF provider.enabled %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_VALUE" | string %]</option>
+          </select>
+        [% END %]
+        [% FOREACH control IN provider.controls %]
+          [% WRAPPER settingGroup title=control.label_token desc=control.help_token %]
+            [% IF control.type == 'boolean' %]
+              <input type="checkbox" name="[% control.field_name | html %]" value="1"[% IF control.effective %] checked="checked"[% END %][% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
+            [% ELSIF control.type == 'enum' %]
+              <select class="stdedit" name="[% control.field_name | html %]"[% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
+                [% FOREACH option IN control.enum_values %]<option value="[% option | html %]"[% IF control.effective == option %] selected[% END %]>[% option | html %]</option>[% END %]
+              </select>
+            [% ELSE %]
+              <input type="number" min="[% control.minimum %]" max="[% control.maximum %]" step="1" class="stdedit sliderInput_[% control.minimum %]_[% control.maximum %]_1" name="[% control.field_name | html %]" value="[% control.effective %]" size="6"[% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
+            [% END %]
+            <span style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN" | string(control.origin) %]</span>
+            <button type="submit" class="stdclick" name="[% control.reset_field_name | html %]" value="1"[% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET" | string %]</button>
+          [% END %]
+        [% END %]
+      [% END %]
+    [% ELSE %]
+      <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_NONE" | string %]</p>
+    [% END %]
+  </div>
+
+  <br><hr style="opacity:0.4" class="sub-sep"><br>
+
   <b style="font-size:125%" id="roadmap-section-header" class="hidden-section" onclick="toggleSection('roadmap-section')">Stored for features that are not connected yet</b><br><br>
   <div id="roadmap-section" class="hidden">
     <p>ListenBrainz, semantic cache retention, and durable reports remain roadmap settings.</p>

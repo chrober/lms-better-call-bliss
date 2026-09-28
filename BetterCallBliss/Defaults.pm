@@ -5,6 +5,7 @@ use Exporter qw(import);
 
 our @EXPORT_OK = qw(
     ensure_preference_defaults
+    ensure_guidance_provider_state
     preference_defaults
     preference_names
 );
@@ -33,6 +34,7 @@ my %PREFERENCE_DEFAULTS = (
     library_age_influence => 0,
     last_played_horizon_days => 180,
     library_age_horizon_days => 365,
+    guidance_provider_state => { schema_version => 1, providers => {} },
     listenbrainz_enabled => 0,
 );
 
@@ -58,11 +60,39 @@ my %EMPTY_VALUE_IS_MISSING = map { $_ => 1 } qw(
     library_age_influence
     last_played_horizon_days
     library_age_horizon_days
+    guidance_provider_state
     listenbrainz_enabled
 );
 
 sub preference_defaults {
     return { %PREFERENCE_DEFAULTS };
+}
+
+sub ensure_guidance_provider_state {
+    my $prefs = shift;
+    return unless $prefs;
+    my $state = $prefs->get('guidance_provider_state');
+    return if ref($state) eq 'HASH';
+
+    # Preserve the formerly Better Call Bliss-owned local-signal values as
+    # disabled sparse overrides. They cannot change selection until the new
+    # independently installed provider is explicitly enabled in this host.
+    my %overrides;
+    for my $key (qw(
+        last_played_influence
+        last_played_horizon_days
+        library_age_influence
+        library_age_horizon_days
+    )) {
+        my $value = $prefs->get($key);
+        $overrides{$key} = $value if defined $value && $value ne '';
+    }
+    $prefs->set('guidance_provider_state', {
+        schema_version => 1,
+        providers => {
+            'library-signals' => { enabled => 0, overrides => \%overrides },
+        },
+    });
 }
 
 sub preference_names {

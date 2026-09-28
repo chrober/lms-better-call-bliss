@@ -6,10 +6,13 @@ use Slim::Utils::Misc;
 use Slim::Utils::PluginManager;
 use Slim::Utils::Prefs;
 use Slim::Utils::Versions;
+use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
+use Plugins::BetterCallBliss::GuidanceProviderPolicy;
 
 my $bliss_prefs = preferences('plugin.blissmixer');
 my $bliss_ext_prefs = preferences('plugin.blissmixerlab');
 my $server_prefs = preferences('server');
+my $host_prefs = preferences('plugin.bettercallbliss');
 my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
@@ -201,6 +204,22 @@ sub snapshot {
     my $static_weights = _static_slider_weights();
     my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
     my $month = (localtime())[4] + 1;
+    my $discovered = Plugins::BetterCallBliss::GuidanceProviderDiscovery::discover();
+    my $all_host_state = $host_prefs->get('guidance_provider_state');
+    my @discovered_providers;
+    for my $provider (@{$discovered->{providers} || []}) {
+        my $policy = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve(
+            $provider,
+            Plugins::BetterCallBliss::GuidanceProviderPolicy::host_state(
+                $all_host_state, $provider->{provider_id},
+            ),
+            {},
+        );
+        push @discovered_providers, {
+            %$provider,
+            host_policy => $policy,
+        };
+    }
     return {
         ready             => @problems ? 0 : 1,
         problems          => \@problems,
@@ -249,6 +268,7 @@ sub snapshot {
                 persist_db => $persist_db,
             },
         },
+        discovered_guidance_providers => \@discovered_providers,
         use_adaptive_weights => _int_pref('use_adaptive_weights', 0) ? 1 : 0,
         use_forest        => _int_pref('use_forest', 0) ? 1 : 0,
         static_weight_sliders => $static_weights->{raw},
