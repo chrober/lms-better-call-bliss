@@ -135,6 +135,10 @@ sub _validate_descriptor {
         return 'control host_overridable must be boolean'
             unless defined $control->{host_overridable}
                 && $control->{host_overridable} =~ /^(?:0|1)$/;
+        return 'control render_as is invalid'
+            if exists $control->{render_as}
+                && ($control->{type} ne 'integer'
+                    || $control->{render_as} !~ /^(?:slider|number)$/);
         if ($control->{type} eq 'integer') {
             return 'integer control bounds/default are invalid'
                 unless defined $control->{minimum} && defined $control->{maximum}

@@ -201,6 +201,8 @@ sub _guidance_provider_sections {
                 field_name => $field,
                 value => exists $form->{$field}
                     ? $form->{$field} : $effective->{$control->{key}},
+                render_as => $control->{render_as}
+                    || ($control->{type} eq 'integer' ? 'slider' : ''),
             };
         }
         push @sections, {

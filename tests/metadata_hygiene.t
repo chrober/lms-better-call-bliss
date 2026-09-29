@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 128;
+use Test::More tests => 145;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -239,6 +239,76 @@ like(
     'settings render discovered provider controls from their descriptor',
 );
 like(
+    $settings,
+    qr/provider\.settings_uri.*?PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS" \| string\(provider\.display_name\)/s,
+    'provider settings link identifies the specific provider it opens',
+);
+like(
+    $settings,
+    qr/<input type="checkbox" name="\[% provider\.enable_field_name \| html %\]" value="1".*?checked="checked"/s,
+    'guidance provider activation uses a checkbox',
+);
+unlike(
+    $settings,
+    qr/<select class="stdedit" name="\[% provider\.enable_field_name \| html %\]"/s,
+    'guidance provider activation no longer uses a two-value select',
+);
+like(
+    $settings,
+    qr/id="guidance-provider-controls-\[% provider\.provider_id \| html %\]" class="\[% UNLESS provider\.enabled %\]hidden\[% END %\]".*?\[% FOREACH control IN provider\.controls %\]/s,
+    'provider-specific controls are present in a client-toggleable container',
+);
+like(
+    $settings,
+    qr/function updateGuidanceProviderControls\(checkbox\).*?checkbox\.checked.*?classList\.remove\('hidden'\).*?classList\.add\('hidden'\).*?bindGuidanceProviderControls\(\)/s,
+    'provider checkbox immediately reveals or hides its controls without submitting the settings form',
+);
+like(
+    $settings,
+    qr/'guidance-providers-section': false.*?setSectionShown\(id, stored === null \? defaults\[id\] : stored === 'true'\)/s,
+    'guidance-provider section persists its collapsed or expanded state in local storage',
+);
+like(
+    $settings,
+    qr/control\.render_as == 'slider'.*?sliderInput_\[% control\.minimum %\]_\[% control\.maximum %\]_1/s,
+    'provider descriptor selects slider rendering instead of making every integer a slider',
+);
+like(
+    $settings,
+    qr/<button type="button" class="stdclick".*?data-guidance-inherited-field=.*?data-guidance-inherited-value=/s,
+    'inherited-default button is a client-side control rather than a submit action',
+);
+like(
+    $settings,
+    qr/function copyGuidanceInheritedDefault\(button\).*?input\.dispatchEvent\(new Event\('change'/s,
+    'inherited-default control copies its value into the ordinary form field',
+);
+like(
+    $settings,
+    qr/type="hidden" name="\[% control\.inherit_field_name \| html %\]".*?data-guidance-inherited-marker=.*?marker\.value = '1'/s,
+    'inherited-default control marks the next explicit save to remove its host override',
+);
+like(
+    $settings,
+    qr/data-guidance-inherited-origin-label=.*?function setGuidanceOrigin.*?data-guidance-host-origin-label/s,
+    'inherited-default control updates its provenance annotation before the settings are saved',
+);
+like(
+    $settings,
+    qr/id="guidance-inherit-button-\[% control\.field_name \| html %\]".*?control\.origin == 'provider_default'.*?class="hidden".*?classList\.toggle\('hidden', sourceOrigin == 'provider_default'\)/s,
+    'provider-default controls hide their redundant inherited-default button',
+);
+like(
+    $settings_module,
+    qr/return unless \$params->\{saveSettings\};.*?\$state->\{enabled\} = exists \$params->\{\$enable_field\} \? 1 : 0/s,
+    'an unchecked provider activation checkbox disables the provider on an explicit settings save',
+);
+like(
+    $settings_module,
+    qr/inherited\s*=>.*?\$provider_defaults->\{\$control->\{key\}\}/s,
+    'settings expose the provider default value for client-side inheritance',
+);
+like(
     $plugin_module,
     qr/preference_defaults_version.*?<\s*2.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent.*?set\(\$name,\s*25\).*?==\s*75/s,
     'legacy untouched 75 percent guidance defaults migrate once to 25 percent',
@@ -257,6 +327,16 @@ like(
     $extras,
     qr/bettercallbliss_guidance_provider_sections.*?guidance_provider_.*?control\.field_name/s,
     'Extras renders per-job guidance controls from discovered provider descriptors',
+);
+like(
+    $extras,
+    qr/control\.render_as == 'slider'.*?sliderInput_\[% control\.minimum %\]_\[% control\.maximum %\]_1/s,
+    'Extras renders a slider only when the provider explicitly requests one',
+);
+like(
+    $settings_module,
+    qr/host_override\s*=>\s*'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST'.*?provider_default\s*=>\s*'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PROVIDER'/s,
+    'settings map internal policy provenance to localized user-facing labels',
 );
 like(
     $strings,
@@ -312,6 +392,11 @@ ok(
     'album context actions are exposed only with an optimizer advertising destination blocks',
 );
 my $web_module = slurp(File::Spec->catfile($plugin, 'Web.pm'));
+like(
+    $web_module,
+    qr/render_as\s*=>\s*\$control->\{render_as\}.*?type\} eq 'integer' \? 'slider'/s,
+    'Extras carries provider-declared control presentation metadata into its form model',
+);
 like(
     $web_module,
     qr/route_target_album_id.*?_form_from_job.*?route_target_album_id.*?start_route_to_track_preview/s,

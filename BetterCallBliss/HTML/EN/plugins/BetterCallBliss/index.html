@@ -439,7 +439,7 @@
             [% FOREACH option IN control.enum_values %]<option value="[% option | html %]"[% IF control.value == option %] selected[% END %]>[% option | html %]</option>[% END %]
           </select>
         [% ELSE %]
-          <input type="number" min="[% control.minimum %]" max="[% control.maximum %]" step="1" class="stdedit sliderInput_[% control.minimum %]_[% control.maximum %]_1" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="[% control.value %]" required>
+          <input type="number" min="[% control.minimum %]" max="[% control.maximum %]" step="1" class="stdedit[% IF control.render_as == 'slider' %] sliderInput_[% control.minimum %]_[% control.maximum %]_1[% END %]" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="[% control.value %]" required>
         [% END %]
         [% IF control.help_token %]<span class="bea-note">[% control.help_token | string %]</span>[% END %]
       </div>

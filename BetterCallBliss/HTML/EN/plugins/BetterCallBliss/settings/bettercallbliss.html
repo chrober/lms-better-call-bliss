@@ -166,29 +166,32 @@
           <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE" | string(provider.diagnostic) %]</p>
         [% END %]
         [% IF provider.settings_uri %]
-          <p><a href="/[% provider.settings_uri | html %]">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS" | string %]</a></p>
+          <p><a href="/[% provider.settings_uri | html %]">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS" | string(provider.display_name) %]</a></p>
         [% END %]
         [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED" desc="PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC" %]
-          <select class="stdedit" name="[% provider.enable_field_name | html %]"[% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
-            <option value="0"[% UNLESS provider.enabled %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_DISABLED" | string %]</option>
-            <option value="1"[% IF provider.enabled %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_VALUE" | string %]</option>
-          </select>
+          <input type="checkbox" name="[% provider.enable_field_name | html %]" value="1" data-guidance-provider-controls="guidance-provider-controls-[% provider.provider_id | html %]" data-guidance-provider-controls-usable="[% IF provider.available && provider.policy_valid %]1[% ELSE %]0[% END %]"[% IF provider.enabled %] checked="checked"[% END %][% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
         [% END %]
-        [% FOREACH control IN provider.controls %]
-          [% WRAPPER settingGroup title=control.label_token desc=control.help_token %]
-            [% IF control.type == 'boolean' %]
-              <input type="checkbox" name="[% control.field_name | html %]" value="1"[% IF control.effective %] checked="checked"[% END %][% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
-            [% ELSIF control.type == 'enum' %]
-              <select class="stdedit" name="[% control.field_name | html %]"[% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
-                [% FOREACH option IN control.enum_values %]<option value="[% option | html %]"[% IF control.effective == option %] selected[% END %]>[% option | html %]</option>[% END %]
-              </select>
-            [% ELSE %]
-              <input type="number" min="[% control.minimum %]" max="[% control.maximum %]" step="1" class="stdedit sliderInput_[% control.minimum %]_[% control.maximum %]_1" name="[% control.field_name | html %]" value="[% control.effective %]" size="6"[% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
+        <div id="guidance-provider-controls-[% provider.provider_id | html %]" class="[% UNLESS provider.enabled %]hidden[% END %]">
+          [% FOREACH control IN provider.controls %]
+            [% WRAPPER settingGroup title=control.label_token desc=control.help_token %]
+              [% IF control.type == 'boolean' %]
+                <input type="checkbox" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="1"[% IF control.effective %] checked="checked"[% END %][% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+              [% ELSIF control.type == 'enum' %]
+                <select class="stdedit" name="[% control.field_name | html %]" id="[% control.field_name | html %]"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+                  [% FOREACH option IN control.enum_values %]<option value="[% option | html %]"[% IF control.effective == option %] selected[% END %]>[% option | html %]</option>[% END %]
+                </select>
+              [% ELSE %]
+                <input type="number" min="[% control.minimum %]" max="[% control.maximum %]" step="1" class="stdedit[% IF control.render_as == 'slider' %] sliderInput_[% control.minimum %]_[% control.maximum %]_1[% END %]" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="[% control.effective %]" size="6"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+              [% END %]
+              <input type="hidden" name="[% control.inherit_field_name | html %]" id="[% control.inherit_field_name | html %]" value="0"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+              <input type="hidden" name="[% control.dirty_field_name | html %]" id="[% control.dirty_field_name | html %]" value="0"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+              <span id="guidance-origin-[% control.field_name | html %]" style="opacity:0.7" data-guidance-origin-prefix="[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN" | string %]">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN" | string %] [% control.origin_label_token | string %].</span>
+              <span id="guidance-inherit-button-[% control.field_name | html %]"[% IF control.origin == 'provider_default' %] class="hidden"[% END %]>
+                <button type="button" class="stdclick" data-guidance-inherited-field="[% control.field_name | html %]" data-guidance-inherited-marker="[% control.inherit_field_name | html %]" data-guidance-dirty-marker="[% control.dirty_field_name | html %]" data-guidance-inherited-value="[% control.inherited | html %]" data-guidance-origin="guidance-origin-[% control.field_name | html %]" data-guidance-inherit-button="guidance-inherit-button-[% control.field_name | html %]" data-guidance-inherited-origin="[% control.inherited_origin | html %]" data-guidance-inherited-origin-label="[% control.inherited_origin_label_token | string %]" data-guidance-host-origin="host_override" data-guidance-host-origin-label="[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST" | string %]" data-guidance-origin-pending="[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING" | string %]"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET" | string %]</button>
+              </span>
             [% END %]
-            <span style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN" | string(control.origin) %]</span>
-            <button type="submit" class="stdclick" name="[% control.reset_field_name | html %]" value="1"[% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET" | string %]</button>
           [% END %]
-        [% END %]
+        </div>
       [% END %]
     [% ELSE %]
       <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_NONE" | string %]</p>
@@ -281,12 +284,127 @@
     }
   }
 
+  function copyGuidanceInheritedDefault(button) {
+    var fieldName = button.getAttribute('data-guidance-inherited-field');
+    var value = button.getAttribute('data-guidance-inherited-value');
+    var marker = document.getElementById(
+      button.getAttribute('data-guidance-inherited-marker')
+    );
+    var dirtyMarker = document.getElementById(
+      button.getAttribute('data-guidance-dirty-marker')
+    );
+    var input = document.getElementById(fieldName);
+    if (!input) return;
+    if (input.type === 'checkbox') {
+      input.checked = value === '1';
+    } else {
+      input.value = value;
+    }
+    var slider = document.getElementById('mskslider.' + fieldName);
+    if (slider) slider.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    if (marker) marker.value = '1';
+    if (dirtyMarker) dirtyMarker.value = '0';
+    setGuidanceOrigin(
+      button,
+      button.getAttribute('data-guidance-inherited-origin-label'),
+      button.getAttribute('data-guidance-origin-pending'),
+      button.getAttribute('data-guidance-inherited-origin')
+    );
+  }
+
+  function setGuidanceOrigin(button, label, pending, sourceOrigin) {
+    var originElement = document.getElementById(button.getAttribute('data-guidance-origin'));
+    if (!originElement) return;
+    var prefix = originElement.getAttribute('data-guidance-origin-prefix') || '';
+    originElement.textContent = prefix + ' ' + label + (pending ? ' ' + pending : '') + '.';
+    var reset = document.getElementById(button.getAttribute('data-guidance-inherit-button'));
+    if (reset) reset.classList.toggle('hidden', sourceOrigin == 'provider_default');
+  }
+
+  function bindGuidanceInheritedDefaultButtons() {
+    var buttons = document.querySelectorAll('[data-guidance-inherited-field]');
+    for (var index = 0; index < buttons.length; index++) {
+      buttons[index].addEventListener('click', function (event) {
+        event.preventDefault();
+        copyGuidanceInheritedDefault(this);
+      });
+    }
+  }
+
+  function bindGuidanceInheritedMarkers() {
+    var fields = document.querySelectorAll('[data-guidance-inherited-field]');
+    for (var index = 0; index < fields.length; index++) {
+      var fieldName = fields[index].getAttribute('data-guidance-inherited-field');
+      var markerName = fields[index].getAttribute('data-guidance-inherited-marker');
+      var dirtyMarkerName = fields[index].getAttribute('data-guidance-dirty-marker');
+      var input = document.getElementById(fieldName);
+      var marker = document.getElementById(markerName);
+      var dirtyMarker = document.getElementById(dirtyMarkerName);
+      if (!input || !marker || !dirtyMarker) continue;
+      input.addEventListener('input', function () {
+        var boundMarker = document.getElementById(this.getAttribute('data-guidance-inherited-marker'));
+        var boundDirtyMarker = document.getElementById(this.getAttribute('data-guidance-dirty-marker'));
+        if (boundMarker) boundMarker.value = '0';
+        if (boundDirtyMarker) boundDirtyMarker.value = '1';
+        setGuidanceOrigin(
+          this,
+          this.getAttribute('data-guidance-host-origin-label'),
+          '',
+          this.getAttribute('data-guidance-host-origin')
+        );
+      }.bind(fields[index]));
+      input.addEventListener('change', function () {
+        var boundMarker = document.getElementById(this.getAttribute('data-guidance-inherited-marker'));
+        var boundDirtyMarker = document.getElementById(this.getAttribute('data-guidance-dirty-marker'));
+        if (boundMarker) boundMarker.value = '0';
+        if (boundDirtyMarker) boundDirtyMarker.value = '1';
+        setGuidanceOrigin(
+          this,
+          this.getAttribute('data-guidance-host-origin-label'),
+          '',
+          this.getAttribute('data-guidance-host-origin')
+        );
+      }.bind(fields[index]));
+    }
+  }
+
+  function updateGuidanceProviderControls(checkbox) {
+    var controls = document.getElementById(
+      checkbox.getAttribute('data-guidance-provider-controls')
+    );
+    if (!controls) return;
+    var enabled = checkbox.checked;
+    var usable = checkbox.getAttribute('data-guidance-provider-controls-usable') === '1';
+    if (enabled) {
+      controls.classList.remove('hidden');
+    } else {
+      controls.classList.add('hidden');
+    }
+    var inputs = controls.querySelectorAll('input, select, button');
+    for (var index = 0; index < inputs.length; index++) {
+      inputs[index].disabled = !enabled || !usable;
+    }
+  }
+
+  function bindGuidanceProviderControls() {
+    var checkboxes = document.querySelectorAll('[data-guidance-provider-controls]');
+    for (var index = 0; index < checkboxes.length; index++) {
+      checkboxes[index].addEventListener('change', function () {
+        updateGuidanceProviderControls(this);
+      });
+      updateGuidanceProviderControls(checkboxes[index]);
+    }
+  }
+
   window.addEventListener('load', function () {
     var defaults = {
       'compatibility-section': true,
       'job-defaults-section': true,
       'route-section': false,
       'lastfm-section': false,
+      'guidance-providers-section': false,
       'roadmap-section': false
     };
     try {
@@ -302,6 +420,9 @@
       });
     }
     updateRouteLengthPolicy();
+    bindGuidanceInheritedDefaultButtons();
+    bindGuidanceInheritedMarkers();
+    bindGuidanceProviderControls();
     window.setTimeout(function () {
       updateRouteLengthPolicy();
     }, 0);

@@ -149,6 +149,8 @@ sub _guidance_provider_sections {
         next unless ref($provider) eq 'HASH';
         my $descriptor = ref($provider->{descriptor}) eq 'HASH'
             ? $provider->{descriptor} : {};
+        my $provider_defaults = ref($provider->{defaults}) eq 'HASH'
+            ? $provider->{defaults} : {};
         my $policy = ref($provider->{host_policy}) eq 'HASH'
             ? $provider->{host_policy} : {};
         my @controls;
@@ -158,10 +160,26 @@ sub _guidance_provider_sections {
                 %$control,
                 effective => $policy->{effective}->{$control->{key}},
                 origin => $policy->{origins}->{$control->{key}} || 'factory_default',
+                origin_label_token => _origin_label_token(
+                    $policy->{origins}->{$control->{key}} || 'factory_default',
+                ),
                 field_name => _provider_field($provider->{provider_id}, $control->{key}),
-                reset_field_name => _provider_reset_field(
+                inherit_field_name => _provider_inherit_field(
                     $provider->{provider_id}, $control->{key},
                 ),
+                dirty_field_name => _provider_dirty_field(
+                    $provider->{provider_id}, $control->{key},
+                ),
+                inherited => exists $provider_defaults->{$control->{key}}
+                    ? $provider_defaults->{$control->{key}}
+                    : $control->{factory_default},
+                inherited_origin_label_token => exists $provider_defaults->{$control->{key}}
+                    ? 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PROVIDER'
+                    : 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY',
+                inherited_origin => exists $provider_defaults->{$control->{key}}
+                    ? 'provider_default' : 'factory_default',
+                render_as => $control->{render_as}
+                    || ($control->{type} eq 'integer' ? 'slider' : ''),
             };
         }
         push @sections, {
@@ -182,6 +200,7 @@ sub _guidance_provider_sections {
 
 sub _apply_guidance_provider_settings {
     my $params = shift;
+    return unless $params->{saveSettings};
     my $discovery = Plugins::BetterCallBliss::GuidanceProviderDiscovery::discover();
     my $all_state = $prefs->get('guidance_provider_state');
     for my $provider (@{$discovery->{providers} || []}) {
@@ -192,19 +211,21 @@ sub _apply_guidance_provider_settings {
         );
         my $changed = 0;
         my $enable_field = _provider_enable_field($id);
-        if (exists $params->{$enable_field}) {
-            $state->{enabled} = $params->{$enable_field} ? 1 : 0;
+        if ($provider->{available}) {
+            $state->{enabled} = exists $params->{$enable_field} ? 1 : 0;
             $changed = 1;
         }
         for my $control (@{$provider->{descriptor}->{controls} || []}) {
             next unless $control->{host_overridable};
             my $key = $control->{key};
             my $field = _provider_field($id, $key);
-            my $reset = _provider_reset_field($id, $key);
-            if (exists $params->{$reset}) {
+            my $inherit_field = _provider_inherit_field($id, $key);
+            my $dirty_field = _provider_dirty_field($id, $key);
+            if ($params->{$inherit_field}) {
                 delete $state->{overrides}->{$key};
                 $changed = 1;
-            } elsif (exists $params->{$field}) {
+            } elsif (exists $params->{$field}
+                && (!exists $params->{$dirty_field} || $params->{$dirty_field})) {
                 $state->{overrides}->{$key} = $params->{$field};
                 $changed = 1;
             }
@@ -230,8 +251,22 @@ sub _provider_field {
     return 'pref_guidance_provider_' . $_[0] . '_' . $_[1];
 }
 
-sub _provider_reset_field {
-    return 'reset_guidance_provider_' . $_[0] . '_' . $_[1];
+sub _provider_inherit_field {
+    return 'inherit_guidance_provider_' . $_[0] . '_' . $_[1];
+}
+
+sub _provider_dirty_field {
+    return 'dirty_guidance_provider_' . $_[0] . '_' . $_[1];
+}
+
+sub _origin_label_token {
+    my $origin = shift || '';
+    return {
+        host_override    => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST',
+        provider_default => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PROVIDER',
+        factory_default  => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY',
+        job_override     => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_JOB',
+    }->{$origin} || 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY';
 }
 
 1;
