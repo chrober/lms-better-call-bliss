@@ -22,11 +22,12 @@ flowchart TB
     U["User starts a Preview or<br/>Bliss me there action"] --> B
     BM["BlissMixer<br/>strategy, weights, context,<br/>repeat and genre defaults"] --> B["Better Call Bliss<br/>capture and normalize the job"]
     LAB["Optional BlissMixerLab<br/>learned matrix and blend"] -.-> B
-    LMS["Lyrion catalog, selected virtual library,<br/>queue or playlist, persist.db"] --> B
+    LMS["Lyrion catalog, selected virtual library,<br/>queue or playlist"] --> B
+    GP["Optional enabled Lyrion<br/>guidance-provider plugins"] -.-> B
     LM["Optional LastMix<br/>anonymous Last.fm lookups"] -.-> B
 
     B --> I["Frozen request artifacts<br/>• bliss.db identity<br/>• candidate inventory<br/>• candidate identities<br/>• resolved Last.fm evidence"]
-    B --> R["Trusted request JSON<br/>settings, anchors, constraints,<br/>guidance policy and provider paths"]
+    B --> R["Trusted request JSON<br/>settings, anchors, constraints,<br/>guidance policy and factory-built provider configs"]
     I --> O["bliss-playlist-optimizer"]
     R --> O
 
@@ -41,9 +42,12 @@ flowchart TB
     V -->|"accepted"| W["Verified playlist or player-queue write"]
 ```
 
-Only Better Call Bliss talks to LMS, LastMix, the browser UI, and playlist or
-queue persistence. Only the local-library-signals provider opens `persist.db`; the
-optimizer itself is network-free and has no Lyrion-specific SQLite queries.
+Better Call Bliss talks to LMS, LastMix, the browser UI, and playlist or queue
+persistence. It discovers enabled Lyrion guidance providers, resolves their
+defaults plus sparse host/job overrides, and asks each enabled provider to build
+its own trusted native configuration. Only the Library Signals provider opens
+`persist.db`; the optimizer itself is network-free and has no Lyrion-specific
+SQLite queries.
 
 ## Who consumes each setting, and when?
 
@@ -54,14 +58,21 @@ job. The resulting request is immutable for the optimizer process lifetime.
 | --- | --- | --- | --- |
 | Strategy, Static weights, Adaptive context, repeat windows and genre policy | BlissMixer current settings, with Better Call Bliss job overrides | Better Call Bliss, then optimizer | Shapes the acoustic matrix, hard repeat checks, and the frozen eligible candidate library. |
 | Learned matrix and blend | Optional BlissMixerLab | Better Call Bliss, then optimizer | Supplies an optional matrix artifact and learned blend for Adaptive scoring. Its absence uses the documented Bliss fallback. |
-| Similar-track and similar-artist target shares | Better Call Bliss job settings | Better Call Bliss, then optimizer guidance policy | Each non-zero target enables its LastMix channel and produces a `target_percent` policy for `lastfm_track` or `lastfm_artist`; zero disables that channel. The Last.fm provider itself receives no UI setting. |
-| Local listening and library influences, each from -100 to 100 | Better Call Bliss job settings; play count starts from the current BlissMixer setting, last played and library age default to zero | Better Call Bliss, then optimizer guidance policy | Non-zero values become signed `playcount`, `last_played`, and/or `library_age` policy weights. Negative/positive directions are shown in the job editor; all zero means the provider is not started. |
+| Similar-track influence and similar-artist strategy/level | Better Call Bliss job settings | Better Call Bliss, then optimizer guidance policy | Similar-track is a bounded `lastfm_track` influence. Similar-artist is either a bounded influence or a `target_percent` policy, according to the installed provider's declared capability. Zero disables its channel. The Last.fm provider itself receives no UI setting. |
+| Local listening and library influences, each from -100 to 100; date saturation horizons | Library Signals settings are the provider defaults. Better Call Bliss keeps the provider disabled by default, then offers sparse host and per-job overrides after it is enabled. | Better Call Bliss policy resolver, then the provider factory and optimizer guidance policy | Non-zero values become signed `playcount`, `last_played`, and/or `library_age` policy weights. Better Call Bliss freezes `as_of_unix_seconds`; the provider factory owns trusted `persist.db` and binary resolution and receives the effective horizons. All zero channels leave the native provider unstarted. |
 | Candidate library | Active Lyrion virtual library, source exclusions, LMS membership, and captured genre policy | Better Call Bliss, then optimizer | Determines which *generated* tracks are eligible. It is frozen before native search starts. |
 
-The provider executables do not read preferences or web-form values. Better Call
-Bliss converts those values to `guidance_policy` entries in the trusted native
-request. The optimizer applies the policy only when it aggregates provider
-signals. This keeps user-interface semantics out of reusable Rust providers.
+Native provider executables do not read preferences or web-form values. A Lyrion
+provider owns its saved defaults and turns the resolved policy plus trusted job
+context into its native configuration. Better Call Bliss writes its resulting
+`guidance_policy` entries and factory-built configuration into the trusted native
+request. The optimizer applies policy only when it aggregates provider signals.
+
+For each running job, Better Call Bliss captures a single immutable `as_of`
+timestamp. The local provider uses that timestamp, rather than the clock while
+later score batches run, and applies the shared Lab-compatible exponential
+saturation curve. A never-played row remains distinct from an unknown row;
+unknown library-added dates stay neutral.
 
 ## Phase 1: Better Call Bliss captures a reproducible job
 
@@ -88,17 +99,23 @@ sequenceDiagram
     participant B as Better Call Bliss
     participant M as BlissMixer and BlissMixerLab
     participant L as LMS catalog and queue
+    participant G as Enabled guidance plugins
     participant X as LastMix / Last.fm
     participant O as Optimizer
 
     UI->>B: Start Preview or destination action
     B->>M: Read current defaults and optional learned matrix
+    B->>G: Discover descriptors, defaults, status and host policy
     B->>L: Resolve source/history/destination and virtual library
     B->>B: Freeze candidate inventory and provider identities
     opt Last.fm enabled and provider available
         B->>X: Collect bounded similar-track and similar-artist results
         X-->>B: Cached or fresh observations, failures are tolerated
         B->>B: Resolve relations to frozen local candidate IDs
+    end
+    opt Enabled provider has non-zero guidance channels
+        B->>G: Build native config from resolved policy plus trusted artifacts
+        G-->>B: Program, read-only resources, options and timeout
     end
     B->>B: Write hash-bound artifacts and trusted request JSON
     B->>O: Start native job with request path, cache and progress paths
@@ -120,9 +137,9 @@ with Bliss alone.
 
 ## Phase 2: the optimizer starts providers through the host-neutral SPI
 
-The request declares trusted executable paths, timeouts, immutable artifact
-descriptors, read-only resources, and the policy weights. The optimizer starts
-only configured providers. It first checks each provider's `describe` manifest
+The request contains factory-built trusted executable paths, timeouts, immutable
+artifact descriptors, read-only resources, and the policy weights. The optimizer
+starts only configured providers. It first checks each provider's `describe` manifest
 for SPI version `2`, the host-neutral protocol name
 `bliss-guidance-jsonl-v2`, its expected provider ID, and supported channels.
 
@@ -162,7 +179,7 @@ and continues with Bliss-only search.
 | Provider | Data acquisition | `prepare` work | `score` work |
 | --- | --- | --- | --- |
 | `bliss-guidance-lastfm` | Better Call Bliss collects through LastMix before Rust launches. The provider makes no network request. | Verifies and indexes the resolved Last.fm artifact by source, local candidate, and channel. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. |
-| `bliss-guidance-library-signals` | The provider itself opens the trusted `persist.db` path. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
+| `bliss-guidance-library-signals` | Its separately installed Lyrion provider owns defaults, resolves its own binary and trusted read-only `persist.db` path, and returns the configuration to Better Call Bliss. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
 
 Each distribution is calculated from the complete frozen eligible candidate
 population so that a candidate's percentile is comparable across planner
@@ -308,5 +325,6 @@ path or turn guidance into a substitute for acoustic evidence.
 - [Guidance SPI v2](https://github.com/chrober/bliss-playlist-guidance-spi/blob/feature/guidance-spi-v2/SPI.md): normative JSONL protocol and schemas.
 - [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm):
   artifact-backed Last.fm guidance behavior.
-- [Local library-signals provider](https://github.com/chrober/bliss-guidance-library-signals):
-  read-only SQLite snapshot and bounded cache behavior.
+- [Library Signals Lyrion provider](https://github.com/chrober/lms-guidance-library-signals):
+  provider discovery, settings/defaults, trusted native configuration, and
+  read-only SQLite snapshot behavior.

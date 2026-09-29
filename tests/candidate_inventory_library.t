@@ -131,6 +131,9 @@ is_deeply(
 is($first->{identity_artifact}->{schema_identity},
     'eligible-candidate-identities-v1',
     'the provider-facing identity artifact uses the optimizer schema identity');
+is($first->{identity_artifact}->{kind},
+    'eligible-candidate-identities-v1',
+    'the provider-facing identity artifact carries the native-provider kind');
 ok(-r $first->{identity_artifact}->{path},
     'the provider-facing identity artifact is persisted separately from the allowlist');
 open my $inventory_fh, '<:raw', $first->{artifact}->{path}

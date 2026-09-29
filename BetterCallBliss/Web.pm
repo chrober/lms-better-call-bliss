@@ -158,11 +158,16 @@ sub _form_from_params {
         variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
+        lastfm_artist_mode last_played_horizon_days library_age_horizon_days
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback candidate_library_id
         preview_job_id
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
+    }
+    for my $name (keys %$params) {
+        next unless $name =~ /^guidance_provider_[a-z][a-z0-9-]{1,63}_[a-z][a-z0-9_]{1,63}$/;
+        $form->{$name} = $params->{$name};
     }
     $form->{source_mode} = 'saved_playlist'
         unless ($form->{source_mode} || '') eq 'route_to_track'
@@ -171,10 +176,61 @@ sub _form_from_params {
     return $form;
 }
 
+sub _guidance_provider_sections {
+    my ($capability, $form) = @_;
+    $capability ||= {};
+    $form ||= {};
+    my @sections;
+    for my $provider (@{ref($capability->{discovered_guidance_providers}) eq 'ARRAY'
+        ? $capability->{discovered_guidance_providers} : []}) {
+        next unless ref($provider) eq 'HASH' && $provider->{provider_id};
+        my $descriptor = ref($provider->{descriptor}) eq 'HASH'
+            ? $provider->{descriptor} : {};
+        my $policy = ref($provider->{host_policy}) eq 'HASH'
+            ? $provider->{host_policy} : {};
+        my $effective = ref($policy->{effective}) eq 'HASH'
+            ? $policy->{effective} : {};
+        my @controls;
+        for my $control (@{$descriptor->{controls} || []}) {
+            next unless ref($control) eq 'HASH' && $control->{key}
+                && $control->{host_overridable};
+            my $field = 'guidance_provider_' . $provider->{provider_id}
+                . '_' . $control->{key};
+            push @controls, {
+                %$control,
+                field_name => $field,
+                value => exists $form->{$field}
+                    ? $form->{$field} : $effective->{$control->{key}},
+                render_as => $control->{render_as}
+                    || ($control->{type} eq 'integer' ? 'slider' : ''),
+            };
+        }
+        push @sections, {
+            provider_id => $provider->{provider_id},
+            display_name => $descriptor->{display_name} || $provider->{provider_id},
+            available => $provider->{available} ? 1 : 0,
+            enabled => $policy->{enabled} ? 1 : 0,
+            valid => $policy->{valid} ? 1 : 0,
+            diagnostic => $provider->{diagnostic} || $policy->{diagnostic} || '',
+            controls => \@controls,
+        };
+    }
+    return \@sections;
+}
+
 sub _form_from_job {
     my ($job, $defaults) = @_;
     my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
     my %params = (%$options, playlist_id => $job->{playlist_id});
+    for my $provider_id (keys %{ref($options->{guidance_provider_policies}) eq 'HASH'
+        ? $options->{guidance_provider_policies} : {}}) {
+        my $policy = $options->{guidance_provider_policies}->{$provider_id};
+        next unless ref($policy) eq 'HASH' && ref($policy->{effective}) eq 'HASH';
+        for my $key (keys %{$policy->{effective}}) {
+            $params{'guidance_provider_' . $provider_id . '_' . $key}
+                = $policy->{effective}->{$key};
+        }
+    }
     if (($job->{source_mode} || '') eq 'player_queue') {
         $params{source_mode} = 'player_queue';
         $params{source_player_id} = $job->{source_player_id};
@@ -373,6 +429,12 @@ sub _result_view {
             $job->{options}->{lastfm_track_guidance_percent},
         lastfm_artist_guidance_percent =>
             $job->{options}->{lastfm_artist_guidance_percent},
+        lastfm_artist_mode => $job->{options}->{lastfm_artist_mode},
+        lastfm_artist_mode_label =>
+            ($job->{options}->{lastfm_artist_mode} || '') eq 'bounded_influence'
+                ? 'bounded influence' : 'target share',
+        last_played_horizon_days => $job->{options}->{last_played_horizon_days},
+        library_age_horizon_days => $job->{options}->{library_age_horizon_days},
         lastfm_state => $job->{lastfm_state},
         write_state => $job->{write_state},
         write_stage => $job->{write_stage},
@@ -839,6 +901,8 @@ sub handler {
     $params->{bettercallbliss_material_library_autoselect} =
         $candidate_library_was_explicit ? 0 : 1;
     $params->{bettercallbliss_form} = $form;
+    $params->{bettercallbliss_guidance_provider_sections} =
+        _guidance_provider_sections($capability, $form);
     $params->{bettercallbliss_quick_route} = $job
         ? ($job->{quick_route} ? 1 : 0) : ($form->{quick_route} ? 1 : 0);
     if (($form->{source_mode} || '') eq 'route_to_track') {
@@ -867,6 +931,20 @@ sub handler {
     $params->{bettercallbliss_capability} = $capability;
     $params->{bettercallbliss_lastmix_available}
         = Plugins::BetterCallBliss::LastFmEvidence::available();
+    my $guidance_providers = ref($capability->{guidance_providers}) eq 'HASH'
+        ? $capability->{guidance_providers} : {};
+    my $lastfm_provider = ref($guidance_providers->{lastfm}) eq 'HASH'
+        ? $guidance_providers->{lastfm} : {};
+    $params->{bettercallbliss_lastfm_guidance_available}
+        = $lastfm_provider->{available} ? 1 : 0;
+    my $lastfm_policies = $lastfm_provider->{policies} || {};
+    my %artist_policies = map { $_ => 1 }
+        @{ref($lastfm_policies->{lastfm_artist}) eq 'ARRAY'
+            ? $lastfm_policies->{lastfm_artist} : []};
+    $params->{bettercallbliss_lastfm_artist_bounded_available}
+        = $artist_policies{bounded_influence} ? 1 : 0;
+    $params->{bettercallbliss_lastfm_artist_target_available}
+        = $artist_policies{target_share} ? 1 : 0;
     $params->{bettercallbliss_candidate_inventory}
         = Plugins::BetterCallBliss::CandidateInventory::status();
     $params->{bettercallbliss_job} = _result_view($job) if $job;

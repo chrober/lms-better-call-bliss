@@ -405,43 +405,52 @@
   <fieldset class="bea-section" id="lastfm_guidance_fields">
     <legend>Last.fm guidance</legend>
     <div class="bea-row">
-      <label for="lastfm_track_guidance_percent">Similar-track target share (%)</label>
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% bettercallbliss_form.lastfm_track_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
+      <label for="lastfm_track_guidance_percent">Similar-track influence (%)</label>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% bettercallbliss_form.lastfm_track_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available && bettercallbliss_lastfm_guidance_available %] readonly[% END %]>
       <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.lastfm_track_guidance_percent %]</span>
     </div>
     <div class="bea-row">
-      <label for="lastfm_artist_guidance_percent">Similar-artist target share (%)</label>
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% bettercallbliss_form.lastfm_artist_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available %] readonly[% END %]>
+      <label for="lastfm_artist_mode">Similar-artist strategy</label>
+      <select class="stdedit" name="lastfm_artist_mode" id="lastfm_artist_mode"[% UNLESS bettercallbliss_lastmix_available && bettercallbliss_lastfm_guidance_available %] disabled[% END %]>
+        [% IF bettercallbliss_lastfm_artist_target_available %]<option value="target_share"[% IF bettercallbliss_form.lastfm_artist_mode == 'target_share' %] selected[% END %]>Target share</option>[% END %]
+        [% IF bettercallbliss_lastfm_artist_bounded_available %]<option value="bounded_influence"[% IF bettercallbliss_form.lastfm_artist_mode == 'bounded_influence' %] selected[% END %]>Bounded influence</option>[% END %]
+      </select>
+    </div>
+    <div class="bea-row">
+      <label for="lastfm_artist_guidance_percent">Similar-artist level (%)</label>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% bettercallbliss_form.lastfm_artist_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available && bettercallbliss_lastfm_guidance_available %] readonly[% END %]>
       <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.lastfm_artist_guidance_percent %]</span>
     </div>
-    [% UNLESS bettercallbliss_lastmix_available %]<p class="bea-disabled">Requires the LastMix plugin to be installed and enabled.</p>[% END %]
-    <p class="bea-note">Each value is a best-effort target share among added tracks selected from the expanded Bliss-qualified pool, comparable to BlissMixer's Last.fm target. Track and artist support are independent and may overlap. Candidates still have to be local, repeat-safe, and acoustically suitable; zero disables that evidence channel. Network/API failures fall back to Bliss without failing the job.</p>
+    [% UNLESS bettercallbliss_lastmix_available && bettercallbliss_lastfm_guidance_available %]<p class="bea-disabled">Requires LastMix and a compatible installed Last.fm guidance provider.</p>[% END %]
+    <p class="bea-note">Similar-track evidence adds a bounded boost. Similar-artist target share intentionally seeks Last.fm-supported candidates within the Bliss-qualified pool; bounded influence instead cooperates with play count, last played, and library age. Track and artist support may overlap. Zero disables that channel. Network/API failures fall back to Bliss without failing the job.</p>
   </fieldset>
 
-  <fieldset class="bea-section" id="library_signals_guidance_fields">
-    <legend>Local listening and library guidance</legend>
-    <div class="bea-row">
-      <label for="playcount_influence">Play-count influence</label>
-      <input type="number" min="-100" max="100" step="1" class="stdedit sliderInput_-100_100_1" name="playcount_influence" id="playcount_influence" value="[% bettercallbliss_form.playcount_influence %]" required[% UNLESS bettercallbliss_capability.library_signals_available && bettercallbliss_capability.statistics_enabled %] readonly[% END %]>
-      [% IF bettercallbliss_capability.library_signals_available && bettercallbliss_capability.statistics_enabled %]
-        <span class="bea-disabled">Current BlissMixer setting: [% bettercallbliss_defaults.playcount_influence %]</span>
-      [% ELSE %]
-        <span class="bea-disabled">Requires Lyrion playback statistics and the local library-signals provider; this job uses 0.</span>
+  [% FOREACH provider IN bettercallbliss_guidance_provider_sections %]
+  <fieldset class="bea-section guidance_provider_fields" id="guidance_provider_[% provider.provider_id | html %]_fields">
+    <legend>[% provider.display_name | html %]</legend>
+    [% IF provider.available && provider.enabled && provider.valid %]
+      [% FOREACH control IN provider.controls %]
+      <div class="bea-row">
+        <label for="[% control.field_name | html %]">[% control.label_token | string %]</label>
+        [% IF control.type == 'boolean' %]
+          <input type="checkbox" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="1"[% IF control.value %] checked="checked"[% END %]>
+        [% ELSIF control.type == 'enum' %]
+          <select name="[% control.field_name | html %]" id="[% control.field_name | html %]">
+            [% FOREACH option IN control.enum_values %]<option value="[% option | html %]"[% IF control.value == option %] selected[% END %]>[% option | html %]</option>[% END %]
+          </select>
+        [% ELSE %]
+          <input type="number" min="[% control.minimum %]" max="[% control.maximum %]" step="1" class="stdedit[% IF control.render_as == 'slider' %] sliderInput_[% control.minimum %]_[% control.maximum %]_1[% END %]" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="[% control.value %]" required>
+        [% END %]
+        [% IF control.help_token %]<span class="bea-note">[% control.help_token | string %]</span>[% END %]
+      </div>
       [% END %]
-    </div>
-    <div class="bea-row">
-      <label for="last_played_influence">Last-played influence</label>
-      <input type="number" min="-100" max="100" step="1" class="stdedit sliderInput_-100_100_1" name="last_played_influence" id="last_played_influence" value="[% bettercallbliss_form.last_played_influence %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
-      <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.last_played_influence %]</span>
-    </div>
-    <div class="bea-row">
-      <label for="library_age_influence">Library-age influence</label>
-      <input type="number" min="-100" max="100" step="1" class="stdedit sliderInput_-100_100_1" name="library_age_influence" id="library_age_influence" value="[% bettercallbliss_form.library_age_influence %]" required[% UNLESS bettercallbliss_capability.library_signals_available %] readonly[% END %]>
-      <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.library_age_influence %]</span>
-    </div>
-    [% UNLESS bettercallbliss_capability.library_signals_available %]<p class="bea-disabled">Requires the installed local library-signals provider and Lyrion's readable persist.db.</p>[% END %]
-    <p class="bea-note">Negative play-count values prefer less-played additions; positive values prefer frequently played additions. Negative last-played values prefer tracks unheard for longer (including never-played rows); positive values prefer recently played tracks. Negative library-age values prefer older Lyrion first-seen tracks; positive values prefer newer ones. Zero disables each channel. These values affect only newly added tracks; no Alternative Play Count data is used.</p>
+    [% ELSIF provider.available %]
+      <p class="bea-disabled">Enable this provider on the Better Call Bliss settings page to apply its defaults or per-job overrides.</p>
+    [% ELSE %]
+      <p class="bea-disabled">[% provider.diagnostic | html %]</p>
+    [% END %]
   </fieldset>
+  [% END %]
 
 
   <fieldset class="bea-section" id="mixing_strategy_fields">
@@ -598,7 +607,7 @@
     var lastFmAvailable = [% IF bettercallbliss_lastmix_available %]true[% ELSE %]false[% END %];
     var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
     var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
-    var playcountFields = document.getElementById('library_signals_guidance_fields');
+    var guidanceProviderFields = document.querySelectorAll('.guidance_provider_fields');
     var submit = document.getElementById('run_preview');
     var mainForm = document.getElementById('bea-main-form');
     var candidateLibrary = document.getElementById('candidate_library_id');
@@ -985,7 +994,9 @@
         if (routeExact) routeExact.readOnly = !exactRoute;
         submit.disabled = !capabilityReady || invalidRoute;
         setVisible(lastFmFields, true);
-        setVisible(playcountFields, true);
+        for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
+          setVisible(guidanceProviderFields[providerIndex], true);
+        }
         setVisible(candidateLibraryRow, true);
         setVisible(candidateLibraryNote, true);
         var routeLastFmInactive = !lastFmAvailable;
@@ -1095,7 +1106,9 @@
 
       var lastFmInactive = !lastFmAvailable;
       setVisible(lastFmFields, additions);
-      setVisible(playcountFields, additions);
+      for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
+        setVisible(guidanceProviderFields[providerIndex], additions);
+      }
       setVisible(candidateLibraryRow, additions);
       setVisible(candidateLibraryNote, additions);
       setReadOnlyWithSlider(lastFmTrackGuidance, lastFmInactive);
@@ -1213,7 +1226,7 @@
     [% ELSE %]
       <p class="bea-note">Preview runs are read-only and do not change playlists or player queues.</p>
     [% END %]
-    <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Local-library guidance [% IF bettercallbliss_job.extension_mode == 'none' %]not applied (no additions)[% ELSE %]play count [% bettercallbliss_job.playcount_influence %], last played [% bettercallbliss_job.last_played_influence %], library age [% bettercallbliss_job.library_age_influence %][% END %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
+    <p class="bea-note">Variation [% bettercallbliss_job.variation_percent %]%; reproducible generation seed [% bettercallbliss_job.generation_seed %]. Local-library guidance [% IF bettercallbliss_job.extension_mode == 'none' %]not applied (no additions)[% ELSE %]play count [% bettercallbliss_job.playcount_influence %], last played [% bettercallbliss_job.last_played_influence %] (horizon [% bettercallbliss_job.last_played_horizon_days %]d), library age [% bettercallbliss_job.library_age_influence %] (horizon [% bettercallbliss_job.library_age_horizon_days %]d)[% END %]. Last.fm: [% bettercallbliss_job.lastfm_state | html %] (similar tracks bounded [% bettercallbliss_job.lastfm_track_guidance_percent %]%, similar artists [% bettercallbliss_job.lastfm_artist_mode_label | html %] [% bettercallbliss_job.lastfm_artist_guidance_percent %]%).</p>
     [% IF bettercallbliss_job.extension_mode != 'none' %]<p class="bea-note"><b>Candidate library:</b> [% bettercallbliss_job.candidate_library_name | html %]. Only newly generated tracks were restricted to this frozen Lyrion library membership.</p>[% END %]
     [% IF bettercallbliss_job.mixing_note %]<p class="bea-note"><b>Mixing:</b> [% bettercallbliss_job.mixing_strategy | html %] (BlissMixer current setting: [% bettercallbliss_job.blissmixer_strategy | html %]). [% bettercallbliss_job.mixing_note | html %]</p>[% END %]
     [% IF bettercallbliss_job.genre_filter_active %]<p class="bea-note"><b>BlissMixer genre policy:</b> [% IF bettercallbliss_job.genre_filter_restrict %][% bettercallbliss_job.genre_filter_acceptable %] source-compatible genres were accepted; [% bettercallbliss_job.genre_filter_excluded %] otherwise eligible candidates were excluded[% ELSE %]genre-group restriction was disabled[% END %]. [% IF bettercallbliss_job.genre_filter_christmas %][% bettercallbliss_job.genre_filter_christmas_excluded %] Christmas candidates were excluded.[% ELSE %]Christmas exclusion was inactive.[% END %]</p>[% END %]

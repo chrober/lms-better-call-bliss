@@ -2,6 +2,7 @@ package Plugins::BetterCallBliss::Plugin;
 
 use strict;
 use base qw(Slim::Plugin::Base);
+use JSON::XS ();
 
 use File::Basename qw(dirname);
 use Config qw(%Config);
@@ -20,6 +21,7 @@ use Plugins::BetterCallBliss::ContextMenu;
 use Plugins::BetterCallBliss::Defaults qw(
     preference_defaults
     ensure_preference_defaults
+    ensure_guidance_provider_state
 );
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::RouteMode;
@@ -35,7 +37,6 @@ my $prefs = preferences('plugin.bettercallbliss');
 my $initialized = 0;
 my $optimizer_binary;
 my $lastfm_guidance_binary;
-my $library_signals_guidance_binary;
 my %binary_version_output;
 my $optimizer_supports_destination_blocks;
 
@@ -49,6 +50,7 @@ sub initPlugin {
         $prefs->get('preference_defaults_version') || 0;
     $prefs->init(preference_defaults());
     ensure_preference_defaults($prefs);
+    ensure_guidance_provider_state($prefs);
     if ($preference_defaults_version < 2) {
         for my $name (qw(
             lastfm_track_guidance_percent
@@ -57,6 +59,12 @@ sub initPlugin {
             $prefs->set($name, 25) if ($prefs->get($name) || 0) == 75;
         }
         $prefs->set('preference_defaults_version', 2);
+    }
+    if ($preference_defaults_version < 3) {
+        # New policy and saturation preferences are backfilled by
+        # ensure_preference_defaults above. Record that this installation has
+        # seen their defaults so future migrations can remain explicit.
+        $prefs->set('preference_defaults_version', 3);
     }
     my $dir = dirname(__FILE__);
     _loadStrings($dir);
@@ -71,7 +79,6 @@ sub initPlugin {
     }
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
     $lastfm_guidance_binary = Slim::Utils::Misc::findbin('bliss-guidance-lastfm');
-    $library_signals_guidance_binary = Slim::Utils::Misc::findbin('bliss-guidance-library-signals');
     my $optimizer_supports_progress = _optimizerSupportsProgress($optimizer_binary);
     my $optimizer_supports_trusted_request =
         _optimizerSupportsTrustedRequest($optimizer_binary);
@@ -84,8 +91,8 @@ sub initPlugin {
     my $lastfm_guidance_spi_v2 = _guidanceProviderSupports(
         $lastfm_guidance_binary, 'lastfm-guidance',
     );
-    my $library_signals_guidance_spi_v2 = _guidanceProviderSupports(
-        $library_signals_guidance_binary, 'library-signals-guidance',
+    my $lastfm_guidance_policies = _guidanceProviderPolicies(
+        $lastfm_guidance_binary, 'lastfm-guidance',
     );
     $optimizer_supports_destination_blocks =
         _optimizerSupportsDestinationBlocks($optimizer_binary);
@@ -98,10 +105,7 @@ sub initPlugin {
             lastfm => {
                 program => $lastfm_guidance_binary,
                 spi_v2 => $lastfm_guidance_spi_v2,
-            },
-            library_signals => {
-                program => $library_signals_guidance_binary,
-                spi_v2 => $library_signals_guidance_spi_v2,
+                policies => $lastfm_guidance_policies,
             },
         },
     );
@@ -149,9 +153,6 @@ sub initPlugin {
         . ' lastfm_guidance='
         . (!$lastfm_guidance_binary ? 'missing'
             : $lastfm_guidance_spi_v2 ? 'available' : 'incompatible')
-        . ' library_signals_guidance='
-        . (!$library_signals_guidance_binary ? 'missing'
-            : $library_signals_guidance_spi_v2 ? 'available' : 'incompatible')
         . ' destination_blocks='
         . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
     return 1;
@@ -208,6 +209,28 @@ sub _guidanceProviderSupports {
     my $output = _binaryVersionOutput($binary);
     return 0 unless $output =~ /"provider_id"\s*:\s*"\Q$expected_provider_id\E"/;
     return $output =~ /"spi_version"\s*:\s*2/ ? 1 : 0;
+}
+
+sub _guidanceProviderPolicies {
+    my ($binary, $expected_provider_id) = @_;
+    my $output = _binaryVersionOutput($binary);
+    my $metadata = eval { JSON::XS::decode_json($output) };
+    return {} unless ref($metadata) eq 'HASH'
+        && ($metadata->{provider_id} || '') eq ($expected_provider_id || '')
+        && 0 + ($metadata->{spi_version} || 0) == 2;
+    my $channels = $metadata->{channel_policies};
+    return {} unless ref($channels) eq 'HASH';
+    my %policies;
+    for my $channel (keys %$channels) {
+        my $declared = $channels->{$channel};
+        next unless ref($declared) eq 'ARRAY';
+        my %seen;
+        $policies{$channel} = [
+            grep { /^(?:bounded_influence|target_share)$/ && !$seen{$_}++ }
+            @$declared
+        ];
+    }
+    return \%policies;
 }
 
 sub _binaryVersionOutput {
@@ -537,13 +560,6 @@ sub statusCommand {
     );
     $request->addResult(
         'learned_matrix_available', 0 + $status->{matrix_available},
-    );
-    $request->addResult(
-        'statistics_enabled', 0 + $status->{statistics_enabled},
-    );
-    $request->addResult(
-        'blissmixer_playcount_influence',
-        0 + ($status->{playcount_influence} || 0),
     );
     my $inventory = Plugins::BetterCallBliss::CandidateInventory::status();
     $request->addResult('candidate_inventory_ready', 0 + $inventory->{ready});

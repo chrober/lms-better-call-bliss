@@ -68,14 +68,6 @@
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_variation_percent" id="variation_percent" value="[% prefs.variation_percent %]" size="6">
     [% END %]
 
-    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE" desc="PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE_DESC" %]
-      <input type="number" min="-100" max="100" class="stdedit sliderInput_-100_100_1" name="pref_last_played_influence" id="last_played_influence" value="[% prefs.last_played_influence %]" size="6">
-    [% END %]
-
-    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_INFLUENCE" desc="PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_INFLUENCE_DESC" %]
-      <input type="number" min="-100" max="100" class="stdedit sliderInput_-100_100_1" name="pref_library_age_influence" id="library_age_influence" value="[% prefs.library_age_influence %]" size="6">
-    [% END %]
-
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC" %]
       <input type="text" class="stdedit" name="pref_output_suffix" id="output_suffix" value="[% prefs.output_suffix %]" size="30">
     [% END %]
@@ -140,15 +132,69 @@
 
   <b style="font-size:125%" id="lastfm-section-header" class="hidden-section" onclick="toggleSection('lastfm-section')">Last.fm guidance</b><br><br>
   <div id="lastfm-section" class="hidden">
-    <p>Every job can override these Better Call Bliss defaults. LastMix uses anonymous Last.fm access; request failures fall back to Bliss. Each slider is a best-effort target share for additions with the indicated Last.fm support, comparable to BlissMixer's Last.fm target. Track and artist support can overlap. Only local, repeat-safe, Bliss-qualified candidates participate; zero disables that evidence channel.</p>
+    <p>Every job can override these Better Call Bliss defaults. LastMix prepares the Last.fm evidence; request failures fall back to Bliss. Similar-track guidance is a bounded boost for acoustically suitable local candidates. Similar-artist guidance can either pursue a target share or add a bounded boost that competes with the local listening signals. Zero disables the corresponding channel.</p>
     [% UNLESS lastmix_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE" | string %]</div>[% END %]
+    [% IF lastmix_available && !lastfm_guidance_available %]<div style="opacity:0.7;margin-top:4px">[% "PLUGIN_BETTERCALLBLISS_LASTFM_GUIDANCE_UNAVAILABLE" | string %]</div>[% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC" %]
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6"[% UNLESS lastmix_available %] disabled[% END %]>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% prefs.lastfm_track_guidance_percent %]" size="6"[% UNLESS lastmix_available && lastfm_guidance_available %] disabled[% END %]>
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_DESC" %]
+      <select class="stdedit" name="pref_lastfm_artist_mode" id="lastfm_artist_mode"[% UNLESS lastmix_available && lastfm_guidance_available %] disabled[% END %]>
+        [% IF lastfm_artist_target_available %]<option value="target_share"[% IF prefs.lastfm_artist_mode == 'target_share' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_TARGET" | string %]</option>[% END %]
+        [% IF lastfm_artist_bounded_available %]<option value="bounded_influence"[% IF prefs.lastfm_artist_mode == 'bounded_influence' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_BOUNDED" | string %]</option>[% END %]
+      </select>
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE" desc="PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC" %]
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6"[% UNLESS lastmix_available %] disabled[% END %]>
+      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="pref_lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% prefs.lastfm_artist_guidance_percent %]" size="6"[% UNLESS lastmix_available && lastfm_guidance_available %] disabled[% END %]>
+    [% END %]
+  </div>
+
+  <br><hr style="opacity:0.4" class="sub-sep"><br>
+
+  <b style="font-size:125%" id="guidance-providers-section-header" class="hidden-section" onclick="toggleSection('guidance-providers-section')">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS" | string %]</b><br><br>
+  <div id="guidance-providers-section" class="hidden">
+    <p>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_DESC" | string %]</p>
+    [% IF guidance_provider_sections.size %]
+      [% FOREACH provider IN guidance_provider_sections %]
+        <h3>[% provider.display_name | html %]</h3>
+        [% IF provider.available %]
+          <p style="color:#398439">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE" | string %]</p>
+        [% ELSE %]
+          <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE" | string(provider.diagnostic) %]</p>
+        [% END %]
+        [% IF provider.settings_uri %]
+          <p><a href="/[% provider.settings_uri | html %]">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS" | string(provider.display_name) %]</a></p>
+        [% END %]
+        [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED" desc="PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC" %]
+          <input type="checkbox" name="[% provider.enable_field_name | html %]" value="1" data-guidance-provider-controls="guidance-provider-controls-[% provider.provider_id | html %]" data-guidance-provider-controls-usable="[% IF provider.available && provider.policy_valid %]1[% ELSE %]0[% END %]"[% IF provider.enabled %] checked="checked"[% END %][% UNLESS provider.available && provider.policy_valid %] disabled[% END %]>
+        [% END %]
+        <div id="guidance-provider-controls-[% provider.provider_id | html %]" class="[% UNLESS provider.enabled %]hidden[% END %]">
+          [% FOREACH control IN provider.controls %]
+            [% WRAPPER settingGroup title=control.label_token desc=control.help_token %]
+              [% IF control.type == 'boolean' %]
+                <input type="checkbox" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="1"[% IF control.effective %] checked="checked"[% END %][% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+              [% ELSIF control.type == 'enum' %]
+                <select class="stdedit" name="[% control.field_name | html %]" id="[% control.field_name | html %]"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+                  [% FOREACH option IN control.enum_values %]<option value="[% option | html %]"[% IF control.effective == option %] selected[% END %]>[% option | html %]</option>[% END %]
+                </select>
+              [% ELSE %]
+                <input type="number" min="[% control.minimum %]" max="[% control.maximum %]" step="1" class="stdedit[% IF control.render_as == 'slider' %] sliderInput_[% control.minimum %]_[% control.maximum %]_1[% END %]" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="[% control.effective %]" size="6"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+              [% END %]
+              <input type="hidden" name="[% control.inherit_field_name | html %]" id="[% control.inherit_field_name | html %]" value="0"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+              <input type="hidden" name="[% control.dirty_field_name | html %]" id="[% control.dirty_field_name | html %]" value="0"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>
+              <span id="guidance-origin-[% control.field_name | html %]" style="opacity:0.7" data-guidance-origin-prefix="[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN" | string %]">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN" | string %] [% control.origin_label_token | string %].</span>
+              <span id="guidance-inherit-button-[% control.field_name | html %]"[% IF control.origin == 'provider_default' %] class="hidden"[% END %]>
+                <button type="button" class="stdclick" data-guidance-inherited-field="[% control.field_name | html %]" data-guidance-inherited-marker="[% control.inherit_field_name | html %]" data-guidance-dirty-marker="[% control.dirty_field_name | html %]" data-guidance-inherited-value="[% control.inherited | html %]" data-guidance-origin="guidance-origin-[% control.field_name | html %]" data-guidance-inherit-button="guidance-inherit-button-[% control.field_name | html %]" data-guidance-inherited-origin="[% control.inherited_origin | html %]" data-guidance-inherited-origin-label="[% control.inherited_origin_label_token | string %]" data-guidance-host-origin="host_override" data-guidance-host-origin-label="[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST" | string %]" data-guidance-origin-pending="[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING" | string %]"[% UNLESS provider.enabled && provider.available && provider.policy_valid %] disabled[% END %]>[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET" | string %]</button>
+              </span>
+            [% END %]
+          [% END %]
+        </div>
+      [% END %]
+    [% ELSE %]
+      <p style="opacity:0.7">[% "PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_NONE" | string %]</p>
     [% END %]
   </div>
 
@@ -238,12 +284,127 @@
     }
   }
 
+  function copyGuidanceInheritedDefault(button) {
+    var fieldName = button.getAttribute('data-guidance-inherited-field');
+    var value = button.getAttribute('data-guidance-inherited-value');
+    var marker = document.getElementById(
+      button.getAttribute('data-guidance-inherited-marker')
+    );
+    var dirtyMarker = document.getElementById(
+      button.getAttribute('data-guidance-dirty-marker')
+    );
+    var input = document.getElementById(fieldName);
+    if (!input) return;
+    if (input.type === 'checkbox') {
+      input.checked = value === '1';
+    } else {
+      input.value = value;
+    }
+    var slider = document.getElementById('mskslider.' + fieldName);
+    if (slider) slider.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    if (marker) marker.value = '1';
+    if (dirtyMarker) dirtyMarker.value = '0';
+    setGuidanceOrigin(
+      button,
+      button.getAttribute('data-guidance-inherited-origin-label'),
+      button.getAttribute('data-guidance-origin-pending'),
+      button.getAttribute('data-guidance-inherited-origin')
+    );
+  }
+
+  function setGuidanceOrigin(button, label, pending, sourceOrigin) {
+    var originElement = document.getElementById(button.getAttribute('data-guidance-origin'));
+    if (!originElement) return;
+    var prefix = originElement.getAttribute('data-guidance-origin-prefix') || '';
+    originElement.textContent = prefix + ' ' + label + (pending ? ' ' + pending : '') + '.';
+    var reset = document.getElementById(button.getAttribute('data-guidance-inherit-button'));
+    if (reset) reset.classList.toggle('hidden', sourceOrigin == 'provider_default');
+  }
+
+  function bindGuidanceInheritedDefaultButtons() {
+    var buttons = document.querySelectorAll('[data-guidance-inherited-field]');
+    for (var index = 0; index < buttons.length; index++) {
+      buttons[index].addEventListener('click', function (event) {
+        event.preventDefault();
+        copyGuidanceInheritedDefault(this);
+      });
+    }
+  }
+
+  function bindGuidanceInheritedMarkers() {
+    var fields = document.querySelectorAll('[data-guidance-inherited-field]');
+    for (var index = 0; index < fields.length; index++) {
+      var fieldName = fields[index].getAttribute('data-guidance-inherited-field');
+      var markerName = fields[index].getAttribute('data-guidance-inherited-marker');
+      var dirtyMarkerName = fields[index].getAttribute('data-guidance-dirty-marker');
+      var input = document.getElementById(fieldName);
+      var marker = document.getElementById(markerName);
+      var dirtyMarker = document.getElementById(dirtyMarkerName);
+      if (!input || !marker || !dirtyMarker) continue;
+      input.addEventListener('input', function () {
+        var boundMarker = document.getElementById(this.getAttribute('data-guidance-inherited-marker'));
+        var boundDirtyMarker = document.getElementById(this.getAttribute('data-guidance-dirty-marker'));
+        if (boundMarker) boundMarker.value = '0';
+        if (boundDirtyMarker) boundDirtyMarker.value = '1';
+        setGuidanceOrigin(
+          this,
+          this.getAttribute('data-guidance-host-origin-label'),
+          '',
+          this.getAttribute('data-guidance-host-origin')
+        );
+      }.bind(fields[index]));
+      input.addEventListener('change', function () {
+        var boundMarker = document.getElementById(this.getAttribute('data-guidance-inherited-marker'));
+        var boundDirtyMarker = document.getElementById(this.getAttribute('data-guidance-dirty-marker'));
+        if (boundMarker) boundMarker.value = '0';
+        if (boundDirtyMarker) boundDirtyMarker.value = '1';
+        setGuidanceOrigin(
+          this,
+          this.getAttribute('data-guidance-host-origin-label'),
+          '',
+          this.getAttribute('data-guidance-host-origin')
+        );
+      }.bind(fields[index]));
+    }
+  }
+
+  function updateGuidanceProviderControls(checkbox) {
+    var controls = document.getElementById(
+      checkbox.getAttribute('data-guidance-provider-controls')
+    );
+    if (!controls) return;
+    var enabled = checkbox.checked;
+    var usable = checkbox.getAttribute('data-guidance-provider-controls-usable') === '1';
+    if (enabled) {
+      controls.classList.remove('hidden');
+    } else {
+      controls.classList.add('hidden');
+    }
+    var inputs = controls.querySelectorAll('input, select, button');
+    for (var index = 0; index < inputs.length; index++) {
+      inputs[index].disabled = !enabled || !usable;
+    }
+  }
+
+  function bindGuidanceProviderControls() {
+    var checkboxes = document.querySelectorAll('[data-guidance-provider-controls]');
+    for (var index = 0; index < checkboxes.length; index++) {
+      checkboxes[index].addEventListener('change', function () {
+        updateGuidanceProviderControls(this);
+      });
+      updateGuidanceProviderControls(checkboxes[index]);
+    }
+  }
+
   window.addEventListener('load', function () {
     var defaults = {
       'compatibility-section': true,
       'job-defaults-section': true,
       'route-section': false,
       'lastfm-section': false,
+      'guidance-providers-section': false,
       'roadmap-section': false
     };
     try {
@@ -259,6 +420,9 @@
       });
     }
     updateRouteLengthPolicy();
+    bindGuidanceInheritedDefaultButtons();
+    bindGuidanceInheritedMarkers();
+    bindGuidanceProviderControls();
     window.setTimeout(function () {
       updateRouteLengthPolicy();
     }, 0);

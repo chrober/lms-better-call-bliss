@@ -14,7 +14,7 @@ This document describes the current implementation. **Working** means the choice
 | Make an existing playlist exactly N songs longer | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + Additional tracks: [Extend playlist](#extend-playlist) | Treat the current playlist as the thing to extend. Better Call Bliss adds the requested number of suitable local songs and then orders or places them according to the chosen source-order policy. |
 | Turn a tiny seed list into a full mix with the same general character | Additional tracks: [Extend playlist](#extend-playlist) + Chosen amount: Reach a final track count | Treat the input as examples of a desired sound. Better Call Bliss selects enough related local songs to reach the target size, then arranges originals and additions together. |
 | Get a different but still sensible result | [Increase Variation](#variation-and-reproducibility) | Search explores different good alternatives without relaxing its quality and repeat rules. |
-| Let related recordings and artists support addition choices | [Set Last.fm target shares](#lastfm-track-and-artist-guidance) | Similar-track and similar-artist support is pursued within a widened Bliss-qualified pool; Bliss remains the acoustic quality check. |
+| Let related recordings and artists support addition choices | [Set Last.fm guidance](#lastfm-track-and-artist-guidance) | Similar-track and similar-artist support is pursued within a widened Bliss-qualified pool; Bliss remains the acoustic quality check. |
 | Prefer less-played or frequently played additions | [Adjust Play-count influence](#play-count-guidance) | The job starts with BlissMixer's setting and may override it without changing BlissMixer. |
 | Replace the upcoming queue with a fluent path from the current song | [Bliss me there...](#bliss-me-there) from a track or album context menu | The current song keeps playing. Later queue entries are excluded from the route context and replaced by the intermediates and selected track or complete album after a live-current-song check. |
 | Visit a chosen track or album, then return to the existing queue | [Bliss me there... and back again!](#bliss-me-there) from the same context menu | The current song is the start, the selected track or complete album is the required destination, and the first upcoming song is the rejoin point. The complete excursion is inserted before the otherwise unchanged upcoming queue. |
@@ -212,7 +212,7 @@ flowchart LR
 | Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Learned share of the Adaptive matrix when at least two seed tracks allow a variance matrix. Zero means pure variance; 100 means pure learned. The learned matrix is optional. |
 | Artist, album, and track look-back | Inherited from BlissMixer | Hard constraints for generated intermediates; zero disables a window. A chosen destination track or complete album remains fixed user intent and is not rejected for internal repeats. |
 | Variation and generation seed | 0-100%; default 25 | Chooses reproducibly among complete routes close to the best adjacent bottleneck and route sum. Zero keeps the strict deterministic winner. |
-| Last.fm track/artist target shares | Optional; Better Call Bliss defaults 25% each | Best-effort share of additions supported by the indicated relationship, among expanded Bliss-qualified candidates related to the route start, destination, or captured context. Both remain overridable per job; zero disables a channel. Provider failure falls back to Bliss. |
+| Last.fm guidance | Optional; Better Call Bliss defaults 25% each | Similar-track uses a bounded influence. Similar-artist can use a best-effort target share or a bounded influence. Both remain overridable per job; zero disables a channel. Provider failure falls back to Bliss. |
 | Play-count influence | -100 to 100; initialized from BlissMixer | Negative prefers less-played generated tracks, positive prefers frequently played generated tracks, and zero disables the signal. The override belongs only to the current job. |
 | Output | Locked by the chosen context command | **Bliss me there...** validates the live current song, preserves it and playback, and replaces only the later queue entries with the route suffix. **Bliss me there... and back again!** validates both the current song and first upcoming track, then inserts only its route body before that unchanged upcoming track. **Bliss me there... when we're through!** validates the live queue end and appends the route suffix. |
 
@@ -331,8 +331,8 @@ flowchart LR
 | Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
 | Artist look-back | 0-10,000; inherited | Applied to the source-anchor pre-check and final route. Zero disables it. |
 | Album look-back | 0-10,000; inherited | Applied to the source-anchor pre-check and final route. Zero disables it. |
-| Similar-track target share | 0-100%; Better Call Bliss default 25 | Best-effort share of selected additions with support from neighboring source recordings for difficult gaps, or the complete original source set for Extend membership. Zero disables recording evidence. |
-| Similar-artist target share | 0-100%; default 25 | Best-effort share of selected additions with support from endpoint-local artists with collection fallback for difficult gaps, or the complete original source set for Extend membership. Zero disables artist evidence. |
+| Similar-track influence | 0-100%; Better Call Bliss default 25 | Bounded support for selected additions related to neighboring source recordings for difficult gaps, or the complete original source set for Extend membership. Zero disables recording evidence. |
+| Similar-artist strategy and level | Target share or Bounded influence; 0-100%; default 25 | Target share seeks the requested best-effort share of selected additions supported by endpoint-local artists with collection fallback. Bounded influence boosts those candidates alongside the local signals. Zero disables artist evidence. |
 | Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
 
 #### How the anchors are protected
@@ -395,8 +395,8 @@ This workflow assumes the source set itself can satisfy the selected artist and 
 | Additional route-search attempts | 0-500; default 50 | Applies only when source order is Optimize. |
 | Variation | 0-100%; default 25 | Can vary the optimized source route; it has no separate random bridge-selection step. |
 | Generation seed | 0-4,294,967,295; generated by default | Reproduces the optimized source route when source order may move. |
-| Similar-track target share | 0-100%; Better Call Bliss default 25 | Best-effort share of selected additions supported by tracks related to A, B, or both. Zero disables recording evidence. |
-| Similar-artist target share | 0-100%; default 25 | Best-effort share of selected additions supported by related endpoint artists or, when no local evidence exists, the original artist collection. Zero disables artist evidence. |
+| Similar-track influence | 0-100%; Better Call Bliss default 25 | Bounded support for selected additions related to A, B, or both. Zero disables recording evidence. |
+| Similar-artist strategy and level | Target share or Bounded influence; 0-100%; default 25 | Target share seeks the requested best-effort share of selected additions supported by related endpoint artists or, when no local evidence exists, the original artist collection. Bounded influence boosts those candidates alongside local signals. Zero disables artist evidence. |
 | Maximum additional tracks | 0-100; default 8 | Stops insertion after this many bridges. |
 | [Bridge trigger percentile](#understanding-transition-quality-percentiles) | 0-100%; default 70 | Considers only original gaps above this point on the frozen source-playlist reference scale. |
 | Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
@@ -427,7 +427,7 @@ Last.fm never replaces the candidate library. Every candidate still comes from t
 
 All per-gap shortlists are prepared from the frozen source-only route before any bridge is inserted. During left-to-right selection, shortlisted candidates are scored again against the evolving route. An earlier bridge can therefore change a later gap's preceding tracks and final contextual score, but cannot add new candidates to that later gap's shortlist. Inside the current gap, **Adaptive gap context** controls whether those evolving tracks also cause the feature-weight matrix itself to be recalculated.  
 
-When either Last.fm target is non-zero, the optimizer keeps a Bliss-first pool at least ten times wider than its normal retained shortlist. Among candidates that pass all acoustic and repeat checks, it calibrates deterministic multipliers so each channel can pursue its requested best-effort share. Evidence strength uses Last.fm's match score when present, otherwise its result rank, and is reduced for uncertain identity matches. Support from both recordings is stronger than support from one; collection-level artist evidence is weaker than endpoint-local artist evidence. A candidate supported by both channels counts for both targets. Even 100% cannot admit a candidate Bliss rejected; 0% completely disables that channel.
+When either Last.fm channel is non-zero, the optimizer keeps a Bliss-first pool at least ten times wider than its normal retained shortlist. Similar-track evidence always contributes a bounded multiplier. Similar-artist evidence uses the selected policy: **Target share** calibrates deterministic multipliers toward its requested best-effort share, while **Bounded influence** contributes a limited multiplier that remains directly comparable with play count, last played, and library age. Evidence strength uses Last.fm's match score when present, otherwise its result rank, and is reduced for uncertain identity matches. Support from both recordings is stronger than support from one; collection-level artist evidence is weaker than endpoint-local artist evidence. A candidate supported by both channels receives both contributions. Even 100% cannot admit a candidate Bliss rejected; 0% completely disables that channel.
 
 #### How a bridge is tested
 
@@ -501,7 +501,7 @@ This workflow does not inspect individual source gaps and does not use **Bridge 
 | Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Learned share for contexts with at least two tracks. |
 | Artist look-back | 0-10,000; inherited | Drives the spacing calculation and final proof. Zero disables artist spacing. |
 | Album look-back | 0-10,000; inherited | Drives the spacing calculation and final proof. Zero disables album spacing. |
-| Last.fm target shares | 0-100%; Better Call Bliss defaults 25 | Best-effort track- and artist-supported addition shares within the expanded Bliss-qualified candidate pool. Zero disables a channel; failures transparently use Bliss alone. |
+| Last.fm guidance | 0-100%; Better Call Bliss defaults 25 | Similar-track uses bounded influence. Similar-artist can use target share or bounded influence within the expanded Bliss-qualified candidate pool. Zero disables a channel; failures transparently use Bliss alone. |
 | Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
 
 ### Extend playlist
@@ -539,8 +539,8 @@ Duration-based targets remain future work. Advanced strict gap-bridge placement 
 | Additional route-search attempts | 0-500; default 50 | Applies only when Source-track order is Optimize. |
 | Variation | 0-100%; default 25 | Varies the added membership and final route inside a bounded high-quality pool. |
 | Generation seed | 0-4,294,967,295; generated by default | Reproduces both membership selection and final ordering. |
-| Similar-track target share | 0-100%; Better Call Bliss default 25 | Best-effort share of selected additions supported by recording relationships while ranking local candidates. |
-| Similar-artist target share | 0-100%; default 25 | Best-effort share of selected additions supported by artist relationships while ranking local candidates. |
+| Similar-track influence | 0-100%; Better Call Bliss default 25 | Bounded support for selected additions with recording relationships while ranking local candidates. |
+| Similar-artist strategy and level | Target share or Bounded influence; 0-100%; default 25 | Target share seeks the requested best-effort share of additions supported by artist relationships; bounded influence instead boosts those candidates alongside local signals. |
 | Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
 
 #### How Extend playlist chooses additions
@@ -684,33 +684,36 @@ Last.fm is an optional guide for choosing new songs. It never replaces Bliss sim
 
 Better Call Bliss uses the installed LastMix plugin without user credentials. It requests similar tracks once for every distinct original recording and similar artists once for every distinct original artist. Recording relationships are endpoint-local. Artist relationships are recorded both for endpoint-local use and for the complete original collection fallback.
 
-The per-job **Similar-track target share** and **Similar-artist target share** controls range from 0 to 100 and start with independent Better Call Bliss defaults of 25. Better Call Bliss first matches Last.fm recording or artist results to explicit `bliss-row-N` identities from the frozen LMS candidate inventory. A non-zero channel expands the Bliss-ranked selection boundary at least tenfold, then the optimizer uses calibrated deterministic preference inside that still Bliss-qualified pool to pursue the requested share of chosen additions. A candidate may satisfy both channels. Even 100 cannot make a rejected acoustic candidate acceptable. Zero disables that evidence type without disabling the other one.
+The per-job **Similar-track influence** is a 0–100 bounded boost. **Similar-artist** has a 0–100 level plus a host policy: **Target share** deliberately seeks the requested best-effort proportion of Last.fm-supported additions, while **Bounded influence** gives supported candidates a limited boost that competes with play count, last played, and library age. Better Call Bliss shows only policies declared by the installed Last.fm provider. It first matches recording or artist results to explicit `bliss-row-N` identities from the frozen LMS candidate inventory. A candidate may satisfy both channels. Zero disables that evidence type without disabling the other one.
 
-These percentages intentionally remain separate preferences because each host has its own candidates and planner. Their user-facing meaning aligns with BlissMixer's **Last.fm artist probability**: a best-effort target share of selected additions carrying that support. BlissMixerLab's track control still changes immediate-mix sampling odds, so it is not the same control.
+Target share aligns with BlissMixer's **Last.fm artist probability**, and can intentionally outweigh other optional reranking criteria within the already Bliss-qualified pool. Bounded influence is the Lab-compatible cooperative alternative. Neither channel can make an acoustically rejected candidate acceptable.
 
 Bridge modes use the resolved signal to rank admissible two-leg insertions. Extend playlist uses resolved track and artist evidence from the complete immutable source set to support membership ranking inside its Bliss-qualified pool. Selected additions retain that evidence in the native result, so the review page and logs report what actually influenced selection. Last.fm has no effect on fixed-membership Reorder only jobs.
 
 Provider responses are frozen with their raw score or rank so the report can explain the support used by that run. Missing LastMix, no Internet access, malformed responses, and provider errors fall back to Bliss without failing the playlist job. Service-wide offline, unavailable, and rate-limit errors open a per-job circuit breaker so the remaining track and artist requests are not repeated.
 
-### Play-count guidance
+### Local listening and library guidance
 
-Play-count influence is a post-qualification signal for newly generated tracks.
-A new job starts with BlissMixer's current value, but changing it in Better Call
-Bliss changes only that job and never writes a Better Call Bliss default or
-modifies BlissMixer. Negative values prefer tracks with lower LMS play counts,
-positive values prefer higher counts, and zero disables the signal.
+The optional **Library Signals** Lyrion provider contributes post-qualification
+signals for newly generated tracks: play count, last played, and library age.
+Its own settings page owns the saved defaults. Better Call Bliss discovers the
+provider, leaves it disabled by default, and can apply sparse host or per-job
+overrides after you enable it. Negative play-count values prefer tracks with
+lower LMS play counts, positive values prefer higher counts, and zero disables
+that channel. Last-played and library-age use the same signed direction and
+their configured saturation horizons.
 
-When the value is non-zero, Better Call Bliss freezes a checksum-protected list
-of eligible candidate identities and gives the play-count provider the trusted,
-read-only Lyrion `persist.db` path. The provider opens one SQLite read snapshot,
-streams that frozen identity population to establish tied play-count percentiles,
-then looks up only the bounded Bliss-qualified candidates that the optimizer
-actually scores. Missing counts rank as zero plays. The optimizer applies the
-result as bounded guidance after local membership, genre, acoustic, uniqueness,
-and repeat qualification. It cannot admit an otherwise rejected track. Reorder
-only has fixed membership and does not apply the signal. If Lyrion playback
-statistics are disabled, the effective value is forced to zero and the job
-control is read-only.
+When any of its channels is non-zero, Better Call Bliss freezes a
+checksum-protected list of eligible candidate identities and asks the provider
+factory to return its trusted binary and read-only Lyrion `persist.db` resource.
+The provider opens one SQLite read snapshot, streams that frozen identity
+population to establish tied play-count and time-signal distributions, then
+looks up only the bounded Bliss-qualified candidates that the optimizer actually
+scores. Missing counts rank as zero plays; unknown dates remain neutral. The
+optimizer applies the result as bounded guidance after local membership, genre,
+acoustic, uniqueness, and repeat qualification. It cannot admit an otherwise
+rejected track. Reorder only has fixed membership and does not apply these
+signals.
 
 This has the same user-facing direction as BlissMixer and BlissMixerLab's shared
 play-count preference: `-100` favors less-played tracks, `+100` favors

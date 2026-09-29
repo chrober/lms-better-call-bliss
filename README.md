@@ -11,9 +11,10 @@ provider-to-library identity resolution, background jobs, result review,
 playlist persistence, and player-queue output. CPU-intensive acoustic scoring
 and route search are delegated to the network-free Rust engine
 [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer).
-Supported packages also bundle its trusted Rust guidance providers for Last.fm
-evidence and on-demand Lyrion play counts; none are committed to this source
-repository.
+Supported packages bundle the optimizer and the trusted Rust Last.fm guidance
+provider. Optional local listening/library guidance is supplied by a separately
+installed, runtime-discovered Lyrion provider plugin; no native binaries are
+committed to this source repository.
 
 ## What it does
 
@@ -22,7 +23,7 @@ repository.
 - Adds spacing tracks as needed when repeated source artists or albums need more room to satisfy the selected repeat windows.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
-- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional Last.fm target shares, and optional local Lyrion listening/library guidance (play count, last played, and library age).
+- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional bounded Last.fm track guidance plus selectable Last.fm artist policy, and optional local Lyrion listening/library guidance (play count, last played, and library age).
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
 - Offers three destination shortcuts on a local track or album in this menu order. An album destination always plays every local audio track in disc and track order:
 
@@ -68,16 +69,22 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 - A bliss-playlist-optimizer binary for the server platform. Release packages
   bundle native binaries for Windows, macOS, x86_64 Linux, ARM64 Linux, and
   ARMHF Linux.
+- [Library Signals](https://github.com/chrober/lms-guidance-library-signals) is
+  optional. It contributes local play-count, last-played, and library-age
+  signals from a read-only Lyrion `persist.db` snapshot when explicitly enabled
+  in Better Call Bliss.
 
 [LastMix](https://github.com/AF-1/lms-lastmix) is optional. When installed and
 enabled, it supplies anonymous Last.fm similar-track and similar-artist evidence. Missing
 Internet access, provider failures, and rate limits fall back to local Bliss
 scoring and do not fail the optimization job.
 
-For jobs that add tracks, the play-count influence starts with BlissMixer's current
-setting and can be overridden without changing BlissMixer. Negative values prefer
-less-played additions, positive values prefer frequently played additions, and zero
-disables the guidance. Lyrion playback statistics must be enabled.
+For jobs that add tracks, optional local listening/library guidance is available
+when **Library Signals** is installed, enabled in Better Call Bliss, and has a
+readable Lyrion `persist.db`. Its own settings page supplies defaults; Better
+Call Bliss can override them per host and per job. Negative play-count values
+prefer less-played additions, positive values prefer frequently played additions,
+and zero disables that channel.
 
 ## Installation
 
@@ -102,7 +109,10 @@ After installation, open **Extras > Better Call Bliss**. The optional
 [BlissMixerLab](https://github.com/chrober/lms-blissmixer-lab) and
 [LastMix](https://github.com/AF-1/lms-lastmix) plugins can be installed alongside
 it to provide learned preferences and Last.fm guidance respectively; neither is
-required for local Bliss-based optimization.
+required for local Bliss-based optimization. Install
+[Library Signals](https://github.com/chrober/lms-guidance-library-signals)
+separately to make play-count, last-played, and library-age guidance available;
+then enable it on Better Call Bliss’s guidance-provider settings section.
 
 ## Basic use
 
@@ -132,9 +142,9 @@ without committing native binaries to this repository:
 3. Downloads the published binaries for `x86_64-linux`, `aarch64-linux`,
    `armhf-linux`, `mac`, and `windows` from each release and verifies their
    `.sha256` files.
-4. Copies the optimizer plus Last.fm and local-library-signals guidance providers into the
-   matching `BetterCallBliss/Bin/<platform>/` folders only inside the release
-   workspace.
+4. Copies the optimizer plus the Last.fm guidance provider into the matching
+   `BetterCallBliss/Bin/<platform>/` folders only inside the release workspace.
+   Separately installed Lyrion guidance providers package their own binaries.
 5. Creates separate `lms-better-call-bliss-{linux,mac,windows}-<version>.zip`
    archives plus SHA-1 and SHA-256 files. Linux retains x86_64, AArch64, and
    ARMHF binaries; macOS and Windows retain only their matching binary.
@@ -156,10 +166,12 @@ creating a release or touching the plugin feed.
 - The platform-specific optimizer and guidance-provider executables are
   intentionally not committed here. They are published by the separate
   [optimizer](https://github.com/chrober/bliss-playlist-optimizer),
-  [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm), and
-  [local library-signals provider](https://github.com/chrober/bliss-guidance-library-signals)
+  [Last.fm provider](https://github.com/chrober/bliss-guidance-lastfm)
   release workflows and copied into deployment/package artifacts by this plugin
-  release workflow. The expected releases, supported package folders, and
+  release workflow. The optional
+  [local library-signals provider](https://github.com/chrober/lms-guidance-library-signals)
+  is a separately installed Lyrion plugin, discovered at runtime rather than
+  bundled. The expected binary releases, supported package folders, and
   packaging contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
   `.gitignore` prevents local executables from being accidentally committed.
 - `tests/` contains lightweight Perl regression tests for the plugin glue code
@@ -182,6 +194,7 @@ flowchart LR
     BM["Original lms-blissmixer<br/>settings and bliss.db"] --> P
     BME["Optional BlissMixerLab<br/>learned matrix, blend, and track guidance"] -.-> P
     LM["Optional LastMix<br/>Last.fm track and artist evidence"] --> P
+    LS["Optional Library Signals plugin<br/>settings + read-only persist.db access"] -.-> P
     P --> O["bliss-playlist-optimizer"]
     O --> C["bliss-mixer-core<br/>shared Bliss scoring"]
     O --> P

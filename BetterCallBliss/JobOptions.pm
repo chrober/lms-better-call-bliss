@@ -2,6 +2,7 @@ package Plugins::BetterCallBliss::JobOptions;
 
 use strict;
 use Slim::Utils::Prefs;
+use Plugins::BetterCallBliss::GuidanceProviderPolicy;
 
 my $plugin_prefs = preferences('plugin.bettercallbliss');
 
@@ -17,10 +18,16 @@ sub defaults {
     my $lastfm_artist_guidance =
         $plugin_prefs->get('lastfm_artist_guidance_percent');
     $lastfm_artist_guidance = 25 unless defined $lastfm_artist_guidance;
-    my $last_played_influence = $plugin_prefs->get('last_played_influence');
-    $last_played_influence = 0 unless defined $last_played_influence;
-    my $library_age_influence = $plugin_prefs->get('library_age_influence');
-    $library_age_influence = 0 unless defined $library_age_influence;
+    my $lastfm_artist_mode = $plugin_prefs->get('lastfm_artist_mode')
+        || 'target_share';
+    $lastfm_artist_mode = 'target_share'
+        unless $lastfm_artist_mode =~ /^(?:bounded_influence|target_share)$/;
+    my $library_signals = _provider($capability, 'library-signals');
+    my $library_policy = ref($library_signals->{host_policy}) eq 'HASH'
+        ? $library_signals->{host_policy} : {};
+    my $library_effective = $library_policy->{enabled} && $library_policy->{valid}
+        && ref($library_policy->{effective}) eq 'HASH'
+            ? $library_policy->{effective} : {};
     my $default_algorithm = $capability->{algorithm} || 'adaptive';
     $default_algorithm = 'adaptive' if $default_algorithm eq 'forest';
     my $variation_percent = $plugin_prefs->get('variation_percent');
@@ -47,14 +54,20 @@ sub defaults {
         track_window => int($capability->{track_window}),
         restart_count => int($plugin_prefs->get('restart_count') || 50),
         variation_percent => int($variation_percent),
-        playcount_influence => int($capability->{playcount_influence} || 0),
-        last_played_influence => int($last_played_influence),
-        library_age_influence => int($library_age_influence),
+        playcount_influence => int($library_effective->{playcount_influence} || 0),
+        last_played_influence => int($library_effective->{last_played_influence} || 0),
+        library_age_influence => int($library_effective->{library_age_influence} || 0),
+        guidance_provider_policies => {
+            $library_signals->{provider_id} || 'library-signals' => $library_policy,
+        },
         generation_seed => '',
         generation_seed_supplied => 0,
         lastfm_enabled => ($lastfm_track_guidance || $lastfm_artist_guidance) ? 1 : 0,
         lastfm_track_guidance_percent => int($lastfm_track_guidance),
         lastfm_artist_guidance_percent => int($lastfm_artist_guidance),
+        lastfm_artist_mode => $lastfm_artist_mode,
+        last_played_horizon_days => int($library_effective->{last_played_horizon_days} || 180),
+        library_age_horizon_days => int($library_effective->{library_age_horizon_days} || 365),
         max_added_tracks => int($bridge_budget),
         trigger_percent => int($trigger_percent),
         gap_context_mode => 'rolling',
@@ -203,25 +216,7 @@ sub normalize {
     $options->{variation_percent} = _integer(
         $input, 'variation_percent', 0, 100, $options->{variation_percent},
     );
-    $options->{playcount_influence} = _signed_integer(
-        $input, 'playcount_influence', -100, 100,
-        $options->{playcount_influence},
-    );
-    $options->{playcount_influence} = 0
-        unless $capability->{statistics_enabled};
-    $options->{last_played_influence} = _signed_integer(
-        $input, 'last_played_influence', -100, 100,
-        $options->{last_played_influence},
-    );
-    $options->{library_age_influence} = _signed_integer(
-        $input, 'library_age_influence', -100, 100,
-        $options->{library_age_influence},
-    );
-    unless ($capability->{library_signals_available}) {
-        $options->{playcount_influence} = 0;
-        $options->{last_played_influence} = 0;
-        $options->{library_age_influence} = 0;
-    }
+    _resolve_provider_job_policies($options, $input, $capability);
     if (defined $input->{generation_seed} && length "$input->{generation_seed}") {
         $options->{generation_seed} = _integer(
             $input, 'generation_seed', 0, 4294967295, 0,
@@ -239,9 +234,32 @@ sub normalize {
         $input, 'lastfm_artist_guidance_percent', 0, 100,
         $options->{lastfm_artist_guidance_percent},
     );
-    # The two target shares are the complete public control surface.  Keep the
-    # derived flag for downstream acquisition and diagnostics, but never let a
-    # retired checkbox override a non-zero per-job target.
+    $options->{lastfm_artist_mode} = $input->{lastfm_artist_mode}
+        if defined $input->{lastfm_artist_mode};
+    die 'Last.fm artist guidance strategy must be Target share or Bounded influence'
+        unless $options->{lastfm_artist_mode} =~ /^(?:target_share|bounded_influence)$/;
+    $options->{guidance_as_of_unix_seconds} = _integer(
+        $input, 'guidance_as_of_unix_seconds', 0, 4294967295,
+        undef,
+    );
+    my $lastfm_policies = ref($capability->{guidance_providers}) eq 'HASH'
+        && ref($capability->{guidance_providers}->{lastfm}) eq 'HASH'
+        && ref($capability->{guidance_providers}->{lastfm}->{policies}) eq 'HASH'
+            ? $capability->{guidance_providers}->{lastfm}->{policies} : {};
+    my %artist_policy_supported = map { $_ => 1 }
+        @{ref($lastfm_policies->{lastfm_artist}) eq 'ARRAY'
+            ? $lastfm_policies->{lastfm_artist} : []};
+    if ($options->{lastfm_artist_guidance_percent}
+        && !$artist_policy_supported{$options->{lastfm_artist_mode}}) {
+        $options->{lastfm_artist_policy_unavailable} =
+            $options->{lastfm_artist_mode};
+        $options->{lastfm_artist_guidance_percent} = 0;
+    }
+    # The two Last.fm levels are the public control surface. Track guidance is
+    # always bounded; the separately captured artist policy decides whether its
+    # level is a target share or a bounded boost. Keep the derived flag for
+    # downstream acquisition and diagnostics, but never let a retired checkbox
+    # override a non-zero per-job level.
     $options->{lastfm_enabled} = (
         ($options->{lastfm_track_guidance_percent} || 0)
         || ($options->{lastfm_artist_guidance_percent} || 0)
@@ -356,6 +374,55 @@ sub normalize {
         length($options->{output_name} || '') ? 0 : 1;
 
     return $options;
+}
+
+sub _provider {
+    my ($capability, $provider_id) = @_;
+    for my $provider (@{ref($capability->{discovered_guidance_providers}) eq 'ARRAY'
+        ? $capability->{discovered_guidance_providers} : []}) {
+        return $provider if ref($provider) eq 'HASH'
+            && ($provider->{provider_id} || '') eq $provider_id;
+    }
+    return { provider_id => $provider_id, descriptor => {}, host_state => {}, host_policy => {} };
+}
+
+sub _resolve_provider_job_policies {
+    my ($options, $input, $capability) = @_;
+    my %policies;
+    for my $provider (@{ref($capability->{discovered_guidance_providers}) eq 'ARRAY'
+        ? $capability->{discovered_guidance_providers} : []}) {
+        next unless ref($provider) eq 'HASH' && $provider->{provider_id};
+        my %overrides;
+        for my $control (@{$provider->{descriptor}->{controls} || []}) {
+            next unless ref($control) eq 'HASH' && $control->{host_overridable};
+            my $field = 'guidance_provider_' . $provider->{provider_id}
+                . '_' . $control->{key};
+            $overrides{$control->{key}} = $input->{$field}
+                if exists $input->{$field};
+        }
+        my $resolved = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve(
+            $provider, $provider->{host_state}, { overrides => \%overrides },
+        );
+        die "Guidance provider '$provider->{provider_id}' policy is invalid: $resolved->{diagnostic}"
+            unless $resolved->{valid};
+        $policies{$provider->{provider_id}} = $resolved;
+    }
+    $options->{guidance_provider_policies} = \%policies;
+
+    # Legacy scalar keys remain only as frozen preview/report fields. Native
+    # configuration is built from the provider policy below, never from these
+    # values or from Better Call Bliss preferences.
+    my $library = $policies{'library-signals'} || {};
+    my $effective = $library->{enabled} && $library->{valid}
+        && ref($library->{effective}) eq 'HASH' ? $library->{effective} : {};
+    for my $key (qw(
+        playcount_influence last_played_influence library_age_influence
+        last_played_horizon_days library_age_horizon_days
+    )) {
+        $options->{$key} = exists $effective->{$key}
+            ? int($effective->{$key})
+            : $key =~ /horizon/ ? ($key =~ /last_played/ ? 180 : 365) : 0;
+    }
 }
 
 1;

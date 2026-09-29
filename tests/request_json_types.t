@@ -32,12 +32,13 @@ BEGIN {
             artist_window => '5',
             album_window => '10',
             track_window => '100',
-            statistics_enabled => 1,
-            playcount_influence => '-35',
             guidance_providers => {
                 lastfm => {
                     available => 1,
                     program => '/trusted/plugin/bin/bliss-guidance-lastfm',
+                    policies => {
+                        lastfm_artist => [qw(bounded_influence target_share)],
+                    },
                 },
                 library_signals => {
                     available => 1,
@@ -45,6 +46,20 @@ BEGIN {
                     persist_db => '/trusted/lms/persist.db',
                 },
             },
+            discovered_guidance_providers => [{
+                provider_id => 'library-signals',
+                available => 1,
+                descriptor => {
+                    native_spi => {provider_id => 'library-signals-guidance'},
+                    controls => [
+                        {key => 'playcount_influence', guidance_channel => 'playcount'},
+                        {key => 'last_played_influence', guidance_channel => 'last_played'},
+                        {key => 'library_age_influence', guidance_channel => 'library_age'},
+                        {key => 'last_played_horizon_days'},
+                        {key => 'library_age_horizon_days'},
+                    ],
+                },
+            }],
             use_adaptive_weights => 1,
             use_forest => 0,
             filter_genres => 1,
@@ -73,6 +88,32 @@ BEGIN {
     package Plugins::BetterCallBliss::CandidateLibrary;
     sub describe { return {id => '', name => 'All tracks', virtual => 0} }
     $INC{'Plugins/BetterCallBliss/CandidateLibrary.pm'} = __FILE__;
+
+    package Plugins::BetterCallBliss::GuidanceProviderDiscovery;
+    sub native_spi_config {
+        my ($provider, $policy, $context) = @_;
+        return {
+            id => 'library-signals-guidance',
+            program => '/trusted/provider/bin/bliss-guidance-library-signals',
+            options => {
+                as_of_unix_seconds => $context->{as_of_unix_seconds},
+                last_played_horizon_days => $policy->{last_played_horizon_days},
+                library_age_horizon_days => $policy->{library_age_horizon_days},
+            },
+            artifacts => [{
+                kind => 'eligible-candidate-identities-v1',
+                path => $context->{candidate_identity_artifact}->{path},
+                sha256 => $context->{candidate_identity_artifact}->{sha256},
+            }],
+            resources => [{
+                kind => 'lms-persist-sqlite-v1',
+                path => '/trusted/lms/persist.db',
+                access => 'read_only',
+            }],
+            timeout_ms => 5000,
+        };
+    }
+    $INC{'Plugins/BetterCallBliss/GuidanceProviderDiscovery.pm'} = __FILE__;
 
     package Plugins::BetterCallBliss::JobOptions;
     our $extension_mode = 'exact_count';
@@ -103,6 +144,10 @@ BEGIN {
             lastfm_enabled => 1,
             lastfm_track_guidance_percent => '75',
             lastfm_artist_guidance_percent => '75',
+            lastfm_artist_mode => 'target_share',
+            last_played_horizon_days => '180',
+            library_age_horizon_days => '365',
+            guidance_as_of_unix_seconds => '1790208000',
             max_added_tracks => $max_added_tracks,
             trigger_percent => '70',
             gap_context_mode => 'frozen',
@@ -118,6 +163,19 @@ BEGIN {
             output_mode => 'create_copy',
             output_name => '',
             output_name_generated => 0,
+            guidance_provider_policies => {
+                'library-signals' => {
+                    valid => 1,
+                    enabled => 1,
+                    effective => {
+                        playcount_influence => -35,
+                        last_played_influence => -80,
+                        library_age_influence => 45,
+                        last_played_horizon_days => 180,
+                        library_age_horizon_days => 365,
+                    },
+                },
+            },
         };
     }
     $INC{'Plugins/BetterCallBliss/JobOptions.pm'} = __FILE__;
@@ -169,6 +227,7 @@ Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
             path => '/private/cache/candidate-identities.json',
             sha256 => 'b' x 64,
         },
+        provider_policies => $built->{options}->{guidance_provider_policies},
     },
 );
 my $logged_shortlist = "$built->{request}->{extension}->{shortlist_limit}";
@@ -203,12 +262,12 @@ ok(!exists $request->{selection}->{last_played_influence},
 ok(!exists $request->{selection}->{library_age_influence},
     'library-age guidance is not carried in optimizer selection settings');
 is_deeply($request->{guidance_policy}, [
-    {provider_id => 'lastfm-guidance', channel => 'lastfm_track', weight => 1, target_percent => 75},
+    {provider_id => 'lastfm-guidance', channel => 'lastfm_track', weight => 0.75},
     {provider_id => 'lastfm-guidance', channel => 'lastfm_artist', weight => 1, target_percent => 75},
     {provider_id => 'library-signals-guidance', channel => 'playcount', weight => -0.35},
     {provider_id => 'library-signals-guidance', channel => 'last_played', weight => -0.8},
     {provider_id => 'library-signals-guidance', channel => 'library_age', weight => 0.45},
-], 'Last.fm targets and signed local-library preferences become separate policies');
+], 'Last.fm policy kinds and signed local-library preferences become separate policies');
 
 my $zero_lastfm_request = {
     selection => {
@@ -246,8 +305,12 @@ is_deeply($request->{guidance_addons}, [
     },
     {
         id => 'library-signals-guidance',
-        program => '/trusted/plugin/bin/bliss-guidance-library-signals',
-        options => {},
+        program => '/trusted/provider/bin/bliss-guidance-library-signals',
+        options => {
+            as_of_unix_seconds => 1790208000,
+            last_played_horizon_days => 180,
+            library_age_horizon_days => 365,
+        },
         artifacts => [{
             kind => 'eligible-candidate-identities-v1',
             path => '/private/cache/candidate-identities.json',
@@ -276,12 +339,25 @@ Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
             path => '/private/cache/candidate-identities.json',
             sha256 => 'b' x 64,
         },
+        provider_policies => {
+            'library-signals' => {
+                valid => 1,
+                enabled => 1,
+                effective => {
+                    playcount_influence => 0,
+                    last_played_influence => 0,
+                    library_age_influence => 0,
+                    last_played_horizon_days => 180,
+                    library_age_horizon_days => 365,
+                },
+            },
+        },
     },
 );
 is_deeply($zero_local_request->{guidance_addons}, [],
     'all-zero local-library controls do not start the library-signals provider');
-is($request->{scoring}->{captured_blissmixer_preferences}->{playcount_influence}, -35,
-    'the inherited BlissMixer play-count default is captured for provenance');
+ok(!exists $request->{scoring}->{captured_blissmixer_preferences}->{playcount_influence},
+    'provider-owned play-count guidance is not attributed to BlissMixer provenance');
 ok(JSON::XS::is_bool($request->{candidate_policy}->{genre}->{restrict_genres}),
     'genre restriction is serialized as a JSON boolean');
 ok($request->{candidate_policy}->{genre}->{restrict_genres},

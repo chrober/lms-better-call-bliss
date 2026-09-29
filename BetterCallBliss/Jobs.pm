@@ -304,9 +304,11 @@ sub status_detail_lines {
 
     if ($options->{lastfm_enabled}) {
         push @details, sprintf(
-            'Last.fm evidence: %s; track guidance %d%%, artist guidance %d%%.',
+            'Last.fm evidence: %s; similar-track bounded influence %d%%, similar-artist %s %d%%.',
             $job->{lastfm_state} || 'unknown',
             0 + ($options->{lastfm_track_guidance_percent} || 0),
+            ($options->{lastfm_artist_mode} || 'target_share') eq 'bounded_influence'
+                ? 'bounded influence' : 'target share',
             0 + ($options->{lastfm_artist_guidance_percent} || 0),
         );
     } else {
@@ -419,6 +421,7 @@ sub _launch_optimizer {
             semantic_evidence => _artifact_descriptor($job->{semantic_path}),
             candidate_identities => $built->{request}->{artifacts}
                 ->{candidate_identities},
+            provider_policies => $built->{options}->{guidance_provider_policies},
         },
     );
     Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(
@@ -714,8 +717,14 @@ sub _start_preview_from_built {
             ? $effective->{playcount_influence} : 0)
         . ' last_played_influence=' . ($effective->{extension_mode} ne 'none'
             ? $effective->{last_played_influence} : 0)
+        . ' last_played_horizon_days=' . ($effective->{extension_mode} ne 'none'
+            ? $effective->{last_played_horizon_days} : 0)
         . ' library_age_influence=' . ($effective->{extension_mode} ne 'none'
             ? $effective->{library_age_influence} : 0)
+        . ' library_age_horizon_days=' . ($effective->{extension_mode} ne 'none'
+            ? $effective->{library_age_horizon_days} : 0)
+        . ' guidance_as_of_unix_seconds=' . ($effective->{extension_mode} ne 'none'
+            ? $effective->{guidance_as_of_unix_seconds} : 0)
         . " generation_seed=$effective->{generation_seed}"
         . ($effective->{extension_mode} eq 'destination_route'
             ? " search_effort=$effective->{route_search_effort}"
@@ -729,6 +738,7 @@ sub _start_preview_from_built {
         . " lastfm=" . ($effective->{lastfm_enabled} ? 'enabled' : 'disabled')
         . " lastfm_track_guidance=$effective->{lastfm_track_guidance_percent}"
         . " lastfm_artist_guidance=$effective->{lastfm_artist_guidance_percent}"
+        . " lastfm_artist_mode=$effective->{lastfm_artist_mode}"
         . ' filter_genres=' . ($built->{capability}->{filter_genres} ? 1 : 0)
         . ' filter_xmas=' . ($built->{capability}->{filter_xmas} ? 1 : 0)
         . ' exclude_christmas=' . ($built->{capability}->{exclude_christmas} ? 1 : 0)
@@ -804,8 +814,15 @@ sub _start_preview_from_built {
                 ? $effective->{playcount_influence} : 0)
             . ' last_played_influence=' . ($effective->{extension_mode} ne 'none'
                 ? $effective->{last_played_influence} : 0)
+            . ' last_played_horizon_days=' . ($effective->{extension_mode} ne 'none'
+                ? $effective->{last_played_horizon_days} : 0)
             . ' library_age_influence=' . ($effective->{extension_mode} ne 'none'
                 ? $effective->{library_age_influence} : 0)
+            . ' library_age_horizon_days=' . ($effective->{extension_mode} ne 'none'
+                ? $effective->{library_age_horizon_days} : 0)
+            . ' guidance_as_of_unix_seconds=' . ($effective->{extension_mode} ne 'none'
+                ? $effective->{guidance_as_of_unix_seconds} : 0)
+            . " lastfm_artist_mode=$effective->{lastfm_artist_mode}"
             . " output_mode=$effective->{output_mode}"
         );
     }
@@ -912,6 +929,8 @@ sub _fail_deferred_route_job {
 sub _create_deferred_sequence_job {
     my ($job_id, $title, $track_count, $options, $fields) = @_;
     $options ||= {};
+    $options->{guidance_as_of_unix_seconds} = int(time())
+        unless defined $options->{guidance_as_of_unix_seconds};
     $fields ||= {};
     my %display_options = %$options;
     $display_options{ordering_policy} ||= 'optimize_order';
@@ -1050,6 +1069,8 @@ sub start_queue_preview {
 sub _create_deferred_route_job {
     my ($job_id, $route_source, $target_track_id, $options) = @_;
     my $option_ref = $options || {};
+    $option_ref->{guidance_as_of_unix_seconds} = int(time())
+        unless defined $option_ref->{guidance_as_of_unix_seconds};
     my $title = Plugins::BetterCallBliss::RouteMode::action_name($route_source)
         . ': preparing route';
     $jobs{$job_id} = {

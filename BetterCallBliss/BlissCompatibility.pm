@@ -6,10 +6,13 @@ use Slim::Utils::Misc;
 use Slim::Utils::PluginManager;
 use Slim::Utils::Prefs;
 use Slim::Utils::Versions;
+use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
+use Plugins::BetterCallBliss::GuidanceProviderPolicy;
 
 my $bliss_prefs = preferences('plugin.blissmixer');
 my $bliss_ext_prefs = preferences('plugin.blissmixerlab');
 my $server_prefs = preferences('server');
+my $host_prefs = preferences('plugin.bettercallbliss');
 my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
@@ -25,13 +28,6 @@ sub init {
     $optimizer_supports_candidate_library_scope = shift ? 1 : 0;
     $optimizer_supports_guidance_spi_v2 = shift ? 1 : 0;
     $guidance_programs = shift || {};
-}
-
-sub _persistent_database_path {
-    return eval {
-        require Slim::Utils::SQLiteHelper;
-        Slim::Utils::SQLiteHelper->dbFile('persist.db', 'persistent');
-    } || '';
 }
 
 sub _guidance_program {
@@ -187,16 +183,33 @@ sub snapshot {
 
     my $strategy = _strategy_from_prefs();
     my $statistics_enabled = main::STATISTICS ? 1 : 0;
-    my $persist_db = _persistent_database_path();
     my $lastfm_guidance = _guidance_program('lastfm');
-    my $library_signals_guidance = _guidance_program('library_signals');
-    my $playcount_influence = $statistics_enabled
-        ? _int_pref('playcount_influence', 0) : 0;
-    $playcount_influence = -100 if $playcount_influence < -100;
-    $playcount_influence = 100 if $playcount_influence > 100;
+    my $lastfm_entry = $guidance_programs->{lastfm};
+    my $lastfm_policies = ref($lastfm_entry) eq 'HASH'
+        && ref($lastfm_entry->{policies}) eq 'HASH'
+            ? $lastfm_entry->{policies} : {};
     my $static_weights = _static_slider_weights();
     my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
     my $month = (localtime())[4] + 1;
+    my $discovered = Plugins::BetterCallBliss::GuidanceProviderDiscovery::discover();
+    my $all_host_state = $host_prefs->get('guidance_provider_state');
+    my @discovered_providers;
+    for my $provider (@{$discovered->{providers} || []}) {
+        my $policy = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve(
+            $provider,
+            Plugins::BetterCallBliss::GuidanceProviderPolicy::host_state(
+                $all_host_state, $provider->{provider_id},
+            ),
+            {},
+        );
+        push @discovered_providers, {
+            %$provider,
+            host_state => Plugins::BetterCallBliss::GuidanceProviderPolicy::host_state(
+                $all_host_state, $provider->{provider_id},
+            ),
+            host_policy => $policy,
+        };
+    }
     return {
         ready             => @problems ? 0 : 1,
         problems          => \@problems,
@@ -226,24 +239,15 @@ sub snapshot {
         track_window      => _int_pref('no_repeat_track', 0),
         algorithm         => $strategy,
         statistics_enabled => $statistics_enabled,
-        playcount_influence => $playcount_influence,
-        library_signals_available => $library_signals_guidance
-            && -x $library_signals_guidance && -r $persist_db
-            && _guidance_spi_v2('library_signals') ? 1 : 0,
         guidance_providers => {
             lastfm => {
                 available => $lastfm_guidance && -x $lastfm_guidance
                     && _guidance_spi_v2('lastfm') ? 1 : 0,
                 program => $lastfm_guidance,
-            },
-            library_signals => {
-                available => $library_signals_guidance
-                    && -x $library_signals_guidance && -r $persist_db
-                    && _guidance_spi_v2('library_signals') ? 1 : 0,
-                program => $library_signals_guidance,
-                persist_db => $persist_db,
+                policies => $lastfm_policies,
             },
         },
+        discovered_guidance_providers => \@discovered_providers,
         use_adaptive_weights => _int_pref('use_adaptive_weights', 0) ? 1 : 0,
         use_forest        => _int_pref('use_forest', 0) ? 1 : 0,
         static_weight_sliders => $static_weights->{raw},

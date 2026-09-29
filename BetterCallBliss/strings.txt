@@ -130,6 +130,22 @@ PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_INFLUENCE_DESC
 	EN	Default signed preference for added tracks: negative favors older library additions, positive favors newer additions, and zero is neutral. Uses Lyrion's preserved first-seen date.
 	DE	Standardwert für hinzugefügte Titel: Negativ bevorzugt ältere Bibliothekseinträge, positiv neuere Einträge, null ist neutral. Verwendet Lyrions erhaltenes Datum der ersten Erfassung.
 
+PLUGIN_BETTERCALLBLISS_LAST_PLAYED_HORIZON
+	EN	Last-played saturation horizon (days)
+	DE	Sättigungshorizont für letztes Abspielen (Tage)
+
+PLUGIN_BETTERCALLBLISS_LAST_PLAYED_HORIZON_DESC
+	EN	How quickly the last-played signal reaches its practical limit. At this age, the remaining difference to a much older play is deliberately small. Default: 180 days.
+	DE	Wie schnell das Signal für das letzte Abspielen seinen praktischen Grenzwert erreicht. Ab diesem Alter ist der Unterschied zu einem viel älteren Abspielen bewusst klein. Standard: 180 Tage.
+
+PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_HORIZON
+	EN	Library-age saturation horizon (days)
+	DE	Sättigungshorizont für Bibliotheksalter (Tage)
+
+PLUGIN_BETTERCALLBLISS_LIBRARY_AGE_HORIZON_DESC
+	EN	How quickly the first-seen library-age signal reaches its practical limit. At this age, the remaining difference to a much older addition is deliberately small. Default: 365 days.
+	DE	Wie schnell das Signal des zuerst erfassten Bibliotheksalters seinen praktischen Grenzwert erreicht. Ab diesem Alter ist der Unterschied zu einem viel älteren Eintrag bewusst klein. Standard: 365 Tage.
+
 PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY
 	EN	Intermediate-track policy
 	DE	Regel für Zwischentitel
@@ -199,24 +215,44 @@ PLUGIN_BETTERCALLBLISS_ROUTE_EXACT_INTERMEDIATES_DESC
 	DE	Gesamtzahl bei der Regel Exakt. Sie ist vom Maximum der automatischen Suche unabhängig. Bei „...und wieder zurück“ verteilt der Optimierer diese Gesamtzahl auf beide Teilstrecken.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE
-	EN	Similar-track target share (%)
-	DE	Zielanteil ähnlicher Titel (%)
+	EN	Similar-track influence (%)
+	DE	Einfluss ähnlicher Titel (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_TRACK_GUIDANCE_DESC
-	EN	Best-effort target share of added tracks supported by Last.fm track similarity. Only local, repeat-safe, Bliss-qualified candidates participate. Zero disables this channel. Default: 25.
-	DE	Bestmöglicher Zielanteil hinzugefügter Titel mit Unterstützung durch ähnliche Last.fm-Titel. Nur lokale, wiederholungsregelkonforme und Bliss-qualifizierte Kandidaten nehmen teil. Null deaktiviert diesen Kanal. Standard: 25.
+	EN	Bounded boost for added tracks supported by Last.fm track similarity. Only local, repeat-safe, Bliss-qualified candidates participate. Zero disables this channel. Default: 25.
+	DE	Begrenzter Schub für hinzugefügte Titel mit Unterstützung durch ähnliche Last.fm-Titel. Nur lokale, wiederholungsregelkonforme und Bliss-qualifizierte Kandidaten nehmen teil. Null deaktiviert diesen Kanal. Standard: 25.
+
+PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE
+	EN	How similar-artist matches affect candidates
+	DE	Wie ähnliche Interpreten Kandidaten beeinflussen
+
+PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_DESC
+	EN	Target share deliberately seeks the requested proportion of Last.fm-supported candidates, so it can outweigh other optional reranking criteria. Bounded influence gives each supported candidate a limited boost that competes with play count, last played, and library age.
+	DE	Zielanteil sucht bewusst den gewünschten Anteil Last.fm-gestützter Kandidaten und kann dadurch andere optionale Umordnungskriterien überwiegen. Begrenzter Einfluss gibt jedem gestützten Kandidaten einen begrenzten Schub, der mit Abspielzahl, letztem Abspielen und Bibliotheksalter konkurriert.
+
+PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_TARGET
+	EN	Target share
+	DE	Zielanteil
+
+PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_MODE_BOUNDED
+	EN	Bounded influence
+	DE	Begrenzter Einfluss
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE
-	EN	Similar-artist target share (%)
-	DE	Zielanteil ähnlicher Interpreten (%)
+	EN	Similar-artist level (%)
+	DE	Stärke ähnlicher Interpreten (%)
 
 PLUGIN_BETTERCALLBLISS_LASTFM_ARTIST_GUIDANCE_DESC
-	EN	Best-effort target share of added tracks supported by Last.fm artist similarity. Only local, repeat-safe, Bliss-qualified candidates participate. Zero disables this channel. Default: 25.
-	DE	Bestmöglicher Zielanteil hinzugefügter Titel mit Unterstützung durch ähnliche Last.fm-Interpreten. Nur lokale, wiederholungsregelkonforme und Bliss-qualifizierte Kandidaten nehmen teil. Null deaktiviert diesen Kanal. Standard: 25.
+	EN	For Target share, the requested best-effort proportion of added tracks supported by Last.fm artist similarity. For Bounded influence, the maximum boost. Only local, repeat-safe, Bliss-qualified candidates participate. Zero disables this channel. Default: 25.
+	DE	Bei Zielanteil der gewünschte bestmögliche Anteil hinzugefügter Titel mit Unterstützung durch ähnliche Last.fm-Interpreten. Bei Begrenztem Einfluss der maximale Schub. Nur lokale, wiederholungsregelkonforme und Bliss-qualifizierte Kandidaten nehmen teil. Null deaktiviert diesen Kanal. Standard: 25.
 
 PLUGIN_BETTERCALLBLISS_LASTFM_UNAVAILABLE
 	EN	Requires the LastMix plugin to be installed and enabled.
 	DE	Das LastMix-Plugin muss installiert und aktiviert sein.
+
+PLUGIN_BETTERCALLBLISS_LASTFM_GUIDANCE_UNAVAILABLE
+	EN	Requires a compatible installed Last.fm guidance provider.
+	DE	Erfordert einen kompatiblen installierten Last.fm-Guidance-Provider.
 
 PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED
 	EN	Use ListenBrainz evidence [not connected yet]
@@ -249,3 +285,54 @@ PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS
 PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC
 	EN	Stored for future persistent reports; results are currently session-only.
 	DE	Für künftige dauerhafte Berichte gespeichert; Ergebnisse existieren derzeit nur pro Sitzung.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS
+	EN	Optional guidance providers
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_DESC
+	EN	Installed providers contribute bounded secondary guidance only after you enable them here. Bliss remains responsible for eligibility and acoustic ranking. Provider settings supply defaults; values changed here are Better Call Bliss overrides.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_NONE
+	EN	No enabled Lyrion plugin currently publishes a compatible guidance-provider descriptor.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE
+	EN	Provider backend is available.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE
+	EN	Provider backend is unavailable: %s
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS
+	EN	Open %s settings
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED
+	EN	Use this provider
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC
+	EN	Providers are disabled in Better Call Bliss by default. Enabling one allows its bounded guidance to affect newly started jobs.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_DISABLED
+	EN	Disabled
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_VALUE
+	EN	Enabled
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN
+	EN	Effective value source:
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST
+	EN	Better Call Bliss setting
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PROVIDER
+	EN	Provider setting
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY
+	EN	Provider built-in default
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_JOB
+	EN	Per-preview value
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING
+	EN	(will apply when saved)
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET
+	EN	Use inherited default

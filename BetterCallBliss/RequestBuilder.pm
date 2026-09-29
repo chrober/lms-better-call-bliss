@@ -10,6 +10,7 @@ use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
+use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::JobOptions;
 
 sub _job_seed {
@@ -101,7 +102,6 @@ sub normalize_request_types {
             num_seed_tracks no_repeat_artist
             no_repeat_album no_repeat_track weight_tempo weight_timbre
             weight_loudness weight_chroma
-            playcount_influence
         ),
     );
     _normalize_booleans(
@@ -123,6 +123,8 @@ sub normalize_request_types {
         qw(
             variation_percent generation_seed
             recording_guidance_percent artist_guidance_percent
+            guidance_as_of_unix_seconds last_played_horizon_days
+            library_age_horizon_days
             playcount_influence last_played_influence library_age_influence
         ),
     );
@@ -308,17 +310,22 @@ sub configure_guidance_addons {
         $selection->{artist_guidance_percent} || 0,
         'artist_guidance_percent',
     );
+    my $artist_mode = $selection->{artist_guidance_mode} || 'target_share';
+    die 'artist_guidance_mode must be target_share or bounded_influence'
+        unless $artist_mode =~ /^(?:target_share|bounded_influence)$/;
     my $semantic = $artifacts->{semantic_evidence};
     if ($lastfm->{available} && $lastfm->{program}
         && ref($semantic) eq 'HASH' && $semantic->{path} && $semantic->{sha256}
         && ($track_target || $artist_target)) {
         push @policy, {
             provider_id => 'lastfm-guidance', channel => 'lastfm_track',
-            weight => 1, target_percent => $track_target,
+            weight => $track_target / 100,
         } if $track_target;
         push @policy, {
             provider_id => 'lastfm-guidance', channel => 'lastfm_artist',
-            weight => 1, target_percent => $artist_target,
+            weight => $artist_mode eq 'target_share' ? 1 : $artist_target / 100,
+            ($artist_mode eq 'target_share'
+                ? (target_percent => $artist_target) : ()),
         } if $artist_target;
         push @addons, {
             id => 'lastfm-guidance',
@@ -333,47 +340,59 @@ sub configure_guidance_addons {
         };
     }
 
-    my $library_signals = $providers->{library_signals} || {};
-    my $playcount_weight = 0 + ($selection->{playcount_influence} || 0) / 100;
-    my $last_played_weight = 0 + ($selection->{last_played_influence} || 0) / 100;
-    my $library_age_weight = 0 + ($selection->{library_age_influence} || 0) / 100;
-    my $identities = $artifacts->{candidate_identities};
-    if ($library_signals->{available} && $library_signals->{program}
-        && $library_signals->{persist_db}
-        && ref($identities) eq 'HASH' && $identities->{path}
-        && $identities->{sha256}
-        && ($playcount_weight || $last_played_weight || $library_age_weight)) {
-        push @policy, {
-            provider_id => 'library-signals-guidance', channel => 'playcount',
-            weight => $playcount_weight,
-        } if $playcount_weight;
-        push @policy, {
-            provider_id => 'library-signals-guidance', channel => 'last_played',
-            weight => $last_played_weight,
-        } if $last_played_weight;
-        push @policy, {
-            provider_id => 'library-signals-guidance', channel => 'library_age',
-            weight => $library_age_weight,
-        } if $library_age_weight;
-        push @addons, {
-            id => 'library-signals-guidance',
-            program => $library_signals->{program},
-            options => {},
-            artifacts => [{
-                kind => 'eligible-candidate-identities-v1',
-                path => $identities->{path}, sha256 => $identities->{sha256},
-            }],
-            resources => [{
-                kind => 'lms-persist-sqlite-v1',
-                path => $library_signals->{persist_db}, access => 'read_only',
-            }],
-            timeout_ms => 5000,
+    my $provider_policies = ref($artifacts->{provider_policies}) eq 'HASH'
+        ? $artifacts->{provider_policies} : {};
+    for my $provider (@{ref($capability->{discovered_guidance_providers}) eq 'ARRAY'
+        ? $capability->{discovered_guidance_providers} : []}) {
+        next unless ref($provider) eq 'HASH' && $provider->{available};
+        my $provider_id = $provider->{provider_id} || next;
+        my $resolved = $provider_policies->{$provider_id};
+        next unless ref($resolved) eq 'HASH' && $resolved->{valid}
+            && $resolved->{enabled} && ref($resolved->{effective}) eq 'HASH';
+        my $descriptor = $provider->{descriptor} || {};
+        my $native = $descriptor->{native_spi} || {};
+        my @provider_policy;
+        for my $control (@{$descriptor->{controls} || []}) {
+            next unless ref($control) eq 'HASH' && $control->{guidance_channel};
+            my $value = $resolved->{effective}->{$control->{key}};
+            next unless defined $value && $value =~ /^-?\d+$/ && $value;
+            push @provider_policy, {
+                provider_id => $native->{provider_id},
+                channel => $control->{guidance_channel},
+                weight => int($value) / 100,
+            };
+        }
+        next unless @provider_policy;
+        next unless ref($artifacts->{candidate_identities}) eq 'HASH'
+            && $artifacts->{candidate_identities}->{path}
+            && $artifacts->{candidate_identities}->{sha256};
+        my $config = eval {
+            Plugins::BetterCallBliss::GuidanceProviderDiscovery::native_spi_config(
+                $provider, $resolved->{effective}, {
+                    candidate_identity_artifact => $artifacts->{candidate_identities},
+                    as_of_unix_seconds => _json_integer(
+                        $selection->{guidance_as_of_unix_seconds},
+                        'guidance_as_of_unix_seconds',
+                    ),
+                },
+            );
         };
+        if (!$config || $@) {
+            push @{$artifacts->{guidance_provider_diagnostics}}, {
+                provider_id => $provider_id,
+                state => 'neutral_failure',
+                message => 'native provider configuration was unavailable',
+            };
+            next;
+        }
+        push @policy, @provider_policy;
+        push @addons, $config;
     }
 
     delete @{$selection}{qw(
-        recording_guidance_percent artist_guidance_percent playcount_influence
-        last_played_influence library_age_influence
+        recording_guidance_percent artist_guidance_percent artist_guidance_mode
+        guidance_as_of_unix_seconds last_played_horizon_days library_age_horizon_days
+        playcount_influence last_played_influence library_age_influence
     )};
     $request->{guidance_policy} = \@policy;
     $request->{guidance_addons} = \@addons;
@@ -456,6 +475,11 @@ sub _build_sequence_request {
     my $options = Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, $job_input,
     );
+    # Guidance providers must see the same reference instant for every
+    # bounded batch in this job. This is deliberately captured once before
+    # candidate inventory preparation, not recomputed in a provider.
+    $options->{guidance_as_of_unix_seconds} = int(time())
+        unless defined $options->{guidance_as_of_unix_seconds};
     my $candidate_library =
         Plugins::BetterCallBliss::CandidateLibrary::describe(
             $options->{candidate_library_id},
@@ -635,9 +659,6 @@ sub _build_sequence_request {
                 weight_chroma => _json_integer(
                     $capability->{static_weight_sliders}->{chroma},
                 ),
-                playcount_influence => _json_integer(
-                    $capability->{playcount_influence},
-                ),
             },
         },
         candidate_policy => {
@@ -670,6 +691,19 @@ sub _build_sequence_request {
                 ? _json_integer($options->{lastfm_track_guidance_percent}) : 0,
             artist_guidance_percent => $options->{extension_mode} ne 'none'
                 ? _json_integer($options->{lastfm_artist_guidance_percent}) : 0,
+            artist_guidance_mode => $options->{lastfm_artist_mode},
+            guidance_as_of_unix_seconds => _json_integer(
+                $options->{guidance_as_of_unix_seconds},
+                'guidance_as_of_unix_seconds',
+            ),
+            last_played_horizon_days => _json_integer(
+                $options->{last_played_horizon_days},
+                'last_played_horizon_days',
+            ),
+            library_age_horizon_days => _json_integer(
+                $options->{library_age_horizon_days},
+                'library_age_horizon_days',
+            ),
         },
         route => {
             ordering_policy => $options->{extension_mode} eq 'destination_route'

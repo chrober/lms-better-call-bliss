@@ -191,12 +191,20 @@ sub start_info_lines {
     if ($mode eq 'none') {
         push @lines, 'Local library guidance: not applied because this job adds no tracks.';
     } else {
+        my $library_policy = ref($options->{guidance_provider_policies}) eq 'HASH'
+            ? $options->{guidance_provider_policies}->{'library-signals'} : {};
+        my $provider_state = ref($library_policy) eq 'HASH'
+            && $library_policy->{enabled} && $library_policy->{valid}
+                ? 'enabled' : 'disabled or unavailable';
         push @lines, sprintf(
-            'Local library guidance for generated tracks: play count %+d, last played %+d, library age %+d; provider %s.',
+            'Local library guidance for generated tracks: play count %+d, last played %+d (horizon %dd), library age %+d (horizon %dd); frozen as of %d; provider %s.',
             0 + ($options->{playcount_influence} || 0),
             0 + ($options->{last_played_influence} || 0),
+            0 + ($options->{last_played_horizon_days} || 0),
             0 + ($options->{library_age_influence} || 0),
-            $capability->{library_signals_available} ? 'available' : 'unavailable',
+            0 + ($options->{library_age_horizon_days} || 0),
+            0 + ($options->{guidance_as_of_unix_seconds} || 0),
+            $provider_state,
         );
     }
     if ($mode ne 'none' && $options->{playcount_influence}
@@ -239,13 +247,19 @@ sub start_info_lines {
     }
     if ($options->{lastfm_enabled}) {
         push @lines, sprintf(
-            'Last.fm guidance: enabled; similar-track target %d%%, similar-artist target %d%%; failures fall back to Bliss.',
+            'Last.fm guidance: enabled; similar-track bounded influence %d%%, similar-artist %s %d%%; failures fall back to Bliss.',
             0 + ($options->{lastfm_track_guidance_percent} || 0),
+            ($options->{lastfm_artist_mode} || 'target_share') eq 'bounded_influence'
+                ? 'bounded influence' : 'target share',
             0 + ($options->{lastfm_artist_guidance_percent} || 0),
         );
     } else {
         push @lines, 'Last.fm guidance: disabled.';
     }
+    push @lines, sprintf(
+        'Last.fm similar-artist %s policy is unavailable from the installed provider; that channel is neutral.',
+        $options->{lastfm_artist_policy_unavailable},
+    ) if $options->{lastfm_artist_policy_unavailable};
     push @lines, _track_lines(
         $job, 'Immutable listening history', $job->{history_track_ids},
         INFO_TRACK_LIMIT, 0,

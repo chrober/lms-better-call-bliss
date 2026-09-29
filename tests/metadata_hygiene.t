@@ -1,9 +1,8 @@
 use strict;
 use warnings;
 use FindBin;
-use File::Find;
 use File::Spec;
-use Test::More tests => 127;
+use Test::More tests => 145;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -231,13 +230,83 @@ like(
 );
 like(
     $settings_module,
-    qr/last_played_influence\s+library_age_influence/s,
-    'settings persist the two local library-signal defaults',
+    qr/_apply_guidance_provider_settings.*?guidance_provider_state/s,
+    'settings persist provider-owned guidance overrides through host state',
 );
 like(
     $settings,
-    qr/last_played_influence.*?library_age_influence/s,
-    'settings expose independent defaults for recency and library age',
+    qr/guidance_provider_sections.*?provider\.controls/s,
+    'settings render discovered provider controls from their descriptor',
+);
+like(
+    $settings,
+    qr/provider\.settings_uri.*?PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS" \| string\(provider\.display_name\)/s,
+    'provider settings link identifies the specific provider it opens',
+);
+like(
+    $settings,
+    qr/<input type="checkbox" name="\[% provider\.enable_field_name \| html %\]" value="1".*?checked="checked"/s,
+    'guidance provider activation uses a checkbox',
+);
+unlike(
+    $settings,
+    qr/<select class="stdedit" name="\[% provider\.enable_field_name \| html %\]"/s,
+    'guidance provider activation no longer uses a two-value select',
+);
+like(
+    $settings,
+    qr/id="guidance-provider-controls-\[% provider\.provider_id \| html %\]" class="\[% UNLESS provider\.enabled %\]hidden\[% END %\]".*?\[% FOREACH control IN provider\.controls %\]/s,
+    'provider-specific controls are present in a client-toggleable container',
+);
+like(
+    $settings,
+    qr/function updateGuidanceProviderControls\(checkbox\).*?checkbox\.checked.*?classList\.remove\('hidden'\).*?classList\.add\('hidden'\).*?bindGuidanceProviderControls\(\)/s,
+    'provider checkbox immediately reveals or hides its controls without submitting the settings form',
+);
+like(
+    $settings,
+    qr/'guidance-providers-section': false.*?setSectionShown\(id, stored === null \? defaults\[id\] : stored === 'true'\)/s,
+    'guidance-provider section persists its collapsed or expanded state in local storage',
+);
+like(
+    $settings,
+    qr/control\.render_as == 'slider'.*?sliderInput_\[% control\.minimum %\]_\[% control\.maximum %\]_1/s,
+    'provider descriptor selects slider rendering instead of making every integer a slider',
+);
+like(
+    $settings,
+    qr/<button type="button" class="stdclick".*?data-guidance-inherited-field=.*?data-guidance-inherited-value=/s,
+    'inherited-default button is a client-side control rather than a submit action',
+);
+like(
+    $settings,
+    qr/function copyGuidanceInheritedDefault\(button\).*?input\.dispatchEvent\(new Event\('change'/s,
+    'inherited-default control copies its value into the ordinary form field',
+);
+like(
+    $settings,
+    qr/type="hidden" name="\[% control\.inherit_field_name \| html %\]".*?data-guidance-inherited-marker=.*?marker\.value = '1'/s,
+    'inherited-default control marks the next explicit save to remove its host override',
+);
+like(
+    $settings,
+    qr/data-guidance-inherited-origin-label=.*?function setGuidanceOrigin.*?data-guidance-host-origin-label/s,
+    'inherited-default control updates its provenance annotation before the settings are saved',
+);
+like(
+    $settings,
+    qr/id="guidance-inherit-button-\[% control\.field_name \| html %\]".*?control\.origin == 'provider_default'.*?class="hidden".*?classList\.toggle\('hidden', sourceOrigin == 'provider_default'\)/s,
+    'provider-default controls hide their redundant inherited-default button',
+);
+like(
+    $settings_module,
+    qr/return unless \$params->\{saveSettings\};.*?\$state->\{enabled\} = exists \$params->\{\$enable_field\} \? 1 : 0/s,
+    'an unchecked provider activation checkbox disables the provider on an explicit settings save',
+);
+like(
+    $settings_module,
+    qr/inherited\s*=>.*?\$provider_defaults->\{\$control->\{key\}\}/s,
+    'settings expose the provider default value for client-side inheritance',
 );
 like(
     $plugin_module,
@@ -245,14 +314,34 @@ like(
     'legacy untouched 75 percent guidance defaults migrate once to 25 percent',
 );
 like(
+    $plugin_module,
+    qr/preference_defaults_version\s*<\s*3.*?set\('preference_defaults_version',\s*3\)/s,
+    'policy and saturation defaults advance the explicit preference migration version',
+);
+like(
     $extras,
     qr/Better Call Bliss default:.*?lastfm_track_guidance_percent.*?Better Call Bliss default:.*?lastfm_artist_guidance_percent/s,
     'Extras attributes both per-job Last.fm defaults to Better Call Bliss',
 );
 like(
+    $extras,
+    qr/bettercallbliss_guidance_provider_sections.*?guidance_provider_.*?control\.field_name/s,
+    'Extras renders per-job guidance controls from discovered provider descriptors',
+);
+like(
+    $extras,
+    qr/control\.render_as == 'slider'.*?sliderInput_\[% control\.minimum %\]_\[% control\.maximum %\]_1/s,
+    'Extras renders a slider only when the provider explicitly requests one',
+);
+like(
+    $settings_module,
+    qr/host_override\s*=>\s*'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST'.*?provider_default\s*=>\s*'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PROVIDER'/s,
+    'settings map internal policy provenance to localized user-facing labels',
+);
+like(
     $strings,
-    qr/target share.*?Zero disables.*?target share.*?Zero disables/s,
-    'setting help describes independent Last.fm target shares and their zero-value disable rule',
+    qr/Target share deliberately seeks.*?Bounded influence gives.*?Zero disables/s,
+    'setting help describes the artist policy tradeoff and zero-value disable rule',
 );
 like(
     $plugin_module,
@@ -303,6 +392,11 @@ ok(
     'album context actions are exposed only with an optimizer advertising destination blocks',
 );
 my $web_module = slurp(File::Spec->catfile($plugin, 'Web.pm'));
+like(
+    $web_module,
+    qr/render_as\s*=>\s*\$control->\{render_as\}.*?type\} eq 'integer' \? 'slider'/s,
+    'Extras carries provider-declared control presentation metadata into its form model',
+);
 like(
     $web_module,
     qr/route_target_album_id.*?_form_from_job.*?route_target_album_id.*?start_route_to_track_preview/s,
@@ -418,8 +512,8 @@ like(
 );
 like(
     $compatibility,
-    qr/main::STATISTICS.*?_int_pref\('playcount_influence',\s*0\).*?playcount_influence\s*=>\s*\$playcount_influence/s,
-    'the job default reads play-count influence from BlissMixer only when LMS statistics are active',
+    qr/GuidanceProviderDiscovery::discover\(\).*?GuidanceProviderPolicy::resolve.*?discovered_guidance_providers/s,
+    'compatibility discovers provider-owned guidance and resolves host policy',
 );
 my $request_builder = slurp(File::Spec->catfile($plugin, 'RequestBuilder.pm'));
 like(
@@ -434,8 +528,8 @@ like(
 );
 like(
     $request_builder,
-    qr/selection\s*=>\s*\{.*?playcount_influence\s*=>\s*\$options->\{extension_mode\} ne 'none'/s,
-    'the request applies the per-job play-count override only to track-adding jobs',
+    qr/provider_policies.*?guidance_channel.*?native_spi_config/s,
+    'the request applies per-job provider controls through the trusted native factory',
 );
 like(
     $request_builder,
@@ -465,8 +559,8 @@ like(
 );
 like(
     $extras,
-    qr/name="playcount_influence".*?Current BlissMixer setting:.*?bettercallbliss_defaults\.playcount_influence/s,
-    'Extras exposes a per-job play-count slider initialized from BlissMixer',
+    qr/guidance_provider_\[\% provider\.provider_id.*?control\.field_name/s,
+    'Extras exposes descriptor-driven per-job provider controls',
 );
 my $settings_page = slurp(File::Spec->catfile(
     $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'settings',
@@ -474,7 +568,7 @@ my $settings_page = slurp(File::Spec->catfile(
 ));
 unlike(
     $settings_module . $settings_page . $defaults_module,
-    qr/playcount_influence/,
+    qr/\bpref_playcount_influence\b/,
     'Better Call Bliss does not persist a competing plugin-wide play-count setting',
 );
 like(
@@ -623,36 +717,23 @@ like(
     'destination-route result explains that the configured adaptive context governed',
 );
 
-my @committed_binary_candidates;
-find(
-    {
-        wanted => sub {
-            return unless -f $_;
-            return unless $File::Find::name =~ m{[\\/]Bin[\\/][^\\/]+[\\/]bliss-playlist-optimizer(?:\.exe)?$};
-            push @committed_binary_candidates, $File::Find::name;
-        },
-        no_chdir => 1,
-    },
-    $plugin,
-);
+my $tracked = qx{git -C "$root" ls-files -- BetterCallBliss/Bin};
+my @committed_binary_candidates = grep {
+    m{^BetterCallBliss/Bin/[^/]+/bliss-playlist-optimizer(?:\.exe)?$}
+} split /\r?\n/, $tracked;
 is_deeply(\@committed_binary_candidates, [],
-    'source checkout does not commit native optimizer binaries');
+    'source checkout does not track native optimizer binaries');
 
 my $release_workflow = slurp(
     File::Spec->catfile($root, '.github', 'workflows', 'release.yml'),
 );
 like(
     $release_workflow,
-    qr/bliss-guidance-lastfm.*?bliss-guidance-library-signals/s,
-    'release workflow packages both trusted guidance providers',
-);
-like(
-    $release_workflow,
     qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-lastfm-\$platform/s,
     'release workflow includes AArch64 provider binaries for Lyrion appliances',
 );
-like(
+unlike(
     $release_workflow,
-    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-library-signals-\$platform/s,
-    'release workflow includes the AArch64 local-library-signals provider',
+    qr/bliss-guidance-library-signals/,
+    'release workflow does not bundle separately installed local-library guidance',
 );
