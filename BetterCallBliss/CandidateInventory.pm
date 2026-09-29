@@ -258,6 +258,7 @@ sub _load_cached_inventory {
         status => $status,
         identities => $identity_index ? $identity_index->{candidates} : [],
         identity_artifact => {
+            kind => 'eligible-candidate-identities-v1',
             path => $identity_path,
             sha256 => $state->{identity_sha256},
             schema_identity => 'eligible-candidate-identities-v1',
@@ -624,6 +625,7 @@ sub prepare {
         status => $last_status,
         identities => \@candidate_identities,
         identity_artifact => {
+            kind => 'eligible-candidate-identities-v1',
             path => $identity_path,
             sha256 => $identity_sha256,
             schema_identity => 'eligible-candidate-identities-v1',
