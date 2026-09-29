@@ -607,7 +607,6 @@ sub _start_preview_from_built {
         database_identity => $database_identity,
         candidate_inventory => $candidate_inventory
             ? $candidate_inventory->{status} : undef,
-        playcount_status => $fields->{playcount_status},
         semantic_path => $semantic_path,
         request_path => $request_path,
         result_path => $result_path,

@@ -47,6 +47,8 @@ my $job = {
         unmatched_row_count => 1,
         cache_state => 'memory',
     },
+    # Legacy pre-fetched play-count coverage must not be reported. The native
+    # Library Signals provider owns that snapshot and its diagnostics.
     playcount_status => {known_count => 63000, unknown_count => 1128},
     native_performance => {total_ms => 1488, database_cache => 'hit'},
     options => {
@@ -275,8 +277,10 @@ like($start, qr/Mixing strategy: adaptive.*learned matrix available/,
     'information log explains the effective acoustic strategy');
 like($start, qr/similar-track bounded influence 25%.*similar-artist target share 25%/,
     'information log exposes the effective Last.fm policy for both channels');
-like($start, qr/Local library guidance.*?play count -40, last played -60 \(horizon 180d\), library age \+70 \(horizon 365d\); frozen as of 1790294400.*?Play-count snapshot.*?63000 known tracks.*?1128 tracks/s,
-    'information log reports the per-job local-library influences and snapshot coverage');
+like($start, qr/Local library guidance.*?play count -40, last played -60 \(horizon 180d\), library age \+70 \(horizon 365d\); frozen as of 1790294400/,
+    'information log reports the per-job local-library influences');
+unlike($start, qr/Play-count snapshot:/,
+    'information log never reports the legacy pre-fetched play-count snapshot');
 like($start, qr/destination route \(automatic, 0-4 intermediate tracks, fast effort, target 70%, cautious direct-transition caution\)/,
     'information log explains destination length, effort, and target settings');
 like($start, qr/Candidate library: All tracks; 64128 local LMS-matched Bliss candidates; 0 Bliss rows outside the selected virtual library; 1 non-LMS rows excluded; cache memory/,
