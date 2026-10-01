@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 145;
+use Test::More tests => 146;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -342,6 +342,11 @@ like(
     $strings,
     qr/Target share deliberately seeks.*?Bounded influence gives.*?Zero disables/s,
     'setting help describes the artist policy tradeoff and zero-value disable rule',
+);
+like(
+    $plugin_module,
+    qr/unless\s*\(ref\(\$channels\)\s+eq\s+'HASH'\)\s*\{.*?lastfm_track\s*=>\s*\['bounded_influence'\].*?lastfm_artist\s*=>\s*\['bounded_influence',\s*'target_share'\]/s,
+    'legacy SPI v2 Last.fm provider metadata retains both artist policy choices',
 );
 like(
     $plugin_module,

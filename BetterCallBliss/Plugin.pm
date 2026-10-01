@@ -219,7 +219,17 @@ sub _guidanceProviderPolicies {
         && ($metadata->{provider_id} || '') eq ($expected_provider_id || '')
         && 0 + ($metadata->{spi_version} || 0) == 2;
     my $channels = $metadata->{channel_policies};
-    return {} unless ref($channels) eq 'HASH';
+    # Policy application belongs to the host. The first SPI v2 Last.fm
+    # provider shipped before it advertised channel_policies in version JSON,
+    # but it already emitted the same raw track and artist signals. Keep that
+    # provider usable instead of rendering an empty artist-strategy selector.
+    unless (ref($channels) eq 'HASH') {
+        return {
+            lastfm_track  => ['bounded_influence'],
+            lastfm_artist => ['bounded_influence', 'target_share'],
+        } if $expected_provider_id eq 'lastfm-guidance';
+        return {};
+    }
     my %policies;
     for my $channel (keys %$channels) {
         my $declared = $channels->{$channel};
