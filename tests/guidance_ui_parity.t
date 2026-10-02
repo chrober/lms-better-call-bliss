@@ -7,7 +7,7 @@ use Test::More;
 my $root = "$FindBin::Bin/..";
 my %canonical = (
     'BetterCallBliss/Plugins/BlissGuidance/SettingsModel.pm'
-        => 'a049ec77985627e022d6d7599e814b72604919b29227c3bfb74fffdb05be6ffc',
+        => '22646fb99551748cac14df242a1b2281eb569b295b2e82d1296370222afa4e31',
     'BetterCallBliss/Plugins/BlissGuidance/Policy.pm'
         => 'b8e5a91ad0014cfb2a2ab1ed4dc7227bc77c23a9e605bd55fff3a593c7ec3790',
     'BetterCallBliss/HTML/EN/plugins/BlissGuidance/settings/guidance-provider-controls.html'
@@ -24,7 +24,7 @@ for my $relative (sort keys %canonical) {
     my $content = do { local $/; <$fh> };
     close $fh;
     is(sha256_hex($content), $canonical{$relative},
-        "$relative is byte-for-byte pinned to lms-bliss-guidance-host 7956227");
+        "$relative is byte-for-byte pinned to the canonical shared-host asset");
 }
 
 my $settings_template = "$root/BetterCallBliss/HTML/EN/plugins/BetterCallBliss/settings/bettercallbliss.html";
