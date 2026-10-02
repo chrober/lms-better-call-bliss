@@ -173,6 +173,17 @@ my $settings = slurp(File::Spec->catfile(
     $plugin, 'HTML', 'EN', 'plugins', 'BetterCallBliss', 'settings',
     'bettercallbliss.html',
 ));
+my $guidance_controls = slurp(File::Spec->catfile(
+    $plugin, 'HTML', 'EN', 'plugins', 'BlissGuidance', 'settings',
+    'guidance-provider-controls.html',
+));
+my $guidance_script = slurp(File::Spec->catfile(
+    $plugin, 'HTML', 'EN', 'plugins', 'BlissGuidance', 'settings',
+    'guidance-provider-controls.js',
+));
+my $guidance_model = slurp(File::Spec->catfile(
+    $plugin, 'Plugins', 'BlissGuidance', 'SettingsModel.pm',
+));
 like(
     $plugin_module,
     qr/use Plugins::BetterCallBliss::Defaults.*?preference_defaults.*?ensure_preference_defaults/s,
@@ -234,17 +245,17 @@ like(
     'settings persist provider-owned guidance overrides through host state',
 );
 like(
-    $settings,
+    $settings . $guidance_controls,
     qr/guidance_provider_sections.*?provider\.controls/s,
     'settings render discovered provider controls from their descriptor',
 );
 like(
-    $settings,
-    qr/provider\.settings_uri.*?PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS" \| string\(provider\.display_name\)/s,
+    $guidance_controls . $settings_module,
+    qr/provider\.settings_uri.*?guidance_ui\.settings_token.*?PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS/s,
     'provider settings link identifies the specific provider it opens',
 );
 like(
-    $settings,
+    $guidance_controls,
     qr/<input type="checkbox" name="\[% provider\.enable_field_name \| html %\]" value="1".*?checked="checked"/s,
     'guidance provider activation uses a checkbox',
 );
@@ -254,13 +265,13 @@ unlike(
     'guidance provider activation no longer uses a two-value select',
 );
 like(
-    $settings,
+    $guidance_controls,
     qr/id="guidance-provider-controls-\[% provider\.provider_id \| html %\]" class="\[% UNLESS provider\.enabled %\]hidden\[% END %\]".*?\[% FOREACH control IN provider\.controls %\]/s,
     'provider-specific controls are present in a client-toggleable container',
 );
 like(
-    $settings,
-    qr/function updateGuidanceProviderControls\(checkbox\).*?checkbox\.checked.*?classList\.remove\('hidden'\).*?classList\.add\('hidden'\).*?bindGuidanceProviderControls\(\)/s,
+    $guidance_script,
+    qr/function updateGuidanceProviderControls\(checkbox\).*?checkbox\.checked.*?classList\.toggle\('hidden', !enabled\).*?bindGuidanceProviderControls/s,
     'provider checkbox immediately reveals or hides its controls without submitting the settings form',
 );
 like(
@@ -269,33 +280,33 @@ like(
     'guidance-provider section persists its collapsed or expanded state in local storage',
 );
 like(
-    $settings,
-    qr/control\.render_as == 'slider'.*?sliderInput_\[% control\.minimum %\]_\[% control\.maximum %\]_1/s,
+    $guidance_controls,
+    qr/control\.render_as == 'slider'.*?sliderInput_\[% control\.minimum %\]_\[% control\.maximum %\]_\[% control\.step %\]/s,
     'provider descriptor selects slider rendering instead of making every integer a slider',
 );
 like(
-    $settings,
+    $guidance_controls,
     qr/<button type="button" class="stdclick".*?data-guidance-inherited-field=.*?data-guidance-inherited-value=/s,
     'inherited-default button is a client-side control rather than a submit action',
 );
 like(
-    $settings,
+    $guidance_script,
     qr/function copyGuidanceInheritedDefault\(button\).*?input\.dispatchEvent\(new Event\('change'/s,
     'inherited-default control copies its value into the ordinary form field',
 );
 like(
-    $settings,
+    $guidance_controls . $guidance_script,
     qr/type="hidden" name="\[% control\.inherit_field_name \| html %\]".*?data-guidance-inherited-marker=.*?marker\.value = '1'/s,
     'inherited-default control marks the next explicit save to remove its host override',
 );
 like(
-    $settings,
+    $guidance_controls . $guidance_script,
     qr/data-guidance-inherited-origin-label=.*?function setGuidanceOrigin.*?data-guidance-host-origin-label/s,
     'inherited-default control updates its provenance annotation before the settings are saved',
 );
 like(
-    $settings,
-    qr/id="guidance-inherit-button-\[% control\.field_name \| html %\]".*?control\.origin == 'provider_default'.*?class="hidden".*?classList\.toggle\('hidden', sourceOrigin == 'provider_default'\)/s,
+    $guidance_controls . $guidance_script,
+    qr/id="guidance-inherit-button-\[% control\.field_name \| html %\]".*?control\.origin == 'provider_default'.*?class="hidden".*?classList\.toggle\('hidden', sourceOrigin === 'provider_default'\)/s,
     'provider-default controls hide their redundant inherited-default button',
 );
 like(
@@ -304,9 +315,9 @@ like(
     'an unchecked provider activation checkbox disables the provider on an explicit settings save',
 );
 like(
-    $settings_module,
-    qr/inherited\s*=>.*?\$provider_defaults->\{\$control->\{key\}\}/s,
-    'settings expose the provider default value for client-side inheritance',
+    $settings_module . $guidance_model,
+    qr/SettingsModel.*?inherited\s*=>.*?_inherited_value/s,
+    'settings expose the provider default value for client-side inheritance through the shared model',
 );
 like(
     $plugin_module,

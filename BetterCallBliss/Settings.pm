@@ -2,6 +2,7 @@ package Plugins::BetterCallBliss::Settings;
 
 use strict;
 use base qw(Slim::Web::Settings);
+use File::Basename qw(dirname);
 use Slim::Utils::Prefs;
 use Slim::Utils::PluginManager;
 use Plugins::BetterCallBliss::BlissCompatibility;
@@ -12,6 +13,10 @@ use Plugins::BetterCallBliss::Defaults qw(
 );
 use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::GuidanceProviderPolicy;
+
+# Vendored from lms-bliss-guidance-host so the release stays self-contained.
+use lib dirname(__FILE__);
+use Plugins::BlissGuidance::SettingsModel;
 
 my $prefs = preferences('plugin.bettercallbliss');
 
@@ -79,6 +84,17 @@ sub beforeRender {
     $params->{guidance_provider_sections} = _guidance_provider_sections(
         $params->{bliss_compatibility}->{discovered_guidance_providers},
     );
+    $params->{guidance_ui} = {
+        available_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE',
+        unavailable_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE',
+        settings_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS',
+        enabled_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED',
+        enabled_desc_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC',
+        origin_prefix_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN',
+        host_origin_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST',
+        origin_pending_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING',
+        reset_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET',
+    };
 }
 
 sub _clamp {
@@ -144,58 +160,25 @@ sub handler {
 sub _guidance_provider_sections {
     my $providers = shift;
     $providers = [] unless ref($providers) eq 'ARRAY';
-    my @sections;
-    for my $provider (@$providers) {
-        next unless ref($provider) eq 'HASH';
-        my $descriptor = ref($provider->{descriptor}) eq 'HASH'
-            ? $provider->{descriptor} : {};
-        my $provider_defaults = ref($provider->{defaults}) eq 'HASH'
-            ? $provider->{defaults} : {};
-        my $policy = ref($provider->{host_policy}) eq 'HASH'
-            ? $provider->{host_policy} : {};
-        my @controls;
-        for my $control (@{$descriptor->{controls} || []}) {
-            next unless ref($control) eq 'HASH' && $control->{key};
-            push @controls, {
-                %$control,
-                effective => $policy->{effective}->{$control->{key}},
-                origin => $policy->{origins}->{$control->{key}} || 'factory_default',
-                origin_label_token => _origin_label_token(
-                    $policy->{origins}->{$control->{key}} || 'factory_default',
-                ),
-                field_name => _provider_field($provider->{provider_id}, $control->{key}),
-                inherit_field_name => _provider_inherit_field(
-                    $provider->{provider_id}, $control->{key},
-                ),
-                dirty_field_name => _provider_dirty_field(
-                    $provider->{provider_id}, $control->{key},
-                ),
-                inherited => exists $provider_defaults->{$control->{key}}
-                    ? $provider_defaults->{$control->{key}}
-                    : $control->{factory_default},
-                inherited_origin_label_token => exists $provider_defaults->{$control->{key}}
-                    ? 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PROVIDER'
-                    : 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY',
-                inherited_origin => exists $provider_defaults->{$control->{key}}
-                    ? 'provider_default' : 'factory_default',
-                render_as => $control->{render_as}
-                    || ($control->{type} eq 'integer' ? 'slider' : ''),
-            };
-        }
-        push @sections, {
-            provider_id => $provider->{provider_id},
-            display_name => $descriptor->{display_name} || $provider->{provider_id},
-            settings_uri => $descriptor->{settings_uri} || '',
-            available => $provider->{available} ? 1 : 0,
-            diagnostic => $provider->{diagnostic} || '',
-            enabled => $policy->{enabled} ? 1 : 0,
-            policy_valid => $policy->{valid} ? 1 : 0,
-            policy_diagnostic => $policy->{diagnostic} || '',
-            enable_field_name => _provider_enable_field($provider->{provider_id}),
-            controls => \@controls,
-        };
-    }
-    return \@sections;
+    return Plugins::BlissGuidance::SettingsModel::provider_sections(
+        { providers => $providers },
+        $prefs->get('guidance_provider_state'),
+        {
+            source_labels => {
+                host_override => 'Better Call Bliss setting',
+                provider_default => 'Provider setting',
+                factory_default => 'Provider factory default',
+                job_override => 'Job setting',
+            },
+            field_names => {
+                enabled => \&_provider_enable_field,
+                control => \&_provider_field,
+                inherit => \&_provider_inherit_field,
+                dirty => \&_provider_dirty_field,
+            },
+            origin_label_token => \&_origin_label_token,
+        },
+    );
 }
 
 sub _apply_guidance_provider_settings {
