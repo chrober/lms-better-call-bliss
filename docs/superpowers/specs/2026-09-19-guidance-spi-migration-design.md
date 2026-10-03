@@ -1,5 +1,11 @@
 # Guidance SPI migration design
 
+> **Status (2026-10-03): Implemented as the SPI v2 Library Signals and
+> artifact-backed Last.fm migration.** It remains the architectural rationale
+> for that delivered path. Discoverable Lyrion providers are now documented by
+> the shared guidance host and provider kit; selectable Last.fm acquisition is
+> planned separately.
+
 ## Intent and success criteria
 
 Better Call Bliss must use external, non-acoustic knowledge to **guide** candidate choice while keeping Bliss the authority for acoustic distance, eligible-library membership, route feasibility, and repeat windows. The first supported guidance sources are Last.fm track/artist relations and LMS play counts.

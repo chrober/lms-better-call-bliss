@@ -299,22 +299,22 @@ LMS objects before it creates or overwrites a playlist or changes a player
 queue. A stale result therefore fails safely rather than writing a route against
 changed library state.
 
-## Current boundary and future reuse
+## Current boundary and `bliss-mixer` reuse
 
 The protocol is deliberately named `bliss-guidance-jsonl-v2`, not after the
 playlist optimizer. Its reusable division of responsibility is:
 
-| Component | Current responsibility | Future `bliss-mixer` reuse |
+| Component | Current responsibility | `bliss-mixer` status |
 | --- | --- | --- |
 | Better Call Bliss | Lyrion settings, LastMix acquisition, local identity resolution, job lifecycle, and persistence | Not required for a standalone future mixer host. |
 | Guidance providers | Interpret their own trusted artifact/resource and emit bounded signals | The same provider executables and channel contracts can be reused. |
-| Host | Maintains the Bliss-first candidate pool, invokes providers on bounded batches, and aggregates signals under host policy | `bliss-mixer` could use this role while ranking its already Bliss-derived DSTM candidate pool. |
+| Host | Maintains the Bliss-first candidate pool, invokes providers on bounded batches, and aggregates signals under host policy | `bliss-mixer` 0.11.4 exposes the first native Library Signals host endpoint and `selection_trace_v1`; Lab already sends enabled native-provider DSTM pools to it while retaining its own selection policy and log formatter. |
 
-No `bliss-mixer` or `lms-blissmixer` integration is implemented by this Better
-Call Bliss release. A future host must preserve the same ordering: derive and
-admit candidates through Bliss first, then ask optional providers to influence
-their ranking. It must not duplicate Better Call Bliss's Last.fm acquisition
-path or turn guidance into a substitute for acoustic evidence.
+The first native `bliss-mixer` host endpoint preserves the same ordering:
+derive and admit candidates through Bliss first, then ask optional providers to
+influence their ranking. Lab's existing native-provider DSTM integration must
+not duplicate Better Call Bliss's Last.fm acquisition path or turn guidance
+into a substitute for acoustic evidence.
 
 ## Related documentation
 
