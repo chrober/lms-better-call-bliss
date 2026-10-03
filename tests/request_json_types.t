@@ -33,13 +33,6 @@ BEGIN {
             album_window => '10',
             track_window => '100',
             guidance_providers => {
-                lastfm => {
-                    available => 1,
-                    program => '/trusted/plugin/bin/bliss-guidance-lastfm',
-                    policies => {
-                        lastfm_artist => [qw(bounded_influence target_share)],
-                    },
-                },
                 library_signals => {
                     available => 1,
                     program => '/trusted/plugin/bin/bliss-guidance-library-signals',
@@ -47,6 +40,22 @@ BEGIN {
                 },
             },
             discovered_guidance_providers => [{
+                provider_id => 'lastfm',
+                available => 1,
+                descriptor => {
+                    native_spi => {provider_id => 'lastfm-guidance'},
+                    controls => [
+                        {key => 'lastfm_track_influence', guidance_channel => 'lastfm_track'},
+                        {key => 'lastfm_artist_mode'},
+                        {
+                            key => 'lastfm_artist_level',
+                            guidance_channel => 'lastfm_artist',
+                            guidance_policy => 'target_share_or_bounded',
+                            guidance_mode_key => 'lastfm_artist_mode',
+                        },
+                    ],
+                },
+            }, {
                 provider_id => 'library-signals',
                 available => 1,
                 descriptor => {
@@ -92,6 +101,25 @@ BEGIN {
     package Plugins::BetterCallBliss::GuidanceProviderDiscovery;
     sub native_spi_config {
         my ($provider, $policy, $context) = @_;
+        if ($provider->{provider_id} eq 'lastfm') {
+            return {
+                id => 'lastfm-guidance',
+                program => '/trusted/provider/bin/bliss-guidance-lastfm',
+                options => {
+                    acquisition_mode => 'artifact',
+                    lastfm_track_influence => $policy->{lastfm_track_influence},
+                    lastfm_artist_mode => $policy->{lastfm_artist_mode},
+                    lastfm_artist_level => $policy->{lastfm_artist_level},
+                },
+                artifacts => [{
+                    kind => 'resolved-lastfm-evidence-v1',
+                    path => $context->{lastfm_relations_artifact}->{path},
+                    sha256 => $context->{lastfm_relations_artifact}->{sha256},
+                }],
+                resources => [],
+                timeout_ms => 5000,
+            };
+        }
         return {
             id => 'library-signals-guidance',
             program => '/trusted/provider/bin/bliss-guidance-library-signals',
@@ -164,6 +192,15 @@ BEGIN {
             output_name => '',
             output_name_generated => 0,
             guidance_provider_policies => {
+                lastfm => {
+                    valid => 1,
+                    enabled => 1,
+                    effective => {
+                        lastfm_track_influence => 75,
+                        lastfm_artist_mode => 'target_share',
+                        lastfm_artist_level => 75,
+                    },
+                },
                 'library-signals' => {
                     valid => 1,
                     enabled => 1,
@@ -228,6 +265,15 @@ Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
             sha256 => 'b' x 64,
         },
         provider_policies => $built->{options}->{guidance_provider_policies},
+        provider_artifacts => {
+            lastfm => {
+                lastfm_relations_artifact => {
+                    kind => 'resolved-lastfm-evidence-v1',
+                    path => '/private/job/semantic-evidence.json',
+                    sha256 => 'a' x 64,
+                },
+            },
+        },
     },
 );
 my $logged_shortlist = "$built->{request}->{extension}->{shortlist_limit}";
@@ -293,8 +339,13 @@ is_deeply($zero_lastfm_request->{guidance_addons}, [],
 is_deeply($request->{guidance_addons}, [
     {
         id => 'lastfm-guidance',
-        program => '/trusted/plugin/bin/bliss-guidance-lastfm',
-        options => {},
+        program => '/trusted/provider/bin/bliss-guidance-lastfm',
+        options => {
+            acquisition_mode => 'artifact',
+            lastfm_track_influence => 75,
+            lastfm_artist_mode => 'target_share',
+            lastfm_artist_level => 75,
+        },
         artifacts => [{
             kind => 'resolved-lastfm-evidence-v1',
             path => '/private/job/semantic-evidence.json',

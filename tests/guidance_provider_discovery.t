@@ -50,6 +50,26 @@ use lib '.';
     sub guidance_provider_descriptor_v1 { return Plugins::GuidanceGood::Plugin::guidance_provider_descriptor_v1() }
     sub guidance_provider_defaults_v1 { return { playcount_influence => 0, settings_revision => 1 } }
     sub guidance_provider_status_v1 { return { available => 1 } }
+
+    package Plugins::GuidanceEnvironment::Plugin;
+    sub guidance_provider_descriptor_v1 {
+        my $descriptor = Plugins::GuidanceGood::Plugin::guidance_provider_descriptor_v1();
+        $descriptor->{provider_id} = 'lastfm';
+        return $descriptor;
+    }
+    sub guidance_provider_defaults_v1 { return { playcount_influence => 0, settings_revision => 1 } }
+    sub guidance_provider_status_v1 { return { available => 1 } }
+    sub guidance_provider_process_environment_v1 {
+        return { BLISS_GUIDANCE_LASTFM_API_KEY => 'test-secret' };
+    }
+    sub guidance_provider_acquire_artifacts_v1 {
+        my ($class, $policy, $context, $callback) = @_;
+        $callback->({
+            available => 1,
+            artifacts => [{ kind => 'semantic-evidence-v1', path => '/trusted/artifact.json' }],
+            diagnostic => '',
+        });
+    }
 }
 
 require 'BetterCallBliss/GuidanceProviderDiscovery.pm';
@@ -88,5 +108,30 @@ my $duplicate = Plugins::BetterCallBliss::GuidanceProviderDiscovery::discover();
 is(scalar @{$duplicate->{providers}}, 2, 'both duplicate declarations are reported');
 ok(!$_->{available}, 'duplicate provider IDs are rejected deterministically')
     for @{$duplicate->{providers}};
+
+@Slim::Utils::PluginManager::enabled = ('Plugins::GuidanceEnvironment::Plugin');
+my $with_environment = Plugins::BetterCallBliss::GuidanceProviderDiscovery::discover();
+my $environment_provider = $with_environment->{providers}->[0];
+my $environment = Plugins::BetterCallBliss::GuidanceProviderDiscovery::process_environment(
+    $environment_provider, {}, {},
+);
+is_deeply(
+    $environment,
+    { BLISS_GUIDANCE_LASTFM_API_KEY => 'test-secret' },
+    'provider environment hook returns a launch-only environment map',
+);
+ok(
+    !grep { /test-secret/ } values %{$environment_provider->{descriptor}->{native_spi}},
+    'provider descriptor remains independent from its process-only secret',
+);
+my $acquisition;
+Plugins::BetterCallBliss::GuidanceProviderDiscovery::acquire_artifacts(
+    $environment_provider, {}, { source_tracks => [] }, sub { $acquisition = shift },
+);
+is_deeply(
+    $acquisition->{artifacts},
+    [{ kind => 'semantic-evidence-v1', path => '/trusted/artifact.json' }],
+    'provider acquisition hook returns its trusted artifact descriptor asynchronously',
+);
 
 done_testing;

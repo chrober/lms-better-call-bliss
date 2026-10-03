@@ -423,6 +423,23 @@ sub _resolve_provider_job_policies {
             ? int($effective->{$key})
             : $key =~ /horizon/ ? ($key =~ /last_played/ ? 180 : 365) : 0;
     }
+
+    # Transitional report fields mirror the discovered provider policy. The
+    # optimizer configuration itself is constructed exclusively from this
+    # policy, not from the retired Better Call Bliss preferences.
+    my $lastfm = $policies->{lastfm} || {};
+    my $lastfm_effective = $lastfm->{enabled} && $lastfm->{valid}
+        && ref($lastfm->{effective}) eq 'HASH' ? $lastfm->{effective} : {};
+    $options->{lastfm_track_guidance_percent} = int(
+        $lastfm_effective->{lastfm_track_influence} || 0,
+    );
+    $options->{lastfm_artist_guidance_percent} = int(
+        $lastfm_effective->{lastfm_artist_level} || 0,
+    );
+    $options->{lastfm_artist_mode} = $lastfm_effective->{lastfm_artist_mode}
+        || 'target_share';
+    $options->{lastfm_enabled} = ($options->{lastfm_track_guidance_percent}
+        || $options->{lastfm_artist_guidance_percent}) ? 1 : 0;
 }
 
 1;

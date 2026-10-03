@@ -296,49 +296,8 @@ sub configure_guidance_addons {
     $artifacts ||= {};
 
     my $selection = $request->{selection} ||= {};
-    my $providers = ref($capability->{guidance_providers}) eq 'HASH'
-        ? $capability->{guidance_providers} : {};
     my @policy;
     my @addons;
-
-    my $lastfm = $providers->{lastfm} || {};
-    my $track_target = _json_integer(
-        $selection->{recording_guidance_percent} || 0,
-        'recording_guidance_percent',
-    );
-    my $artist_target = _json_integer(
-        $selection->{artist_guidance_percent} || 0,
-        'artist_guidance_percent',
-    );
-    my $artist_mode = $selection->{artist_guidance_mode} || 'target_share';
-    die 'artist_guidance_mode must be target_share or bounded_influence'
-        unless $artist_mode =~ /^(?:target_share|bounded_influence)$/;
-    my $semantic = $artifacts->{semantic_evidence};
-    if ($lastfm->{available} && $lastfm->{program}
-        && ref($semantic) eq 'HASH' && $semantic->{path} && $semantic->{sha256}
-        && ($track_target || $artist_target)) {
-        push @policy, {
-            provider_id => 'lastfm-guidance', channel => 'lastfm_track',
-            weight => $track_target / 100,
-        } if $track_target;
-        push @policy, {
-            provider_id => 'lastfm-guidance', channel => 'lastfm_artist',
-            weight => $artist_mode eq 'target_share' ? 1 : $artist_target / 100,
-            ($artist_mode eq 'target_share'
-                ? (target_percent => $artist_target) : ()),
-        } if $artist_target;
-        push @addons, {
-            id => 'lastfm-guidance',
-            program => $lastfm->{program},
-            options => {},
-            artifacts => [{
-                kind => 'resolved-lastfm-evidence-v1',
-                path => $semantic->{path}, sha256 => $semantic->{sha256},
-            }],
-            resources => [],
-            timeout_ms => 5000,
-        };
-    }
 
     my $provider_policies = ref($artifacts->{provider_policies}) eq 'HASH'
         ? $artifacts->{provider_policies} : {};
@@ -356,17 +315,31 @@ sub configure_guidance_addons {
             next unless ref($control) eq 'HASH' && $control->{guidance_channel};
             my $value = $resolved->{effective}->{$control->{key}};
             next unless defined $value && $value =~ /^-?\d+$/ && $value;
-            push @provider_policy, {
+            my %entry = (
                 provider_id => $native->{provider_id},
                 channel => $control->{guidance_channel},
                 weight => int($value) / 100,
-            };
+            );
+            if (($control->{guidance_policy} || '') eq 'target_share_or_bounded') {
+                my $mode_key = $control->{guidance_mode_key} || '';
+                my $mode = $resolved->{effective}->{$mode_key} || 'target_share';
+                die "guidance provider $provider_id has an invalid $mode_key"
+                    unless $mode =~ /^(?:target_share|bounded_influence)$/;
+                if ($mode eq 'target_share') {
+                    $entry{weight} = 1;
+                    $entry{target_percent} = int($value);
+                }
+            }
+            push @provider_policy, \%entry;
         }
         next unless @provider_policy;
         next unless ref($artifacts->{candidate_identities}) eq 'HASH'
             && $artifacts->{candidate_identities}->{path}
             && $artifacts->{candidate_identities}->{sha256};
         my $config = eval {
+            my $provider_artifacts = ref($artifacts->{provider_artifacts}) eq 'HASH'
+                && ref($artifacts->{provider_artifacts}->{$provider_id}) eq 'HASH'
+                    ? $artifacts->{provider_artifacts}->{$provider_id} : {};
             Plugins::BetterCallBliss::GuidanceProviderDiscovery::native_spi_config(
                 $provider, $resolved->{effective}, {
                     candidate_identity_artifact => $artifacts->{candidate_identities},
@@ -374,6 +347,7 @@ sub configure_guidance_addons {
                         $selection->{guidance_as_of_unix_seconds},
                         'guidance_as_of_unix_seconds',
                     ),
+                    %$provider_artifacts,
                 },
             );
         };

@@ -22,9 +22,9 @@ use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateGuidance;
+use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::JobOptions;
-use Plugins::BetterCallBliss::LastFmEvidence;
 use Plugins::BetterCallBliss::LogDiagnostics;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
@@ -422,6 +422,18 @@ sub _launch_optimizer {
             candidate_identities => $built->{request}->{artifacts}
                 ->{candidate_identities},
             provider_policies => $built->{options}->{guidance_provider_policies},
+            provider_artifacts => {
+                lastfm => {
+                    lastfm_relations_artifact => {
+                        kind => 'resolved-lastfm-evidence-v1',
+                        %{_artifact_descriptor($job->{semantic_path})},
+                    },
+                    cache_path => $library_cache_root . '/lastfm-guidance-v1.json',
+                    cache_ttl_seconds => 86400,
+                    request_deadline_ms => 5000,
+                    max_concurrent_requests => 4,
+                },
+            },
         },
     );
     Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(
@@ -441,11 +453,13 @@ sub _launch_optimizer {
     push @params, '--trusted-request' if $optimizer_supports_trusted_request;
     push @params, '--progress', $job->{progress_path}
         if $optimizer_supports_progress && $job->{progress_path};
+    my $process_environment = _guidance_process_environment($built);
 
     my $retie_stderr = !main::ISWINDOWS && tied(*STDERR) ? 1 : 0;
     untie *STDERR if $retie_stderr;
     my ($process, $launch_error);
     eval {
+        local %ENV = (%ENV, %$process_environment);
         $process = Proc::Background->new(
             {
                 die_upon_destroy => 1,
@@ -468,6 +482,34 @@ sub _launch_optimizer {
     Slim::Utils::Timers::setTimer(
         undef, time() + 0.5, sub { _poll($job->{id}) },
     );
+}
+
+sub _guidance_process_environment {
+    my $built = shift || {};
+    my %active = map { ($_->{id} || '') => 1 }
+        @{$built->{request}->{guidance_addons} || []};
+    my $policies = $built->{options}->{guidance_provider_policies};
+    $policies = {} unless ref($policies) eq 'HASH';
+    my %environment;
+    for my $provider (@{ref($built->{capability}->{discovered_guidance_providers}) eq 'ARRAY'
+        ? $built->{capability}->{discovered_guidance_providers} : []}) {
+        next unless ref($provider) eq 'HASH' && $provider->{available};
+        my $provider_id = $provider->{provider_id} || next;
+        my $resolved = $policies->{$provider_id};
+        next unless ref($resolved) eq 'HASH' && $resolved->{valid}
+            && $resolved->{enabled} && ref($resolved->{effective}) eq 'HASH';
+        my $native_id = $provider->{descriptor}->{native_spi}->{provider_id} || '';
+        next unless $native_id && $active{$native_id};
+        my $provided = Plugins::BetterCallBliss::GuidanceProviderDiscovery::process_environment(
+            $provider, $resolved->{effective}, {},
+        );
+        for my $key (keys %$provided) {
+            die "guidance providers disagree on process environment $key"
+                if exists $environment{$key} && $environment{$key} ne $provided->{$key};
+            $environment{$key} = $provided->{$key};
+        }
+    }
+    return \%environment;
 }
 
 sub _track_label {
@@ -502,7 +544,7 @@ sub _resolve_guidance_and_launch {
     my $job = $jobs{$job_id} || return;
     return unless ($job->{state} || '') eq 'running';
     $job->{stage} = 'Matching Last.fm guidance to candidate library'
-        if $built->{options}->{lastfm_enabled}
+        if ($job->{lastfm_state} || '') =~ /^(?:preparing|fresh|partial)$/
             && $built->{options}->{extension_mode} ne 'none';
     Plugins::BetterCallBliss::CandidateGuidance::resolve_async(
         $bundle, $candidate_inventory, {
@@ -537,6 +579,54 @@ sub _resolve_guidance_and_launch {
     );
 }
 
+sub _active_lastfm_provider {
+    my $built = shift || {};
+    return unless ($built->{options}->{extension_mode} || '') ne 'none';
+    my $policies = $built->{options}->{guidance_provider_policies};
+    $policies = {} unless ref($policies) eq 'HASH';
+    for my $provider (@{ref($built->{capability}->{discovered_guidance_providers}) eq 'ARRAY'
+        ? $built->{capability}->{discovered_guidance_providers} : []}) {
+        next unless ref($provider) eq 'HASH' && $provider->{available};
+        next unless ($provider->{provider_id} || '') eq 'lastfm';
+        my $policy = $policies->{lastfm};
+        next unless ref($policy) eq 'HASH' && $policy->{valid} && $policy->{enabled}
+            && ref($policy->{effective}) eq 'HASH';
+        my $effective = $policy->{effective};
+        next unless ($effective->{lastfm_track_influence} || 0)
+            || ($effective->{lastfm_artist_level} || 0);
+        return ($provider, $effective);
+    }
+    return;
+}
+
+sub _empty_semantic_bundle {
+    my ($state, $error_code) = @_;
+    return {
+        schema_version => 1,
+        frozen_at => '1970-01-01T00:00:00Z',
+        providers => [{
+            provider => 'last.fm',
+            dataset_or_algorithm => 'Bliss Guidance: Last.fm',
+            state => $state || 'disabled',
+            request_count => 0,
+            failure_count => $state && $state eq 'failed' ? 1 : 0,
+            error_codes => $error_code ? [$error_code] : [],
+        }],
+        edges => [],
+    };
+}
+
+sub _read_provider_semantic_bundle {
+    my $artifact = shift || {};
+    return unless ref($artifact) eq 'HASH'
+        && ($artifact->{kind} || '') eq 'semantic-evidence-v1'
+        && $artifact->{path};
+    my $bytes = eval { read_file($artifact->{path}, binmode => ':raw') };
+    return unless defined $bytes;
+    my $bundle = eval { _json()->decode($bytes) };
+    return ref($bundle) eq 'HASH' ? $bundle : undef;
+}
+
 sub _start_preview_from_built {
     my ($job_id, $dir, $semantic_path, $built, $fields) = @_;
     $fields ||= {};
@@ -556,8 +646,8 @@ sub _start_preview_from_built {
     my $result_path = $dir . '/result.json';
     my $stderr_path = $dir . '/stderr.log';
     my $progress_path = $dir . '/progress.json';
-    my $lastfm_applies = $built->{options}->{lastfm_enabled}
-        && $built->{options}->{extension_mode} ne 'none';
+    my ($lastfm_provider, $lastfm_policy) = _active_lastfm_provider($built);
+    my $lastfm_applies = $lastfm_provider ? 1 : 0;
     my $lastfm_source_tracks = [
         @{$built->{request}->{history_tracks} || []},
         @{$built->{request}->{source_tracks}},
@@ -825,77 +915,38 @@ sub _start_preview_from_built {
             . " output_mode=$effective->{output_mode}"
         );
     }
-    my $prepare_ok = eval {
-        Plugins::BetterCallBliss::LastFmEvidence::prepare(
-            $lastfm_applies, $lastfm_source_tracks, sub {
-                my $bundle = shift;
-                my $job = $jobs{$job_id} || return;
-                return unless ($job->{state} || '') eq 'running';
-                my $provider = ref($bundle->{providers}) eq 'ARRAY'
-                    ? $bundle->{providers}->[0] : undef;
-                $job->{lastfm_state} = $provider
-                    ? $provider->{state} : 'disabled'
-                    if $lastfm_applies;
-                my $launch_ok = eval {
-                    _resolve_guidance_and_launch(
-                        $job_id, $built, $bundle, $candidate_inventory,
-                    );
-                    1;
-                };
-                _fail_deferred_route_job(
-                    $job_id, $@ || 'Could not prepare optimizer request',
-                    'OPTIMIZER_LAUNCH_FAILED',
-                ) unless $launch_ok;
-            },
-            sub {
-                my $progress = shift || {};
-                my $job = $jobs{$job_id} || return;
-                return unless ($job->{state} || '') eq 'running';
-                my $total = 0 + ($progress->{total} || 0);
-                my $done = 0 + ($progress->{requests} || 0);
-                my $edges = 0 + ($progress->{edges} || 0);
-                my $successes = 0 + ($progress->{successes} || 0);
-                my $failures = 0 + ($progress->{failures} || 0);
-                my $message = $progress->{message}
-                    || 'Collecting Last.fm track and artist evidence';
-                if ($total) {
-                    $message .= " ($done/$total requests, $successes ok";
-                    $message .= ", $failures failed" if $failures;
-                    $message .= ", $edges edges)";
-                }
-                $job->{lastfm_progress_message} = $message;
-            },
-            {job_id => $job_id},
+    my $on_prepared = sub {
+        my $acquisition = shift || {};
+        my $job = $jobs{$job_id} || return;
+        return unless ($job->{state} || '') eq 'running';
+        my $bundle = _empty_semantic_bundle(
+            $lastfm_applies
+                ? ($acquisition->{available} ? 'direct' : 'failed')
+                : 'disabled',
+            $lastfm_applies && !$acquisition->{available}
+                ? 'EVIDENCE_PREPARATION_FAILED' : undef,
         );
-        1;
-    };
-    unless ($prepare_ok) {
-        my $message = $@ || 'Could not start Last.fm evidence preparation';
-        $message =~ s/\s+/ /g;
-        my $job = $jobs{$job_id};
-        return $job if ($job->{state} || '') ne 'running';
-        $job->{lastfm_state} = 'failed';
-        $log->warn(
-            "job=$job_id Last.fm preparation failed; falling back to Bliss: "
-            . substr($message, 0, 400)
-        );
-        my $fallback = {
-            schema_version => 1,
-            frozen_at => '1970-01-01T00:00:00Z',
-            providers => [{
-                provider => 'last.fm',
-                dataset_or_algorithm =>
-                    'LastMix track.getSimilar + artist.getSimilar',
-                state => 'failed',
-                request_count => 0,
-                failure_count => 1,
-                error_codes => ['EVIDENCE_PREPARATION_FAILED'],
-            }],
-            edges => [],
-        };
+        if ($acquisition->{available}
+            && ($lastfm_policy->{source} || '') eq 'lastmix') {
+            my ($artifact) = grep {
+                ref($_) eq 'HASH' && ($_->{kind} || '') eq 'semantic-evidence-v1'
+            } @{$acquisition->{artifacts} || []};
+            $bundle = _read_provider_semantic_bundle($artifact)
+                || _empty_semantic_bundle('failed', 'EVIDENCE_ARTIFACT_INVALID');
+        }
+        my $provider_state = ref($bundle->{providers}) eq 'ARRAY'
+            ? $bundle->{providers}->[0] : undef;
+        $job->{lastfm_state} = ref($provider_state) eq 'HASH'
+            ? ($provider_state->{state} || 'failed') : 'failed';
+        if (!$acquisition->{available}) {
+            $log->warn(
+                "job=$job_id Last.fm provider acquisition failed; falling back to Bliss: "
+                . substr($acquisition->{diagnostic} || 'unknown provider failure', 0, 400)
+            );
+        }
         my $launch_ok = eval {
             _resolve_guidance_and_launch(
-                $job_id, $built, $fallback, $candidate_inventory,
+                $job_id, $built, $bundle, $candidate_inventory,
             );
             1;
         };
@@ -903,6 +954,25 @@ sub _start_preview_from_built {
             $job_id, $@ || 'Could not prepare optimizer request',
             'OPTIMIZER_LAUNCH_FAILED',
         ) unless $launch_ok;
+    };
+    my $prepare_ok = eval {
+        if ($lastfm_applies) {
+            Plugins::BetterCallBliss::GuidanceProviderDiscovery::acquire_artifacts(
+                $lastfm_provider, $lastfm_policy, {
+                    source_tracks => $lastfm_source_tracks,
+                    artifact_path => $dir . '/lastfm-raw-evidence.json',
+                },
+                $on_prepared,
+            );
+        } else {
+            $on_prepared->({ available => 1, artifacts => [], diagnostic => '' });
+        }
+        1;
+    };
+    unless ($prepare_ok) {
+        my $message = $@ || 'Could not start Last.fm provider acquisition';
+        $message =~ s/\s+/ /g;
+        $on_prepared->({ available => 0, artifacts => [], diagnostic => $message });
     }
     return $jobs{$job_id};
 }
