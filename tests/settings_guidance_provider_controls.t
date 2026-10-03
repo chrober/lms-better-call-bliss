@@ -27,6 +27,15 @@ use lib '.';
     sub isEnabled { return 0 }
     $INC{'Slim/Utils/PluginManager.pm'} = __FILE__;
 
+    package Slim::Utils::Strings;
+    sub string { return $_[0] }
+    sub import {
+        my $caller = caller;
+        no strict 'refs';
+        *{"${caller}::string"} = \&string;
+    }
+    $INC{'Slim/Utils/Strings.pm'} = __FILE__;
+
     package Slim::Web::HTTP::CSRF;
     sub protectName { return $_[1] }
     sub protectURI { return $_[1] }
@@ -109,6 +118,16 @@ Plugins::BetterCallBliss::Settings::_apply_guidance_provider_settings({
 $state = $Slim::Utils::Prefs::PREFS->get('guidance_provider_state');
 ok(!exists $state->{providers}->{'library-signals'}->{overrides}->{playcount_influence},
     'saving unrelated settings does not turn an inherited value into a host override');
+
+Plugins::BetterCallBliss::Settings::_apply_guidance_provider_settings({
+    saveSettings => 1,
+    'pref_guidance_provider_library-signals_enabled' => 1,
+    'pref_guidance_provider_library-signals_playcount_influence' => -20,
+    'dirty_guidance_provider_library-signals_playcount_influence' => 0,
+});
+$state = $Slim::Utils::Prefs::PREFS->get('guidance_provider_state');
+is($state->{providers}->{'library-signals'}->{overrides}->{playcount_influence}, -20,
+    'a changed submitted value persists even when a client-side dirty marker is unavailable');
 
 Plugins::BetterCallBliss::Settings::_apply_guidance_provider_settings({
     saveSettings => 1,
