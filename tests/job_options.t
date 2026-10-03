@@ -48,6 +48,26 @@ my $capability = {
     statistics_enabled => 1,
     playcount_influence => '-30',
     discovered_guidance_providers => [{
+        provider_id => 'lastfm',
+        available => 1,
+        descriptor => {
+            settings_schema_version => 1,
+            controls => [
+                {key => 'source', type => 'enum', values => [qw(lastmix api_key)], factory_default => 'lastmix', host_overridable => 0},
+                {key => 'lastfm_track_influence', type => 'integer', minimum => 0, maximum => 100, factory_default => 25, host_overridable => 1, guidance_channel => 'lastfm_track'},
+                {key => 'lastfm_artist_mode', type => 'enum', values => [qw(target_share bounded_influence)], factory_default => 'target_share', host_overridable => 1},
+                {key => 'lastfm_artist_level', type => 'integer', minimum => 0, maximum => 100, factory_default => 75, host_overridable => 1, guidance_channel => 'lastfm_artist'},
+            ],
+        },
+        host_state => {enabled => 1, overrides => {}},
+        host_policy => {
+            valid => 1, enabled => 1,
+            effective => {
+                source => 'lastmix', lastfm_track_influence => 75,
+                lastfm_artist_mode => 'target_share', lastfm_artist_level => 75,
+            },
+        },
+    }, {
         provider_id => 'library-signals',
         available => 1,
         descriptor => {
@@ -72,13 +92,6 @@ my $capability = {
             },
         },
     }],
-    guidance_providers => {
-        lastfm => {
-            policies => {
-                lastfm_artist => [qw(bounded_influence target_share)],
-            },
-        },
-    },
 };
 
 my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
@@ -158,43 +171,37 @@ is(Plugins::BetterCallBliss::JobOptions::normalize(
     )->{learned_percent}, 77,
     'a learned blend remains configurable when the matrix is usable');
 
-my $saved_track_guidance = delete $TestPrefs::values{lastfm_track_guidance_percent};
-my $saved_artist_guidance = delete $TestPrefs::values{lastfm_artist_guidance_percent};
 my $fallback_defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
-is($fallback_defaults->{lastfm_track_guidance_percent}, 25,
-    'missing track-guidance preference falls back to 25');
-is($fallback_defaults->{lastfm_artist_guidance_percent}, 25,
-    'missing artist-guidance preference falls back to 25');
-$TestPrefs::values{lastfm_track_guidance_percent} = $saved_track_guidance;
-$TestPrefs::values{lastfm_artist_guidance_percent} = $saved_artist_guidance;
+is($fallback_defaults->{lastfm_track_guidance_percent}, 75,
+    'track guidance remains sourced from the discovered provider policy');
+is($fallback_defaults->{lastfm_artist_guidance_percent}, 75,
+    'artist guidance remains sourced from the discovered provider policy');
 
 my $targets_override_retired_toggle = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,
     {
-        lastfm_enabled => 0,
-        lastfm_track_guidance_percent => '30',
-        lastfm_artist_guidance_percent => '0',
+        guidance_provider_lastfm_lastfm_track_influence => '30',
+        guidance_provider_lastfm_lastfm_artist_level => '0',
     },
 );
 is($targets_override_retired_toggle->{lastfm_enabled}, 1,
-    'a non-zero per-job Last.fm target activates guidance regardless of the retired toggle value');
+    'a non-zero provider-owned per-job level activates Last.fm guidance');
 
 my $zero_targets_disable_lastfm = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,
     {
-        lastfm_enabled => 1,
-        lastfm_track_guidance_percent => '0',
-        lastfm_artist_guidance_percent => '0',
+        guidance_provider_lastfm_lastfm_track_influence => '0',
+        guidance_provider_lastfm_lastfm_artist_level => '0',
     },
 );
 is($zero_targets_disable_lastfm->{lastfm_enabled}, 0,
-    'zero per-job Last.fm targets disable guidance regardless of the retired toggle value');
+    'zero provider-owned per-job levels disable Last.fm guidance');
 
 my $bounded_artist = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,
     {
-        lastfm_artist_mode => 'bounded_influence',
-        lastfm_artist_guidance_percent => '40',
+        guidance_provider_lastfm_lastfm_artist_mode => 'bounded_influence',
+        guidance_provider_lastfm_lastfm_artist_level => '40',
         'guidance_provider_library-signals_last_played_horizon_days' => '180',
         'guidance_provider_library-signals_library_age_horizon_days' => '365',
     },
@@ -206,22 +213,17 @@ is($bounded_artist->{last_played_horizon_days}, 180,
 is($bounded_artist->{library_age_horizon_days}, 365,
     'library-age horizon is normalized per job');
 
-my $unsupported_artist_policy = Plugins::BetterCallBliss::JobOptions::normalize(
+my $provider_artist_policy = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
     {
-        %$capability,
-        guidance_providers => {lastfm => {policies => {
-            lastfm_artist => ['bounded_influence'],
-        }}},
-    },
-    {
-        lastfm_artist_mode => 'target_share',
-        lastfm_artist_guidance_percent => '75',
+        guidance_provider_lastfm_lastfm_artist_mode => 'target_share',
+        guidance_provider_lastfm_lastfm_artist_level => '75',
     },
 );
-is($unsupported_artist_policy->{lastfm_artist_guidance_percent}, 0,
-    'an unsupported artist policy is neutral rather than silently substituted');
-is($unsupported_artist_policy->{lastfm_artist_policy_unavailable}, 'target_share',
-    'an unavailable artist policy is retained as explicit diagnostics provenance');
+is($provider_artist_policy->{lastfm_artist_guidance_percent}, 75,
+    'provider artist levels are preserved for target-share guidance');
+is($provider_artist_policy->{lastfm_artist_mode}, 'target_share',
+    'provider artist strategy is retained as diagnostics provenance');
 
 my $legacy_exact = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

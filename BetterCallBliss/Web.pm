@@ -20,7 +20,6 @@ use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::GuidanceReporting;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::Jobs;
-use Plugins::BetterCallBliss::LastFmEvidence;
 use Plugins::BetterCallBliss::PlaylistWriter;
 use Plugins::BetterCallBliss::RouteMode;
 
@@ -157,8 +156,7 @@ sub _form_from_params {
         learned_percent artist_window album_window track_window restart_count
         variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
-        lastfm_track_guidance_percent lastfm_artist_guidance_percent gap_context_mode
-        lastfm_artist_mode last_played_horizon_days library_age_horizon_days
+        gap_context_mode last_played_horizon_days library_age_horizon_days
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback candidate_library_id
         preview_job_id
@@ -929,22 +927,6 @@ sub handler {
     $params->{bettercallbliss_route_context} = _route_context($form);
     $params->{bettercallbliss_defaults} = $defaults;
     $params->{bettercallbliss_capability} = $capability;
-    $params->{bettercallbliss_lastmix_available}
-        = Plugins::BetterCallBliss::LastFmEvidence::available();
-    my $guidance_providers = ref($capability->{guidance_providers}) eq 'HASH'
-        ? $capability->{guidance_providers} : {};
-    my $lastfm_provider = ref($guidance_providers->{lastfm}) eq 'HASH'
-        ? $guidance_providers->{lastfm} : {};
-    $params->{bettercallbliss_lastfm_guidance_available}
-        = $lastfm_provider->{available} ? 1 : 0;
-    my $lastfm_policies = $lastfm_provider->{policies} || {};
-    my %artist_policies = map { $_ => 1 }
-        @{ref($lastfm_policies->{lastfm_artist}) eq 'ARRAY'
-            ? $lastfm_policies->{lastfm_artist} : []};
-    $params->{bettercallbliss_lastfm_artist_bounded_available}
-        = $artist_policies{bounded_influence} ? 1 : 0;
-    $params->{bettercallbliss_lastfm_artist_target_available}
-        = $artist_policies{target_share} ? 1 : 0;
     $params->{bettercallbliss_candidate_inventory}
         = Plugins::BetterCallBliss::CandidateInventory::status();
     $params->{bettercallbliss_job} = _result_view($job) if $job;

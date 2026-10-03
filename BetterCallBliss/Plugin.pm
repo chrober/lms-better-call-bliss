@@ -36,7 +36,6 @@ my $log = Slim::Utils::Log->addLogCategory({
 my $prefs = preferences('plugin.bettercallbliss');
 my $initialized = 0;
 my $optimizer_binary;
-my $lastfm_guidance_binary;
 my %binary_version_output;
 my $optimizer_supports_destination_blocks;
 
@@ -51,15 +50,6 @@ sub initPlugin {
     $prefs->init(preference_defaults());
     ensure_preference_defaults($prefs);
     ensure_guidance_provider_state($prefs);
-    if ($preference_defaults_version < 2) {
-        for my $name (qw(
-            lastfm_track_guidance_percent
-            lastfm_artist_guidance_percent
-        )) {
-            $prefs->set($name, 25) if ($prefs->get($name) || 0) == 75;
-        }
-        $prefs->set('preference_defaults_version', 2);
-    }
     if ($preference_defaults_version < 3) {
         # New policy and saturation preferences are backfilled by
         # ensure_preference_defaults above. Record that this installation has
@@ -78,7 +68,6 @@ sub initPlugin {
         }
     }
     $optimizer_binary = Slim::Utils::Misc::findbin('bliss-playlist-optimizer');
-    $lastfm_guidance_binary = Slim::Utils::Misc::findbin('bliss-guidance-lastfm');
     my $optimizer_supports_progress = _optimizerSupportsProgress($optimizer_binary);
     my $optimizer_supports_trusted_request =
         _optimizerSupportsTrustedRequest($optimizer_binary);
@@ -88,12 +77,6 @@ sub initPlugin {
         _optimizerSupportsCandidateLibraryScope($optimizer_binary);
     my $optimizer_supports_guidance_spi_v2 =
         _optimizerSupportsGuidanceSpiV2($optimizer_binary);
-    my $lastfm_guidance_spi_v2 = _guidanceProviderSupports(
-        $lastfm_guidance_binary, 'lastfm-guidance',
-    );
-    my $lastfm_guidance_policies = _guidanceProviderPolicies(
-        $lastfm_guidance_binary, 'lastfm-guidance',
-    );
     $optimizer_supports_destination_blocks =
         _optimizerSupportsDestinationBlocks($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
@@ -101,13 +84,6 @@ sub initPlugin {
         $optimizer_supports_genre_policy,
         $optimizer_supports_candidate_library_scope,
         $optimizer_supports_guidance_spi_v2,
-        {
-            lastfm => {
-                program => $lastfm_guidance_binary,
-                spi_v2 => $lastfm_guidance_spi_v2,
-                policies => $lastfm_guidance_policies,
-            },
-        },
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -150,9 +126,6 @@ sub initPlugin {
         . ($optimizer_supports_candidate_library_scope ? 'supported' : 'unsupported')
         . ' guidance_spi_v2='
         . ($optimizer_supports_guidance_spi_v2 ? 'supported' : 'unsupported')
-        . ' lastfm_guidance='
-        . (!$lastfm_guidance_binary ? 'missing'
-            : $lastfm_guidance_spi_v2 ? 'available' : 'incompatible')
         . ' destination_blocks='
         . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
     return 1;
@@ -202,45 +175,6 @@ sub _optimizerSupportsDestinationBlocks {
     my $binary = shift;
     my $output = _binaryVersionOutput($binary);
     return $output =~ /"destination_blocks"\s*:\s*true/ ? 1 : 0;
-}
-
-sub _guidanceProviderSupports {
-    my ($binary, $expected_provider_id) = @_;
-    my $output = _binaryVersionOutput($binary);
-    return 0 unless $output =~ /"provider_id"\s*:\s*"\Q$expected_provider_id\E"/;
-    return $output =~ /"spi_version"\s*:\s*2/ ? 1 : 0;
-}
-
-sub _guidanceProviderPolicies {
-    my ($binary, $expected_provider_id) = @_;
-    my $output = _binaryVersionOutput($binary);
-    my $metadata = eval { JSON::XS::decode_json($output) };
-    return {} unless ref($metadata) eq 'HASH'
-        && ($metadata->{provider_id} || '') eq ($expected_provider_id || '')
-        && 0 + ($metadata->{spi_version} || 0) == 2;
-    my $channels = $metadata->{channel_policies};
-    # Policy application belongs to the host. The first SPI v2 Last.fm
-    # provider shipped before it advertised channel_policies in version JSON,
-    # but it already emitted the same raw track and artist signals. Keep that
-    # provider usable instead of rendering an empty artist-strategy selector.
-    unless (ref($channels) eq 'HASH') {
-        return {
-            lastfm_track  => ['bounded_influence'],
-            lastfm_artist => ['bounded_influence', 'target_share'],
-        } if $expected_provider_id eq 'lastfm-guidance';
-        return {};
-    }
-    my %policies;
-    for my $channel (keys %$channels) {
-        my $declared = $channels->{$channel};
-        next unless ref($declared) eq 'ARRAY';
-        my %seen;
-        $policies{$channel} = [
-            grep { /^(?:bounded_influence|target_share)$/ && !$seen{$_}++ }
-            @$declared
-        ];
-    }
-    return \%policies;
 }
 
 sub _binaryVersionOutput {

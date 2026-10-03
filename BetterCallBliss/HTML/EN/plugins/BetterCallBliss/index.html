@@ -402,29 +402,6 @@
     <p class="bea-note">Variation is applied after the selected similarity strategy, so it also applies to future Static and Forest strategies. Leave the seed blank for a new result on each run; enter a previous result seed to reproduce it.</p>
   </fieldset>
 
-  <fieldset class="bea-section" id="lastfm_guidance_fields">
-    <legend>Last.fm guidance</legend>
-    <div class="bea-row">
-      <label for="lastfm_track_guidance_percent">Similar-track influence (%)</label>
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_track_guidance_percent" id="lastfm_track_guidance_percent" value="[% bettercallbliss_form.lastfm_track_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available && bettercallbliss_lastfm_guidance_available %] readonly[% END %]>
-      <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.lastfm_track_guidance_percent %]</span>
-    </div>
-    <div class="bea-row">
-      <label for="lastfm_artist_mode">Similar-artist strategy</label>
-      <select class="stdedit" name="lastfm_artist_mode" id="lastfm_artist_mode"[% UNLESS bettercallbliss_lastmix_available && bettercallbliss_lastfm_guidance_available %] disabled[% END %]>
-        [% IF bettercallbliss_lastfm_artist_target_available %]<option value="target_share"[% IF bettercallbliss_form.lastfm_artist_mode == 'target_share' %] selected[% END %]>Target share</option>[% END %]
-        [% IF bettercallbliss_lastfm_artist_bounded_available %]<option value="bounded_influence"[% IF bettercallbliss_form.lastfm_artist_mode == 'bounded_influence' %] selected[% END %]>Bounded influence</option>[% END %]
-      </select>
-    </div>
-    <div class="bea-row">
-      <label for="lastfm_artist_guidance_percent">Similar-artist level (%)</label>
-      <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="lastfm_artist_guidance_percent" id="lastfm_artist_guidance_percent" value="[% bettercallbliss_form.lastfm_artist_guidance_percent %]" required[% UNLESS bettercallbliss_lastmix_available && bettercallbliss_lastfm_guidance_available %] readonly[% END %]>
-      <span class="bea-disabled">Better Call Bliss default: [% bettercallbliss_defaults.lastfm_artist_guidance_percent %]</span>
-    </div>
-    [% UNLESS bettercallbliss_lastmix_available && bettercallbliss_lastfm_guidance_available %]<p class="bea-disabled">Requires LastMix and a compatible installed Last.fm guidance provider.</p>[% END %]
-    <p class="bea-note">Similar-track evidence adds a bounded boost. Similar-artist target share intentionally seeks Last.fm-supported candidates within the Bliss-qualified pool; bounded influence instead cooperates with play count, last played, and library age. Track and artist support may overlap. Zero disables that channel. Network/API failures fall back to Bliss without failing the job.</p>
-  </fieldset>
-
   [% FOREACH provider IN bettercallbliss_guidance_provider_sections %]
   <fieldset class="bea-section guidance_provider_fields" id="guidance_provider_[% provider.provider_id | html %]_fields">
     <legend>[% provider.display_name | html %]</legend>
@@ -603,10 +580,6 @@
     var restartHelp = document.getElementById('restart_help');
     var advancedSearch = document.getElementById('advanced_search');
     var warning = document.getElementById('mode_combination_warning');
-    var lastFmFields = document.getElementById('lastfm_guidance_fields');
-    var lastFmAvailable = [% IF bettercallbliss_lastmix_available %]true[% ELSE %]false[% END %];
-    var lastFmTrackGuidance = document.getElementById('lastfm_track_guidance_percent');
-    var lastFmArtistGuidance = document.getElementById('lastfm_artist_guidance_percent');
     var guidanceProviderFields = document.querySelectorAll('.guidance_provider_fields');
     var submit = document.getElementById('run_preview');
     var mainForm = document.getElementById('bea-main-form');
@@ -993,15 +966,11 @@
         if (routeMaximum) routeMaximum.readOnly = exactRoute;
         if (routeExact) routeExact.readOnly = !exactRoute;
         submit.disabled = !capabilityReady || invalidRoute;
-        setVisible(lastFmFields, true);
         for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
           setVisible(guidanceProviderFields[providerIndex], true);
         }
         setVisible(candidateLibraryRow, true);
         setVisible(candidateLibraryNote, true);
-        var routeLastFmInactive = !lastFmAvailable;
-        setReadOnlyWithSlider(lastFmTrackGuidance, routeLastFmInactive);
-        setReadOnlyWithSlider(lastFmArtistGuidance, routeLastFmInactive);
         setVisible(gapContextModeRow, false);
         setVisible(gapContextModeNote, false);
         if (gapContextMode) gapContextMode.disabled = true;
@@ -1104,15 +1073,11 @@
         : 'Choose a source to see the calculated final size.';
       submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble;
 
-      var lastFmInactive = !lastFmAvailable;
-      setVisible(lastFmFields, additions);
       for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
         setVisible(guidanceProviderFields[providerIndex], additions);
       }
       setVisible(candidateLibraryRow, additions);
       setVisible(candidateLibraryNote, additions);
-      setReadOnlyWithSlider(lastFmTrackGuidance, lastFmInactive);
-      setReadOnlyWithSlider(lastFmArtistGuidance, lastFmInactive);
 
       restarts.disabled = false;
       setReadOnlyWithSlider(restarts, preserve);

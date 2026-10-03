@@ -27,9 +27,6 @@ my %PREFERENCE_DEFAULTS = (
     report_retention_days => 30,
     semantic_cache_days => 30,
     semantic_stale_days => 90,
-    lastfm_track_guidance_percent => 25,
-    lastfm_artist_guidance_percent => 25,
-    lastfm_artist_mode => 'target_share',
     guidance_provider_state => { schema_version => 1, providers => {} },
     listenbrainz_enabled => 0,
 );
@@ -49,9 +46,6 @@ my %EMPTY_VALUE_IS_MISSING = map { $_ => 1 } qw(
     report_retention_days
     semantic_cache_days
     semantic_stale_days
-    lastfm_track_guidance_percent
-    lastfm_artist_guidance_percent
-    lastfm_artist_mode
     guidance_provider_state
     listenbrainz_enabled
 );

@@ -4,7 +4,6 @@ use strict;
 use base qw(Slim::Web::Settings);
 use File::Basename qw(dirname);
 use Slim::Utils::Prefs;
-use Slim::Utils::PluginManager;
 use Slim::Utils::Strings qw(string);
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::Defaults qw(
@@ -49,9 +48,6 @@ sub prefs {
         report_retention_days
         semantic_cache_days
         semantic_stale_days
-        lastfm_track_guidance_percent
-        lastfm_artist_guidance_percent
-        lastfm_artist_mode
         listenbrainz_enabled
     ));
 }
@@ -64,25 +60,8 @@ sub beforeRender {
     for my $name (preference_names()) {
         $params->{prefs}->{$name} = $prefs->get($name);
     }
-    $params->{lastmix_available} = Slim::Utils::PluginManager->isEnabled(
-        'Plugins::LastMix::Plugin'
-    ) ? 1 : 0;
     $params->{bliss_compatibility} =
         Plugins::BetterCallBliss::BlissCompatibility::snapshot();
-    my $guidance_providers = ref($params->{bliss_compatibility}->{guidance_providers}) eq 'HASH'
-        ? $params->{bliss_compatibility}->{guidance_providers} : {};
-    my $lastfm = ref($guidance_providers->{lastfm}) eq 'HASH'
-        ? $guidance_providers->{lastfm} : {};
-    my $policies = ref($lastfm->{policies}) eq 'HASH'
-        ? $lastfm->{policies} : {};
-    my %artist_policies = map { $_ => 1 }
-        @{ref($policies->{lastfm_artist}) eq 'ARRAY'
-            ? $policies->{lastfm_artist} : []};
-    $params->{lastfm_guidance_available} = $lastfm->{available} ? 1 : 0;
-    $params->{lastfm_artist_target_available}
-        = $artist_policies{target_share} ? 1 : 0;
-    $params->{lastfm_artist_bounded_available}
-        = $artist_policies{bounded_influence} ? 1 : 0;
     $params->{guidance_provider_sections} = _guidance_provider_sections(
         $params->{bliss_compatibility}->{discovered_guidance_providers},
     );
@@ -133,13 +112,6 @@ sub handler {
     _clamp($params, 'pref_report_retention_days', 1, 3650);
     _clamp($params, 'pref_semantic_cache_days', 1, 365);
     _clamp($params, 'pref_semantic_stale_days', 1, 3650);
-    _clamp($params, 'pref_lastfm_track_guidance_percent', 0, 100);
-    _clamp($params, 'pref_lastfm_artist_guidance_percent', 0, 100);
-    if (defined $params->{pref_lastfm_artist_mode}
-        && $params->{pref_lastfm_artist_mode} ne 'target_share'
-        && $params->{pref_lastfm_artist_mode} ne 'bounded_influence') {
-        $params->{pref_lastfm_artist_mode} = 'target_share';
-    }
     if (defined $params->{pref_semantic_cache_days}
         && defined $params->{pref_semantic_stale_days}
         && $params->{pref_semantic_stale_days} < $params->{pref_semantic_cache_days}) {

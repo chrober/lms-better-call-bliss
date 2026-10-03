@@ -17,7 +17,6 @@ my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
 my $optimizer_supports_guidance_spi_v2;
-my $guidance_programs = {};
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
 use constant MIN_BLISSMIXERLAB_VERSION => '0.5.0';
@@ -27,19 +26,6 @@ sub init {
     $optimizer_supports_genre_policy = shift ? 1 : 0;
     $optimizer_supports_candidate_library_scope = shift ? 1 : 0;
     $optimizer_supports_guidance_spi_v2 = shift ? 1 : 0;
-    $guidance_programs = shift || {};
-}
-
-sub _guidance_program {
-    my ($name) = @_;
-    my $entry = $guidance_programs->{$name};
-    return ref($entry) eq 'HASH' ? ($entry->{program} || '') : ($entry || '');
-}
-
-sub _guidance_spi_v2 {
-    my ($name) = @_;
-    my $entry = $guidance_programs->{$name};
-    return ref($entry) eq 'HASH' ? ($entry->{spi_v2} ? 1 : 0) : 1;
 }
 
 sub _int_pref {
@@ -183,11 +169,6 @@ sub snapshot {
 
     my $strategy = _strategy_from_prefs();
     my $statistics_enabled = main::STATISTICS ? 1 : 0;
-    my $lastfm_guidance = _guidance_program('lastfm');
-    my $lastfm_entry = $guidance_programs->{lastfm};
-    my $lastfm_policies = ref($lastfm_entry) eq 'HASH'
-        && ref($lastfm_entry->{policies}) eq 'HASH'
-            ? $lastfm_entry->{policies} : {};
     my $static_weights = _static_slider_weights();
     my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
     my $month = (localtime())[4] + 1;
@@ -239,14 +220,6 @@ sub snapshot {
         track_window      => _int_pref('no_repeat_track', 0),
         algorithm         => $strategy,
         statistics_enabled => $statistics_enabled,
-        guidance_providers => {
-            lastfm => {
-                available => $lastfm_guidance && -x $lastfm_guidance
-                    && _guidance_spi_v2('lastfm') ? 1 : 0,
-                program => $lastfm_guidance,
-                policies => $lastfm_policies,
-            },
-        },
         discovered_guidance_providers => \@discovered_providers,
         use_adaptive_weights => _int_pref('use_adaptive_weights', 0) ? 1 : 0,
         use_forest        => _int_pref('use_forest', 0) ? 1 : 0,

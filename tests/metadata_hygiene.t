@@ -211,7 +211,7 @@ like(
 );
 like(
     $settings,
-    qr/compatibility-section-header.*?job-defaults-section-header.*?route-section-header.*?lastfm-section-header.*?roadmap-section-header/s,
+    qr/compatibility-section-header.*?job-defaults-section-header.*?route-section-header.*?guidance-providers-section-header.*?roadmap-section-header/s,
     'settings page groups preferences into collapsible sections',
 );
 like(
@@ -234,10 +234,10 @@ unlike(
     qr/lastfm_enabled|updateLastFmGuidance/,
     'Last.fm target controls have no separate enable checkbox',
 );
-like(
+unlike(
     $defaults_module,
-    qr/lastfm_track_guidance_percent\s*=>\s*25,.*?lastfm_artist_guidance_percent\s*=>\s*25,/s,
-    'new installations default both independent Last.fm guidance controls to 25 percent',
+    qr/lastfm_track_guidance_percent|lastfm_artist_guidance_percent|lastfm_artist_mode/,
+    'Last.fm preferences are owned by the discoverable provider rather than Better Call Bliss defaults',
 );
 like(
     $settings_module,
@@ -319,20 +319,20 @@ like(
     qr/SettingsModel.*?inherited\s*=>.*?_inherited_value/s,
     'settings expose the provider default value for client-side inheritance through the shared model',
 );
-like(
+unlike(
     $plugin_module,
-    qr/preference_defaults_version.*?<\s*2.*?lastfm_track_guidance_percent.*?lastfm_artist_guidance_percent.*?set\(\$name,\s*25\).*?==\s*75/s,
-    'legacy untouched 75 percent guidance defaults migrate once to 25 percent',
+    qr/lastfm_track_guidance_percent|lastfm_artist_guidance_percent|lastfm_guidance_binary/,
+    'plugin startup no longer owns legacy Last.fm preferences or a bundled provider binary',
 );
 like(
     $plugin_module,
     qr/preference_defaults_version\s*<\s*3.*?set\('preference_defaults_version',\s*3\)/s,
     'policy and saturation defaults advance the explicit preference migration version',
 );
-like(
+unlike(
     $extras,
-    qr/Better Call Bliss default:.*?lastfm_track_guidance_percent.*?Better Call Bliss default:.*?lastfm_artist_guidance_percent/s,
-    'Extras attributes both per-job Last.fm defaults to Better Call Bliss',
+    qr/lastfm_guidance_fields|lastfm_track_guidance_percent|lastfm_artist_guidance_percent/,
+    'Extras has no duplicate Last.fm fields outside descriptor-rendered provider controls',
 );
 like(
     $extras,
