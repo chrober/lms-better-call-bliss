@@ -9,6 +9,13 @@ contract is host-neutral: Better Call Bliss currently uses it through
 and a future `bliss-mixer` integration may use the same providers while ranking
 its own Bliss-derived candidate pool.
 
+Since Better Call Bliss 0.21.0, Library Signals is discovered as an installed
+Lyrion provider rather than treated as a Better Call Bliss-owned source. At
+job start, Better Call Bliss reads the provider descriptor, defaults, and
+status; resolves the host's disabled-by-default activation and any sparse
+overrides; then requests the provider's trusted native SPI configuration. The
+provider continues to receive only the frozen request data described below.
+
 The central boundary is intentionally simple: **Bliss decides which tracks and
 routes are acoustically valid; guidance can only express a bounded preference
 among those already valid choices.** Guidance cannot add remote music, bypass
@@ -55,7 +62,7 @@ job. The resulting request is immutable for the optimizer process lifetime.
 | Strategy, Static weights, Adaptive context, repeat windows and genre policy | BlissMixer current settings, with Better Call Bliss job overrides | Better Call Bliss, then optimizer | Shapes the acoustic matrix, hard repeat checks, and the frozen eligible candidate library. |
 | Learned matrix and blend | Optional BlissMixerLab | Better Call Bliss, then optimizer | Supplies an optional matrix artifact and learned blend for Adaptive scoring. Its absence uses the documented Bliss fallback. |
 | Similar-track influence and similar-artist strategy/level | Better Call Bliss job settings | Better Call Bliss, then optimizer guidance policy | Similar-track is a bounded `lastfm_track` influence. Similar-artist is either a bounded influence or a `target_percent` policy, according to the installed provider's declared capability. Zero disables its channel. The Last.fm provider itself receives no UI setting. |
-| Local listening and library influences, each from -100 to 100; date saturation horizons | Better Call Bliss job settings; play count starts from the current BlissMixer setting, last played and library age default to zero | Better Call Bliss, then optimizer guidance policy and provider preparation | Non-zero values become signed `playcount`, `last_played`, and/or `library_age` policy weights. Better Call Bliss freezes `as_of_unix_seconds` plus the 180-day/365-day default horizons in the library-signals provider options; all zero means the provider is not started. |
+| Local listening and library influences, each from -100 to 100; date saturation horizons | Library Signals provider defaults, with explicit Better Call Bliss host and applicable job overrides | Better Call Bliss resolves the provider policy, then optimizer guidance policy and provider preparation | Non-zero values become signed `playcount`, `last_played`, and/or `library_age` policy weights. Better Call Bliss freezes `as_of_unix_seconds` plus the resolved horizons in provider options; all zero means the provider is not started. |
 | Candidate library | Active Lyrion virtual library, source exclusions, LMS membership, and captured genre policy | Better Call Bliss, then optimizer | Determines which *generated* tracks are eligible. It is frozen before native search starts. |
 
 The provider executables do not read preferences or web-form values. Better Call
