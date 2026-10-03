@@ -393,7 +393,7 @@ sub _resolve_provider_job_policies {
     # Transitional report fields mirror the discovered provider policy. The
     # optimizer configuration itself is constructed exclusively from this
     # policy, not from the retired Better Call Bliss preferences.
-    my $lastfm = $policies->{lastfm} || {};
+    my $lastfm = $policies{'lastfm'} || {};
     my $lastfm_effective = $lastfm->{enabled} && $lastfm->{valid}
         && ref($lastfm->{effective}) eq 'HASH' ? $lastfm->{effective} : {};
     $options->{lastfm_track_guidance_percent} = int(

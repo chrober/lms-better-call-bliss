@@ -127,16 +127,11 @@ ok($snapshot->{statistics_enabled}, 'LMS playback statistics availability is cap
 ok(!exists $snapshot->{playcount_influence},
     'play-count influence is owned by discovered guidance providers');
 
-Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {
-    lastfm => {
-        program => $lastfm_guidance,
-        spi_v2 => 1,
-    },
-});
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1);
 my $with_compatible_provider = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 ok(
-    $with_compatible_provider->{guidance_providers}->{lastfm}->{available},
-    'a bundled Last.fm provider is available only after the plugin verified its SPI v2 identity',
+    !exists $with_compatible_provider->{guidance_providers},
+    'Last.fm availability is supplied only by the discoverable provider contract',
 );
 
 unlink $matrix or die "Cannot remove $matrix: $!";

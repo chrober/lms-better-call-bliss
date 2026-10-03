@@ -331,7 +331,7 @@ like(
 );
 unlike(
     $extras,
-    qr/lastfm_guidance_fields|lastfm_track_guidance_percent|lastfm_artist_guidance_percent/,
+    qr/id="lastfm_guidance_fields"|name="lastfm_track_guidance_percent"|name="lastfm_artist_guidance_percent"/,
     'Extras has no duplicate Last.fm fields outside descriptor-rendered provider controls',
 );
 like(
@@ -354,10 +354,10 @@ like(
     qr/Target share deliberately seeks.*?Bounded influence gives.*?Zero disables/s,
     'setting help describes the artist policy tradeoff and zero-value disable rule',
 );
-like(
+unlike(
     $plugin_module,
-    qr/unless\s*\(ref\(\$channels\)\s+eq\s+'HASH'\)\s*\{.*?lastfm_track\s*=>\s*\['bounded_influence'\].*?lastfm_artist\s*=>\s*\['bounded_influence',\s*'target_share'\]/s,
-    'legacy SPI v2 Last.fm provider metadata retains both artist policy choices',
+    qr/_guidanceProviderPolicies|channel_policies|lastfm-guidance/,
+    'plugin startup leaves Last.fm policy metadata to the discoverable provider',
 );
 like(
     $plugin_module,
