@@ -5,6 +5,7 @@ use base qw(Slim::Web::Settings);
 use File::Basename qw(dirname);
 use Slim::Utils::Prefs;
 use Slim::Utils::PluginManager;
+use Slim::Utils::Strings qw(string);
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::Defaults qw(
     ensure_preference_defaults
@@ -17,6 +18,7 @@ use Plugins::BetterCallBliss::GuidanceProviderPolicy;
 # Vendored from lms-bliss-guidance-host so the release stays self-contained.
 use lib dirname(__FILE__);
 use Plugins::BlissGuidance::SettingsModel;
+use Plugins::BlissGuidance::Policy;
 
 my $prefs = preferences('plugin.bettercallbliss');
 
@@ -84,17 +86,6 @@ sub beforeRender {
     $params->{guidance_provider_sections} = _guidance_provider_sections(
         $params->{bliss_compatibility}->{discovered_guidance_providers},
     );
-    $params->{guidance_ui} = {
-        available_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE',
-        unavailable_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE',
-        settings_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS',
-        enabled_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED',
-        enabled_desc_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC',
-        origin_prefix_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN',
-        host_origin_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST',
-        origin_pending_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING',
-        reset_token => 'PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET',
-    };
 }
 
 sub _clamp {
@@ -177,6 +168,21 @@ sub _guidance_provider_sections {
                 dirty => \&_provider_dirty_field,
             },
             origin_label_token => \&_origin_label_token,
+            ui_labels => {
+                available => string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE'),
+                unavailable => sub {
+                    return string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE', $_[0]);
+                },
+                settings => sub {
+                    return string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS', $_[0]);
+                },
+                enabled => string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED'),
+                enabled_desc => string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC'),
+                origin_prefix => string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN'),
+                host_origin => string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST'),
+                origin_pending => string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING'),
+                reset => string('PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET'),
+            },
         },
     );
 }
@@ -198,6 +204,9 @@ sub _apply_guidance_provider_settings {
             $state->{enabled} = exists $params->{$enable_field} ? 1 : 0;
             $changed = 1;
         }
+        my $current = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve(
+            $provider, $state, {},
+        );
         for my $control (@{$provider->{descriptor}->{controls} || []}) {
             next unless $control->{host_overridable};
             my $key = $control->{key};
@@ -208,7 +217,10 @@ sub _apply_guidance_provider_settings {
                 delete $state->{overrides}->{$key};
                 $changed = 1;
             } elsif (exists $params->{$field}
-                && (!exists $params->{$dirty_field} || $params->{$dirty_field})) {
+                && (!exists $params->{$dirty_field} || $params->{$dirty_field}
+                    || Plugins::BlissGuidance::Policy::submitted_value_differs_from_effective(
+                        $current->{effective}->{$key}, $params->{$field},
+                    ))) {
                 $state->{overrides}->{$key} = $params->{$field};
                 $changed = 1;
             }
