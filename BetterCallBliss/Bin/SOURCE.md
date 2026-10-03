@@ -9,11 +9,9 @@ Latest packaged optimizer source:
 - Optimizer release: `v0.2.2`
 - Optimizer commit: `5bc528c5f2b382e0210934dfcaa84a00676df5a7`
 - Program contract: `0.2.2`, core API `0.1`, guidance SPI `2`
-- Last.fm guidance release: `v0.1.2`
-- Last.fm guidance commit: `e278f4742cdef5eaafd99ae1a7fc866b7977c003`
 
-The GitHub release workflow downloads the optimizer and the bundled Last.fm
-guidance-provider release above, verifies each published `.sha256` file, places the binaries below the matching
+The GitHub release workflow downloads the optimizer release above, verifies its
+published `.sha256` file, places the binaries below the matching
 `BetterCallBliss/Bin/<platform>/` folders in the release workspace, and creates
 separate Linux, macOS, and Windows archives. The Linux archive contains the
 x86_64, AArch64, and ARMHF binaries; macOS and Windows each contain only their
@@ -28,13 +26,13 @@ Supported package folders:
 - `mac/bliss-playlist-optimizer`
 - `windows/bliss-playlist-optimizer.exe`
 
-Each matching platform folder also contains:
-
-- `bliss-guidance-lastfm` (`bliss-guidance-lastfm.exe` on Windows)
-
-The separately installable Library Signals provider owns
-`bliss-guidance-library-signals`; Better Call Bliss discovers it through the
-Lyrion guidance-provider contract and does not bundle its binary.
+Guidance providers are separately installable Lyrion plugins. For example,
+[Bliss Guidance: Last.fm](https://github.com/chrober/lms-guidance-lastfm)
+owns `bliss-guidance-lastfm`, and
+[Bliss Guidance: Library Signals](https://github.com/chrober/lms-guidance-library-signals)
+owns `bliss-guidance-library-signals`. Better Call Bliss discovers enabled
+providers through the Lyrion guidance-provider contract and does not bundle
+their binaries.
 
 If a newer native release is used, update its release tag and commit above.
 The native release workflows own their build and test gates; the plugin release

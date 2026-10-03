@@ -52,7 +52,7 @@ fall through to either working mode.
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
-| Last.fm guidance | Working, optional and per job | Requires enabled LastMix and queries similar tracks and artists for the complete distinct source set. Better Call Bliss resolves results to explicit candidates in the frozen LMS/Bliss inventory before launch; the native optimizer receives provider-neutral guidance and returns the evidence attached to selected additions. Similar-track and similar-artist guidance are separate 0-100 bounded influences with independent Better Call Bliss defaults of 25. They intentionally do not reuse BlissMixer's artist-selection target or BlissMixerLab's immediate-mix track weighting. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
+| Last.fm guidance | Working, optional and per job | Requires the separately installed **Bliss Guidance: Last.fm** provider, enabled per host. Its own settings select LastMix or API Key; its defaults are inherited until a Better Call Bliss host/job override is saved. LastMix observations are resolved to explicit candidates in the frozen LMS/Bliss inventory before launch, while API Key mode performs bounded native acquisition without writing its secret to job artifacts. Similar-track and similar-artist guidance are separate 0-100 policies declared by the provider. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
 | Play-count influence | Working, per job | Initialized from BlissMixer for each new job and never persisted by Better Call Bliss. Values from -100 to -1 prefer less-played generated tracks, 1 to 100 prefer frequently played generated tracks, and zero disables the guidance. It is forced to zero when Lyrion playback statistics are disabled and never changes the membership of reorder-only jobs. |
 | Relevance-aware controls | Working | The Extras editor shows only sections relevant to the selected source-order and addition purpose. Count-specific fields appear only when Extend playlist requires them; trigger/gap-context controls appear only for difficult-transition repair, not spacing-track repair. Hidden sections keep their values for mode switching, selected-mode inputs remain submitted for draft restoration, exact and target counts follow the selected source snapshot, and guaranteed no-op combinations disable submission and fail server validation if bypassed. Bounded numeric controls use the same `sliderInput_min_max_step` enhancement classes as BlissMixer settings where practical. |
 | Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
@@ -100,23 +100,26 @@ BlissMixer. The submitted values belong to that job only and never update its
 global preferences. A compatible BlissMixerLab optionally supplies
 `learned_matrix.json` and the learned-blend default. Its absence is shown as a
 non-blocking personalization notice, and the effective learned percentage is
-forced to zero. Better Call Bliss owns separate Last.fm route/playlist guidance
-defaults because the other plugins use their percentages for different
-immediate-mix sampling behavior. The bundled optimizer supports Adaptive and Static routing:
+forced to zero. The enabled Last.fm provider supplies its own defaults, which
+Better Call Bliss may override per host and job; these route/playlist policies
+remain distinct from immediate-mix sampling behavior. The bundled optimizer
+supports Adaptive and Static routing:
 Adaptive otherwise uses variance weighting for multi-track contexts plus Static
 BlissMixer weights for one-track contexts. Extended Isolation Forest remains
 disabled and labeled.
 
-**Additional route-search attempts**, automatic bridge budget, automatic trigger percentile, and Last.fm guidance values supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The following settings are persisted to establish their future contract but are labeled **not connected yet** on the settings page:
+**Additional route-search attempts**, automatic bridge budget, automatic trigger percentile, and enabled-provider values supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The following settings are persisted to establish their future contract but are labeled **not connected yet** on the settings page:
 
 - ListenBrainz enablement;
 - semantic cache freshness and stale-offline lifetime; and
 - persistent report retention.
 
-Last.fm is optional and uses LastMix's anonymous access. Its plugin-wide enable
-enable switch is complemented by separate per-job track and artist guidance defaults.
-Timeouts, provider errors, malformed responses, rate limits, and missing
-Internet access degrade to local Bliss evidence rather than fail optimization.
+Last.fm is optional and is supplied by the separately installed Last.fm
+provider. That provider selects LastMix or API Key acquisition and owns the
+credential. Better Call Bliss enables it per host and offers only the
+provider-declared per-job controls. Timeouts, provider errors, malformed
+responses, rate limits, and missing Internet access degrade to local Bliss
+evidence rather than fail optimization.
 ListenBrainz remains optional and is deliberately deferred.
 
 ## Safety boundary

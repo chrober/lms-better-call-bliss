@@ -14,9 +14,10 @@ The stable project identities selected at bootstrap are:
 | Native command | `bliss-playlist-optimizer` |
 
 The Perl plugin owns user interaction, LMS object resolution, MusicBrainz IDs,
-optional Last.fm/ListenBrainz adapters, frozen evidence creation, jobs,
-logging, reports, and playlist writes. It invokes the native command with an
-argument array and exchanges versioned JSON files.
+guidance-provider discovery, provider-artifact local resolution, jobs, logging,
+reports, and playlist writes. Separately installed providers own their source
+adapters, credentials, and native configuration. Better Call Bliss invokes the
+native command with an argument array and exchanges versioned JSON files.
 
 The native command owns request validation, read-only Bliss database access,
 route search, bridge selection, repeat-window enforcement, deterministic
@@ -124,9 +125,10 @@ Bliss mirrors the fallback shape in the native optimizer:
 contexts with at least two tracks can use variance-based weighting alone, while
 one-track contexts use the Static BlissMixer feature-weight matrix when no
 learned matrix is available. If the user selects Static explicitly, that same
-fixed matrix is used for every contextual distance. Last.fm acquisition remains
-outside the native process, while optional guidance providers run under the
-optimizer's failure-tolerant local SPI.
+fixed matrix is used for every contextual distance. Last.fm acquisition is
+provider-owned: the provider can supply a resolved LastMix artifact or make
+bounded direct API requests during native preparation. Optional guidance
+providers run under the optimizer's failure-tolerant local SPI.
 
 LMS ties `STDERR` to its logging adapter. Native jobs therefore follow LMS's
 scanner pattern: open private output handles, temporarily untie `STDERR`, fork

@@ -11,10 +11,6 @@ on:
         description: "bliss-playlist-optimizer release tag. Empty reads BetterCallBliss/Bin/SOURCE.md."
         required: false
         default: ""
-      lastfm_guidance_release:
-        description: "bliss-guidance-lastfm release tag. Empty reads BetterCallBliss/Bin/SOURCE.md."
-        required: false
-        default: ""
       prerelease:
         description: "Mark the GitHub release as prerelease."
         type: boolean
@@ -40,7 +36,6 @@ permissions:
 
 env:
   OPTIMIZER_REPO: chrober/bliss-playlist-optimizer
-  LASTFM_GUIDANCE_REPO: chrober/bliss-guidance-lastfm
   PLUGIN_REPO: chrober/lms-plugins
 
 jobs:
@@ -86,7 +81,6 @@ jobs:
         env:
           VERSION_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}
           OPTIMIZER_RELEASE_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.optimizer_release || '' }}
-          LASTFM_GUIDANCE_RELEASE_INPUT: ${{ github.event_name == 'workflow_dispatch' && inputs.lastfm_guidance_release || '' }}
         run: |
           set -euo pipefail
           version="$VERSION_INPUT"
@@ -117,15 +111,6 @@ jobs:
             exit 1
           fi
 
-          lastfm_guidance_release="$LASTFM_GUIDANCE_RELEASE_INPUT"
-          if [ -z "$lastfm_guidance_release" ]; then
-            lastfm_guidance_release="$(python -c 'import pathlib,re; text=pathlib.Path("BetterCallBliss/Bin/SOURCE.md").read_text(encoding="utf-8"); match=re.search(r"Last\.fm guidance release:\s*`([^`]+)`", text); print(match.group(1) if match else "")')"
-          fi
-          if [ -z "$lastfm_guidance_release" ]; then
-            echo "Could not determine Last.fm guidance release tag" >&2
-            exit 1
-          fi
-
           tag="$version"
           linux_asset="lms-better-call-bliss-linux-$version.zip"
           mac_asset="lms-better-call-bliss-mac-$version.zip"
@@ -136,7 +121,6 @@ jobs:
             echo "version=$version"
             echo "tag=$tag"
             echo "optimizer_release=$optimizer_release"
-            echo "lastfm_guidance_release=$lastfm_guidance_release"
             echo "linux_asset=$linux_asset"
             echo "mac_asset=$mac_asset"
             echo "windows_asset=$windows_asset"
@@ -159,19 +143,6 @@ jobs:
           ls -l optimizer-assets
           (cd optimizer-assets && sha256sum -c *.sha256)
 
-      - name: Download bundled Last.fm guidance-provider binaries
-        env:
-          GH_TOKEN: ${{ github.token }}
-          LASTFM_GUIDANCE_RELEASE: ${{ steps.meta.outputs.lastfm_guidance_release }}
-        run: |
-          set -euo pipefail
-          mkdir -p lastfm-guidance-assets
-          gh release download "$LASTFM_GUIDANCE_RELEASE" \
-            --repo "$LASTFM_GUIDANCE_REPO" \
-            --dir lastfm-guidance-assets \
-            --pattern 'bliss-guidance-lastfm-*'
-          (cd lastfm-guidance-assets && sha256sum -c *.sha256)
-
       - name: Install optimizer binaries into plugin tree
         run: |
           set -euo pipefail
@@ -182,21 +153,10 @@ jobs:
           install -m 0644 -D optimizer-assets/bliss-playlist-optimizer-windows.exe BetterCallBliss/Bin/windows/bliss-playlist-optimizer.exe
           find BetterCallBliss/Bin -maxdepth 2 -type f -print
 
-      - name: Install bundled Last.fm guidance provider into plugin tree
-        run: |
-          set -euo pipefail
-          for platform in aarch64-linux armhf-linux x86_64-linux; do
-            install -m 0755 "lastfm-guidance-assets/bliss-guidance-lastfm-$platform" "BetterCallBliss/Bin/$platform/bliss-guidance-lastfm"
-          done
-          install -m 0755 lastfm-guidance-assets/bliss-guidance-lastfm-mac BetterCallBliss/Bin/mac/bliss-guidance-lastfm
-          install -m 0644 lastfm-guidance-assets/bliss-guidance-lastfm-windows.exe BetterCallBliss/Bin/windows/bliss-guidance-lastfm.exe
-          find BetterCallBliss/Bin -maxdepth 2 -type f -print
-
       - name: Verify bundled native contracts
         run: |
           set -euo pipefail
           BetterCallBliss/Bin/x86_64-linux/bliss-playlist-optimizer version --json
-          BetterCallBliss/Bin/x86_64-linux/bliss-guidance-lastfm version --json
 
       - name: Package platform plugin archives
         id: package
@@ -240,11 +200,8 @@ jobs:
           unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/x86_64-linux/bliss-playlist-optimizer'
           unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/aarch64-linux/bliss-playlist-optimizer'
           unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/armhf-linux/bliss-playlist-optimizer'
-          unzip -l "dist/$LINUX_ASSET" | grep 'BetterCallBliss/Bin/aarch64-linux/bliss-guidance-lastfm'
           unzip -l "dist/$MAC_ASSET" | grep 'BetterCallBliss/Bin/mac/bliss-playlist-optimizer'
-          unzip -l "dist/$MAC_ASSET" | grep 'BetterCallBliss/Bin/mac/bliss-guidance-lastfm'
           unzip -l "dist/$WINDOWS_ASSET" | grep 'BetterCallBliss/Bin/windows/bliss-playlist-optimizer.exe'
-          unzip -l "dist/$WINDOWS_ASSET" | grep 'BetterCallBliss/Bin/windows/bliss-guidance-lastfm.exe'
           if unzip -Z1 "dist/$LINUX_ASSET" | grep -Eq 'Bin/(mac|windows)/'; then exit 1; fi
           if unzip -Z1 "dist/$MAC_ASSET" | grep -Eq 'Bin/(windows|x86_64-linux|aarch64-linux|armhf-linux)/'; then exit 1; fi
           if unzip -Z1 "dist/$WINDOWS_ASSET" | grep -Eq 'Bin/(mac|x86_64-linux|aarch64-linux|armhf-linux)/'; then exit 1; fi
@@ -263,7 +220,6 @@ jobs:
           TAG: ${{ steps.meta.outputs.tag }}
           VERSION: ${{ steps.meta.outputs.version }}
           OPTIMIZER_RELEASE: ${{ steps.meta.outputs.optimizer_release }}
-          LASTFM_GUIDANCE_RELEASE: ${{ steps.meta.outputs.lastfm_guidance_release }}
           PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.prerelease || false }}
         run: |
           set -euo pipefail
@@ -271,10 +227,9 @@ jobs:
           {
             echo "# Better Call Bliss $VERSION"
             echo
-            echo "Platform-specific installable LMS plugin packages. Each archive bundles the optimizer and its trusted Last.fm guidance provider for its supported platform family. Optional local-library guidance is supplied by the separately installable Library Signals provider plugin."
+            echo "Platform-specific installable LMS plugin packages. Each archive bundles the optimizer for its supported platform family. Optional guidance is supplied by separately installable provider plugins."
             echo
             echo "Bundled optimizer release: $OPTIMIZER_RELEASE"
-            echo "Bundled Last.fm guidance release: $LASTFM_GUIDANCE_RELEASE"
           } > "$notes"
 
           prerelease_flag=()

@@ -743,10 +743,10 @@ is_deeply(\@committed_binary_candidates, [],
 my $release_workflow = slurp(
     File::Spec->catfile($root, '.github', 'workflows', 'release.yml'),
 );
-like(
+unlike(
     $release_workflow,
-    qr/for platform in aarch64-linux armhf-linux x86_64-linux.*?bliss-guidance-lastfm-\$platform/s,
-    'release workflow includes AArch64 provider binaries for Lyrion appliances',
+    qr/bliss-guidance-lastfm|LASTFM_GUIDANCE_REPO|lastfm_guidance_release/,
+    'release workflow leaves the separately installed Last.fm provider out of Better Call Bliss packages',
 );
 unlike(
     $release_workflow,

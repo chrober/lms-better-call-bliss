@@ -212,7 +212,7 @@ flowchart LR
 | Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Learned share of the Adaptive matrix when at least two seed tracks allow a variance matrix. Zero means pure variance; 100 means pure learned. The learned matrix is optional. |
 | Artist, album, and track look-back | Inherited from BlissMixer | Hard constraints for generated intermediates; zero disables a window. A chosen destination track or complete album remains fixed user intent and is not rejected for internal repeats. |
 | Variation and generation seed | 0-100%; default 25 | Chooses reproducibly among complete routes close to the best adjacent bottleneck and route sum. Zero keeps the strict deterministic winner. |
-| Last.fm guidance | Optional; Better Call Bliss defaults 25% each | Similar-track uses a bounded influence. Similar-artist can use a best-effort target share or a bounded influence. Both remain overridable per job; zero disables a channel. Provider failure falls back to Bliss. |
+| Last.fm guidance | Optional; inherited from the enabled Last.fm provider | Similar-track uses a bounded influence. Similar-artist can use a best-effort target share or a bounded influence. Both remain overridable per host and job; zero disables a channel. Provider failure falls back to Bliss. |
 | Play-count influence | -100 to 100; initialized from BlissMixer | Negative prefers less-played generated tracks, positive prefers frequently played generated tracks, and zero disables the signal. The override belongs only to the current job. |
 | Output | Locked by the chosen context command | **Bliss me there...** validates the live current song, preserves it and playback, and replaces only the later queue entries with the route suffix. **Bliss me there... and back again!** validates both the current song and first upcoming track, then inserts only its route body before that unchanged upcoming track. **Bliss me there... when we're through!** validates the live queue end and appends the route suffix. |
 
@@ -501,7 +501,7 @@ This workflow does not inspect individual source gaps and does not use **Bridge 
 | Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Learned share for contexts with at least two tracks. |
 | Artist look-back | 0-10,000; inherited | Drives the spacing calculation and final proof. Zero disables artist spacing. |
 | Album look-back | 0-10,000; inherited | Drives the spacing calculation and final proof. Zero disables album spacing. |
-| Last.fm guidance | 0-100%; Better Call Bliss defaults 25 | Similar-track uses bounded influence. Similar-artist can use target share or bounded influence within the expanded Bliss-qualified candidate pool. Zero disables a channel; failures transparently use Bliss alone. |
+| Last.fm guidance | 0-100%; inherited from the enabled Last.fm provider | Similar-track uses bounded influence. Similar-artist can use target share or bounded influence within the expanded Bliss-qualified candidate pool. Zero disables a channel; failures transparently use Bliss alone. |
 | Output | Choose after preview | Preview is read-only. Accepting the preview can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
 
 ### Extend playlist
@@ -682,15 +682,37 @@ A recorded generation seed reproduces the same request and result across worker 
 
 Last.fm is an optional guide for choosing new songs. It never replaces Bliss similarity and never causes a non-local or otherwise invalid track to be admitted.
 
-Better Call Bliss uses the installed LastMix plugin without user credentials. It requests similar tracks once for every distinct original recording and similar artists once for every distinct original artist. Recording relationships are endpoint-local. Artist relationships are recorded both for endpoint-local use and for the complete original collection fallback.
+Better Call Bliss uses the separately installed **Bliss Guidance: Last.fm**
+provider when it is enabled for the host. The provider selects either
+**LastMix** or **API Key** acquisition on its own settings page. In LastMix
+mode it requests similar tracks once for every distinct original recording and
+similar artists once for every distinct original artist. In API Key mode its
+native provider makes bounded direct requests during preparation; the API key is
+never written to a job request, artifact, result, cache, or log. Recording
+relationships are endpoint-local. Artist relationships are recorded both for
+endpoint-local use and for the complete original collection fallback.
 
-The per-job **Similar-track influence** is a 0–100 bounded boost. **Similar-artist** has a 0–100 level plus a host policy: **Target share** deliberately seeks the requested best-effort proportion of Last.fm-supported additions, while **Bounded influence** gives supported candidates a limited boost that competes with play count, last played, and library age. Better Call Bliss shows only policies declared by the installed Last.fm provider. It first matches recording or artist results to explicit `bliss-row-N` identities from the frozen LMS candidate inventory. A candidate may satisfy both channels. Zero disables that evidence type without disabling the other one.
+The provider's **Similar-track influence** is a 0–100 bounded boost.
+**Similar-artist** has a 0–100 level plus a host policy: **Target share**
+deliberately seeks the requested best-effort proportion of Last.fm-supported
+additions, while **Bounded influence** gives supported candidates a limited
+boost that competes with play count, last played, and library age. Better Call
+Bliss inherits provider defaults until a host/job override is chosen and shows
+only policies declared by the installed provider. In LastMix mode it resolves
+recording or artist results to explicit `bliss-row-N` identities from the frozen
+LMS candidate inventory; a candidate may satisfy both channels. Zero disables
+that evidence type without disabling the other one.
 
 Target share aligns with BlissMixer's **Last.fm artist probability**, and can intentionally outweigh other optional reranking criteria within the already Bliss-qualified pool. Bounded influence is the Lab-compatible cooperative alternative. Neither channel can make an acoustically rejected candidate acceptable.
 
 Bridge modes use the resolved signal to rank admissible two-leg insertions. Extend playlist uses resolved track and artist evidence from the complete immutable source set to support membership ranking inside its Bliss-qualified pool. Selected additions retain that evidence in the native result, so the review page and logs report what actually influenced selection. Last.fm has no effect on fixed-membership Reorder only jobs.
 
-Provider responses are frozen with their raw score or rank so the report can explain the support used by that run. Missing LastMix, no Internet access, malformed responses, and provider errors fall back to Bliss without failing the playlist job. Service-wide offline, unavailable, and rate-limit errors open a per-job circuit breaker so the remaining track and artist requests are not repeated.
+Provider responses are frozen with their raw score or rank where an artifact is
+used, so the report can explain the support used by that run. Missing selected
+provider, no Internet access, malformed responses, and provider errors fall
+back to Bliss without failing the playlist job. Service-wide offline,
+unavailable, and rate-limit errors open a per-job circuit breaker so the
+remaining LastMix or direct requests are not repeated.
 
 ### Local listening and library guidance
 
