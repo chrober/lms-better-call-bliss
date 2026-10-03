@@ -281,7 +281,7 @@ like(
 );
 like(
     $guidance_controls,
-    qr/control\.render_as == 'slider'.*?sliderInput_\[% control\.minimum %\]_\[% control\.maximum %\]_\[% control\.step %\]/s,
+    qr/control\.render_as == 'slider'.*?sliderInput_\[% control\.minimum %\]_\[% control\.maximum %\]_\[% control_step %\]/s,
     'provider descriptor selects slider rendering instead of making every integer a slider',
 );
 like(
