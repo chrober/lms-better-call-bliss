@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 147;
+use Test::More tests => 148;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
