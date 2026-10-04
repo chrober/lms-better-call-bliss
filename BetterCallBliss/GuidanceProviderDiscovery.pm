@@ -201,6 +201,20 @@ sub _validate_descriptor {
             if exists $control->{render_as}
                 && ($control->{type} ne 'integer'
                     || $control->{render_as} !~ /^(?:slider|number)$/);
+        if (exists $control->{option_labels}) {
+            return 'control option_labels is invalid'
+                unless $control->{type} eq 'enum'
+                    && ref($control->{option_labels}) eq 'HASH';
+            my %allowed = map { $_ => 1 } @{ref($control->{values}) eq 'ARRAY'
+                ? $control->{values} : []};
+            for my $value (keys %{$control->{option_labels}}) {
+                return 'control option_labels contains an unknown option'
+                    unless $allowed{$value};
+                return 'control option_labels value is invalid'
+                    unless defined $control->{option_labels}->{$value}
+                        && length $control->{option_labels}->{$value};
+            }
+        }
         if ($control->{type} eq 'integer') {
             return 'integer control bounds/default are invalid'
                 unless defined $control->{minimum} && defined $control->{maximum}

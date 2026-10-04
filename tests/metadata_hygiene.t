@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 146;
+use Test::More tests => 147;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -338,6 +338,11 @@ like(
     $extras,
     qr/bettercallbliss_guidance_provider_sections.*?guidance_provider_.*?control\.field_name/s,
     'Extras renders per-job guidance controls from discovered provider descriptors',
+);
+like(
+    $extras,
+    qr/FOREACH option IN control\.enum_options.*?option\.value.*?option\.label_token \| string/s,
+    'Extras renders localized descriptor enum options instead of empty raw-value selects',
 );
 like(
     $extras,

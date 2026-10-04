@@ -18,6 +18,7 @@ use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::GuidanceReporting;
+use Plugins::BlissGuidance::SettingsModel;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::PlaylistWriter;
@@ -199,6 +200,7 @@ sub _guidance_provider_sections {
                 field_name => $field,
                 value => exists $form->{$field}
                     ? $form->{$field} : $effective->{$control->{key}},
+                enum_options => Plugins::BlissGuidance::SettingsModel::enum_options($control),
                 render_as => $control->{render_as}
                     || ($control->{type} eq 'integer' ? 'slider' : ''),
             };
