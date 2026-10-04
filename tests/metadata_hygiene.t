@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 148;
+use Test::More tests => 149;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -144,6 +144,11 @@ like(
     $extras,
     qr/function pollJob\(\).*?pollInFlight = true;.*?pollInFlight = false;.*?schedulePoll\(1500\)/s,
     'a settled status request schedules the next poll only after releasing its in-flight guard',
+);
+like(
+    $extras,
+    qr/function nativeProgressStarted\(job\).*?state !== 'running' \|\| nativeProgressStarted\(job\).*?stopTimer\(\)/s,
+    'the preparation timer remains active until native optimizer work really starts',
 );
 my $guidance_flow = slurp(File::Spec->catfile($root, 'docs', 'GUIDANCE_DATA_FLOW.md'));
 unlike(
