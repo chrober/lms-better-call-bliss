@@ -119,7 +119,7 @@ sequenceDiagram
             X-->>B: Raw semantic evidence, failures are tolerated
             B->>B: Resolve relations to frozen local candidate IDs
         else API Key source
-            X-->>B: Configuration-only status; no native evidence yet
+            X-->>B: Configuration-only status, no native evidence yet
         end
     end
     opt Enabled provider has non-zero guidance channels
@@ -171,7 +171,7 @@ sequenceDiagram
     LS-->>O: manifest: library-signals-guidance, playcount/last_played/library_age channels
 
     O->>LF: prepare(resolved artifact or provider configuration, anchors)
-    LF->>LF: Verify/index artifact; API-Key mode remains neutral
+    LF->>LF: Verify/index artifact, API-Key mode remains neutral
     LF-->>O: prepared diagnostics
 
     O->>LS: prepare(candidate-identity artifact, read-only persist.db)
