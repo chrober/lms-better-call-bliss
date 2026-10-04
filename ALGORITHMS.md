@@ -684,11 +684,11 @@ Last.fm is an optional guide for choosing new songs. It never replaces Bliss sim
 
 Better Call Bliss uses the separately installed **Bliss Guidance: Last.fm**
 provider when it is enabled for the host. The provider selects either
-**LastMix** or **API Key** acquisition on its own settings page. In LastMix
-mode it requests similar tracks once for every distinct original recording and
-similar artists once for every distinct original artist. In API Key mode its
-native provider makes bounded direct requests during preparation; the API key is
-never written to a job request, artifact, result, cache, or log. Recording
+**LastMix** or **API Key** on its own settings page. In the currently working
+LastMix mode, it requests similar tracks once for every distinct original
+recording and similar artists once for every distinct original artist. The
+released API Key path is configuration-only and contributes neutral guidance
+until direct Last.fm HTTP/cache acquisition is implemented. Recording
 relationships are endpoint-local. Artist relationships are recorded both for
 endpoint-local use and for the complete original collection fallback.
 
@@ -708,11 +708,12 @@ Target share aligns with BlissMixer's **Last.fm artist probability**, and can in
 Bridge modes use the resolved signal to rank admissible two-leg insertions. Extend playlist uses resolved track and artist evidence from the complete immutable source set to support membership ranking inside its Bliss-qualified pool. Selected additions retain that evidence in the native result, so the review page and logs report what actually influenced selection. Last.fm has no effect on fixed-membership Reorder only jobs.
 
 Provider responses are frozen with their raw score or rank where an artifact is
-used, so the report can explain the support used by that run. Missing selected
-provider, no Internet access, malformed responses, and provider errors fall
-back to Bliss without failing the playlist job. Service-wide offline,
-unavailable, and rate-limit errors open a per-job circuit breaker so the
-remaining LastMix or direct requests are not repeated.
+used, so the report can explain the support used by that run. A missing
+LastMix provider, no Internet access, malformed responses, and provider errors
+fall back to Bliss without failing the playlist job. Service-wide offline,
+unavailable, and rate-limit errors open a per-job circuit breaker so remaining
+LastMix requests are not repeated. The future direct API-Key path will need the
+same failure-tolerant behavior before it can become operational.
 
 ### Local listening and library guidance
 

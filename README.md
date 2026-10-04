@@ -15,6 +15,19 @@ Supported packages bundle the optimizer only. Optional guidance is supplied by
 separately installed, runtime-discovered Lyrion provider plugins; no native
 binaries are committed to this source repository.
 
+## Current guidance status
+
+- **Working:** discoverable, opt-in Library Signals and Last.fm providers;
+  LastMix-backed Last.fm collection; native SPI scoring; play-count,
+  last-played, and library-age guidance.
+- **Current release:** Better Call Bliss 0.22.2.
+- **Not operational yet:** selecting **API Key** in the Last.fm provider
+  settings stores and protects the key, but the released native provider does
+  not yet perform direct Last.fm HTTP/cache acquisition. End-to-end Last.fm
+  guidance therefore currently requires LastMix.
+- **Still planned:** provider-owned direct cache/network acquisition, including
+  its cold-cache, offline, timeout, cancellation, and reproducibility tests.
+
 ## What it does
 
 - Reorders every song in a curated playlist or queue snapshot for better transition flow.
@@ -73,11 +86,12 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 
 [Bliss Guidance: Last.fm](https://github.com/chrober/lms-guidance-lastfm) is
 optional. Its own settings page selects either **LastMix** or **API Key** as
-the data source. LastMix must be installed only for the former choice; the
-latter uses an API key stored by the provider. Enable the provider in Better
-Call Bliss before its host/job controls appear. Missing Internet access,
-provider failures, and rate limits fall back to local Bliss scoring and do not
-fail the optimization job.
+the data source. LastMix must be installed for the former choice. The API Key
+control is currently configuration-only; until native direct acquisition is
+released, it contributes neutral guidance. Enable the provider in Better Call
+Bliss before its host/job controls appear. Missing Internet access, provider
+failures, and rate limits fall back to local Bliss scoring and do not fail the
+optimization job.
 
 For jobs that add tracks, optional local listening/library guidance is available
 when **Library Signals** is installed, enabled in Better Call Bliss, and has a
@@ -109,8 +123,9 @@ After installation, open **Extras > Better Call Bliss**. The optional
 [BlissMixerLab](https://github.com/chrober/lms-blissmixer-lab) plugin can be
 installed alongside it to provide learned preferences. Install
 [Bliss Guidance: Last.fm](https://github.com/chrober/lms-guidance-lastfm) for
-Last.fm guidance and choose its LastMix or API Key source on that provider's
-settings page. Install [Library Signals](https://github.com/chrober/lms-guidance-library-signals)
+Last.fm guidance and choose **LastMix** on that provider's settings page. The
+**API Key** option is reserved for the future direct-acquisition
+implementation. Install [Library Signals](https://github.com/chrober/lms-guidance-library-signals)
 separately to make play-count, last-played, and library-age guidance available;
 then enable it on Better Call Bliss’s guidance-provider settings section.
 
