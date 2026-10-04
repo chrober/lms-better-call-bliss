@@ -1,5 +1,12 @@
 # Guidance SPI migration design
 
+> **Status (2026-10-04):** The hybrid SPI migration described here is shipped:
+> LastMix supplies the frozen Last.fm artifact, Library Signals reads trusted
+> `persist.db`, and native hosts apply provider-neutral guidance. The original
+> play-count-only names in this historical design are superseded by
+> `bliss-guidance-library-signals`; direct Last.fm API-key acquisition remains
+> a separate future implementation.
+
 ## Intent and success criteria
 
 Better Call Bliss must use external, non-acoustic knowledge to **guide** candidate choice while keeping Bliss the authority for acoustic distance, eligible-library membership, route feasibility, and repeat windows. The first supported guidance sources are Last.fm track/artist relations and LMS play counts.

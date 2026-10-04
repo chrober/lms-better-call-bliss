@@ -682,7 +682,14 @@ A recorded generation seed reproduces the same request and result across worker 
 
 Last.fm is an optional guide for choosing new songs. It never replaces Bliss similarity and never causes a non-local or otherwise invalid track to be admitted.
 
-Better Call Bliss uses the installed LastMix plugin without user credentials. It requests similar tracks once for every distinct original recording and similar artists once for every distinct original artist. Recording relationships are endpoint-local. Artist relationships are recorded both for endpoint-local use and for the complete original collection fallback.
+Better Call Bliss uses the installed LastMix plugin without user credentials in
+the currently working Last.fm provider mode. It requests similar tracks once
+for every distinct original recording and similar artists once for every
+distinct original artist. Recording relationships are endpoint-local. Artist
+relationships are recorded both for endpoint-local use and for the complete
+original collection fallback. The provider settings also expose an API Key
+mode, but direct native acquisition is not released yet; that mode remains
+neutral until the provider-owned HTTP/cache path is implemented.
 
 The per-job **Similar-track influence** is a 0–100 bounded boost. **Similar-artist** has a 0–100 level plus a host policy: **Target share** deliberately seeks the requested best-effort proportion of Last.fm-supported additions, while **Bounded influence** gives supported candidates a limited boost that competes with play count, last played, and library age. Better Call Bliss shows only policies declared by the installed Last.fm provider. It first matches recording or artist results to explicit `bliss-row-N` identities from the frozen LMS candidate inventory. A candidate may satisfy both channels. Zero disables that evidence type without disabling the other one.
 

@@ -6,7 +6,8 @@
 
 **Better Call Bliss** is a Lyrion Music Server plugin that turns a saved playlist or a current player queue snapshot into a smoother listening journey. It can reorder the existing songs, insert suitable bridge tracks, preserve the original order while filling its gaps, extend a short source list to a chosen length, or rebuild the upcoming part of a live queue. Every job is previewed before anything is saved or sent to a player, and artist, album, and track repeat rules remain hard constraints.
 
-The plugin owns the Lyrion user interface, settings, Last.fm integration,
+The plugin owns the Lyrion user interface, settings, Last.fm provider
+orchestration,
 provider-to-library identity resolution, background jobs, result review,
 playlist persistence, and player-queue output. CPU-intensive acoustic scoring
 and route search are delegated to the network-free Rust engine
@@ -14,6 +15,19 @@ and route search are delegated to the network-free Rust engine
 Supported packages also bundle its trusted Rust guidance providers for Last.fm
 evidence and on-demand Lyrion play counts; none are committed to this source
 repository.
+
+## Current guidance status
+
+- **Working:** discoverable, opt-in Library Signals and Last.fm providers;
+  LastMix-backed Last.fm collection; native SPI scoring; play-count,
+  last-played, and library-age guidance.
+- **Current release:** Better Call Bliss 0.22.0.
+- **Not working yet:** selecting **API Key** in the Last.fm provider settings
+  does not yet make the native provider perform direct Last.fm HTTP acquisition.
+  The setting and secret-handling hook are scaffolding for that future path;
+  current end-to-end Last.fm guidance requires LastMix.
+- **Still planned:** provider-owned direct cache/network acquisition, plus its
+  cold-cache, offline, timeout, cancellation, and reproducibility tests.
 
 ## What it does
 
@@ -70,9 +84,11 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
   ARMHF Linux.
 
 [LastMix](https://github.com/AF-1/lms-lastmix) is optional. When installed and
-enabled, it supplies anonymous Last.fm similar-track and similar-artist evidence. Missing
-Internet access, provider failures, and rate limits fall back to local Bliss
-scoring and do not fail the optimization job.
+the Last.fm provider is enabled in **LastMix** mode, it supplies anonymous
+similar-track and similar-artist evidence. The provider's **API Key** mode is
+currently configuration-only; until direct acquisition is implemented, it
+produces neutral guidance. Missing Internet access, provider failures, and rate
+limits fall back to local Bliss scoring and do not fail the optimization job.
 
 For jobs that add tracks, the play-count influence starts with BlissMixer's current
 setting and can be overridden without changing BlissMixer. Negative values prefer

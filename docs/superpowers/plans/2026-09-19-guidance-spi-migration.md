@@ -1,5 +1,12 @@
 # Guidance SPI v2 Migration Implementation Plan
 
+> **Historical status (2026-10-04):** This plan records the migration that is
+> now delivered. The former `bliss-guidance-playcounts` name in the task list
+> is superseded by `bliss-guidance-library-signals`; current release status and
+> remaining direct Last.fm API-key work are tracked in
+> `docs/GUIDANCE_DATA_FLOW.md` and the shared
+> `LASTFM_GUIDANCE_ACQUISITION_PLAN.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace Better Call Bliss's direct Last.fm and full-library play-count ranking paths with deterministic, provider-backed guidance that keeps Bliss as the exclusive candidate-discovery and acoustic authority while applying additional hints during native pathfinding.
