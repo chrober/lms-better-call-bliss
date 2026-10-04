@@ -1530,6 +1530,12 @@
       return text(job && job.live_status) || text(job && job.status || job.stage || job.state);
     }
 
+    function nativeProgressStarted(job) {
+      var detail = text(job && job.status_detail);
+      return /^Status:\s*native optimizer\b/i.test(detail)
+        || /\bnative optimizer\s*-/i.test(detail);
+    }
+
     function escapeHtml(value) {
       return text(value).replace(/[&<>"']/g, function (ch) {
         return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
@@ -1661,10 +1667,16 @@
 
     function updateCurrentJob(job) {
       if (!job) return;
-      if (window.BetterCallBlissPreviewPreparation) {
+      var state = text(job.state);
+      // Keep the browser-side timer alive through the plugin-owned preparation
+      // phase. The server already returns a running job at that point, but the
+      // native optimizer has not started yet and its elapsed value is not yet
+      // advancing in the job summary. Stop the startup timer only once native
+      // progress is visible (or the job has reached a terminal state).
+      if (window.BetterCallBlissPreviewPreparation
+          && (state !== 'running' || nativeProgressStarted(job))) {
         window.BetterCallBlissPreviewPreparation.stopTimer();
       }
-      var state = text(job.state);
       var status = text(job.status || job.stage || state);
       var banner = document.getElementById('bea-live-status-banner');
       if (banner) {
