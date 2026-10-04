@@ -1,7 +1,8 @@
 package Plugins::BetterCallBliss::Web;
 
 use strict;
-use File::Basename qw(basename);
+use File::Basename qw(basename dirname);
+use lib dirname(__FILE__);
 use URI::Escape qw(uri_escape_utf8);
 use Slim::Schema;
 use Slim::Player::Client;

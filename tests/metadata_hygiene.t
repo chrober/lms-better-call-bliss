@@ -415,6 +415,11 @@ ok(
 my $web_module = slurp(File::Spec->catfile($plugin, 'Web.pm'));
 like(
     $web_module,
+    qr/use\s+File::Basename\s+qw\(basename\s+dirname\);.*?use\s+lib\s+dirname\(__FILE__\);/s,
+    'Web loads vendored guidance modules from the self-contained plugin directory',
+);
+like(
+    $web_module,
     qr/render_as\s*=>\s*\$control->\{render_as\}.*?type\} eq 'integer' \? 'slider'/s,
     'Extras carries provider-declared control presentation metadata into its form model',
 );
