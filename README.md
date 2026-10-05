@@ -31,7 +31,7 @@ provider-specific limitations are documented in the provider's own repository.
 - Adds spacing tracks as needed when repeated source artists or albums need more room to satisfy the selected repeat windows.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Preserves the existing order when requested and inserts tracks only in gaps.
-- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, optional bounded Last.fm track guidance plus selectable Last.fm artist policy, and optional local Lyrion listening/library guidance (play count, last played, and library age).
+- Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, and optional guidance from enabled provider plugins.
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
 - Offers three destination shortcuts on a local track or album in this menu order. An album destination always plays every local audio track in disc and track order:
 
@@ -75,11 +75,13 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
 - A bliss-playlist-optimizer binary for the server platform. Release packages
   bundle native binaries for Windows, macOS, x86_64 Linux, ARM64 Linux, and
   ARMHF Linux.
-- Optional providers such as [Bliss Guidance: Library
-  Signals](https://github.com/chrober/lms-guidance-library-signals) and [Bliss
-  Guidance: Last.fm](https://github.com/chrober/lms-guidance-lastfm) are
-  installed separately and enabled from Better Call Bliss after their own
-  provider setup is complete.
+- Optional Bliss Guidance provider plugins may be installed separately.
+  Better Call Bliss discovers compatible providers at runtime; see each
+  provider's own documentation for installation and configuration. The
+  host-neutral contract is documented in
+  [bliss-playlist-guidance-spi](https://github.com/chrober/bliss-playlist-guidance-spi),
+  and provider conventions are documented in
+  [lms-bliss-guidance-provider-kit](https://github.com/chrober/lms-bliss-guidance-provider-kit).
 
 ## Installation
 
@@ -102,14 +104,9 @@ binary. Future releases can be installed through the same plugin manager.
 
 After installation, open **Extras > Better Call Bliss**. The optional
 [BlissMixerLab](https://github.com/chrober/lms-blissmixer-lab) plugin can be
-installed alongside it to provide learned preferences. Install
-[Bliss Guidance: Last.fm](https://github.com/chrober/lms-guidance-lastfm) for
-Last.fm guidance, configure it on its own provider settings page, and then
-enable it in Better Call Bliss. Install
-[Bliss Guidance: Library Signals](https://github.com/chrober/lms-guidance-library-signals)
-separately if you want local listening and library guidance, configure it on
-its own provider settings page, and then enable it in Better Call Bliss's
-guidance-provider settings section.
+installed alongside it to provide learned preferences. Compatible Bliss
+Guidance providers are installed separately, configure their own settings, and
+are then enabled in Better Call Bliss's guidance-provider settings section.
 
 ## Basic use
 
@@ -131,8 +128,9 @@ GitHub Actions workflow `.github/workflows/release.yml` builds platform-specific
 without committing native binaries to this repository:
 
 1. Runs the lightweight Perl regression suite from `tests/`. The suite stubs
-   LMS/LastMix APIs and checks request JSON typing, Last.fm evidence, per-job
-   option normalization, localization metadata, and source-package hygiene.
+   LMS and provider APIs and checks request JSON typing, guidance handling,
+   per-job option normalization, localization metadata, and source-package
+   hygiene.
 2. Reads the pinned optimizer release from `BetterCallBliss/Bin/SOURCE.md`,
    unless a workflow-dispatch override is supplied manually.
 3. Downloads the published binaries for `x86_64-linux`, `aarch64-linux`,
@@ -164,15 +162,14 @@ creating a release or touching the plugin feed.
   [optimizer](https://github.com/chrober/bliss-playlist-optimizer) release
   workflow and copied into deployment/package artifacts by this plugin release
   workflow. Guidance is supplied by separately installed, runtime-discovered
-  plugins, including [Last.fm](https://github.com/chrober/lms-guidance-lastfm)
-  and [Library Signals](https://github.com/chrober/lms-guidance-library-signals).
+  provider plugins; no provider-specific binaries are bundled here.
   The expected optimizer release, supported package folders, and packaging
   contract are documented in `BetterCallBliss/Bin/SOURCE.md`.
   `.gitignore` prevents local executables from being accidentally committed.
 - `tests/` contains lightweight Perl regression tests for the plugin glue code
   and Python regression tests for platform-specific feed publication.
-  The tests stub the relevant LMS/LastMix APIs and check request JSON typing,
-  Last.fm evidence handling, per-job option normalization, localization
+  The tests stub the relevant LMS and provider APIs and check request JSON
+  typing, guidance handling, per-job option normalization, localization
   metadata, and source-package hygiene. GitHub Actions runs them on push, pull
   request, and before release packaging. This folder is not installed as runtime
   plugin UI; it is committed so future changes can catch these integration
@@ -187,9 +184,8 @@ flowchart LR
     LMS["Lyrion saved playlist"] --> P["Better Call Bliss plugin"]
     Q["Current player queue snapshot"] --> P
     BM["Original lms-blissmixer<br/>settings and bliss.db"] --> P
-    BME["Optional BlissMixerLab<br/>learned matrix, blend, and track guidance"] -.-> P
-    LF["Optional Bliss Guidance: Last.fm<br/>provider plugin"] -.-> P
-    LS["Optional Library Signals plugin<br/>settings + read-only persist.db access"] -.-> P
+    BME["Optional BlissMixerLab<br/>learned matrix and blend"] -.-> P
+    GP["Optional Bliss Guidance<br/>runtime-discovered provider plugins"] -.-> P
     P --> O["bliss-playlist-optimizer"]
     O --> C["bliss-mixer-core<br/>shared Bliss scoring"]
     O --> P
