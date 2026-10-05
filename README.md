@@ -10,7 +10,7 @@ The plugin owns the Lyrion user interface, settings, background jobs, result
 review, playlist persistence, player-queue output, and discovery of optional
 guidance providers. CPU-intensive acoustic scoring and route search are
 delegated to the network-free Rust engine
-[bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer).
+[`bliss-playlist-optimizer`](https://github.com/chrober/bliss-playlist-optimizer).
 Supported packages bundle the optimizer only. Optional guidance is supplied by
 separately installed, runtime-discovered Lyrion provider plugins; no native
 binaries are committed to this source repository.
@@ -79,9 +79,9 @@ See [Playlist optimization modes and options](ALGORITHMS.md) for reader-friendly
   Better Call Bliss discovers compatible providers at runtime; see each
   provider's own documentation for installation and configuration. The
   host-neutral contract is documented in
-  [bliss-playlist-guidance-spi](https://github.com/chrober/bliss-playlist-guidance-spi),
+  [`bliss-playlist-guidance-spi`](https://github.com/chrober/bliss-playlist-guidance-spi),
   and provider conventions are documented in
-  [lms-bliss-guidance-provider-kit](https://github.com/chrober/lms-bliss-guidance-provider-kit).
+  [`lms-bliss-guidance-provider-kit`](https://github.com/chrober/lms-bliss-guidance-provider-kit).
 
 ## Installation
 
@@ -159,7 +159,7 @@ creating a release or touching the plugin feed.
   icons, and `install.xml` metadata.
 - The platform-specific optimizer executable is intentionally not committed
   here. It is published by the separate
-  [optimizer](https://github.com/chrober/bliss-playlist-optimizer) release
+  [`bliss-playlist-optimizer`](https://github.com/chrober/bliss-playlist-optimizer) release
   workflow and copied into deployment/package artifacts by this plugin release
   workflow. Guidance is supplied by separately installed, runtime-discovered
   provider plugins; no provider-specific binaries are bundled here.
