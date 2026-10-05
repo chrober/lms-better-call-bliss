@@ -123,11 +123,11 @@ After installation, open **Extras > Better Call Bliss**. The optional
 [BlissMixerLab](https://github.com/chrober/lms-blissmixer-lab) plugin can be
 installed alongside it to provide learned preferences. Install
 [Bliss Guidance: Last.fm](https://github.com/chrober/lms-guidance-lastfm) for
-Last.fm guidance and choose **LastMix** on that provider's settings page. The
-**API Key** option is reserved for the future direct-acquisition
-implementation. Install [Library Signals](https://github.com/chrober/lms-guidance-library-signals)
-separately to make play-count, last-played, and library-age guidance available;
-then enable it on Better Call Bliss’s guidance-provider settings section.
+Last.fm guidance, then configure and enable it on that provider's settings
+page and in Better Call Bliss. Install
+[Bliss Guidance: Library Signals](https://github.com/chrober/lms-guidance-library-signals)
+separately if you want local listening and library guidance, then enable it in
+Better Call Bliss's guidance-provider settings section.
 
 ## Basic use
 
