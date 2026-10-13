@@ -363,8 +363,12 @@ sub _resolve_provider_job_policies {
             next unless ref($control) eq 'HASH' && $control->{host_overridable};
             my $field = 'guidance_provider_' . $provider->{provider_id}
                 . '_' . $control->{key};
-            $overrides{$control->{key}} = $input->{$field}
-                if exists $input->{$field};
+            my $present_field = $field . '_present';
+            if ($control->{type} eq 'boolean' && exists $input->{$present_field}) {
+                $overrides{$control->{key}} = exists $input->{$field} ? 1 : 0;
+            } elsif (exists $input->{$field}) {
+                $overrides{$control->{key}} = $input->{$field};
+            }
         }
         my $resolved = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve(
             $provider, $provider->{host_state}, { overrides => \%overrides },

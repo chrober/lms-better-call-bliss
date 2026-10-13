@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 62;
+use Test::More tests => 64;
 
 BEGIN {
     package TestPrefs;
@@ -78,6 +78,7 @@ my $capability = {
                 {key => 'last_played_horizon_days', type => 'integer', minimum => 30, maximum => 1825, factory_default => 180, host_overridable => 1},
                 {key => 'library_age_influence', type => 'integer', minimum => -100, maximum => 100, factory_default => 0, host_overridable => 1, guidance_channel => 'library_age'},
                 {key => 'library_age_horizon_days', type => 'integer', minimum => 30, maximum => 3650, factory_default => 365, host_overridable => 1},
+                {key => 'use_alternative_play_count', type => 'boolean', factory_default => 0, host_overridable => 1},
             ],
         },
         host_state => {enabled => 1, overrides => {}},
@@ -89,6 +90,7 @@ my $capability = {
                 last_played_horizon_days => 240,
                 library_age_influence => 40,
                 library_age_horizon_days => 720,
+                use_alternative_play_count => 0,
             },
         },
     }],
@@ -138,6 +140,27 @@ is(Plugins::BetterCallBliss::JobOptions::normalize(
         {'guidance_provider_library-signals_playcount_influence' => '45'},
     )->{playcount_influence}, 45,
     'provider-owned play-count guidance does not depend on the host statistics gate');
+is(
+    Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability,
+        {
+            'guidance_provider_library-signals_use_alternative_play_count_present' => 1,
+            'guidance_provider_library-signals_use_alternative_play_count' => 1,
+        },
+    )->{guidance_provider_policies}->{'library-signals'}->{effective}
+        ->{use_alternative_play_count},
+    1,
+    'checked boolean provider control can select APC for one job',
+);
+is(
+    Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability,
+        {'guidance_provider_library-signals_use_alternative_play_count_present' => 1},
+    )->{guidance_provider_policies}->{'library-signals'}->{effective}
+        ->{use_alternative_play_count},
+    0,
+    'unchecked boolean provider control is retained as a false per-job override',
+);
 eval {
     Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, {'guidance_provider_library-signals_playcount_influence' => '-101'},

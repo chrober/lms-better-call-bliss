@@ -410,6 +410,7 @@
       <div class="bea-row">
         <label for="[% control.field_name | html %]">[% control.label_token | string %]</label>
         [% IF control.type == 'boolean' %]
+          <input type="hidden" name="[% control.field_name | html %]_present" value="1">
           <input type="checkbox" name="[% control.field_name | html %]" id="[% control.field_name | html %]" value="1"[% IF control.value %] checked="checked"[% END %]>
         [% ELSIF control.type == 'enum' %]
           <select name="[% control.field_name | html %]" id="[% control.field_name | html %]">

@@ -188,6 +188,15 @@ sub _apply_guidance_provider_settings {
             if ($params->{$inherit_field}) {
                 delete $state->{overrides}->{$key};
                 $changed = 1;
+            } elsif ($control->{type} eq 'boolean'
+                && $params->{$dirty_field}) {
+                my $submitted = exists $params->{$field} ? 1 : 0;
+                if (Plugins::BlissGuidance::Policy::submitted_value_differs_from_effective(
+                    $current->{effective}->{$key}, $submitted,
+                )) {
+                    $state->{overrides}->{$key} = $submitted;
+                    $changed = 1;
+                }
             } elsif (exists $params->{$field}
                 && (!exists $params->{$dirty_field} || $params->{$dirty_field}
                     || Plugins::BlissGuidance::Policy::submitted_value_differs_from_effective(

@@ -67,9 +67,15 @@ my $provider = {
             key => 'playcount_influence', type => 'integer',
             minimum => -100, maximum => 100, factory_default => 0,
             host_overridable => 1,
+        }, {
+            key => 'use_alternative_play_count', type => 'boolean',
+            factory_default => 0, host_overridable => 1,
         }],
     },
-    defaults => { playcount_influence => -40 },
+    defaults => {
+        playcount_influence => -40,
+        use_alternative_play_count => 0,
+    },
 };
 $Plugins::BetterCallBliss::GuidanceProviderDiscovery::DISCOVERY = {
     providers => [$provider],
@@ -86,6 +92,25 @@ is($state->{providers}->{'library-signals'}->{enabled}, 1,
     'checked provider checkbox enables the provider on an explicit save');
 is($state->{providers}->{'library-signals'}->{overrides}->{playcount_influence}, -20,
     'provider control is persisted by the explicit save');
+
+Plugins::BetterCallBliss::Settings::_apply_guidance_provider_settings({
+    saveSettings => 1,
+    'pref_guidance_provider_library-signals_enabled' => 1,
+    'pref_guidance_provider_library-signals_use_alternative_play_count' => 1,
+    'dirty_guidance_provider_library-signals_use_alternative_play_count' => 1,
+});
+$state = $Slim::Utils::Prefs::PREFS->get('guidance_provider_state');
+is($state->{providers}->{'library-signals'}->{overrides}->{use_alternative_play_count}, 1,
+    'checked boolean provider control is persisted as a host override');
+
+Plugins::BetterCallBliss::Settings::_apply_guidance_provider_settings({
+    saveSettings => 1,
+    'pref_guidance_provider_library-signals_enabled' => 1,
+    'dirty_guidance_provider_library-signals_use_alternative_play_count' => 1,
+});
+$state = $Slim::Utils::Prefs::PREFS->get('guidance_provider_state');
+is($state->{providers}->{'library-signals'}->{overrides}->{use_alternative_play_count}, 0,
+    'unchecked dirty boolean provider control is persisted as false');
 
 Plugins::BetterCallBliss::Settings::_apply_guidance_provider_settings({
     'pref_guidance_provider_library-signals_playcount_influence' => 42,

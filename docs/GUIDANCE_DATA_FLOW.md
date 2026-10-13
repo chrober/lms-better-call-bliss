@@ -192,14 +192,16 @@ and continues with Bliss-only search.
 | Provider | Data acquisition | `prepare` work | `score` work |
 | --- | --- | --- | --- |
 | `bliss-guidance-lastfm` | Its Lyrion provider owns the selected source. In LastMix mode it returns raw observations to Better Call Bliss for local resolution. API Key mode is currently configuration-only; direct acquisition is a follow-up. | Verifies and indexes resolved Last.fm relations by source, local candidate, and channel. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. API-Key mode currently emits no evidence. |
-| `bliss-guidance-library-signals` | Its separately installed Lyrion provider owns defaults, resolves its own binary and trusted read-only `persist.db` path, and returns the configuration to Better Call Bliss. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
+| `bliss-guidance-library-signals` | Its separately installed Lyrion provider owns defaults, including the listening-history source, while Better Call Bliss may persist a host-specific override exposed from the provider descriptor. The provider resolves its own binary and trusted read-only `persist.db` path and returns the effective configuration. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
 
 Each distribution is calculated from the complete frozen eligible candidate
 population so that a candidate's percentile is comparable across planner
 batches. The provider does **not** retain a whole-library `urlmd5 -> signals`
 map; it keeps distributions plus a bounded cache of values actually requested
-during scoring. It deliberately does not use Alternative Play Count (APC);
-APC-based guidance is separate future provider work.
+during scoring. When the Library Signals provider is configured to use the
+enabled Alternative Play Count (APC) plugin, APC supplies the existing play-count
+and last-played channels while native Lyrion data still supplies library age.
+APC-only skip, DPSV, and detailed-history guidance remain separate future work.
 
 ### Why Last.fm artist evidence needs an identity bridge
 
