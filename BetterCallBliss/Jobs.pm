@@ -1454,6 +1454,11 @@ sub _poll {
         $decode_error = $@;
     }
     if ($job->{artifact}) {
+        Plugins::BetterCallBliss::GuidanceProviderDiscovery::dispatch_native_diagnostics(
+            $job->{capability}->{discovered_guidance_providers},
+            $job->{artifact}->{guidance_addon_diagnostics},
+            { host => 'better-call-bliss', job_id => $job_id },
+        );
         my $performance = $job->{artifact}->{performance};
         if (ref($performance) eq 'HASH') {
             $job->{native_performance} = $performance;

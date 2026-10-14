@@ -34,6 +34,12 @@ use lib '.';
     }
     sub guidance_provider_defaults_v1 { return { playcount_influence => 0, settings_revision => 4 } }
     sub guidance_provider_status_v1 { return { available => 1 } }
+    our @LOG_EVENTS;
+    sub guidance_provider_log_events_v1 {
+        my ($class, $events, $context) = @_;
+        @LOG_EVENTS = (@$events, $context);
+        return 1;
+    }
 
     package Plugins::GuidanceMalformed::Plugin;
     sub guidance_provider_descriptor_v1 { return { provider_id => 'bad' } }
@@ -91,6 +97,23 @@ is($good->{defaults}->{settings_revision}, 4,
     'provider defaults and revision are discovered through its public method');
 is($good->{descriptor}->{controls}->[0]->{render_as}, 'number',
     'valid provider descriptor preserves its requested plain-number rendering');
+Plugins::BetterCallBliss::GuidanceProviderDiscovery::dispatch_native_diagnostics(
+    $first->{providers},
+    [{
+        provider_id => 'library-signals-guidance',
+        log_events_v1 => [{
+            event_version => 'guidance_log_event_v1', level => 'info',
+            phase => 'prepare', event => 'library_signals_prepared',
+            provider_id => 'library-signals-guidance',
+        }],
+    }],
+    { host => 'better-call-bliss', job_id => 'preview-1' },
+);
+is($Plugins::GuidanceGood::Plugin::LOG_EVENTS[0]->{event},
+    'library_signals_prepared',
+    'native optimizer diagnostics are routed back to the matching provider plugin');
+is($Plugins::GuidanceGood::Plugin::LOG_EVENTS[1]->{job_id}, 'preview-1',
+    'provider log hook receives bounded host context');
 my ($bad) = grep { $_->{module} eq 'Plugins::GuidanceMalformed::Plugin' } @{$first->{providers}};
 ok(!$bad->{available}, 'malformed descriptor is visible as unavailable');
 like($bad->{diagnostic}, qr/protocol_version/, 'malformed descriptor reports validation failure');
