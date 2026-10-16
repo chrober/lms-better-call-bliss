@@ -90,7 +90,7 @@ sub _new_repeat_identity_snapshot {
     unlink $temporary if -e $temporary;
     my $dbh = DBI->connect(
         "dbi:SQLite:dbname=$temporary", '', '',
-        {RaiseError => 1, PrintError => 0, AutoCommit => 0, sqlite_unicode => 1},
+        {RaiseError => 1, PrintError => 0, AutoCommit => 1, sqlite_unicode => 1},
     );
     $dbh->do('PRAGMA synchronous = OFF');
     $dbh->do('PRAGMA journal_mode = OFF');
@@ -108,6 +108,7 @@ sub _new_repeat_identity_snapshot {
         . 'contributor_id INTEGER, artist_mbid TEXT, artist_name TEXT NOT NULL, '
         . 'PRIMARY KEY (database_file, role, canonical_key))'
     );
+    $dbh->begin_work;
     $dbh->do("INSERT INTO metadata VALUES ('schema_identity', 'lyrion-track-identities-v1')");
     return {
         path => $temporary,
