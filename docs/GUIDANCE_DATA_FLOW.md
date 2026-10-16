@@ -62,7 +62,7 @@ job. The resulting request is immutable for the optimizer process lifetime.
 | --- | --- | --- | --- |
 | Strategy, Static weights, Adaptive context, repeat windows and genre policy | BlissMixer current settings, with Better Call Bliss job overrides | Better Call Bliss, then optimizer | Shapes the acoustic matrix, hard repeat checks, and the frozen eligible candidate library. |
 | Learned matrix and blend | Optional BlissMixerLab | Better Call Bliss, then optimizer | Supplies an optional matrix artifact and learned blend for Adaptive scoring. Its absence uses the documented Bliss fallback. |
-| Similar-track influence and similar-artist strategy/level | Last.fm provider defaults, then optional Better Call Bliss host/job overrides | Better Call Bliss policy resolver, then optimizer guidance policy | Similar-track is a bounded `lastfm_track` influence. Similar-artist is either a bounded influence or a `target_percent` policy, according to the provider's declared capability. Zero disables its channel. The provider alone owns LastMix-versus-API-Key source selection and the API key. |
+| Last.fm acquisition source, similar-track influence and similar-artist strategy/level | Last.fm provider defaults, then optional Better Call Bliss host/job overrides | Better Call Bliss policy resolver, then optimizer guidance policy | The host may override LastMix versus API Key for its own jobs, while the provider alone owns the API key. Similar-track is a bounded `lastfm_track` influence. Similar-artist is either a bounded influence or a `target_percent` policy, according to the provider's declared capability. Zero disables its channel. |
 | Local listening and library influences, each from -100 to 100; date saturation horizons | Library Signals settings are the provider defaults. Better Call Bliss keeps the provider disabled by default, then offers sparse host and per-job overrides after it is enabled. | Better Call Bliss policy resolver, then the provider factory and optimizer guidance policy | Non-zero values become signed `playcount`, `last_played`, and/or `library_age` policy weights. Better Call Bliss freezes `as_of_unix_seconds`; the provider factory owns trusted `persist.db` and binary resolution and receives the effective horizons. All zero channels leave the native provider unstarted. |
 | Candidate library | Active Lyrion virtual library, source exclusions, LMS membership, and captured genre policy | Better Call Bliss, then optimizer | Determines which *generated* tracks are eligible. It is frozen before native search starts. |
 
@@ -140,8 +140,9 @@ sequenceDiagram
 
 ### Last.fm acquisition is provider-owned before the optimizer starts
 
-The separately installed Last.fm provider owns the source choice and any
-credential. In **LastMix** mode it asks LastMix for bounded similar-track and
+The separately installed Last.fm provider supplies the default source choice,
+while an enabled host may save its own source override. The provider alone owns
+the credential. In **LastMix** mode it asks LastMix for bounded similar-track and
 similar-artist observations for the relevant source tracks and artists. Better
 Call Bliss resolves returned artist, title, and available MBID data against the
 frozen local candidate inventory, then writes successful local matches as the
@@ -198,7 +199,7 @@ and continues with Bliss-only search.
 
 | Provider | Data acquisition | `prepare` work | `score` work |
 | --- | --- | --- | --- |
-| `bliss-guidance-lastfm` | Its Lyrion provider owns the selected source. LastMix mode returns raw observations to Better Call Bliss for local resolution; API Key mode gives the native provider a launch-only key plus trusted cache/request limits. | Verifies and indexes resolved Last.fm relations or acquires/cache-fills anchor relations directly. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. No score request performs network I/O. |
+| `bliss-guidance-lastfm` | Its Lyrion provider supplies the source default and keeps the API key private; the host may save a source override. LastMix mode returns raw observations to Better Call Bliss for local resolution; API Key mode gives the native provider a launch-only key plus trusted cache/request limits. | Verifies and indexes resolved Last.fm relations or acquires/cache-fills anchor relations directly. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. No score request performs network I/O. |
 | `bliss-guidance-library-signals` | Its separately installed Lyrion provider owns defaults, including the listening-history source, while Better Call Bliss may persist a host-specific override exposed from the provider descriptor. The provider resolves its own binary and trusted read-only `persist.db` path and returns the effective configuration. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
 
 Each distribution is calculated from the complete frozen eligible candidate
@@ -347,7 +348,7 @@ into a substitute for acoustic evidence.
   how it chooses candidates.
 - [Guidance SPI v2](https://github.com/chrober/bliss-playlist-guidance-spi/blob/main/SPI.md): normative JSONL protocol and schemas.
 - [Last.fm Lyrion provider](https://github.com/chrober/lms-guidance-lastfm):
-  settings, LastMix/API Key source ownership, discovery, and trusted native
+  settings, LastMix/API Key source defaults, credential ownership, discovery, and trusted native
   configuration.
 - [Last.fm native provider](https://github.com/chrober/bliss-guidance-lastfm):
   artifact-backed and direct API guidance behavior.

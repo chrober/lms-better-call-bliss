@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Cover persistence of provider-declared enum overrides such as the Last.fm
+  acquisition source on the host settings page.
+
 ## 0.22.4
 
 - Add configurable MusicBrainz-aware artist repeat identities. The default

@@ -708,8 +708,9 @@ A recorded generation seed reproduces the same request and result across worker 
 Last.fm is an optional guide for choosing new songs. It never replaces Bliss similarity and never causes a non-local or otherwise invalid track to be admitted.
 
 Better Call Bliss uses the separately installed **Bliss Guidance: Last.fm**
-provider when it is enabled for the host. The provider selects either
-**LastMix** or **API Key** on its own settings page. LastMix mode obtains
+provider when it is enabled for the host. Its settings page supplies the
+default **LastMix** or **API Key** source, which this host may override without
+copying the provider-owned API key. LastMix mode obtains
 bounded similar-track and similar-artist observations through the installed
 LastMix plugin and freezes locally resolved relations. API Key mode performs
 bounded Last.fm lookups and persistent-cache reads during the native provider's

@@ -70,11 +70,15 @@ my $provider = {
         }, {
             key => 'use_alternative_play_count', type => 'boolean',
             factory_default => 0, host_overridable => 1,
+        }, {
+            key => 'source', type => 'enum', values => [qw(lastmix api_key)],
+            factory_default => 'lastmix', host_overridable => 1,
         }],
     },
     defaults => {
         playcount_influence => -40,
         use_alternative_play_count => 0,
+        source => 'lastmix',
     },
 };
 $Plugins::BetterCallBliss::GuidanceProviderDiscovery::DISCOVERY = {
@@ -92,6 +96,16 @@ is($state->{providers}->{'library-signals'}->{enabled}, 1,
     'checked provider checkbox enables the provider on an explicit save');
 is($state->{providers}->{'library-signals'}->{overrides}->{playcount_influence}, -20,
     'provider control is persisted by the explicit save');
+
+Plugins::BetterCallBliss::Settings::_apply_guidance_provider_settings({
+    saveSettings => 1,
+    'pref_guidance_provider_library-signals_enabled' => 1,
+    'pref_guidance_provider_library-signals_source' => 'api_key',
+    'dirty_guidance_provider_library-signals_source' => 1,
+});
+$state = $Slim::Utils::Prefs::PREFS->get('guidance_provider_state');
+is($state->{providers}->{'library-signals'}->{overrides}->{source}, 'api_key',
+    'enum provider control is persisted as a host override');
 
 Plugins::BetterCallBliss::Settings::_apply_guidance_provider_settings({
     saveSettings => 1,
