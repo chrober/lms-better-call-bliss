@@ -426,7 +426,7 @@ sub _result_view {
             ($job->{options}->{artist_repeat_mode} || 'shared_artist')
                 eq 'primary_artist' ? 'primary artist only'
             : ($job->{options}->{artist_repeat_mode} || 'shared_artist')
-                eq 'exact_bliss_credit' ? 'exact Bliss artist credit (legacy)'
+                eq 'exact_bliss_credit' ? 'exact Bliss artist credit'
             : 'any shared credited artist',
         source_track_count => 0 + ($job->{track_count} || 0),
         variation_percent => $job->{options}->{variation_percent},

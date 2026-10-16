@@ -470,11 +470,11 @@
       <select name="artist_repeat_mode" id="artist_repeat_mode">
         <option value="shared_artist"[% IF bettercallbliss_form.artist_repeat_mode == 'shared_artist' %] selected[% END %]>Any shared credited artist</option>
         <option value="primary_artist"[% IF bettercallbliss_form.artist_repeat_mode == 'primary_artist' %] selected[% END %]>Primary artist only</option>
-        <option value="exact_bliss_credit"[% IF bettercallbliss_form.artist_repeat_mode == 'exact_bliss_credit' %] selected[% END %]>Exact Bliss artist credit (legacy)</option>
+        <option value="exact_bliss_credit"[% IF bettercallbliss_form.artist_repeat_mode == 'exact_bliss_credit' %] selected[% END %]>Exact Bliss artist credit</option>
       </select>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.artist_repeat_mode %]</span>
     </div>
-    <p class="bea-note">Controls when the artist look-back treats two credits as the same artist. Shared artist blocks collaborations and solo credits that contain any common credited artist; Primary artist compares only the primary credit; Exact Bliss artist credit preserves the legacy text comparison. MusicBrainz artist IDs are preferred, with Lyrion contributor IDs and normalized names as fallbacks.</p>
+    <p class="bea-note"><b>Any shared credited artist:</b> Treats tracks as the same artist when any credited artist matches, including solo and collaboration credits.<br/><br/><b>Primary artist only:</b> Compares only each track's primary artist; guest artists do not create a conflict.<br/><br/><b>Exact Bliss artist credit:</b> Compares the complete artist text stored in bliss.db. This was the previous default behavior; differently written collaboration credits may count as different artists.<br/><br/>The first two options prefer MusicBrainz artist IDs, followed by Lyrion contributor IDs and normalized names.</p>
     <div class="bea-row">
       <label for="artist_window">Artist look-back (tracks)</label>
       <input type="number" min="0" max="10000" name="artist_window" id="artist_window" value="[% bettercallbliss_form.artist_window %]" required>

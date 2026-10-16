@@ -70,7 +70,8 @@ same artist:
   the default.  
 - **Primary artist only** compares only Lyrion's primary artist for each track.
   A non-primary guest does not create a repeat conflict.  
-- **Exact Bliss artist credit** retains the legacy behavior and compares the
+- **Exact Bliss artist credit** retains the previous default behavior and  
+  compares the
   complete `bliss.db` artist text. Differently written collaboration credits
   may therefore be treated as different artists.  
 
