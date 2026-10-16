@@ -119,8 +119,8 @@ PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE
 	DE	Künstleridentität für Wiederholungsfenster
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE_DESC
-	EN	Controls when the artist look-back treats two credits as the same artist. MusicBrainz artist IDs are preferred, with Lyrion contributor IDs and normalized names as fallbacks.
-	DE	Legt fest, wann das Künstler-Rückblickfenster zwei Credits als denselben Künstler behandelt. MusicBrainz-Künstler-IDs werden bevorzugt; ersatzweise dienen Lyrion-Mitwirkenden-IDs und normalisierte Namen.
+	EN	<b>Any shared credited artist:</b> Treats tracks as the same artist when any credited artist matches, including solo and collaboration credits.<br/><br/><b>Primary artist only:</b> Compares only each track's primary artist; guest artists do not create a conflict.<br/><br/><b>Exact Bliss artist credit:</b> Compares the complete artist text stored in bliss.db. This was the previous default behavior; differently written collaboration credits may count as different artists.<br/><br/>The first two options prefer MusicBrainz artist IDs, followed by Lyrion contributor IDs and normalized names.
+	DE	<b>Beliebiger gemeinsamer beteiligter Künstler:</b> Behandelt Titel als denselben Künstler, sobald irgendein beteiligter Künstler übereinstimmt, einschließlich Solo- und Kollaborations-Credits.<br/><br/><b>Nur Hauptkünstler:</b> Vergleicht nur den Hauptkünstler eines Titels; Gastkünstler erzeugen keinen Konflikt.<br/><br/><b>Exakter Bliss-Künstler-Credit:</b> Vergleicht den vollständigen in bliss.db gespeicherten Künstlertext. Dies war das bisherige Standardverhalten; unterschiedlich geschriebene Kollaborationen können als verschiedene Künstler gelten.<br/><br/>Die ersten beiden Optionen bevorzugen MusicBrainz-Künstler-IDs, danach Lyrion-Mitwirkenden-IDs und normalisierte Namen.
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_SHARED
 	EN	Any shared credited artist
@@ -131,8 +131,8 @@ PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_PRIMARY
 	DE	Nur Hauptkünstler
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EXACT
-	EN	Exact Bliss artist credit (legacy)
-	DE	Exakter Bliss-Künstler-Credit (bisheriges Verhalten)
+	EN	Exact Bliss artist credit
+	DE	Exakter Bliss-Künstler-Credit
 
 PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE
 	EN	Last-played influence

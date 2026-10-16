@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 154;
+use Test::More tests => 162;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -204,6 +204,46 @@ like(
     $extras,
     qr/Artist repeat identity:.*?artist_repeat_mode_label/s,
     'completed previews report the artist repeat identity policy used',
+);
+like(
+    $strings,
+    qr/PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE_DESC.*?<b>Any shared credited artist:<\/b>.*?<br\/><br\/>.*?<b>Primary artist only:<\/b>.*?<br\/><br\/>.*?<b>Exact Bliss artist credit:<\/b>.*?<br\/><br\/>The first two options prefer MusicBrainz artist IDs/s,
+    'artist repeat tooltip follows the structured upstream tooltip style',
+);
+unlike(
+    $strings,
+    qr/<b>Identity matching:<\/b>/,
+    'settings identity fallback note is an unlabelled final paragraph',
+);
+like(
+    $extras,
+    qr/<b>Any shared credited artist:<\/b>.*?<br\/><br\/>.*?<b>Primary artist only:<\/b>.*?<br\/><br\/>.*?<b>Exact Bliss artist credit:<\/b>.*?<br\/><br\/>The first two options prefer MusicBrainz artist IDs/s,
+    'Extras explanation uses the same structured option-by-option format',
+);
+unlike(
+    $extras,
+    qr/<b>Identity matching:<\/b>/,
+    'Extras identity fallback note is an unlabelled final paragraph',
+);
+unlike(
+    $strings,
+    qr/PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EXACT\n\t(?:EN|DE)\t[^\n]*\((?:legacy|bisheriges Verhalten)\)/,
+    'exact-credit setting option does not carry a legacy qualifier',
+);
+unlike(
+    $extras,
+    qr/Exact Bliss artist credit \(legacy\)/,
+    'Extras option does not carry a legacy qualifier',
+);
+unlike(
+    slurp(File::Spec->catfile($plugin, 'Web.pm')),
+    qr/exact Bliss artist credit \(legacy\)/,
+    'completed-preview label does not carry a legacy qualifier',
+);
+like(
+    $algorithms,
+    qr/Exact Bliss artist credit.*?previous default behavior/s,
+    'algorithm documentation explains the exact-credit history without labeling the option legacy',
 );
 like(
     slurp(File::Spec->catfile($plugin, 'Web.pm')),
