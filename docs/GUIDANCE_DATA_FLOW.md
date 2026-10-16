@@ -139,14 +139,13 @@ Call Bliss resolves returned artist, title, and available MBID data against the
 frozen local candidate inventory, then writes successful local matches as the
 hash-bound `resolved-lastfm-evidence-v1` artifact.
 
-In **API Key** mode the provider currently exposes the settings and secret-
-handling surface but does not yet perform native Last.fm HTTP/cache acquisition.
-The selected mode therefore contributes neutral guidance until that follow-up
-implementation is released. The key is not written to optimizer requests,
-artifacts, logs, progress, or results. In LastMix mode a remote, unresolved,
-stale, or non-LMS track is not a native candidate. Missing network access, rate
-limiting, or provider failure leaves the evidence partial or absent and the job
-continues with Bliss alone.
+In **API Key** mode the native provider obtains and caches bounded relations
+during `prepare`; subsequent scoring remains network-free. The key reaches the
+provider only through its child-process environment and is not written to
+optimizer requests, artifacts, caches, logs, progress, or results. In LastMix
+mode a remote, unresolved, stale, or non-LMS track is not a native candidate.
+Missing network access, rate limiting, or provider failure leaves the evidence
+partial or absent and the job continues with Bliss alone.
 
 ## Phase 2: the optimizer starts providers through the host-neutral SPI
 
@@ -171,7 +170,7 @@ sequenceDiagram
     LS-->>O: manifest: library-signals-guidance, playcount/last_played/library_age channels
 
     O->>LF: prepare(resolved artifact or provider configuration, anchors)
-    LF->>LF: Verify/index artifact, API-Key mode remains neutral
+    LF->>LF: Verify/index artifact or acquire/cache direct relations
     LF-->>O: prepared diagnostics
 
     O->>LS: prepare(candidate-identity artifact, read-only persist.db)
@@ -191,7 +190,7 @@ and continues with Bliss-only search.
 
 | Provider | Data acquisition | `prepare` work | `score` work |
 | --- | --- | --- | --- |
-| `bliss-guidance-lastfm` | Its Lyrion provider owns the selected source. In LastMix mode it returns raw observations to Better Call Bliss for local resolution. API Key mode is currently configuration-only; direct acquisition is a follow-up. | Verifies and indexes resolved Last.fm relations by source, local candidate, and channel. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. API-Key mode currently emits no evidence. |
+| `bliss-guidance-lastfm` | Its Lyrion provider owns the selected source. LastMix mode returns raw observations to Better Call Bliss for local resolution; API Key mode gives the native provider a launch-only key plus trusted cache/request limits. | Verifies and indexes resolved Last.fm relations or acquires/cache-fills anchor relations directly. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. No score request performs network I/O. |
 | `bliss-guidance-library-signals` | Its separately installed Lyrion provider owns defaults, including the listening-history source, while Better Call Bliss may persist a host-specific override exposed from the provider descriptor. The provider resolves its own binary and trusted read-only `persist.db` path and returns the effective configuration. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
 
 Each distribution is calculated from the complete frozen eligible candidate
@@ -290,10 +289,13 @@ releases its SQLite snapshot and bounded cache.
 sequenceDiagram
     participant O as Optimizer
     participant B as Better Call Bliss
+    participant P as Owning provider plugin
     participant UI as Extras / context action
     participant L as Lyrion
 
     O-->>B: Result JSON, progress and guidance diagnostics
+    B->>P: Dispatch validated provider log events
+    P->>P: Render provider-owned info/debug/warning text
     B->>B: Validate artifact, database identity and LMS track resolution
     B-->>UI: Preview route, additions, evidence and failure details
     alt User accepts a Preview
@@ -321,7 +323,7 @@ playlist optimizer. Its reusable division of responsibility is:
 | --- | --- | --- |
 | Better Call Bliss | Lyrion settings, provider discovery, local identity resolution for provider artifacts, job lifecycle, and persistence | Not required for a standalone future mixer host. |
 | Guidance providers | Interpret their own trusted artifact/resource and emit bounded signals | The same provider executables and channel contracts can be reused. |
-| Host | Maintains the Bliss-first candidate pool, invokes providers on bounded batches, and aggregates signals under host policy | `bliss-mixer` 0.11.4 exposes the first native Library Signals host endpoint and `selection_trace_v1`; Lab already sends enabled native-provider DSTM pools to it while retaining its own selection policy and log formatter. |
+| Host | Maintains the Bliss-first candidate pool, invokes providers on bounded batches, and aggregates signals under host policy | `bliss-mixer` exposes the native guidance endpoint and `selection_trace_v1`; Lab sends enabled native-provider DSTM pools to it while retaining its own selection policy and log formatter. |
 
 The first native `bliss-mixer` host endpoint preserves the same ordering:
 derive and admit candidates through Bliss first, then ask optional providers to
@@ -340,7 +342,7 @@ into a substitute for acoustic evidence.
   settings, LastMix/API Key source ownership, discovery, and trusted native
   configuration.
 - [Last.fm native provider](https://github.com/chrober/bliss-guidance-lastfm):
-  artifact-backed guidance behavior and the planned direct API path.
+  artifact-backed and direct API guidance behavior.
 - [Library Signals Lyrion provider](https://github.com/chrober/lms-guidance-library-signals):
   provider discovery, settings/defaults, trusted native configuration, and
   read-only SQLite snapshot behavior.
