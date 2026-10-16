@@ -16,10 +16,12 @@ use Slim::Utils::Timers;
 use Slim::Utils::Unicode;
 use Time::HiRes qw(time);
 use URI::Escape qw(uri_unescape);
+use Unicode::Normalize qw(NFKC);
 use Plugins::BetterCallBliss::CandidateIdentity;
+use Plugins::BetterCallBliss::RepeatIdentity;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
-use constant BUILDER_REVISION => 5;
+use constant BUILDER_REVISION => 6;
 my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
@@ -61,6 +63,90 @@ sub _write_atomic {
     my $temporary = $path . '.tmp-' . $$;
     write_file($temporary, {binmode => ':raw'}, $bytes);
     rename($temporary, $path) or die "Could not publish '$path': $!";
+}
+
+sub _sha256_file {
+    my $path = shift;
+    open my $fh, '<:raw', $path or die "Could not read '$path': $!";
+    my $digest = Digest::SHA->new(256);
+    $digest->addfile($fh);
+    close $fh;
+    return $digest->hexdigest;
+}
+
+sub _media_roots_identity {
+    my $roots = shift || [];
+    my @normalized = sort map {
+        my $root = defined $_ ? NFKC($_) : '';
+        $root =~ s{\\}{/}g;
+        $root =~ s{/+$}{};
+        $root;
+    } @$roots;
+    return sha256_hex(encode_utf8(join("\0", @normalized)));
+}
+
+sub _new_repeat_identity_snapshot {
+    my $temporary = $inventory_root . '/track-identities.tmp-' . $$ . '.sqlite';
+    unlink $temporary if -e $temporary;
+    my $dbh = DBI->connect(
+        "dbi:SQLite:dbname=$temporary", '', '',
+        {RaiseError => 1, PrintError => 0, AutoCommit => 0, sqlite_unicode => 1},
+    );
+    $dbh->do('PRAGMA synchronous = OFF');
+    $dbh->do('PRAGMA journal_mode = OFF');
+    $dbh->do('CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    $dbh->do(
+        'CREATE TABLE track_identity ('
+        . 'database_file TEXT PRIMARY KEY, lms_track_id INTEGER NOT NULL, '
+        . 'lms_urlmd5 TEXT, recording_mbid TEXT, primary_contributor_id INTEGER, '
+        . 'primary_artist_mbid TEXT, primary_artist_name TEXT, '
+        . 'legacy_artist_credit TEXT NOT NULL)'
+    );
+    $dbh->do(
+        'CREATE TABLE track_artist_identity ('
+        . 'database_file TEXT NOT NULL, role TEXT NOT NULL, canonical_key TEXT NOT NULL, '
+        . 'contributor_id INTEGER, artist_mbid TEXT, artist_name TEXT NOT NULL, '
+        . 'PRIMARY KEY (database_file, role, canonical_key))'
+    );
+    $dbh->do("INSERT INTO metadata VALUES ('schema_identity', 'lyrion-track-identities-v1')");
+    return {
+        path => $temporary,
+        dbh => $dbh,
+        insert_track => $dbh->prepare(
+            'INSERT INTO track_identity VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        ),
+        insert_artist => $dbh->prepare(
+            'INSERT OR IGNORE INTO track_artist_identity VALUES (?, ?, ?, ?, ?, ?)'
+        ),
+        update_credit => $dbh->prepare(
+            'UPDATE track_identity SET legacy_artist_credit = ? WHERE database_file = ?'
+        ),
+    };
+}
+
+sub _publish_repeat_identity_snapshot {
+    my ($snapshot, $scan_time, $database_identity, $media_roots_identity) = @_;
+    my $dbh = $snapshot->{dbh};
+    my $metadata = $dbh->prepare('INSERT INTO metadata VALUES (?, ?)');
+    $metadata->execute('lms_scan_time', int($scan_time));
+    $metadata->execute('database_cache_identity', $database_identity);
+    $metadata->execute('media_roots_identity', $media_roots_identity);
+    $dbh->do('CREATE INDEX track_artist_file_idx ON track_artist_identity(database_file)');
+    $dbh->commit;
+    $dbh->disconnect;
+    my $sha256 = _sha256_file($snapshot->{path});
+    my $path = $inventory_root . '/track-identities-' . $sha256 . '.sqlite';
+    if (-r $path) {
+        unlink $snapshot->{path};
+    } else {
+        rename($snapshot->{path}, $path)
+            or die "Could not publish '$path': $!";
+    }
+    return ({
+        path => $path,
+        sha256 => $sha256,
+        schema_identity => 'lyrion-track-identities-v1',
+    }, $path, $sha256);
 }
 
 sub _relative_database_file {
@@ -155,6 +241,8 @@ sub _load_cached_inventory {
     return $miss->('state_invalid') unless ref($state) eq 'HASH';
     return $miss->('builder_revision_changed')
         unless ($state->{builder_revision} || 0) == BUILDER_REVISION;
+    return $miss->('cache_identity_changed')
+        unless ($state->{cache_key} || '') eq $key;
     my $path = $state->{inventory_path} || '';
     return $miss->('artifact_path_invalid')
         unless $path =~ /^\Q$inventory_root\E\/inventory-[0-9a-f]{64}\.json$/;
@@ -192,6 +280,14 @@ sub _load_cached_inventory {
             =~ /^\Q$inventory_root\E\/identities-[0-9a-f]{64}\.json$/;
     return $miss->('identity_index_unreadable') unless -r $identity_path;
     my $identity_lookup_path = $state->{identity_lookup_path} || '';
+    my $track_identity_path = $state->{track_identity_path} || '';
+    return $miss->('track_identity_path_invalid')
+        unless $track_identity_path
+            =~ /^\Q$inventory_root\E\/track-identities-[0-9a-f]{64}\.sqlite$/
+            && -r $track_identity_path;
+    return $miss->('track_identity_hash_mismatch')
+        unless _sha256_file($track_identity_path)
+            eq ($state->{track_identity_sha256} || '');
     my $identity_index;
     if ($identity_lookup_path
         !~ /^\Q$inventory_root\E\/identities-[0-9a-f]{64}\.sqlite$/
@@ -264,6 +360,11 @@ sub _load_cached_inventory {
             schema_identity => 'eligible-candidate-identities-v1',
         },
         identity_lookup_path => $identity_lookup_path,
+        track_identity_artifact => {
+            path => $track_identity_path,
+            sha256 => $state->{track_identity_sha256},
+            schema_identity => 'lyrion-track-identities-v1',
+        },
     };
 }
 
@@ -409,8 +510,11 @@ sub prepare {
     $candidate_library ||= {id => '', name => 'All tracks'};
     my $scan_time_value = Slim::Music::Import->lastScanTime() || 0;
     my $scan_time = int($scan_time_value);
+    my $roots = $capability->{music_roots} || [];
+    my $media_roots_identity = _media_roots_identity($roots);
     my $membership_count = _candidate_library_track_count($candidate_library);
     my $key = join('|', $database_identity, $scan_time,
+        $media_roots_identity,
         $candidate_library->{id} || '', defined $membership_count
             ? $membership_count : 'all');
     if ($cached_result && ($cached_key || '') eq $key) {
@@ -442,22 +546,28 @@ sub prepare {
         %lms_identity_for);
     my $lms_track_count = 0;
     my $candidate_library_track_count = 0;
-    my $roots = $capability->{music_roots} || [];
     my $root_descriptors = _root_descriptors($roots);
+    my $repeat_snapshot = _new_repeat_identity_snapshot();
     my $lms_sth = Slim::Schema->dbh->prepare(
         'SELECT tracks.id, tracks.url, tracks.tracknum, tracks.urlmd5, tracks.musicbrainz_id, '
-        . 'contributors.musicbrainz_id FROM tracks '
+        . 'contributors.id, contributors.musicbrainz_id, contributors.name FROM tracks '
         . 'LEFT JOIN contributors ON contributors.id = tracks.primary_artist '
         . 'WHERE tracks.remote = 0 AND tracks.audio = 1'
     );
     $lms_sth->execute;
     my $lms_row_count = 0;
-    while (my ($track_id, $url, $tracknum, $urlmd5, $recording_mbid, $artist_mbid)
+    while (my ($track_id, $url, $tracknum, $urlmd5, $recording_mbid,
+        $primary_contributor_id, $artist_mbid, $artist_name)
         = $lms_sth->fetchrow_array) {
         my $database_file = _database_file_for_url(
             $url, $tracknum, $root_descriptors, $roots,
         );
         next unless defined $database_file && length $database_file;
+        $repeat_snapshot->{insert_track}->execute(
+            $database_file, 0 + $track_id, $urlmd5, $recording_mbid,
+            $primary_contributor_id, $artist_mbid, $artist_name,
+            defined $artist_name ? $artist_name : '',
+        );
         $lms_files{$database_file} = 1;
         if (!length($candidate_library->{id} || '')
             || $library_members->{0 + $track_id}) {
@@ -485,6 +595,36 @@ sub prepare {
     }
     $lms_sth->finish;
 
+    my $artist_sth = Slim::Schema->dbh->prepare(
+        'SELECT tracks.url, tracks.tracknum, contributor_track.role, contributors.id, '
+        . 'contributors.musicbrainz_id, contributors.name FROM contributor_track '
+        . 'JOIN tracks ON tracks.id = contributor_track.track '
+        . 'JOIN contributors ON contributors.id = contributor_track.contributor '
+        . 'WHERE tracks.remote = 0 AND tracks.audio = 1 '
+        . 'AND contributor_track.role IN (1, 6) '
+        . 'ORDER BY contributor_track.track, contributor_track.role, contributors.id'
+    );
+    $artist_sth->execute;
+    my $artist_row_count = 0;
+    while (my ($url, $tracknum, $role, $contributor_id, $artist_mbid, $artist_name)
+        = $artist_sth->fetchrow_array) {
+        my $database_file = _database_file_for_url(
+            $url, $tracknum, $root_descriptors, $roots,
+        );
+        next unless defined $database_file && $lms_files{$database_file};
+        my $canonical_key = Plugins::BetterCallBliss::RepeatIdentity::canonical_artist_key(
+            $artist_mbid, $contributor_id, $artist_name,
+        );
+        next unless defined $canonical_key;
+        $repeat_snapshot->{insert_artist}->execute(
+            $database_file, int($role) == 6 ? 'TRACKARTIST' : 'ARTIST',
+            $canonical_key, $contributor_id, $artist_mbid,
+            defined $artist_name ? $artist_name : '',
+        );
+        _yield_to_lms() unless ++$artist_row_count % YIELD_EVERY_ROWS;
+    }
+    $artist_sth->finish;
+
     my $dbh = DBI->connect(
         'dbi:SQLite:dbname=' . $capability->{database}, '', '',
         {
@@ -508,6 +648,9 @@ sub prepare {
     while (my ($row_id, $file, $title, $artist, $album) = $sth->fetchrow_array) {
         $usable_count++;
         my $database_file = _database_text($file);
+        $repeat_snapshot->{update_credit}->execute(
+            defined $artist ? $artist : '', $database_file,
+        ) if defined $database_file && $lms_files{$database_file};
         my $folded = defined $database_file ? lc($database_file) : '';
         if (defined $database_file && $candidate_files{$database_file}) {
             push @allowed, 0 + $row_id;
@@ -555,6 +698,12 @@ sub prepare {
     }
     $sth->finish;
     $dbh->disconnect;
+
+    my ($track_identity_artifact, $track_identity_path, $track_identity_sha256) =
+        _publish_repeat_identity_snapshot(
+            $repeat_snapshot, $scan_time, $database_identity,
+            $media_roots_identity,
+        );
 
     my $now = time();
     my $inventory = {
@@ -631,6 +780,7 @@ sub prepare {
             schema_identity => 'eligible-candidate-identities-v1',
         },
         identity_lookup_path => $identity_lookup_path,
+        track_identity_artifact => $track_identity_artifact,
     };
     _write_atomic($state_path, _json()->encode({
         schema_version => 1,
@@ -648,6 +798,8 @@ sub prepare {
         identity_path => $identity_path,
         identity_sha256 => $identity_sha256,
         identity_lookup_path => $identity_lookup_path,
+        track_identity_path => $track_identity_path,
+        track_identity_sha256 => $track_identity_sha256,
     }));
     $log->info(
         'candidate_inventory stage=Ready'

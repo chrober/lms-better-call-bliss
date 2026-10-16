@@ -30,6 +30,7 @@ BEGIN {
             seed_limit => '3',
             learned_percent => '20',
             artist_window => '5',
+            artist_repeat_mode => 'shared_artist',
             album_window => '10',
             track_window => '100',
             guidance_providers => {
@@ -160,6 +161,7 @@ BEGIN {
             seed_limit => '3',
             learned_percent => '20',
             artist_window => '5',
+            artist_repeat_mode => 'shared_artist',
             album_window => '10',
             track_window => '100',
             restart_count => '50',
@@ -219,6 +221,18 @@ BEGIN {
 }
 
 {
+    package TestArtist;
+    sub new {
+        return bless {
+            id => $_[1],
+            name => $_[2],
+            musicbrainz_id => $_[3],
+        }, $_[0];
+    }
+    sub id { return $_[0]->{id} }
+    sub name { return $_[0]->{name} }
+    sub musicbrainz_id { return $_[0]->{musicbrainz_id} }
+
     package TestTrack;
     sub new { return bless {id => $_[1], title => $_[2]}, $_[0] }
     sub remote { return 0 }
@@ -248,6 +262,29 @@ BEGIN {
 $Slim::Schema::playlist = TestPlaylist->new();
 use lib "$FindBin::Bin/..";
 require Plugins::BetterCallBliss::RequestBuilder;
+require Plugins::BetterCallBliss::RepeatIdentity;
+
+is(
+    Plugins::BetterCallBliss::RepeatIdentity::contributor_artist_key(
+        TestArtist->new(10, 'Queen', '0383DADF-2A4E-4D10-A46A-E9E041DA8EB3'),
+    ),
+    'artist-mbid:0383dadf-2a4e-4d10-a46a-e9e041da8eb3',
+    'source identity prefers a valid artist MBID',
+);
+is(
+    Plugins::BetterCallBliss::RepeatIdentity::contributor_artist_key(
+        TestArtist->new(20, 'Fallback Artist', 'not-an-mbid'),
+    ),
+    'lms-contributor:20',
+    'source identity falls back from a malformed MBID to the contributor ID',
+);
+is(
+    Plugins::BetterCallBliss::RepeatIdentity::contributor_artist_key(
+        TestArtist->new(30, 'Various Artists', '89ad4ac3-39f7-470e-963a-56509c546377'),
+    ),
+    undef,
+    'Various Artists never becomes a shared source identity',
+);
 
 my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
     7, 'preview-json-types', '/tmp/semantic-evidence.json', {},
@@ -283,6 +320,11 @@ Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(
 );
 my $json = JSON::XS->new->canonical->pretty->encode($built->{request});
 my $request = JSON::XS->new->decode($json);
+
+is($request->{repeat_windows}->{artist_identity_mode}, 'shared_artist',
+    'artist repeat identity mode is serialized as a string enum');
+is_deeply($request->{source_tracks}->[0]->{artist_identity_keys}, [],
+    'source tracks carry structured artist identity keys even without LMS contributor metadata');
 
 is($request->{extension}->{gap_context_mode}, 'frozen',
     'adaptive gap context is serialized as a string enum');
@@ -649,5 +691,43 @@ is($album_round_request->{route}->{rejoin_track_id}, 'lms-track-46',
     'album round trip locks the queue rejoin after the album exit');
 is(scalar @{$album_round_request->{source_tracks}}, 5,
     'album round trip keeps start, complete album, and rejoin as route members');
+
+my $identity_spacing_source = [
+    {
+        artist => 'Queen & David Bowie', album => 'Hot Space',
+        artist_identity_keys => ['artist-mbid:queen', 'artist-mbid:bowie'],
+        primary_artist_identity_key => 'artist-mbid:bowie',
+    },
+    {artist => 'Other Artist', album => 'Other Album'},
+    {
+        artist => 'Queen', album => 'The Game',
+        artist_identity_keys => ['artist-mbid:queen'],
+        primary_artist_identity_key => 'artist-mbid:queen',
+    },
+];
+is(
+    Plugins::BetterCallBliss::RequestBuilder::_minimum_repeat_safe_target(
+        $identity_spacing_source,
+        {artist_window => 5, album_window => 0, artist_repeat_mode => 'shared_artist'},
+    ),
+    7,
+    'spacing capacity counts every shared collaboration artist identity',
+);
+is(
+    Plugins::BetterCallBliss::RequestBuilder::_minimum_repeat_safe_target(
+        $identity_spacing_source,
+        {artist_window => 5, album_window => 0, artist_repeat_mode => 'primary_artist'},
+    ),
+    3,
+    'primary-artist spacing ignores a non-primary collaboration member',
+);
+is(
+    Plugins::BetterCallBliss::RequestBuilder::_minimum_repeat_safe_target(
+        $identity_spacing_source,
+        {artist_window => 5, album_window => 0, artist_repeat_mode => 'exact_bliss_credit'},
+    ),
+    3,
+    'legacy exact-credit spacing retains display-credit behavior',
+);
 
 done_testing();

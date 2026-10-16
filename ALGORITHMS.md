@@ -58,6 +58,30 @@ Three job choices work together:
 
 The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, freezes the LMS-local candidate inventory and current play counts when needed, and optionally asks LastMix for Last.fm track and artist relationships. It resolves those Last.fm results to explicit candidates in that frozen local inventory before launching the native [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer), which performs provider-neutral scoring and bounded search. Only the plugin writes playlists or player queues. Editor jobs require explicit acceptance; the **Bliss me there...** shortcuts automatically append, replace upcoming tracks, or insert an excursion only after the background route and matching live-anchor checks succeed.
 
+## Artist identity for repeat windows
+
+The numeric artist look-back value says how many playlist positions must pass
+before an artist may occur again. **Artist identity** says what counts as the
+same artist:  
+
+- **Any shared credited artist** blocks a repeat when two tracks share at
+  least one track-level artist or track-artist credit. A collaboration such as
+  Queen and David Bowie therefore conflicts with a nearby Queen track. This is
+  the default.  
+- **Primary artist only** compares only Lyrion's primary artist for each track.
+  A non-primary guest does not create a repeat conflict.  
+- **Exact Bliss artist credit** retains the legacy behavior and compares the
+  complete `bliss.db` artist text. Differently written collaboration credits
+  may therefore be treated as different artists.  
+
+Stable identity is resolved from a MusicBrainz artist ID first, then a Lyrion
+contributor ID, then a normalized artist name. Missing individual rows fall
+back conservatively to the complete Bliss credit. Album-artist-only credits
+and `Various Artists` do not collapse unrelated compilation tracks into one
+artist. The same policy governs source prechecks, spacing-size calculations,
+candidate admission, and the final route proof. Optional guidance and
+Variation cannot override it.  
+
 ## Candidate discovery: which tracks influence the choice?
 
 "Candidate discovery" does not mean the same thing in every workflow. Better Call Bliss first decides **which tracks are allowed to be considered**, then each workflow decides **which source tracks the candidates should resemble**, and only afterwards decides **where selected tracks belong**. Keeping those steps separate makes the strategies much easier to understand.

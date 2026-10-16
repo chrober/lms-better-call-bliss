@@ -62,7 +62,10 @@ $Slim::Schema::dbh->do(
     'CREATE TABLE tracks (id INTEGER PRIMARY KEY, url TEXT, tracknum INTEGER, remote INTEGER, audio INTEGER, musicbrainz_id TEXT, primary_artist INTEGER)'
 );
 $Slim::Schema::dbh->do(
-    'CREATE TABLE contributors (id INTEGER PRIMARY KEY, musicbrainz_id TEXT)'
+    'CREATE TABLE contributors (id INTEGER PRIMARY KEY, musicbrainz_id TEXT, name TEXT)'
+);
+$Slim::Schema::dbh->do(
+    'CREATE TABLE contributor_track (role INTEGER, contributor INTEGER, track INTEGER)'
 );
 $Slim::Schema::dbh->do(
     'CREATE TABLE library_track (library TEXT, track INTEGER)'
@@ -74,9 +77,11 @@ $Slim::Schema::dbh->do(
     q{INSERT INTO tracks VALUES (2, 'file:///music/outside.flac', 2, 0, 1, NULL, 20)}
 );
 $Slim::Schema::dbh->do(
-    q{INSERT INTO contributors VALUES (10, '22222222-2222-4222-8222-222222222222')}
+    q{INSERT INTO contributors VALUES (10, '22222222-2222-4222-8222-222222222222', 'Queen')}
 );
-$Slim::Schema::dbh->do(q{INSERT INTO contributors VALUES (20, NULL)});
+$Slim::Schema::dbh->do(q{INSERT INTO contributors VALUES (20, 'not-an-mbid', 'Outside')});
+$Slim::Schema::dbh->do(q{INSERT INTO contributor_track VALUES (1, 10, 1)});
+$Slim::Schema::dbh->do(q{INSERT INTO contributor_track VALUES (1, 20, 2)});
 $Slim::Schema::dbh->do(
     q{INSERT INTO library_track VALUES ('4d2ba37f', 1)}
 );
@@ -155,6 +160,31 @@ is($identity_lookup->selectrow_array(
     'SELECT recording_artist FROM candidate_identity LIMIT 1'
 ), 'a', 'the identity sidecar stores normalized lookup keys');
 $identity_lookup->disconnect;
+ok(-r $first->{track_identity_artifact}->{path},
+    'the complete stable artist-identity snapshot is persisted');
+is($first->{track_identity_artifact}->{schema_identity},
+    'lyrion-track-identities-v1',
+    'the repeat-identity artifact uses the shared native schema');
+my $repeat_identity = DBI->connect(
+    'dbi:SQLite:dbname=' . $first->{track_identity_artifact}->{path}, '', '',
+    {RaiseError => 1, sqlite_open_flags => 1},
+);
+like($repeat_identity->selectrow_array(
+    q{SELECT value FROM metadata WHERE key='media_roots_identity'}
+), qr/^[0-9a-f]{64}$/,
+    'the repeat-identity artifact is bound to the media-root mapping');
+is($repeat_identity->selectrow_array(
+    q{SELECT canonical_key FROM track_artist_identity WHERE database_file='allowed.flac'}
+), 'artist-mbid:22222222-2222-4222-8222-222222222222',
+    'artist MBID is the preferred repeat identity');
+is($repeat_identity->selectrow_array(
+    q{SELECT canonical_key FROM track_artist_identity WHERE database_file='outside.flac'}
+), 'lms-contributor:20',
+    'a malformed artist MBID falls back to the Lyrion contributor identity');
+is($repeat_identity->selectrow_array(
+    q{SELECT legacy_artist_credit FROM track_identity WHERE database_file='allowed.flac'}
+), 'A', 'the snapshot retains the exact Bliss credit for compatibility mode');
+$repeat_identity->disconnect;
 my $cached = Plugins::BetterCallBliss::CandidateInventory::prepare(
     $capability, 'bliss-fixture-v1', $library,
 );
@@ -175,6 +205,23 @@ is($disk_cached->{identity_lookup_path}, $first->{identity_lookup_path},
     'a persisted cache hit exposes the indexed identity sidecar');
 is_deeply($disk_cached->{identity_artifact}, $first->{identity_artifact},
     'a persisted cache hit retains the hash-bound provider identity artifact');
+is_deeply($disk_cached->{track_identity_artifact}, $first->{track_identity_artifact},
+    'a persisted cache hit retains the hash-bound repeat identity artifact');
+
+my $state_path = File::Spec->catfile($root, 'candidate-inventory', 'current.json');
+open my $state_fh, '<:raw', $state_path or die "Cannot read $state_path: $!";
+my $state = JSON::XS->new->decode(do { local $/; <$state_fh> });
+close $state_fh;
+$state->{cache_key} = 'stale-media-root-binding';
+open $state_fh, '>:raw', $state_path or die "Cannot write $state_path: $!";
+print {$state_fh} JSON::XS->new->canonical->pretty->encode($state);
+close $state_fh;
+Plugins::BetterCallBliss::CandidateInventory::init($root);
+my $root_rebound = Plugins::BetterCallBliss::CandidateInventory::prepare(
+    $capability, 'bliss-fixture-v1', $library,
+);
+is($root_rebound->{status}->{cache_state}, 'miss',
+    'a changed media-root cache identity rebuilds the persisted snapshot');
 
 $Slim::Schema::dbh->do(
     q{INSERT INTO library_track VALUES ('4d2ba37f', 2)}

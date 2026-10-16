@@ -12,6 +12,7 @@ use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::JobOptions;
+use Plugins::BetterCallBliss::RepeatIdentity;
 
 sub _job_seed {
     my $job_id = shift;
@@ -267,9 +268,40 @@ sub _track_bundle {
         my $title = $track->title || $track->path;
         my $album = $track->albumname || '';
         my $recording_mbid = eval { $track->musicbrainz_id } || undef;
+        my $primary_artist = eval { $track->artist };
         my $artist_mbid = eval {
-            $track->artist ? $track->artist->musicbrainz_id : undef
+            $primary_artist ? $primary_artist->musicbrainz_id : undef
         } || undef;
+        my $primary_artist_identity_key =
+            Plugins::BetterCallBliss::RepeatIdentity::contributor_artist_key(
+                $primary_artist,
+            );
+        my (@artist_identity_keys, @artist_mbids, %seen_artist_key, %seen_artist_mbid);
+        for my $credited_artist (eval { $track->artists }) {
+            my $key =
+                Plugins::BetterCallBliss::RepeatIdentity::contributor_artist_key(
+                    $credited_artist,
+                );
+            push @artist_identity_keys, $key
+                if defined $key && !$seen_artist_key{$key}++;
+            my $mbid = eval { $credited_artist->musicbrainz_id } || '';
+            $mbid = lc $mbid;
+            $mbid =~ s/^\s+|\s+$//g;
+            push @artist_mbids, $mbid
+                if length $mbid && !$seen_artist_mbid{$mbid}++;
+        }
+        if (defined $primary_artist_identity_key
+            && !$seen_artist_key{$primary_artist_identity_key}++) {
+            unshift @artist_identity_keys, $primary_artist_identity_key;
+        }
+        if (defined $artist_mbid) {
+            my $normalized = lc $artist_mbid;
+            $normalized =~ s/^\s+|\s+$//g;
+            unshift @artist_mbids, $normalized
+                unless $seen_artist_mbid{$normalized}++;
+        }
+        @artist_identity_keys = sort @artist_identity_keys;
+        @artist_mbids = sort @artist_mbids;
         push @source_tracks, {
             id            => $id,
             lms_url       => $track->url,
@@ -278,7 +310,10 @@ sub _track_bundle {
             artist        => $artist,
             album         => $album,
             (defined $recording_mbid ? (recording_mbid => $recording_mbid) : ()),
-            artist_mbids => defined $artist_mbid ? [$artist_mbid] : [],
+            artist_mbids => \@artist_mbids,
+            artist_identity_keys => \@artist_identity_keys,
+            (defined $primary_artist_identity_key
+                ? (primary_artist_identity_key => $primary_artist_identity_key) : ()),
         };
         $labels{$id} = {artist => $artist, title => $title, album => $album};
         $original_positions{$id} = ++$position;
@@ -401,11 +436,35 @@ sub _minimum_tracks_for_repeat_window {
     return $minimum;
 }
 
+sub _minimum_tracks_for_artist_window {
+    my ($source_tracks, $window, $mode) = @_;
+    return scalar @$source_tracks unless $window && $window > 0;
+    my %counts;
+    for my $track (@$source_tracks) {
+        my %seen;
+        for my $key (
+            Plugins::BetterCallBliss::RepeatIdentity::repeat_keys_for_track(
+                $track, $mode,
+            )
+        ) {
+            $counts{$key}++ if length($key || '') && !$seen{$key}++;
+        }
+    }
+    my $minimum = scalar @$source_tracks;
+    for my $count (values %counts) {
+        next unless $count > 1;
+        my $needed = ($count - 1) * ($window + 1) + 1;
+        $minimum = $needed if $needed > $minimum;
+    }
+    return $minimum;
+}
+
 sub _minimum_repeat_safe_target {
     my ($source_tracks, $options) = @_;
     my $minimum = scalar @$source_tracks;
-    my $artist_minimum = _minimum_tracks_for_repeat_window(
-        $source_tracks, 'artist', $options->{artist_window},
+    my $artist_minimum = _minimum_tracks_for_artist_window(
+        $source_tracks, $options->{artist_window},
+        $options->{artist_repeat_mode},
     );
     my $album_minimum = _minimum_tracks_for_repeat_window(
         $source_tracks, 'album', $options->{album_window},
@@ -711,6 +770,7 @@ sub _build_sequence_request {
             artist => _json_integer($options->{artist_window}),
             album => _json_integer($options->{album_window}),
             track => _json_integer($options->{track_window}),
+            artist_identity_mode => $options->{artist_repeat_mode},
         },
         extension => $options->{extension_mode} eq 'automatic' ? {
                 mode => 'automatic',
