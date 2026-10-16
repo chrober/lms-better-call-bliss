@@ -6,8 +6,8 @@ It is product documentation, not a migration plan. The related
 [`bliss-playlist-guidance-spi`](https://github.com/chrober/bliss-playlist-guidance-spi)
 contract is host-neutral: Better Call Bliss currently uses it through
 [`bliss-playlist-optimizer`](https://github.com/chrober/bliss-playlist-optimizer),
-and a future `bliss-mixer` integration may use the same providers while ranking
-its own Bliss-derived candidate pool.
+and the native `bliss-mixer` guidance endpoint uses the same contract while
+ranking its own Bliss-derived candidate pool.
 
 The central boundary is intentionally simple: **Bliss decides which tracks and
 routes are acoustically valid; guidance can only express a bounded preference
@@ -25,7 +25,7 @@ flowchart TB
     LMS["Lyrion catalog, selected virtual library,<br/>queue or playlist"] --> B
     GP["Optional enabled Lyrion<br/>guidance-provider plugins"] -.-> B
     LM["Optional LastMix<br/>anonymous Last.fm lookups"] -.-> GP
-    API["Optional Last.fm API key<br/>configuration-only path"] -.-> GP
+    API["Optional Last.fm API key<br/>direct prepare path"] -.-> GP
 
     B --> I["Frozen request artifacts<br/>• bliss.db identity<br/>• candidate inventory<br/>• candidate identities<br/>• provider-acquired evidence"]
     B --> R["Trusted request JSON<br/>settings, anchors, constraints,<br/>guidance policy and factory-built provider configs"]
@@ -47,11 +47,11 @@ Better Call Bliss talks to LMS, the browser UI, and playlist or queue
 persistence. It discovers enabled Lyrion guidance providers, resolves their
 defaults plus sparse host/job overrides, and asks each enabled provider to
 acquire any provider-owned artifact and build its own trusted native
-configuration. The Last.fm provider asks LastMix for raw observations in the
-currently working path. Its API-Key mode is configuration-only until the direct
-acquisition path is released. Only the Library Signals provider opens
-`persist.db`. The optimizer itself is network-free and has no
-Lyrion-specific SQLite queries.
+configuration. In LastMix mode the Last.fm provider asks LastMix for raw
+observations. In API Key mode its native provider performs bounded acquisition
+and cache lookup during `prepare`; later `score` requests remain network-free.
+Only the Library Signals provider opens `persist.db`. The optimizer itself has
+no Last.fm or Lyrion-specific SQLite implementation.
 
 ## Who consumes each setting, and when?
 
@@ -90,8 +90,11 @@ and effective settings. It also constructs two distinct local-library artifacts:
   LMS tracks, selected virtual-library membership, source exclusions, and the
   captured genre policy.
 - `eligible-candidate-identities-v1` is a compact provider-facing identity list.
-  It contains the optimizer candidate ID and Lyrion URL MD5 needed by the
-  local-library-signals provider. It does not contain decoded Bliss feature vectors.
+  It contains the optimizer candidate ID, Lyrion URL MD5, and available title,
+  artist, album, recording MBID, and artist MBIDs. It does not contain decoded
+  Bliss feature vectors. The optimizer retains this metadata in bounded score
+  batches so each provider can resolve only the candidates currently under
+  consideration.
 
 The optimizer validates these hash- and database-bound artifacts. It can use a
 private decoded-library cache, but a changed `bliss.db` or LMS library scan is a
@@ -119,7 +122,7 @@ sequenceDiagram
             X-->>B: Raw semantic evidence, failures are tolerated
             B->>B: Resolve relations to frozen local candidate IDs
         else API Key source
-            X-->>B: Configuration-only status, no native evidence yet
+            X-->>B: Trusted native configuration and secret environment name
         end
     end
     opt Enabled provider has non-zero guidance channels
@@ -128,6 +131,11 @@ sequenceDiagram
     end
     B->>B: Write hash-bound artifacts and trusted request JSON
     B->>O: Start native job with request path, cache and progress paths
+    opt API Key source
+        O->>X: prepare(anchors, cache options, bounded request limits)
+        X->>X: Resolve cache and bounded Last.fm HTTP queries
+        X-->>O: Frozen session relations and diagnostics
+    end
 ```
 
 ### Last.fm acquisition is provider-owned before the optimizer starts

@@ -4,7 +4,9 @@
 > guidance, read-only Library Signals, optimizer aggregation, Better Call Bliss
 > policy capture, diagnostics, packaging, and Raspberry Pi verification were
 > completed. This is a historical migration record; the next active provider
-> work is the separate Last.fm Lyrion provider and its acquisition choices.
+> work was the separate Last.fm Lyrion provider and its acquisition choices,
+> which are now implemented. See `docs/GUIDANCE_DATA_FLOW.md` for current
+> behavior; this file intentionally retains the original task boundaries.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

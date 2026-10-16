@@ -3,8 +3,10 @@
 > **Status (2026-10-03): Implemented as the SPI v2 Library Signals and
 > artifact-backed Last.fm migration.** It remains the architectural rationale
 > for that delivered path. Discoverable Lyrion providers are now documented by
-> the shared guidance host and provider kit; selectable Last.fm acquisition is
-> planned separately.
+> the shared guidance host and provider kit. Selectable LastMix and direct
+> API-key acquisition were subsequently implemented; see
+> `docs/GUIDANCE_DATA_FLOW.md` for current behavior. Statements below that
+> exclude direct networking describe this migration's original scope.
 
 ## Intent and success criteria
 
