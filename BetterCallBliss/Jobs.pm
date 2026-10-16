@@ -692,6 +692,11 @@ sub _start_preview_from_built {
         options => $built->{options},
         lastfm_state => $lastfm_applies ? 'preparing'
             : ($built->{options}->{lastfm_enabled} ? 'not_applicable' : 'disabled'),
+        lastfm_native_provider_id => $lastfm_applies
+            && ref($lastfm_provider->{descriptor}) eq 'HASH'
+            && ref($lastfm_provider->{descriptor}->{native_spi}) eq 'HASH'
+            ? ($lastfm_provider->{descriptor}->{native_spi}->{provider_id} || '')
+            : '',
         restart_count => $built->{request}->{route}->{search}->{restart_count},
         native_command => $native_command,
         database_identity => $database_identity,
@@ -919,6 +924,7 @@ sub _start_preview_from_built {
         my $acquisition = shift || {};
         my $job = $jobs{$job_id} || return;
         return unless ($job->{state} || '') eq 'running';
+        my $source = $lastfm_applies ? ($lastfm_policy->{source} || '') : '';
         my $bundle = _empty_semantic_bundle(
             $lastfm_applies
                 ? ($acquisition->{available} ? 'direct' : 'failed')
@@ -926,18 +932,22 @@ sub _start_preview_from_built {
             $lastfm_applies && !$acquisition->{available}
                 ? 'EVIDENCE_PREPARATION_FAILED' : undef,
         );
-        if ($acquisition->{available}
-            && ($lastfm_policy->{source} || '') eq 'lastmix') {
+        if ($acquisition->{available} && $source eq 'lastmix') {
             my ($artifact) = grep {
                 ref($_) eq 'HASH' && ($_->{kind} || '') eq 'semantic-evidence-v1'
             } @{$acquisition->{artifacts} || []};
             $bundle = _read_provider_semantic_bundle($artifact)
                 || _empty_semantic_bundle('failed', 'EVIDENCE_ARTIFACT_INVALID');
+        } elsif ($acquisition->{available} && $lastfm_applies) {
+            $bundle =
+                Plugins::BetterCallBliss::CandidateGuidance::native_provider_semantic_bundle();
         }
-        my $provider_state = ref($bundle->{providers}) eq 'ARRAY'
-            ? $bundle->{providers}->[0] : undef;
-        $job->{lastfm_state} = ref($provider_state) eq 'HASH'
-            ? ($provider_state->{state} || 'failed') : 'failed';
+        if (!$acquisition->{available} || $source eq 'lastmix') {
+            my $provider_state = ref($bundle->{providers}) eq 'ARRAY'
+                ? $bundle->{providers}->[0] : undef;
+            $job->{lastfm_state} = ref($provider_state) eq 'HASH'
+                ? ($provider_state->{state} || 'failed') : 'failed';
+        }
         if (!$acquisition->{available}) {
             $log->warn(
                 "job=$job_id Last.fm provider acquisition failed; falling back to Bliss: "
@@ -1459,6 +1469,12 @@ sub _poll {
             $job->{artifact}->{guidance_addon_diagnostics},
             { host => 'better-call-bliss', job_id => $job_id },
         );
+        my $native_lastfm_state =
+            Plugins::BetterCallBliss::CandidateGuidance::native_provider_state(
+                $job->{artifact}, $job->{lastfm_native_provider_id},
+            );
+        $job->{lastfm_state} = $native_lastfm_state
+            if defined $native_lastfm_state;
         my $performance = $job->{artifact}->{performance};
         if (ref($performance) eq 'HASH') {
             $job->{native_performance} = $performance;

@@ -12,6 +12,29 @@ use constant YIELD_EVERY_ROWS => 250;
 use constant ASYNC_CHUNK_ROWS => 2000;
 use constant ASYNC_RESUME_DELAY => 0.02;
 
+sub native_provider_semantic_bundle {
+    return {
+        schema_version => 1,
+        frozen_at => '1970-01-01T00:00:00Z',
+        providers => [],
+        edges => [],
+    };
+}
+
+sub native_provider_state {
+    my ($artifact, $configured_id) = @_;
+    return unless ref($artifact) eq 'HASH' && length($configured_id || '');
+    for my $diagnostic (@{ref($artifact->{guidance_addon_diagnostics}) eq 'ARRAY'
+        ? $artifact->{guidance_addon_diagnostics} : []}) {
+        next unless ref($diagnostic) eq 'HASH';
+        my $provider_id = $diagnostic->{provider_id}
+            || $diagnostic->{configured_id} || '';
+        next unless $provider_id eq $configured_id;
+        return ($diagnostic->{state} || '') eq 'prepared' ? 'fresh' : 'failed';
+    }
+    return;
+}
+
 sub _yield_to_lms {
     main::idleStreams() if defined &main::idleStreams;
 }
