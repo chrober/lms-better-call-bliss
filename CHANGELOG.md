@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.22.5
 
 - Cover persistence of provider-declared enum overrides such as the Last.fm
   acquisition source on the host settings page.
