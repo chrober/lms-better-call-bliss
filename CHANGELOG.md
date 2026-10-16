@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 0.22.4
+
+- Add configurable MusicBrainz-aware artist repeat identities. The default
+  blocks any shared credited artist, while primary-artist and exact Bliss
+  credit modes remain available per job.
+- Publish Lyrion contributor and MusicBrainz artist identities to the native
+  optimizer so repeat windows use the selected policy during candidate
+  admission and routing.
+- Clarify the repeat-identity choices in settings, Extras, completed-preview
+  diagnostics, and the algorithm guide.
 
 - Relay validated structured diagnostics from native guidance providers back
   to the provider plugin that owns their Lyrion log category.
