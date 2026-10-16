@@ -46,6 +46,7 @@ sub defaults {
         seed_limit => int($capability->{seed_limit}),
         learned_percent => int($capability->{learned_percent}),
         artist_window => int($capability->{artist_window}),
+        artist_repeat_mode => $plugin_prefs->get('artist_repeat_mode') || 'shared_artist',
         album_window => int($capability->{album_window}),
         track_window => int($capability->{track_window}),
         restart_count => int($plugin_prefs->get('restart_count') || 50),
@@ -204,6 +205,11 @@ sub normalize {
     $options->{artist_window} = _integer(
         $input, 'artist_window', 0, 10000, $options->{artist_window},
     );
+    $options->{artist_repeat_mode} = $input->{artist_repeat_mode}
+        if defined $input->{artist_repeat_mode};
+    die "Artist repeat identity must be Shared artist, Primary artist, or Exact Bliss credit"
+        unless $options->{artist_repeat_mode}
+            =~ /^(?:shared_artist|primary_artist|exact_bliss_credit)$/;
     $options->{album_window} = _integer(
         $input, 'album_window', 0, 10000, $options->{album_window},
     );

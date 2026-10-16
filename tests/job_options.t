@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 64;
+use Test::More tests => 67;
 
 BEGIN {
     package TestPrefs;
@@ -16,6 +16,7 @@ BEGIN {
         library_age_horizon_days => '720',
         restart_count => '80',
         variation_percent => '35',
+        artist_repeat_mode => 'primary_artist',
         route_length_policy => 'exact',
         route_direct_caution => 'normal',
         route_search_effort => 'balanced',
@@ -121,6 +122,19 @@ is($defaults->{gap_context_mode}, 'rolling',
     'rolling adaptive gap context remains the compatibility default');
 is($defaults->{variation_percent}, 35,
     'variation default is read from plugin preferences');
+is($defaults->{artist_repeat_mode}, 'primary_artist',
+    'artist repeat identity default is read from plugin preferences');
+is(Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {artist_repeat_mode => 'shared_artist'},
+    )->{artist_repeat_mode}, 'shared_artist',
+    'artist repeat identity can be overridden for one job');
+eval {
+    Plugins::BetterCallBliss::JobOptions::normalize(
+        $capability, {artist_repeat_mode => 'display_text'},
+    );
+};
+like($@, qr/Artist repeat identity/,
+    'unknown artist repeat identity modes are rejected');
 is($defaults->{playcount_influence}, -30,
     'play-count default is inherited from the enabled library-signals provider');
 is(Plugins::BetterCallBliss::JobOptions::normalize(

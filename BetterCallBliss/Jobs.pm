@@ -736,6 +736,7 @@ sub _start_preview_from_built {
                 $built->{request}->{source_tracks},
                 $effective->{artist_window},
                 $effective->{album_window},
+                $effective->{artist_repeat_mode},
             );
         if ($conflict) {
             _fail_deferred_route_job(
@@ -761,6 +762,8 @@ sub _start_preview_from_built {
                 = $candidate_inventory->{artifact};
             $built->{request}->{artifacts}->{candidate_identities}
                 = $candidate_inventory->{identity_artifact};
+            $built->{request}->{artifacts}->{track_identities}
+                = $candidate_inventory->{track_identity_artifact};
             $jobs{$job_id}->{candidate_inventory}
                 = $candidate_inventory->{status};
             1;

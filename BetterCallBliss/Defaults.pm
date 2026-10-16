@@ -11,11 +11,12 @@ our @EXPORT_OK = qw(
 );
 
 my %PREFERENCE_DEFAULTS = (
-    preference_defaults_version => 3,
+    preference_defaults_version => 4,
     output_suffix => 'Optimized',
     extended_suffix => 'Extended',
     restart_count => 50,
     variation_percent => 25,
+    artist_repeat_mode => 'shared_artist',
     auto_bridge_budget => 8,
     auto_trigger_percent => 70,
     route_length_policy => 'automatic',
@@ -35,6 +36,7 @@ my %EMPTY_VALUE_IS_MISSING = map { $_ => 1 } qw(
     preference_defaults_version
     restart_count
     variation_percent
+    artist_repeat_mode
     auto_bridge_budget
     auto_trigger_percent
     route_length_policy

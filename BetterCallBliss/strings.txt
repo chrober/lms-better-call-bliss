@@ -114,6 +114,26 @@ PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT_DESC
 	EN	Bounded reproducible variation used by new Extras jobs and Bliss me there previews. Zero always chooses the strict best-ranked result.
 	DE	Begrenzte reproduzierbare Variation für neue Extras-Vorgänge und Bliss-me-there-Vorschauen. Null wählt immer das streng bestplatzierte Ergebnis.
 
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE
+	EN	Artist identity for repeat windows
+	DE	Künstleridentität für Wiederholungsfenster
+
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE_DESC
+	EN	Controls when the artist look-back treats two credits as the same artist. MusicBrainz artist IDs are preferred, with Lyrion contributor IDs and normalized names as fallbacks.
+	DE	Legt fest, wann das Künstler-Rückblickfenster zwei Credits als denselben Künstler behandelt. MusicBrainz-Künstler-IDs werden bevorzugt; ersatzweise dienen Lyrion-Mitwirkenden-IDs und normalisierte Namen.
+
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_SHARED
+	EN	Any shared credited artist
+	DE	Beliebiger gemeinsamer beteiligter Künstler
+
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_PRIMARY
+	EN	Primary artist only
+	DE	Nur Hauptkünstler
+
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EXACT
+	EN	Exact Bliss artist credit (legacy)
+	DE	Exakter Bliss-Künstler-Credit (bisheriges Verhalten)
+
 PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE
 	EN	Last-played influence
 	DE	Einfluss des letzten Abspielens

@@ -37,6 +37,7 @@ sub prefs {
         extended_suffix
         restart_count
         variation_percent
+        artist_repeat_mode
         auto_bridge_budget
         auto_trigger_percent
         route_search_effort
@@ -81,6 +82,11 @@ sub handler {
     _apply_guidance_provider_settings($params);
     _clamp($params, 'pref_restart_count', 10, 500);
     _clamp($params, 'pref_variation_percent', 0, 100);
+    if (defined $params->{pref_artist_repeat_mode}
+        && $params->{pref_artist_repeat_mode}
+            !~ /^(?:shared_artist|primary_artist|exact_bliss_credit)$/) {
+        $params->{pref_artist_repeat_mode} = 'shared_artist';
+    }
     _clamp($params, 'pref_auto_bridge_budget', 0, 100);
     _clamp($params, 'pref_auto_trigger_percent', 0, 100);
     _clamp($params, 'pref_route_min_intermediates', 0, 8);

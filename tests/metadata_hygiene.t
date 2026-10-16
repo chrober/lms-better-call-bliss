@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 149;
+use Test::More tests => 154;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -43,6 +43,7 @@ for my $token (qw(
     PLUGIN_BETTERCALLBLISS_SETTINGS
     PLUGIN_BETTERCALLBLISS_RESTART_COUNT
     PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT
+    PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE
     PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION
     PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY
     PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT
@@ -189,6 +190,26 @@ my $guidance_script = slurp(File::Spec->catfile(
 my $guidance_model = slurp(File::Spec->catfile(
     $plugin, 'Plugins', 'BlissGuidance', 'SettingsModel.pm',
 ));
+like(
+    $settings,
+    qr/name="pref_artist_repeat_mode".*?value="shared_artist".*?value="primary_artist".*?value="exact_bliss_credit"/s,
+    'settings expose all artist repeat identity policies',
+);
+like(
+    $extras,
+    qr/name="artist_repeat_mode".*?value="shared_artist".*?value="primary_artist".*?value="exact_bliss_credit"/s,
+    'Extras expose the same per-job artist repeat identity policies',
+);
+like(
+    $extras,
+    qr/Artist repeat identity:.*?artist_repeat_mode_label/s,
+    'completed previews report the artist repeat identity policy used',
+);
+like(
+    slurp(File::Spec->catfile($plugin, 'Web.pm')),
+    qr/learned_percent artist_window artist_repeat_mode album_window/,
+    'Extras retain the selected artist identity policy across preview runs',
+);
 like(
     $plugin_module,
     qr/use Plugins::BetterCallBliss::Defaults.*?preference_defaults.*?ensure_preference_defaults/s,

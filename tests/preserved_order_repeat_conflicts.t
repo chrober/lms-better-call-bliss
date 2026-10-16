@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 9;
+use Test::More tests => 12;
 
 use lib "$FindBin::Bin/..";
 require Plugins::BetterCallBliss::RepeatConflicts;
@@ -49,3 +49,37 @@ my $album = Plugins::BetterCallBliss::RepeatConflicts::first_preserved_order_con
 is($album->{kind}, 'album', 'also detects preserved-order album conflicts');
 is($album->{value}, 'Shared Album', 'reports the repeated album');
 is_deeply($album->{positions}, [1, 3], 'reports album conflict positions');
+
+my $collaboration = [
+    {
+        artist => 'Queen & David Bowie',
+        album => 'Hot Space',
+        artist_identity_keys => ['artist-mbid:queen', 'artist-mbid:bowie'],
+        primary_artist_identity_key => 'artist-mbid:bowie',
+    },
+    {artist => 'Other Artist', album => 'Other Album'},
+    {
+        artist => 'Queen',
+        album => 'The Game',
+        artist_identity_keys => ['artist-mbid:queen'],
+        primary_artist_identity_key => 'artist-mbid:queen',
+    },
+];
+ok(
+    Plugins::BetterCallBliss::RepeatConflicts::first_preserved_order_conflict(
+        $collaboration, 5, 0, 'shared_artist',
+    ),
+    'shared-artist policy detects a collaboration member with a different display credit',
+);
+ok(
+    !Plugins::BetterCallBliss::RepeatConflicts::first_preserved_order_conflict(
+        $collaboration, 5, 0, 'primary_artist',
+    ),
+    'primary-artist policy ignores a non-primary collaboration member',
+);
+ok(
+    !Plugins::BetterCallBliss::RepeatConflicts::first_preserved_order_conflict(
+        $collaboration, 5, 0, 'exact_bliss_credit',
+    ),
+    'legacy exact-credit policy retains its display-credit behavior',
+);

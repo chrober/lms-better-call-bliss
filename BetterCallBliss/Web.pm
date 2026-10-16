@@ -155,7 +155,7 @@ sub _form_from_params {
     my $form = {%$defaults};
     for my $name (qw(
         source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_target_album_id route_target_album_track_count route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
-        learned_percent artist_window album_window track_window restart_count
+        learned_percent artist_window artist_repeat_mode album_window track_window restart_count
         variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         gap_context_mode last_played_horizon_days library_age_horizon_days
@@ -420,6 +420,14 @@ sub _result_view {
         ordering_policy => $job->{options}->{ordering_policy},
         preserve_order => $job->{options}->{ordering_policy} eq 'preserve_order' ? 1 : 0,
         extension_mode => $job->{options}->{extension_mode},
+        artist_repeat_mode => $job->{options}->{artist_repeat_mode}
+            || 'shared_artist',
+        artist_repeat_mode_label =>
+            ($job->{options}->{artist_repeat_mode} || 'shared_artist')
+                eq 'primary_artist' ? 'primary artist only'
+            : ($job->{options}->{artist_repeat_mode} || 'shared_artist')
+                eq 'exact_bliss_credit' ? 'exact Bliss artist credit (legacy)'
+            : 'any shared credited artist',
         source_track_count => 0 + ($job->{track_count} || 0),
         variation_percent => $job->{options}->{variation_percent},
         generation_seed => $job->{options}->{generation_seed},

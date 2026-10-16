@@ -3,6 +3,8 @@ package Plugins::BetterCallBliss::RepeatConflicts;
 use strict;
 use warnings;
 
+use Plugins::BetterCallBliss::RepeatIdentity;
+
 sub _repeat_key {
     my ($value) = @_;
     return '' unless defined $value;
@@ -18,7 +20,7 @@ sub _display_value {
 }
 
 sub first_preserved_order_conflict {
-    my ($tracks, $artist_window, $album_window) = @_;
+    my ($tracks, $artist_window, $album_window, $artist_repeat_mode) = @_;
     return unless ref($tracks) eq 'ARRAY';
 
     $artist_window = 0 + ($artist_window || 0);
@@ -34,6 +36,18 @@ sub first_preserved_order_conflict {
             ) {
                 my ($kind, $window) = @$rule;
                 next unless $window > 0 && $distance <= $window;
+                if ($kind eq 'artist') {
+                    next unless
+                        Plugins::BetterCallBliss::RepeatIdentity::tracks_repeat_artist(
+                            $left_track, $right_track, $artist_repeat_mode,
+                        );
+                    return {
+                        kind => $kind,
+                        value => _display_value($right_track->{$kind}),
+                        positions => [$left + 1, $right + 1],
+                        window => $window,
+                    };
+                }
                 my $right_key = _repeat_key($right_track->{$kind});
                 next unless length $right_key;
                 next unless $right_key eq _repeat_key($left_track->{$kind});
