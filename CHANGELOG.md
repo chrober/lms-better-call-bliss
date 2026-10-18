@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.22.6
+
+- Show a player-targeted Material error notification when an automatic
+  `Bliss me there...` route fails before changing the queue.
+- Return immediate preview-start feedback from Extras and keep its elapsed
+  timer responsive while server-side preparation continues.
+- Move cold candidate-inventory rebuilds out of Lyrion's main event loop,
+  report their preparation phases, and run native background work at reduced
+  CPU and I/O priority.
+- Avoid repeated native-process polling and expensive re-hashing or playlist
+  object inflation during preview preparation.
+
 ## 0.22.5
 
 - Cover persistence of provider-declared enum overrides such as the Last.fm
