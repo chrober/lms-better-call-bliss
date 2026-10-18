@@ -63,6 +63,19 @@ sub _playlist_title {
     return $playlist->title || $playlist->name;
 }
 
+sub _playlist_title_from_values {
+    my ($url, $title) = @_;
+    $url ||= '';
+    if ($url =~ /^file:/i) {
+        my $path = Slim::Utils::Misc::pathFromFileURL($url);
+        my $decoded = Slim::Utils::Unicode::utf8decode_locale($path || '');
+        my $filename = basename($decoded || '');
+        $filename =~ s/\.[^.]+$//;
+        return $filename if length $filename;
+    }
+    return defined $title && length $title ? $title : $url;
+}
+
 sub _players {
     my @rows;
     for my $player (Slim::Player::Client::clients()) {
@@ -130,24 +143,39 @@ sub _route_context {
 }
 sub _playlists {
     my @rows;
-    my %track_count_for = map {
-        0 + $_->[0] => 0 + $_->[1]
-    } @{Slim::Schema->dbh->selectall_arrayref(
-        'SELECT playlist, COUNT(1) FROM playlist_track GROUP BY playlist'
-    ) || []};
-    for my $playlist (sort {
-        lc($a->title || $a->name || '') cmp lc($b->title || $b->name || '')
-    } Slim::Schema->rs('Playlist')->getPlaylists('all')->all) {
-        next unless $playlist && $playlist->can('tracks');
-        my $count = $track_count_for{0 + $playlist->id} || 0;
+    my ($playlist_ids_sql, $bind) =
+        Slim::Schema->rs('Playlist')->getPlaylistIdsSQL('all', {});
+    return \@rows unless $playlist_ids_sql && $bind;
+    my $statement = Slim::Schema->dbh->prepare(
+        'SELECT tracks.id, tracks.title, tracks.url, COUNT(playlist_track.track) '
+        . 'FROM tracks JOIN playlist_track ON playlist_track.playlist = tracks.id '
+        . "WHERE tracks.id IN ($playlist_ids_sql) "
+        . 'GROUP BY tracks.id, tracks.title, tracks.url'
+    );
+    $statement->execute(@$bind);
+    while (my ($id, $title, $url, $count) = $statement->fetchrow_array) {
+        $count = 0 + ($count || 0);
         next unless $count >= 2;
         push @rows, {
-            id => 0 + $playlist->id,
-            title => _playlist_title($playlist),
-            count => 0 + $count,
+            id => 0 + $id,
+            title => _playlist_title_from_values($url, $title),
+            count => $count,
         };
     }
-    return \@rows;
+    $statement->finish;
+    return [sort {
+        lc($a->{title} || '') cmp lc($b->{title} || '')
+    } @rows];
+}
+
+sub _escape_html {
+    my $value = defined $_[0] ? $_[0] : '';
+    $value =~ s/&/&amp;/g;
+    $value =~ s/</&lt;/g;
+    $value =~ s/>/&gt;/g;
+    $value =~ s/"/&quot;/g;
+    $value =~ s/'/&#39;/g;
+    return $value;
 }
 
 sub _form_from_params {
@@ -885,6 +913,15 @@ sub handler {
     } elsif ($params->{job_id}) {
         $job = Plugins::BetterCallBliss::Jobs::get($params->{job_id});
         $error = 'Preview job is no longer available' unless $job;
+    }
+
+    if ($params->{ajax_preview}
+        && ($params->{run_preview} || $params->{run_route_to_track_preview})) {
+        Plugins::BetterCallBliss::Jobs::finish_web_response();
+        my $ajax_content = $error
+            ? '<div class="bea-error">' . _escape_html($error) . '</div>'
+            : '<div class="bea-preview-accepted"></div>';
+        return \$ajax_content;
     }
 
     my $playlists = _playlists();

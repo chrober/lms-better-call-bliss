@@ -3,7 +3,9 @@ package Plugins::BetterCallBliss::RequestBuilder;
 use strict;
 use JSON::XS ();
 use Scalar::Util qw(blessed);
+use Time::HiRes qw(time);
 use Slim::Schema;
+use Slim::Utils::Log;
 use Slim::Player::Client;
 use Slim::Player::Playlist;
 use Slim::Player::Source;
@@ -13,6 +15,12 @@ use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::RepeatIdentity;
+
+my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
+
+sub _yield_to_lms {
+    main::idleStreams() if defined &main::idleStreams;
+}
 
 sub _job_seed {
     my $job_id = shift;
@@ -229,6 +237,7 @@ sub _queue_snapshot {
             . ($index + 1)
             unless $track && !$track->remote && $track->can('id');
         push @tracks, $track;
+        _yield_to_lms();
     }
     die "Queue snapshot requires at least two local tracks" unless @tracks >= 2;
 
@@ -318,6 +327,7 @@ sub _track_bundle {
         $labels{$id} = {artist => $artist, title => $title, album => $album};
         $original_positions{$id} = ++$position;
         $track_urls{$id} = $track->url;
+        _yield_to_lms();
     }
 
     return (\@source_tracks, \%labels, \%original_positions, \%track_urls);
@@ -492,6 +502,15 @@ sub _repeat_safe_target_error {
 
 sub _build_sequence_request {
     my ($args) = @_;
+    my $build_started_at = time();
+    my @build_timings;
+    my $phase_started_at = $build_started_at;
+    my $record_timing = sub {
+        my $name = shift;
+        my $now = time();
+        push @build_timings, [$name, int(1000 * ($now - $phase_started_at))];
+        $phase_started_at = $now;
+    };
     my $job_id = $args->{job_id};
     my $semantic_path = $args->{semantic_path};
     my $job_input = $args->{job_input};
@@ -504,10 +523,14 @@ sub _build_sequence_request {
         0 + ($args->{route_destination_track_count} || 1);
 
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+    $record_timing->('capability');
+    _yield_to_lms();
     die join('; ', @{$capability->{problems}}) unless $capability->{ready};
     my $options = Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, $job_input,
     );
+    $record_timing->('options');
+    _yield_to_lms();
     # Guidance providers must see the same reference instant for every
     # bounded batch in this job. This is deliberately captured once before
     # candidate inventory preparation, not recomputed in a provider.
@@ -517,6 +540,8 @@ sub _build_sequence_request {
         Plugins::BetterCallBliss::CandidateLibrary::describe(
             $options->{candidate_library_id},
         );
+    $record_timing->('candidate_library');
+    _yield_to_lms();
     $options->{candidate_library_id} = $candidate_library->{id};
     $options->{candidate_library_name} = $candidate_library->{name};
     $options->{generation_seed} = _job_seed($job_id)
@@ -524,6 +549,8 @@ sub _build_sequence_request {
 
     my ($source_tracks, $labels, $original_positions, $track_urls)
         = _track_bundle($tracks, $capability, $error_prefix, 2);
+    $record_timing->('source_tracks');
+    _yield_to_lms();
     my $minimum_route_tracks =
         1 + $route_destination_track_count + ($route_rejoins_queue ? 1 : 0);
     die "$error_prefix does not contain the complete destination block"
@@ -532,6 +559,8 @@ sub _build_sequence_request {
     my ($history_tracks, $history_labels, $history_positions, $history_urls)
         = _track_bundle($args->{history_tracks} || [], $capability,
             'Listening history', 0);
+    $record_timing->('history_tracks');
+    _yield_to_lms();
     $labels = {%$history_labels, %$labels};
     $track_urls = {%$history_urls, %$track_urls};
     my $source_count = scalar @$source_tracks;
@@ -846,6 +875,17 @@ sub _build_sequence_request {
     };
     normalize_request_types($request);
 
+    $record_timing->('request');
+    my $total_ms = int(1000 * (time() - $build_started_at));
+    if ($total_ms >= 1000 || (main::DEBUGLOG && $log->is_debug)) {
+        $log->info(
+            'job=' . ($job_id || 'unknown')
+            . ' request_build_timing total_ms=' . $total_ms
+            . ' phases=' . join(',', map { $_->[0] . ':' . $_->[1] }
+                @build_timings)
+        );
+    }
+
     return {
         request => $request,
         playlist => $playlist,
@@ -896,7 +936,26 @@ sub build_reorder_request {
     my ($playlist_id, $job_id, $semantic_path, $job_input) = @_;
     my $playlist = Slim::Schema->find('Playlist', $playlist_id);
     die "Saved playlist not found" unless $playlist && $playlist->can('tracks');
-    my @tracks = $playlist->tracks;
+    my $capture_started_at = time();
+    my $track_resultset = $playlist->tracks;
+    my @tracks;
+    if (blessed($track_resultset) && $track_resultset->can('next')) {
+        while (my $track = $track_resultset->next) {
+            push @tracks, $track;
+            _yield_to_lms();
+        }
+    } else {
+        @tracks = $playlist->tracks;
+        _yield_to_lms() for @tracks;
+    }
+    my $capture_ms = int(1000 * (time() - $capture_started_at));
+    if ($capture_ms >= 1000 || (main::DEBUGLOG && $log->is_debug)) {
+        $log->info(
+            'job=' . ($job_id || 'unknown')
+            . ' source_capture_timing total_ms=' . $capture_ms
+            . ' tracks=' . scalar(@tracks)
+        );
+    }
     die "At least two local tracks are required" unless @tracks >= 2;
     return _build_sequence_request({
         playlist => $playlist,

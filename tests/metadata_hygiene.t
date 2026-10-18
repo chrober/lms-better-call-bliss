@@ -724,7 +724,7 @@ like(
 );
 like(
     $web,
-    qr/SELECT playlist, COUNT\(1\) FROM playlist_track GROUP BY playlist/s,
+    qr/getPlaylistIdsSQL\('all'.*?JOIN playlist_track.*?GROUP BY tracks\.id/s,
     'Extras obtains playlist sizes in one query instead of one query per playlist',
 );
 like(
@@ -737,17 +737,17 @@ my $responsive_candidate_inventory = slurp(
 );
 like(
     $responsive_candidate_inventory,
-    qr/sub _candidate_library_membership.*?_yield_to_lms\(\)/s,
+    qr/sub _candidate_library_membership.*?_yield_to_lms_if_due/s,
     'virtual-library membership capture yields to LMS while walking large libraries',
 );
 like(
     $responsive_candidate_inventory,
-    qr/SELECT tracks\.id.*?while.*?_yield_to_lms\(\)/s,
+    qr/SELECT tracks\.id.*?while.*?_yield_to_lms_if_due/s,
     'candidate inventory construction yields while walking LMS tracks',
 );
 like(
     $responsive_candidate_inventory,
-    qr/SELECT rowid, File, Title, Artist, Album.*?while.*?_yield_to_lms\(\)/s,
+    qr/SELECT rowid, File, Title, Artist, Album.*?while.*?_yield_to_lms_if_due/s,
     'candidate inventory construction yields while walking Bliss rows',
 );
 unlike(

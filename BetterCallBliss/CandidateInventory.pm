@@ -8,6 +8,7 @@ use File::Path qw(make_path);
 use File::Slurp qw(read_file write_file);
 use File::Spec::Functions qw(catfile);
 use JSON::XS;
+use POSIX qw(WNOHANG);
 use Slim::Music::Import;
 use Slim::Schema;
 use Slim::Utils::Log;
@@ -26,13 +27,41 @@ my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
 );
+my ($lms_dbh_override, $worker_child, $worker_progress_path);
+my (@async_prepare_queue, $async_prepare_worker);
 
-use constant YIELD_EVERY_ROWS => 250;
 use constant ASYNC_CHUNK_ROWS => 250;
 use constant ASYNC_RESUME_DELAY => 0.02;
+use constant YIELD_INTERVAL_SECONDS => 0.02;
 
 sub _yield_to_lms {
+    return if $worker_child;
     main::idleStreams() if defined &main::idleStreams;
+}
+
+sub _lms_dbh {
+    return $lms_dbh_override || Slim::Schema->dbh;
+}
+
+sub _worker_progress {
+    my $message = shift;
+    return unless $worker_progress_path;
+    eval {
+        _write_atomic(
+            $worker_progress_path,
+            _json()->encode({message => $message, updated_at => time()}),
+        );
+        1;
+    };
+}
+
+sub _yield_to_lms_if_due {
+    my $last_yield_ref = shift;
+    my $now = time();
+    return if defined $$last_yield_ref
+        && $now - $$last_yield_ref < YIELD_INTERVAL_SECONDS;
+    _yield_to_lms();
+    $$last_yield_ref = $now;
 }
 
 sub _database_text {
@@ -69,7 +98,14 @@ sub _sha256_file {
     my $path = shift;
     open my $fh, '<:raw', $path or die "Could not read '$path': $!";
     my $digest = Digest::SHA->new(256);
-    $digest->addfile($fh);
+    my $last_yield = time();
+    while (1) {
+        my $bytes_read = read($fh, my $buffer, 1024 * 1024);
+        die "Could not read '$path': $!" unless defined $bytes_read;
+        last unless $bytes_read;
+        $digest->add($buffer);
+        _yield_to_lms_if_due(\$last_yield);
+    }
     close $fh;
     return $digest->hexdigest;
 }
@@ -286,9 +322,12 @@ sub _load_cached_inventory {
         unless $track_identity_path
             =~ /^\Q$inventory_root\E\/track-identities-[0-9a-f]{64}\.sqlite$/
             && -r $track_identity_path;
+    my ($track_identity_path_sha256) =
+        $track_identity_path =~ /track-identities-([0-9a-f]{64})\.sqlite$/;
     return $miss->('track_identity_hash_mismatch')
-        unless _sha256_file($track_identity_path)
-            eq ($state->{track_identity_sha256} || '');
+        unless $track_identity_path_sha256
+            && $track_identity_path_sha256
+                eq ($state->{track_identity_sha256} || '');
     my $identity_index;
     if ($identity_lookup_path
         !~ /^\Q$inventory_root\E\/identities-[0-9a-f]{64}\.sqlite$/
@@ -389,6 +428,7 @@ sub _write_identity_lookup {
         'INSERT INTO candidate_identity VALUES (?, ?, ?, ?, ?, ?)'
     );
     $dbh->begin_work;
+    my $last_yield = time();
     for my $identity (@$identities) {
         $insert->execute(
             $identity->{candidate_id},
@@ -408,6 +448,7 @@ sub _write_identity_lookup {
                 $identity->{artist},
             ),
         );
+        _yield_to_lms_if_due(\$last_yield);
     }
     $dbh->commit;
     $dbh->do('CREATE INDEX recording_mbid_idx ON candidate_identity(recording_mbid)');
@@ -426,16 +467,16 @@ sub _candidate_library_membership {
     my %members;
     my $digest = Digest::SHA->new(256);
     $digest->add(encode_utf8($id), "\n");
-    my $sth = Slim::Schema->dbh->prepare(
+    my $sth = _lms_dbh()->prepare(
         'SELECT track FROM library_track WHERE library = ? ORDER BY track'
     );
     $sth->execute($id);
-    my $row_count = 0;
+    my $last_yield = time();
     while (my ($track_id) = $sth->fetchrow_array) {
         next unless defined $track_id;
         $members{0 + $track_id} = 1;
         $digest->add("$track_id\n");
-        _yield_to_lms() unless ++$row_count % YIELD_EVERY_ROWS;
+        _yield_to_lms_if_due(\$last_yield);
     }
     $sth->finish;
     return (\%members, $digest->hexdigest, scalar keys %members);
@@ -445,7 +486,7 @@ sub _candidate_library_track_count {
     my $candidate_library = shift || {};
     my $id = $candidate_library->{id} || '';
     return undef unless length $id;
-    my ($count) = Slim::Schema->dbh->selectrow_array(
+    my ($count) = _lms_dbh()->selectrow_array(
         'SELECT COUNT(1) FROM library_track WHERE library = ?', undef, $id,
     );
     return 0 + ($count || 0);
@@ -549,14 +590,15 @@ sub prepare {
     my $candidate_library_track_count = 0;
     my $root_descriptors = _root_descriptors($roots);
     my $repeat_snapshot = _new_repeat_identity_snapshot();
-    my $lms_sth = Slim::Schema->dbh->prepare(
+    _worker_progress('Rebuilding candidate library: scanning local LMS tracks');
+    my $lms_sth = _lms_dbh()->prepare(
         'SELECT tracks.id, tracks.url, tracks.tracknum, tracks.urlmd5, tracks.musicbrainz_id, '
         . 'contributors.id, contributors.musicbrainz_id, contributors.name FROM tracks '
         . 'LEFT JOIN contributors ON contributors.id = tracks.primary_artist '
         . 'WHERE tracks.remote = 0 AND tracks.audio = 1'
     );
     $lms_sth->execute;
-    my $lms_row_count = 0;
+    my $lms_last_yield = time();
     while (my ($track_id, $url, $tracknum, $urlmd5, $recording_mbid,
         $primary_contributor_id, $artist_mbid, $artist_name)
         = $lms_sth->fetchrow_array) {
@@ -592,11 +634,12 @@ sub prepare {
             $lms_files_folded{$folded} = $database_file;
         }
         $lms_track_count++;
-        _yield_to_lms() unless ++$lms_row_count % YIELD_EVERY_ROWS;
+        _yield_to_lms_if_due(\$lms_last_yield);
     }
     $lms_sth->finish;
 
-    my $artist_sth = Slim::Schema->dbh->prepare(
+    _worker_progress('Rebuilding candidate library: collecting artist identities');
+    my $artist_sth = _lms_dbh()->prepare(
         'SELECT tracks.url, tracks.tracknum, contributor_track.role, contributors.id, '
         . 'contributors.musicbrainz_id, contributors.name FROM contributor_track '
         . 'JOIN tracks ON tracks.id = contributor_track.track '
@@ -606,7 +649,7 @@ sub prepare {
         . 'ORDER BY contributor_track.track, contributor_track.role, contributors.id'
     );
     $artist_sth->execute;
-    my $artist_row_count = 0;
+    my $artist_last_yield = time();
     while (my ($url, $tracknum, $role, $contributor_id, $artist_mbid, $artist_name)
         = $artist_sth->fetchrow_array) {
         my $database_file = _database_file_for_url(
@@ -622,10 +665,11 @@ sub prepare {
             $canonical_key, $contributor_id, $artist_mbid,
             defined $artist_name ? $artist_name : '',
         );
-        _yield_to_lms() unless ++$artist_row_count % YIELD_EVERY_ROWS;
+        _yield_to_lms_if_due(\$artist_last_yield);
     }
     $artist_sth->finish;
 
+    _worker_progress('Rebuilding candidate library: matching Bliss rows');
     my $dbh = DBI->connect(
         'dbi:SQLite:dbname=' . $capability->{database}, '', '',
         {
@@ -645,7 +689,7 @@ sub prepare {
     my (@allowed, @candidate_identities, @unmatched);
     my $usable_count = 0;
     my $virtual_library_excluded_bliss_row_count = 0;
-    my $bliss_row_count = 0;
+    my $bliss_last_yield = time();
     while (my ($row_id, $file, $title, $artist, $album) = $sth->fetchrow_array) {
         $usable_count++;
         my $database_file = _database_text($file);
@@ -669,12 +713,12 @@ sub prepare {
                 defined $lms_identity->{artist_mbid}
                     ? (artist_mbid => $lms_identity->{artist_mbid}) : (),
             };
-            _yield_to_lms() unless ++$bliss_row_count % YIELD_EVERY_ROWS;
+            _yield_to_lms_if_due(\$bliss_last_yield);
             next;
         }
         if (defined $database_file && $lms_files{$database_file}) {
             $virtual_library_excluded_bliss_row_count++;
-            _yield_to_lms() unless ++$bliss_row_count % YIELD_EVERY_ROWS;
+            _yield_to_lms_if_due(\$bliss_last_yield);
             next;
         }
         my $case_variant = defined $database_file
@@ -695,17 +739,19 @@ sub prepare {
             defined $case_variant
                 ? (related_lms_database_file => $case_variant) : (),
         };
-        _yield_to_lms() unless ++$bliss_row_count % YIELD_EVERY_ROWS;
+        _yield_to_lms_if_due(\$bliss_last_yield);
     }
     $sth->finish;
     $dbh->disconnect;
 
+    _worker_progress('Rebuilding candidate library: publishing stable identities');
     my ($track_identity_artifact, $track_identity_path, $track_identity_sha256) =
         _publish_repeat_identity_snapshot(
             $repeat_snapshot, $scan_time, $database_identity,
             $media_roots_identity,
         );
 
+    _worker_progress('Rebuilding candidate library: publishing candidate artifacts');
     my $now = time();
     my $inventory = {
         schema_version => 1,
@@ -814,6 +860,206 @@ sub prepare {
         . " audit=$audit_path"
     );
     return $cached_result;
+}
+
+sub _lms_database_path {
+    my $rows = _lms_dbh()->selectall_arrayref('PRAGMA database_list');
+    for my $row (@{$rows || []}) {
+        return $row->[2]
+            if ($row->[1] || '') eq 'main' && length($row->[2] || '');
+    }
+    die "Could not resolve the Lyrion database path";
+}
+
+sub _schedule_async_poll {
+    Slim::Utils::Timers::setTimer(
+        undef, time() + 0.25, \&_poll_async_prepare,
+    );
+}
+
+sub _start_next_async_prepare {
+    return if $async_prepare_worker || !@async_prepare_queue;
+    my $task = shift @async_prepare_queue;
+
+    if (main::ISWINDOWS) {
+        Slim::Utils::Timers::setTimer(undef, time() + 0.01, sub {
+            my ($result, $error);
+            eval {
+                $result = prepare(
+                    @{$task}{qw(capability database_identity candidate_library)},
+                );
+                1;
+            } or $error = $@ || 'Could not capture candidate library';
+            $error ? $task->{on_error}->($error) : $task->{on_done}->($result);
+            _start_next_async_prepare();
+        });
+        return;
+    }
+
+    my $lms_database_path = eval { _lms_database_path() };
+    if (!$lms_database_path) {
+        $task->{on_error}->($@ || 'Could not resolve the Lyrion database path');
+        _start_next_async_prepare();
+        return;
+    }
+    my $token = $$ . '-' . int(time() * 1000) . '-' . int(rand(1_000_000));
+    my $result_path = $inventory_root . '/prepare-' . $token . '.json';
+    my $progress_path = $inventory_root . '/prepare-' . $token . '-progress.json';
+    my $pid = fork();
+    if (!defined $pid) {
+        $task->{on_error}->("Could not start candidate-library worker: $!");
+        _start_next_async_prepare();
+        return;
+    }
+
+    if (!$pid) {
+        $worker_child = 1;
+        $worker_progress_path = $progress_path;
+        eval { setpriority(0, 0, 10); };
+        my ($ionice) = grep { -x $_ }
+            qw(/usr/local/bin/ionice /usr/bin/ionice /bin/ionice);
+        system($ionice, '-c', '3', '-p', $$) if $ionice;
+        my $ok = eval {
+            my $parent_dbh = Slim::Schema->dbh;
+            $parent_dbh->{InactiveDestroy} = 1 if $parent_dbh;
+            $lms_dbh_override = DBI->connect(
+                'dbi:SQLite:dbname=' . $lms_database_path, '', '',
+                {
+                    RaiseError => 1,
+                    PrintError => 0,
+                    AutoCommit => 1,
+                    sqlite_unicode => 1,
+                    sqlite_open_flags => 1,
+                },
+            );
+            die "Could not open the Lyrion database read-only"
+                unless $lms_dbh_override;
+            ($cached_key, $cached_result, $last_status) = (undef, undef, undef);
+            prepare(
+                @{$task}{qw(capability database_identity candidate_library)},
+            );
+            _write_atomic(
+                $result_path, _json()->encode({ok => JSON::XS::true}),
+            );
+            1;
+        };
+        if (!$ok) {
+            my $error = $@ || 'Could not capture candidate library';
+            eval {
+                _write_atomic(
+                    $result_path,
+                    _json()->encode({
+                        ok => JSON::XS::false,
+                        error => "$error",
+                    }),
+                );
+                1;
+            };
+        }
+        eval { $lms_dbh_override->disconnect if $lms_dbh_override; };
+        POSIX::_exit($ok ? 0 : 1);
+    }
+
+    $async_prepare_worker = {
+        pid => $pid,
+        task => $task,
+        result_path => $result_path,
+        progress_path => $progress_path,
+        last_progress => '',
+        started_at => time(),
+    };
+    $log->info(
+        "candidate_inventory stage=BackgroundRebuildStarted pid=$pid"
+        . ' nice=10 io_priority=idle',
+    );
+    _schedule_async_poll();
+}
+
+sub _poll_async_prepare {
+    my $worker = $async_prepare_worker || return;
+    if (-r $worker->{progress_path}) {
+        my $bytes = eval {
+            scalar read_file($worker->{progress_path}, binmode => ':raw')
+        };
+        my $progress = defined $bytes ? eval { _json()->decode($bytes) } : undef;
+        my $message = ref($progress) eq 'HASH'
+            ? ($progress->{message} || '') : '';
+        if (length($message) && $message ne ($worker->{last_progress} || '')) {
+            $worker->{last_progress} = $message;
+            $worker->{task}->{on_progress}->($message)
+                if $worker->{task}->{on_progress};
+        }
+    }
+
+    my $waited = waitpid($worker->{pid}, WNOHANG);
+    if (!$waited) {
+        _schedule_async_poll();
+        return;
+    }
+
+    my $bytes = eval {
+        scalar read_file($worker->{result_path}, binmode => ':raw')
+    };
+    my $outcome = defined $bytes ? eval { _json()->decode($bytes) } : undef;
+    unlink $worker->{result_path} if -e $worker->{result_path};
+    unlink $worker->{progress_path} if -e $worker->{progress_path};
+    my $task = $worker->{task};
+    $async_prepare_worker = undef;
+    $log->info(sprintf(
+        'candidate_inventory stage=BackgroundRebuildFinished pid=%d elapsed_ms=%d outcome=%s',
+        $worker->{pid},
+        1000 * (time() - ($worker->{started_at} || time())),
+        ref($outcome) eq 'HASH' && $outcome->{ok} ? 'success' : 'failed',
+    ));
+
+    if (ref($outcome) ne 'HASH' || !$outcome->{ok}) {
+        $task->{on_error}->(
+            ref($outcome) eq 'HASH' && $outcome->{error}
+                ? $outcome->{error}
+                : 'Candidate-library worker exited without a valid result',
+        );
+    } else {
+        my ($result, $error);
+        eval {
+            $result = prepare(
+                @{$task}{qw(capability database_identity candidate_library)},
+            );
+            1;
+        } or $error = $@ || 'Could not load the rebuilt candidate library';
+        $error ? $task->{on_error}->($error) : $task->{on_done}->($result);
+    }
+    _start_next_async_prepare();
+}
+
+sub prepare_async {
+    my ($capability, $database_identity, $candidate_library,
+        $on_done, $on_error, $on_progress) = @_;
+    die "Candidate inventory completion callback is required"
+        unless ref($on_done) eq 'CODE';
+    die "Candidate inventory error callback is required"
+        unless ref($on_error) eq 'CODE';
+    push @async_prepare_queue, {
+        capability => $capability,
+        database_identity => $database_identity,
+        candidate_library => $candidate_library,
+        on_done => $on_done,
+        on_error => $on_error,
+        on_progress => $on_progress,
+    };
+    _start_next_async_prepare();
+}
+
+sub shutdown {
+    @async_prepare_queue = ();
+    if ($async_prepare_worker) {
+        kill 'TERM', $async_prepare_worker->{pid};
+        waitpid($async_prepare_worker->{pid}, 0);
+        unlink $async_prepare_worker->{result_path}
+            if -e $async_prepare_worker->{result_path};
+        unlink $async_prepare_worker->{progress_path}
+            if -e $async_prepare_worker->{progress_path};
+        $async_prepare_worker = undef;
+    }
 }
 
 sub status {

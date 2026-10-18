@@ -1165,6 +1165,7 @@
         formData.forEach(function (value, name) {
           encoded.append(name, value);
         });
+        encoded.set('ajax_preview', '1');
         fetch(mainForm.action, {
           method: 'post',
           credentials: 'same-origin',

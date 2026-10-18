@@ -31,6 +31,7 @@ use Plugins::BetterCallBliss::PlaylistWriter;
 use Plugins::BetterCallBliss::QueueWriter;
 use Plugins::BetterCallBliss::RepeatConflicts;
 use Plugins::BetterCallBliss::RouteMode;
+use Plugins::BetterCallBliss::UserNotification;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $server_prefs = preferences('server');
@@ -41,6 +42,7 @@ my %pre_start_cancels;
 my $serial = 0;
 my $last_web_activity = 0;
 my @pending_web_preparations;
+my $background_parallel_workers;
 
 use constant DEFERRED_WEB_PREPARATION_DELAY => 0.5;
 use constant WEB_RESPONSE_GRACE => 2;
@@ -241,6 +243,7 @@ sub _running_phase_detail {
         return 'Status: ' . $stage . '.'
             if $stage eq 'Preparing source and candidate library'
                 || $stage eq 'Capturing candidate library'
+                || $stage =~ /^Rebuilding candidate library:/
                 || $stage eq 'Preparing play-count guidance'
                 || $stage eq 'Matching Last.fm guidance to candidate library';
         if (($job->{lastfm_state} || '') eq 'preparing') {
@@ -413,6 +416,54 @@ sub _read_progress {
     return unless ($progress->{program} || '') eq 'bliss-playlist-optimizer';
     $job->{native_progress} = $progress;
 }
+
+sub _schedule_poll {
+    my ($job, $delay) = @_;
+    return unless ref($job) eq 'HASH'
+        && ($job->{state} || '') eq 'running' && $job->{process};
+    return if $job->{poll_scheduled};
+    $job->{poll_scheduled} = 1;
+    my $job_id = $job->{id};
+    Slim::Utils::Timers::setTimer(
+        undef, time() + ($delay || 0.5), sub {
+            my $current = $jobs{$job_id} || return;
+            $current->{poll_scheduled} = 0;
+            _poll($job_id);
+        },
+    );
+}
+
+sub _deprioritize_optimizer {
+    my $process = shift || return;
+    return if main::ISWINDOWS || !$process->can('pid');
+    my $pid = $process->pid || return;
+    my $ok = eval {
+        setpriority(0, $pid, 10);
+        1;
+    };
+    main::DEBUGLOG && $log->is_debug && $log->debug(
+        $ok
+            ? "Native optimizer pid=$pid started with nice level 10"
+            : "Could not lower native optimizer priority for pid=$pid: "
+                . ($@ || $!),
+    );
+}
+
+sub _background_parallel_workers {
+    return $background_parallel_workers
+        if defined $background_parallel_workers;
+    return unless !main::ISWINDOWS && -r '/proc/cpuinfo';
+    open my $cpuinfo, '<', '/proc/cpuinfo' or return;
+    my $processors = 0;
+    while (my $line = <$cpuinfo>) {
+        $processors++ if $line =~ /^processor\s*:/;
+    }
+    close $cpuinfo;
+    return unless $processors;
+    $background_parallel_workers = $processors > 2 ? $processors - 2 : 1;
+    return $background_parallel_workers;
+}
+
 sub _launch_optimizer {
     my ($job, $built, $semantic_bundle) = @_;
     _write_json($job->{semantic_path}, $semantic_bundle);
@@ -475,13 +526,12 @@ sub _launch_optimizer {
     close $stderr_fh;
     die "Could not start optimizer: $launch_error" if $launch_error;
     die "Could not start optimizer" unless $process;
+    _deprioritize_optimizer($process);
 
     $job->{process} = $process;
     $job->{stage} = $job->{native_command} eq 'bridge'
         ? 'Optimizing and selecting additions' : 'Optimizing';
-    Slim::Utils::Timers::setTimer(
-        undef, time() + 0.5, sub { _poll($job->{id}) },
-    );
+    _schedule_poll($job, 0.5);
 }
 
 sub _guidance_process_environment {
@@ -508,6 +558,10 @@ sub _guidance_process_environment {
                 if exists $environment{$key} && $environment{$key} ne $provided->{$key};
             $environment{$key} = $provided->{$key};
         }
+    }
+    if (!exists $ENV{RAYON_NUM_THREADS}) {
+        my $workers = _background_parallel_workers();
+        $environment{RAYON_NUM_THREADS} = $workers if $workers;
     }
     return \%environment;
 }
@@ -641,7 +695,7 @@ sub _start_preview_from_built {
     die "Could not stat bliss.db" unless $database_identity;
     $built->{request}->{artifacts}->{database}->{cache_identity}
         = $database_identity;
-    my $candidate_inventory;
+    my $candidate_inventory = $fields->{prepared_candidate_inventory};
     my $request_path = $dir . '/request.json';
     my $result_path = $dir . '/result.json';
     my $stderr_path = $dir . '/stderr.log';
@@ -752,12 +806,48 @@ sub _start_preview_from_built {
 
     if ($native_command eq 'bridge') {
         $jobs{$job_id}->{stage} = 'Capturing candidate library';
-        my $candidate_ok = eval {
-            $candidate_inventory =
-                Plugins::BetterCallBliss::CandidateInventory::prepare(
+        if (!$candidate_inventory) {
+            my %continued_fields = %$fields;
+            my $prepare_ok = eval {
+                Plugins::BetterCallBliss::CandidateInventory::prepare_async(
                     $built->{capability}, $database_identity,
                     $built->{candidate_library},
+                    sub {
+                        my $prepared = shift;
+                        my $job = $jobs{$job_id};
+                        return unless $job
+                            && ($job->{state} || '') eq 'running';
+                        $continued_fields{prepared_candidate_inventory}
+                            = $prepared;
+                        _start_preview_from_built(
+                            $job_id, $dir, $semantic_path, $built,
+                            \%continued_fields,
+                        );
+                    },
+                    sub {
+                        my $message = shift
+                            || 'Could not capture candidate library';
+                        _fail_deferred_route_job(
+                            $job_id, $message,
+                            'CANDIDATE_LIBRARY_FAILED',
+                        );
+                    },
+                    sub {
+                        my $message = shift || return;
+                        my $job = $jobs{$job_id};
+                        $job->{stage} = $message
+                            if $job && ($job->{state} || '') eq 'running';
+                    },
                 );
+                1;
+            };
+            _fail_deferred_route_job(
+                $job_id, $@ || 'Could not start candidate-library worker',
+                'CANDIDATE_LIBRARY_FAILED',
+            ) unless $prepare_ok;
+            return $jobs{$job_id};
+        }
+        my $candidate_ok = eval {
             $built->{request}->{artifacts}->{local_candidate_inventory}
                 = $candidate_inventory->{artifact};
             $built->{request}->{artifacts}->{candidate_identities}
@@ -781,6 +871,9 @@ sub _start_preview_from_built {
             $log->error(
                 "job=$job_id stage=Failed code=CANDIDATE_LIBRARY_FAILED"
                 . " message=$job->{error}"
+            );
+            Plugins::BetterCallBliss::UserNotification::route_failure(
+                $job, $job->{error},
             );
             return $job;
         }
@@ -1005,6 +1098,9 @@ sub _fail_deferred_route_job {
     $log->error(
         "job=$job_id stage=Failed code=$job->{error_code}"
         . " message=$job->{error}"
+    );
+    Plugins::BetterCallBliss::UserNotification::route_failure(
+        $job, $job->{error},
     );
 }
 
@@ -1450,15 +1546,14 @@ sub _poll {
 
     if ($job->{process}->alive) {
         _read_progress($job);
-        Slim::Utils::Timers::setTimer(
-            undef, time() + 0.5, sub { _poll($job_id) },
-        );
+        _schedule_poll($job, 0.5);
         return;
     }
 
     _read_progress($job);
     my $exit = $job->{process}->exit_code;
     $job->{finished_at} = time();
+    $job->{poll_scheduled} = 0;
     delete $job->{process};
     my $payload = eval { read_file($job->{result_path}, binmode => ':raw') } || '';
     my $decode_error;
@@ -1576,6 +1671,9 @@ sub _poll {
         );
         main::DEBUGLOG && $log->is_debug && $log->debug(
             "job=$job_id diagnostics source_count=$job->{track_count}"
+        );
+        Plugins::BetterCallBliss::UserNotification::route_failure(
+            $job, $job->{error} || $message,
         );
     } else {
         my $elapsed_ms = int(1000 * ($job->{finished_at} - $job->{started_at}));
@@ -1696,18 +1794,19 @@ sub _poll {
                 "job=$job_id stage=AutomaticQueueSendFailed message="
                 . substr($error, 0, 500)
             );
+            Plugins::BetterCallBliss::UserNotification::route_failure(
+                $job, $error,
+            );
         }
     }
 }
 
 sub get {
     my $job_id = shift;
-    _poll($job_id) if $jobs{$job_id} && $jobs{$job_id}->{state} eq 'running';
     return $jobs{$job_id};
 }
 
 sub all {
-    _poll($_) for grep { $jobs{$_}->{state} eq 'running' } keys %jobs;
     return sort { $b->{started_at} <=> $a->{started_at} } values %jobs;
 }
 
@@ -2008,6 +2107,7 @@ sub shutdown {
     }
     %jobs = ();
     %pre_start_cancels = ();
+    Plugins::BetterCallBliss::CandidateInventory::shutdown();
 }
 
 1;

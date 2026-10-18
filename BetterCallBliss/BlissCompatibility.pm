@@ -1,7 +1,9 @@
 package Plugins::BetterCallBliss::BlissCompatibility;
 
 use strict;
+use Time::HiRes qw(time);
 use Slim::Music::Import;
+use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::PluginManager;
 use Slim::Utils::Prefs;
@@ -17,6 +19,7 @@ my $optimizer_binary;
 my $optimizer_supports_genre_policy;
 my $optimizer_supports_candidate_library_scope;
 my $optimizer_supports_guidance_spi_v2;
+my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
 use constant MIN_BLISSMIXERLAB_VERSION => '0.5.0';
@@ -103,10 +106,20 @@ sub _static_slider_weights {
 }
 
 sub snapshot {
+    my $snapshot_started_at = time();
+    my @snapshot_timings;
+    my $phase_started_at = $snapshot_started_at;
+    my $record_timing = sub {
+        my $name = shift;
+        my $now = time();
+        push @snapshot_timings, [$name, int(1000 * ($now - $phase_started_at))];
+        $phase_started_at = $now;
+    };
     my $prefs_dir = Slim::Utils::Prefs::dir();
     my $database = $prefs_dir . '/bliss.db';
     my $matrix = $prefs_dir . '/learned_matrix.json';
     my $music_roots = Slim::Utils::Misc::getAudioDirs() || [];
+    $record_timing->('paths');
     my $music_root = @$music_roots ? $music_roots->[0] : '';
     my $bliss = _plugin_state(
         'Plugins::BlissMixer::Plugin', MIN_BLISSMIXER_VERSION,
@@ -114,7 +127,9 @@ sub snapshot {
     my $bliss_ext = _plugin_state(
         'Plugins::BlissMixerLab::Plugin', MIN_BLISSMIXERLAB_VERSION,
     );
+    $record_timing->('plugins');
     my $scanning = Slim::Music::Import->stillScanning() ? 1 : 0;
+    $record_timing->('scan');
 
     my @problems;
     push @problems, 'BlissMixer is not enabled' unless $bliss->{enabled};
@@ -172,7 +187,9 @@ sub snapshot {
     my $static_weights = _static_slider_weights();
     my $filter_xmas = _int_pref('filter_xmas', 1) ? 1 : 0;
     my $month = (localtime())[4] + 1;
+    $record_timing->('preferences');
     my $discovered = Plugins::BetterCallBliss::GuidanceProviderDiscovery::discover();
+    $record_timing->('provider_discovery');
     my $all_host_state = $host_prefs->get('guidance_provider_state');
     my @discovered_providers;
     for my $provider (@{$discovered->{providers} || []}) {
@@ -190,6 +207,15 @@ sub snapshot {
             ),
             host_policy => $policy,
         };
+    }
+    $record_timing->('provider_policy');
+    my $total_ms = int(1000 * (time() - $snapshot_started_at));
+    if ($total_ms >= 1000 || (main::DEBUGLOG && $log->is_debug)) {
+        $log->info(
+            'compatibility_snapshot_timing total_ms=' . $total_ms
+            . ' phases=' . join(',', map { $_->[0] . ':' . $_->[1] }
+                @snapshot_timings)
+        );
     }
     return {
         ready             => @problems ? 0 : 1,
