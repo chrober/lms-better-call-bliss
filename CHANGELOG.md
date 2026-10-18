@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.22.7
+
+- Bundle optimizer 0.2.4 so destination routes enforce artist, album, and
+  track repeat windows at their locked destination anchors.
+- Fail fast when the configured `Bliss me there...` bridge budget cannot
+  satisfy the repeat windows, instead of accepting an invalid direct route.
+
 ## 0.22.6
 
 - Show a player-targeted Material error notification when an automatic
