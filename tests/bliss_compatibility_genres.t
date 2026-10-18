@@ -8,6 +8,15 @@ use Test::More;
 BEGIN {
     package main;
     sub STATISTICS () { 1 }
+    sub DEBUGLOG () { 0 }
+
+    package TestLog;
+    sub info { }
+    sub is_debug { 0 }
+
+    package Slim::Utils::Log;
+    sub logger { return bless {}, 'TestLog' }
+    $INC{'Slim/Utils/Log.pm'} = __FILE__;
 
     package TestBlissPrefs;
     our %values = (

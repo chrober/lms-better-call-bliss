@@ -5,6 +5,17 @@ use Test::More;
 use JSON::XS ();
 
 BEGIN {
+    package main;
+    sub DEBUGLOG () { 0 }
+
+    package TestLog;
+    sub info { }
+    sub is_debug { 0 }
+
+    package Slim::Utils::Log;
+    sub logger { return bless {}, 'TestLog' }
+    $INC{'Slim/Utils/Log.pm'} = __FILE__;
+
     package Slim::Schema;
     our $playlist;
     sub find { return $playlist }

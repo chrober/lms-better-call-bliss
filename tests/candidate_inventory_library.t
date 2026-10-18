@@ -8,6 +8,9 @@ use DBI;
 use JSON::XS;
 
 BEGIN {
+    package main;
+    sub ISWINDOWS () { 0 }
+
     package TestLog;
     sub info { }
 
