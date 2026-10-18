@@ -15,7 +15,7 @@ This document describes the current implementation. **Working** means the choice
 | Turn a tiny seed list into a full mix with the same general character | Additional tracks: [Extend playlist](#extend-playlist) + Chosen amount: Reach a final track count | Treat the input as examples of a desired sound. Better Call Bliss selects enough related local songs to reach the target size, then arranges originals and additions together. |
 | Get a different but still sensible result | [Increase Variation](#variation-and-reproducibility) | Search explores different good alternatives without relaxing its quality and repeat rules. |
 | Let related recordings and artists support addition choices | [Set Last.fm guidance](#lastfm-track-and-artist-guidance) | Similar-track and similar-artist support is pursued within a widened Bliss-qualified pool; Bliss remains the acoustic quality check. |
-| Prefer less-played or frequently played additions | [Adjust Play-count influence](#play-count-guidance) | The job starts with BlissMixer's setting and may override it without changing BlissMixer. |
+| Prefer less-played or frequently played additions | [Adjust Play-count influence](#play-count-guidance) | The job inherits the enabled Library Signals provider setting and may override it without changing the provider default. |
 | Replace the upcoming queue with a fluent path from the current song | [Bliss me there...](#bliss-me-there) from a track or album context menu | The current song keeps playing. Later queue entries are excluded from the route context and replaced by the intermediates and selected track or complete album after a live-current-song check. |
 | Visit a chosen track or album, then return to the existing queue | [Bliss me there... and back again!](#bliss-me-there) from the same context menu | The current song is the start, the selected track or complete album is the required destination, and the first upcoming song is the rejoin point. The complete excursion is inserted before the otherwise unchanged upcoming queue. |
 | Append a fluent path from the queue end to a chosen track or album | [Bliss me there... when we're through!](#bliss-me-there) from the same context menu | The queue end and selected destination stay fixed. Better Call Bliss builds the route in the background and appends its intermediates and destination when every check succeeds. |
@@ -51,12 +51,12 @@ Three job choices work together:
 | [Static weighted distance](#static-weighted-distance--working) | Working | BlissMixer's fixed user priorities. |
 | [Extended Isolation Forest](#extended-isolation-forest--planned-for-better-call-bliss) | Planned | BlissMixer's model of the sound shared by several example songs. |
 | [Last.fm track and artist guidance](#lastfm-track-and-artist-guidance) | Working, optional | Extra evidence for ranking suitable additions; Bliss remains the acoustic gate. |
-| [Play-count guidance](#play-count-guidance) | Working, optional | Signed preference for less-played or frequently played generated tracks, initialized from BlissMixer. |
+| [Play-count guidance](#play-count-guidance) | Working, optional | Signed preference for less-played or frequently played generated tracks, inherited from the enabled Library Signals provider. |
 | [Candidate library](#candidate-library-for-all-addition-modes) | Working | Restricts generated tracks to the active or explicitly selected Lyrion virtual-library membership. |
 
 ## How the pieces fit together
 
-The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, freezes the LMS-local candidate inventory and current play counts when needed, and optionally asks LastMix for Last.fm track and artist relationships. It resolves those Last.fm results to explicit candidates in that frozen local inventory before launching the native [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer), which performs provider-neutral scoring and bounded search. Only the plugin writes playlists or player queues. Editor jobs require explicit acceptance; the **Bliss me there...** shortcuts automatically append, replace upcoming tracks, or insert an excursion only after the background route and matching live-anchor checks succeed.
+The Better Call Bliss plugin resolves Lyrion tracks, reads per-job options, freezes the LMS-local candidate inventory, and discovers the optional guidance providers enabled for this host. Each provider prepares its own trusted inputs: for example, Last.fm can use a LastMix-prepared artifact or direct API acquisition, while Library Signals reads a bounded Lyrion database snapshot. The plugin then launches the native [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer), which invokes those providers only for Bliss-qualified candidate batches and performs the bounded search. Only the plugin writes playlists or player queues. Editor jobs require explicit acceptance; the **Bliss me there...** shortcuts automatically append, replace upcoming tracks, or insert an excursion only after the background route and matching live-anchor checks succeed.
 
 ## Artist identity for repeat windows
 
@@ -238,7 +238,7 @@ flowchart LR
 | Artist, album, and track look-back | Inherited from BlissMixer | Hard constraints for generated intermediates; zero disables a window. A chosen destination track or complete album remains fixed user intent and is not rejected for internal repeats. |
 | Variation and generation seed | 0-100%; default 25 | Chooses reproducibly among complete routes close to the best adjacent bottleneck and route sum. Zero keeps the strict deterministic winner. |
 | Last.fm guidance | Optional; inherited from the enabled Last.fm provider | Similar-track uses a bounded influence. Similar-artist can use a best-effort target share or a bounded influence. Both remain overridable per host and job; zero disables a channel. Provider failure falls back to Bliss. |
-| Play-count influence | -100 to 100; initialized from BlissMixer | Negative prefers less-played generated tracks, positive prefers frequently played generated tracks, and zero disables the signal. The override belongs only to the current job. |
+| Play-count influence | -100 to 100; inherited from Library Signals | Negative prefers less-played generated tracks, positive prefers frequently played generated tracks, and zero disables the signal. The override belongs only to the current job. |
 | Output | Locked by the chosen context command | **Bliss me there...** validates the live current song, preserves it and playback, and replaces only the later queue entries with the route suffix. **Bliss me there... and back again!** validates both the current song and first upcoming track, then inserts only its route body before that unchanged upcoming track. **Bliss me there... when we're through!** validates the live queue end and appends the route suffix. |
 
 
@@ -446,7 +446,7 @@ For a gap A -> B, optional Last.fm evidence has this order of strength:
 4. **Collection artist fallback:** used only when the gap has no endpoint-local track or artist evidence; the candidate's artist may relate to any artist in the complete original playlist.
 5. **Bliss only:** a candidate without Last.fm evidence remains eligible.
 
-The plugin asks LastMix about every distinct track and artist in the original playlist, using anonymous `track.getSimilar` and `artist.getSimilar` access, and retains at most the first 25 valid results from each request. A source recording's Lyrion MBID is used for the LastMix request when available, with LastMix falling back to artist and title. Returned recordings currently resolve to analyzed local candidates by normalized artist and title; their returned MBIDs are also retained in the frozen evidence. Last.fm's match score, rank, identity confidence, and the exact source relationship are frozen with them.
+The optional **Bliss Guidance: Last.fm** provider owns acquisition. In LastMix mode it asks the installed LastMix plugin for bounded `track.getSimilar` and `artist.getSimilar` observations and resolves them to the frozen LMS/Bliss inventory. In API Key mode it performs bounded direct requests and persistent-cache lookup during `prepare`. A source recording's Lyrion MBID is preferred when available, with artist/title identities as lower-confidence fallbacks. The prepared relations retain Last.fm score, rank, identity confidence, and the exact source relationship; provider or network failure remains neutral.
 
 Last.fm never replaces the candidate library. Every candidate still comes from the frozen intersection of usable Bliss rows and current local LMS tracks. If the pool contains more than 256 tracks, up to 32 strongest semantic matches are reserved while acoustic shortlisting fills the remaining positions. Bliss then evaluates both legs, repeat safety, and improvement. Rejected candidates stay rejected regardless of Last.fm evidence.
 
@@ -735,9 +735,9 @@ Target share aligns with BlissMixer's **Last.fm artist probability**, and can in
 Bridge modes use the resolved signal to rank admissible two-leg insertions. Extend playlist uses resolved track and artist evidence from the complete immutable source set to support membership ranking inside its Bliss-qualified pool. Selected additions retain that evidence in the native result, so the review page and logs report what actually influenced selection. Last.fm has no effect on fixed-membership Reorder only jobs.
 
 Provider responses are frozen with their raw score or rank where available, so
-the report can explain the support used by that run. A missing LastMix provider,
-missing or invalid API key, no Internet access, malformed responses, and
-provider errors fall back to Bliss without failing the playlist job. Bounded
+the report can explain the support used by that run. An unavailable selected
+source, a missing or invalid API key, no Internet access, malformed responses,
+and provider errors fall back to Bliss without failing the playlist job. Bounded
 timeouts, negative cache entries, and provider diagnostics prevent repeated
 failing work from turning candidate scoring into network activity.
 

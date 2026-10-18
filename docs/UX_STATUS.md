@@ -1,7 +1,7 @@
 # UX contract and implementation status
 
 This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.22.4` UX shell. The shell is
+model and the exact boundary of the current `0.22.7` UX shell. The shell is
 deliberately broader than the backend so the remaining implementation can be
 connected without redesigning the user journey.
 
@@ -52,8 +52,8 @@ fall through to either working mode.
 | Artist/album/track look-back | Working, per job | Initialized from BlissMixer; zero disables the corresponding constraint. |
 | Additional route-search attempts | Working, per job | Validated as 0-500, grouped under Advanced, and used only when source order may change. Zero retains the built-in fixed starts. |
 | Variation | Working, per job | Validated as 0-100 and applied downstream of the selected scoring strategy. Zero preserves strict best-match behavior; higher values use seeded weighted sampling inside a bounded top acoustic pool. A blank generation seed changes each run, while an explicit/reported seed reproduces it. |
-| Last.fm guidance | Working in LastMix mode; API Key mode planned | Requires the separately installed **Bliss Guidance: Last.fm** provider, enabled per host. Its own settings select LastMix or API Key; its defaults are inherited until a Better Call Bliss host/job override is saved. LastMix observations are resolved to explicit candidates in the frozen LMS/Bliss inventory before launch. The API Key control is present, but the released native provider does not yet perform direct acquisition and therefore remains neutral. Similar-track and similar-artist guidance are separate 0-100 policies declared by the provider. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
-| Play-count influence | Working, per job | Initialized from BlissMixer for each new job and never persisted by Better Call Bliss. Values from -100 to -1 prefer less-played generated tracks, 1 to 100 prefer frequently played generated tracks, and zero disables the guidance. It is forced to zero when Lyrion playback statistics are disabled and never changes the membership of reorder-only jobs. |
+| Last.fm guidance | Working through the optional provider | Requires the separately installed **Bliss Guidance: Last.fm** provider, enabled per host. Its settings select LastMix or API Key; provider defaults are inherited until a Better Call Bliss host/job override is saved. LastMix observations are resolved to explicit candidates in the frozen LMS/Bliss inventory, while API Key mode performs bounded provider-owned acquisition and persistent-cache lookup during `prepare`. Similar-track and similar-artist guidance are separate 0-100 policies declared by the provider. They rerank only local, repeat-safe, Bliss-qualified candidates and degrade to Bliss on unavailable, partial, malformed, offline, or API-failure states. |
+| Play-count influence | Working, per job | Inherited from the enabled Library Signals provider unless a Better Call Bliss host/job override is saved. Values from -100 to -1 prefer less-played generated tracks, 1 to 100 prefer frequently played generated tracks, and zero disables the guidance. Missing playback statistics remain neutral and the signal never changes the membership of reorder-only jobs. |
 | Relevance-aware controls | Working | The Extras editor shows only sections relevant to the selected source-order and addition purpose. Count-specific fields appear only when Extend playlist requires them; trigger/gap-context controls appear only for difficult-transition repair, not spacing-track repair. Hidden sections keep their values for mode switching, selected-mode inputs remain submitted for draft restoration, exact and target counts follow the selected source snapshot, and guaranteed no-op combinations disable submission and fail server validation if bypassed. Bounded numeric controls use the same `sliderInput_min_max_step` enhancement classes as BlissMixer settings where practical. |
 | Accessible status feedback | Working | Warning, error, success, and running/info banners force explicit high-contrast foreground/background pairs on both containers and nested text; theme text color is retained only for secondary notes and disabled hints. |
 | LMS scan coordination | Working | Preview pauses while LMS reports an active library scan, explains that the catalog is changing, and retries the page automatically until the scan finishes. |
@@ -115,13 +115,11 @@ disabled and labeled.
 - persistent report retention.
 
 Last.fm is optional and is supplied by the separately installed Last.fm
-provider. The currently working path selects LastMix and lets the provider
-obtain observations through that installed plugin. The API Key setting and
-secret-handling surface are present, but direct native acquisition is not yet
-released. Better Call Bliss enables the provider per host and offers only the
-provider-declared per-job controls. Timeouts, provider errors, malformed
-responses, rate limits, and missing Internet access degrade to local Bliss
-evidence rather than fail optimization.
+provider. It supports provider-owned acquisition through either LastMix or a
+configured API key. Better Call Bliss enables the provider per host and offers
+only the provider-declared per-job controls. Timeouts, provider errors,
+malformed responses, rate limits, and missing Internet access degrade to local
+Bliss evidence rather than fail optimization.
 ListenBrainz remains optional and is deliberately deferred.
 
 ## Safety boundary
@@ -133,18 +131,10 @@ Automatic and exact-count extension additionally require the native source membe
 Spacing-track repair and Extend playlist additionally require an exact target match, unique final membership, every source ID exactly once, the expected resolved additions for the calculated or chosen final size, and selection details for every added Bliss row. The native proof block must also affirm local-inventory membership and artist/album/track repeat compliance before the plugin accepts the result. Added tracks never enter the relevance anchor; they affect only complete-membership routing.
 
 Running results refresh automatically and completed/failed optimization and accept actions are displayed in prominent banners with stable error codes. The Extras page shows immediate client-side feedback as soon as **Run read-only preview** is pressed, covering synchronous source capture and candidate-inventory preparation before a pollable job id exists. After a job starts, every polling, result, and accept-action page rebuilds the editor from that job's normalized options. Inactive numeric controls remain submitted as read-only values, so failures and successful review pages retain the exact settings for adjustment and rerun. After a successful preview, **Accept this preview** lets the user choose the output target without rerunning the optimizer.
-## piCorePlayer development deployment
+## Installation and updates
 
-For a manually deployed development build, use piCorePlayer's supported manual
-plugin root:
-
-```text
-<LMS cache>/Plugins/BetterCallBliss
-```
-
-On the current server this resolves to
-`/mnt/mmcblk0p2/tce/slimserver/Cache/Plugins/BetterCallBliss`. Do not hand-copy a
-development build into `Cache/InstalledPlugins/Plugins`: that directory is
-owned by LMS's extension manager, and an unregistered folder can be removed on
-restart. Production installation remains the planned plugin ZIP plus extension
-repository flow.
+Released builds are installed and updated through the configured Lyrion
+extension repository. Lyrion owns the resulting
+`<LMS cache>/InstalledPlugins/Plugins/BetterCallBliss` directory; development
+deployment must preserve the complete packaged layout, including the native
+optimizer binaries for the active platform.

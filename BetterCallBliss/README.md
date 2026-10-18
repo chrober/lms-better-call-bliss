@@ -26,9 +26,9 @@ Every feature that can add music also snapshots and enforces BlissMixer's curren
 
 Every addition job also freezes a per-job Lyrion **Candidate library**. The Extras dropdown initially follows Material Skin's active virtual library when available, then the library assigned to the active player, and otherwise uses All tracks. Only newly generated tracks must belong to that `library_track` membership; immutable source, history, destination, and queue-rejoin anchors remain valid outside it. The membership checksum invalidates cached candidate inventories after a virtual-library rebuild.  
 
-The plugin delegates acoustic scoring, route search, bridge selection, and fixed-source extension membership selection to an installed `bliss-playlist-optimizer` binary. Better Call Bliss owns Lyrion identity capture, optional LastMix/Last.fm evidence collection, the immutable Last.fm artifact, trusted provider executable paths, Preview polling, result validation, and playlist or player-queue persistence, including replacing only the upcoming part of an active queue. The optimizer invokes the bundled providers over its versioned local SPI only for Bliss-qualified shortlists. Last.fm remains artifact-backed and network-free in the native path. The local library-signals provider opens Lyrion's trusted `persist.db` read-only once, builds compact play-count, last-played, and library-age percentile distributions from the frozen eligible identity population, then queries only bounded Bliss-qualified batches while scoring. Providers may boost or de-boost ranking but can never admit a non-Bliss candidate or override hard constraints. The original BlissMixer is required for `bliss.db` and its base settings. BlissMixerLab is optional and contributes `learned_matrix.json` plus its learned-blend preference; without it, Adaptive falls back to variance plus Static BlissMixer weights for one-track contexts.
+The plugin delegates acoustic scoring, route search, bridge selection, and fixed-source extension membership selection to an installed `bliss-playlist-optimizer` binary. Better Call Bliss owns Lyrion identity capture, trusted provider executable paths, Preview polling, result validation, and playlist or player-queue persistence, including replacing only the upcoming part of an active queue. Optional discoverable guidance providers own their acquisition and settings: the Last.fm provider can consume a LastMix-prepared artifact or perform bounded direct API acquisition during `prepare`, while Library Signals reads a trusted `persist.db` snapshot. The optimizer invokes enabled providers over its versioned local SPI only for Bliss-qualified shortlists; route scoring is network-free after provider preparation. Providers may boost or de-boost ranking but can never admit a non-Bliss candidate or override hard constraints. The original BlissMixer is required for `bliss.db` and its base settings. BlissMixerLab is optional and contributes `learned_matrix.json` plus its learned-blend preference; without it, Adaptive falls back to variance plus Static BlissMixer weights for one-track contexts.
 
-Better Call Bliss explicitly loads its own strings.txt during startup so development deployments from Cache/Plugins expose localized Extras captions and Settings labels even when LMS does not include that directory in its automatic string scan.
+Better Call Bliss explicitly loads its own `strings.txt` during startup so its localized Extras captions and Settings labels remain available across supported LMS installations.
 
 Credit: lms-blissmixer already provides the **Create bliss mix** action for immediate Bliss-based mix generation from a selected track, artist, album, or genre. Better Call Bliss is intentionally a companion workflow, not a replacement for that feature: it adds auditable previews, per-job playlist and queue constraints, and explicit persistence choices around saved playlists and player queues.
 
@@ -60,19 +60,18 @@ Difficult-transition improvement adds only candidates that pass the native conte
 trigger, acoustic-improvement, uniqueness, and repeat gates, up to the per-job
 budget. Opaque Bliss row identities are validated, resolved read-only through
 `bliss.db` to local LMS tracks immediately after Preview, and frozen as LMS
-URLs. The result shows every addition and every transition decision. LastMix
-track and artist evidence is optional and failure-tolerant; ListenBrainz remains later.
+URLs. The result shows every addition and every transition decision. Last.fm
+track and artist guidance is optional and failure-tolerant; ListenBrainz remains later.
 
 Variation is a per-job percentage downstream of the scoring strategy. Zero
 keeps strict best-match membership, while higher values use reproducible
 weighted sampling inside a bounded top acoustic pool. A blank seed generates a
 new result on every run; an explicit generation seed reproduces the selection.
-The Last.fm defaults mirror BlissMixer's enable switch and 1-100 artist
-probability. Better Call Bliss queries every distinct artist from the complete
-original playlist, prefers endpoint-local evidence, uses the complete set only
-as fallback, and continues with Bliss when LastMix or Last.fm is unavailable.
-Service-offline, temporarily-unavailable, and rate-limit errors stop the
-remaining provider calls for that job instead of repeatedly hitting Last.fm.
+Last.fm controls are declared by the installed guidance provider. The provider
+can use LastMix or a configured API key, prepares bounded similar-track and
+similar-artist relations, and degrades neutrally to Bliss-only behavior when
+disabled or unavailable. Better Call Bliss may override provider defaults per
+host and per job without owning provider credentials or acquisition logic.
 
 Every addition job first snapshots current local LMS track identities, intersects them with the selected Candidate library and usable `TracksV2` rows, and freezes the result. The checksum-protected allowlist is bound to the exact `bliss.db` file identity and virtual-library membership and applied natively before candidate shortlisting or scoring. Unmatched Bliss rows remain excluded even when their acoustic score would otherwise win. A persistent ledger at `<LMS cache>/bettercallbliss/non-lms-bliss-rows.json` records their paths, metadata, reasons, first/last-seen times, observation counts, and resolved/current state for review. Tracks outside the selected virtual library are reported separately and are not audit defects. The Extras page keeps the stale-row audit out of the normal workflow and shows it only when the current inventory has genuinely unmatched rows. Existing files are not automatically eligible: when a Bliss row differs from a unique LMS identity only by filename case, the audit records `filename_case_differs_from_lms_catalog` and the related LMS identity, preserving exact membership and preventing duplicate case-variant candidates.
 

@@ -9,9 +9,11 @@
 The plugin owns the Lyrion user interface, settings, background jobs, result
 review, playlist persistence, player-queue output, and discovery of optional
 guidance providers. CPU-intensive acoustic scoring and route search are
-delegated to the network-free Rust engine
+delegated to the Rust engine
 [`bliss-playlist-optimizer`](https://github.com/chrober/bliss-playlist-optimizer).
-Supported packages bundle the optimizer only. Optional guidance is supplied by
+Optional native guidance providers may acquire bounded data during their
+preparation phase; route scoring itself remains network-free. Supported
+packages bundle the optimizer only. Optional guidance is supplied by
 separately installed, runtime-discovered Lyrion provider plugins; no native
 binaries are committed to this source repository.
 
