@@ -566,6 +566,15 @@ sub _build_sequence_request {
     my $source_count = scalar @$source_tracks;
     my $internal_gap_count = $source_count - 1;
     my $endpoint_capacity = 2;
+    if ($options->{extension_mode} eq 'fixed_gap_count') {
+        my $additions = $options->{tracks_per_gap} * $internal_gap_count;
+        my $final_count = $source_count + $additions;
+        die 'Fill every gap with N bridge tracks would exceed the 500-track final-size limit'
+            . chr(10)
+            if $final_count > 500;
+        $options->{additional_track_count} = $additions;
+        $options->{target_track_count} = $final_count;
+    }
     if (($options->{addition_purpose} || '') eq 'satisfy_constraints') {
         my $minimum_repeat_safe_target = _minimum_repeat_safe_target(
             $source_tracks, $options,
@@ -808,6 +817,15 @@ sub _build_sequence_request {
                 shortlist_limit => _json_integer(256),
                 max_added_tracks => _json_integer($options->{max_added_tracks}),
                 trigger_percentile => $options->{trigger_percent} / 100,
+            }
+            : $options->{extension_mode} eq 'fixed_gap_count' ? {
+                mode => 'fixed_gap_count',
+                %adaptive_gap_context,
+                candidate_limit => _json_integer(16),
+                shortlist_limit => _json_integer(256),
+                tracks_per_gap => _json_integer(
+                    $options->{tracks_per_gap}, 'tracks_per_gap',
+                ),
             }
             : $exact_like_extension ? {
                 mode => 'exact_count',

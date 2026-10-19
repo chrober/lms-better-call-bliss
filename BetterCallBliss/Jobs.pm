@@ -963,6 +963,11 @@ sub _start_preview_from_built {
                 || $effective->{extension_mode} eq 'double_count')
             ? " target_tracks=$effective->{target_track_count}"
             : '')
+        . ($effective->{extension_mode} eq 'fixed_gap_count'
+            ? " tracks_per_gap=$effective->{tracks_per_gap}"
+                . " derived_additions=$effective->{additional_track_count}"
+                . " gap_context=$effective->{gap_context_mode}"
+            : '')
         . (($effective->{extension_mode} eq 'fixed_source_extension'
                 && ($effective->{constraint_spacing} || 0))
             ? " dynamic_spacing_max_added=$effective->{max_added_tracks}"

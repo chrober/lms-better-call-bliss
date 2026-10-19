@@ -38,6 +38,7 @@ my $initialized = 0;
 my $optimizer_binary;
 my %binary_version_output;
 my $optimizer_supports_destination_blocks;
+my $optimizer_supports_fixed_gap_count;
 
 sub getDisplayName { return 'PLUGIN_BETTERCALLBLISS_NAME'; }
 
@@ -79,11 +80,14 @@ sub initPlugin {
         _optimizerSupportsGuidanceSpiV2($optimizer_binary);
     $optimizer_supports_destination_blocks =
         _optimizerSupportsDestinationBlocks($optimizer_binary);
+    $optimizer_supports_fixed_gap_count =
+        _optimizerSupportsFixedGapCount($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
         $optimizer_binary,
         $optimizer_supports_genre_policy,
         $optimizer_supports_candidate_library_scope,
         $optimizer_supports_guidance_spi_v2,
+        $optimizer_supports_fixed_gap_count,
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -127,7 +131,9 @@ sub initPlugin {
         . ' guidance_spi_v2='
         . ($optimizer_supports_guidance_spi_v2 ? 'supported' : 'unsupported')
         . ' destination_blocks='
-        . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported'));
+        . ($optimizer_supports_destination_blocks ? 'supported' : 'unsupported')
+        . ' fixed_gap_count_v1='
+        . ($optimizer_supports_fixed_gap_count ? 'supported' : 'unsupported'));
     return 1;
 }
 
@@ -175,6 +181,12 @@ sub _optimizerSupportsDestinationBlocks {
     my $binary = shift;
     my $output = _binaryVersionOutput($binary);
     return $output =~ /"destination_blocks"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerSupportsFixedGapCount {
+    my $binary = shift;
+    my $output = _binaryVersionOutput($binary);
+    return $output =~ /"fixed_gap_count_v1"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _binaryVersionOutput {

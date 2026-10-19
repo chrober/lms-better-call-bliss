@@ -34,6 +34,7 @@ BEGIN {
         return {
             ready => 1,
             problems => [],
+            fixed_gap_count_available => 1,
             database => '/tmp/bliss-2026.db',
             matrix_available => 1,
             matrix => '/tmp/learned_matrix.json',
@@ -163,11 +164,13 @@ BEGIN {
     our $target_track_count = '25';
     our $max_added_tracks = '8';
     our $addition_purpose = '';
+    our $tracks_per_gap = '1';
     sub normalize {
         return {
             ordering_policy => 'preserve_order',
             extension_mode => $extension_mode,
             addition_purpose => $addition_purpose,
+            tracks_per_gap => $tracks_per_gap,
             algorithm => $algorithm,
             seed_limit => '3',
             learned_percent => '20',
@@ -566,6 +569,26 @@ ok(!$spacing_too_small,
     'spacing-track repair fails before optimizer launch when the maximum is too small');
 like($@, qr/final playlist of at least 12 tracks.*current request targets 6 tracks/s,
     'spacing-track repair failure reports the minimum feasible target');
+
+$Plugins::BetterCallBliss::JobOptions::algorithm = 'adaptive';
+$Plugins::BetterCallBliss::JobOptions::addition_purpose = 'fixed_gap_count';
+$Plugins::BetterCallBliss::JobOptions::extension_mode = 'fixed_gap_count';
+$Plugins::BetterCallBliss::JobOptions::tracks_per_gap = '2';
+my $fixed_gap = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+    7, 'preview-json-types-fixed-gap', '/tmp/semantic-evidence.json', {},
+);
+my $fixed_gap_json = JSON::XS->new->canonical->encode($fixed_gap->{request});
+my $fixed_gap_request = JSON::XS->new->decode($fixed_gap_json);
+is($fixed_gap_request->{extension}->{mode}, 'fixed_gap_count',
+    'fixed-gap workflow uses the native fixed-gap request mode');
+is($fixed_gap_request->{extension}->{tracks_per_gap}, 2,
+    'fixed-gap bridge count is serialized as an integer');
+is($fixed_gap_request->{extension}->{gap_context_mode}, 'frozen',
+    'fixed-gap workflow carries the selected adaptive context policy');
+is($fixed_gap->{options}->{additional_track_count}, 2,
+    'fixed-gap workflow derives B times S minus one additions');
+is($fixed_gap->{options}->{target_track_count}, 4,
+    'fixed-gap workflow derives the final playlist size');
 
 $Plugins::BetterCallBliss::JobOptions::algorithm = 'adaptive';
 $Plugins::BetterCallBliss::JobOptions::addition_purpose = '';

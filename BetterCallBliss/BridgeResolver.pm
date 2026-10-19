@@ -80,8 +80,10 @@ sub resolve_bridge_preview {
     my $destination_route = $mode eq 'destination_route';
     my $exact_like = $mode eq 'exact_count'
         || $mode eq 'target_count'
-        || $mode eq 'double_count';
-    my $preview_mode = ($exact_like || $destination_route) ? 'exact_count' : $mode;
+        || $mode eq 'double_count'
+        || $mode eq 'fixed_gap_count';
+    my $preview_mode = $mode eq 'fixed_gap_count' ? 'fixed_gap_count'
+        : ($exact_like || $destination_route) ? 'exact_count' : $mode;
     my $artifact_ordering = $destination_route ? 'queue_destination' : $ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong source-order policy')
         unless ($artifact->{ordering_policy} || '') eq $artifact_ordering;
@@ -276,6 +278,21 @@ sub resolve_bridge_preview {
             if scalar(grep { !$decision_for{$_->[0]} } @bridges);
         _fail('BRIDGE_ARTIFACT_INVALID', 'Selected-transition decisions do not match final bridges')
             unless scalar(keys %decision_for) == @bridges;
+    }
+    if ($mode eq 'fixed_gap_count') {
+        my $per_gap = 0 + ($job->{options}->{tracks_per_gap} || 0);
+        my $gap_count = @selected - 1;
+        my %selected_by_gap;
+        for my $decision (@{$preview->{decisions} || []}) {
+            next unless ($decision->{reason} || '') eq 'selected';
+            $selected_by_gap{0 + ($decision->{original_position} || 0)}++;
+        }
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-gap preview changed the derived addition count')
+            unless @bridges == $per_gap * $gap_count;
+        for my $position (1 .. $gap_count) {
+            _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position does not contain exactly $per_gap bridges")
+                unless ($selected_by_gap{$position} || 0) == $per_gap;
+        }
     }
     my %extension_selection_for = map {
         (($_->{candidate_id} || '') => $_)

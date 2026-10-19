@@ -24,6 +24,8 @@ sub _action_name {
     return 'Reorder playlist' if $mode eq 'none';
     return 'Improve difficult transitions' if $mode eq 'automatic';
     return 'Add spacing tracks as needed' if $purpose eq 'satisfy_constraints';
+    return 'Fill every gap with N bridge tracks'
+        if $mode eq 'fixed_gap_count';
     return 'Extend playlist';
 }
 
@@ -184,6 +186,13 @@ sub start_info_lines {
         ) : $mode;
     push @lines, "Job mode: $ordering; additional tracks: $addition.";
     push @lines, sprintf(
+        'Fixed-gap target: exactly %d bridge tracks in each of %d source gaps; %d additions in total.',
+        0 + ($options->{tracks_per_gap} || 0),
+        (0 + ($job->{track_count} || 0)) - 1,
+        (0 + ($options->{tracks_per_gap} || 0))
+            * ((0 + ($job->{track_count} || 0)) - 1),
+    ) if $mode eq 'fixed_gap_count';
+    push @lines, sprintf(
         'Spacing target: start at %d total tracks and grow only if needed, up to %d additions.',
         0 + ($options->{target_track_count} || 0),
         0 + ($options->{max_added_tracks} || 0),
@@ -225,7 +234,8 @@ sub start_info_lines {
         ($options->{gap_context_mode} || 'rolling') eq 'frozen'
             ? 'freeze weights once per original source gap'
             : 'follow the evolving route and recalculate weights after additions',
-    ) if $mode eq 'automatic' && ($options->{algorithm} || '') eq 'adaptive';
+    ) if ($mode eq 'automatic' || $mode eq 'fixed_gap_count')
+        && ($options->{algorithm} || '') eq 'adaptive';
     if (ref($job->{candidate_inventory}) eq 'HASH') {
         push @lines, sprintf(
             'Candidate library: %s; %d local LMS-matched Bliss candidates; %d Bliss rows outside the selected virtual library; %d non-LMS rows excluded; cache %s.',

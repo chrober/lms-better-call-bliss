@@ -186,7 +186,7 @@ sub _form_from_params {
         learned_percent artist_window artist_repeat_mode album_window track_window restart_count
         variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
-        gap_context_mode last_played_horizon_days library_age_horizon_days
+        gap_context_mode tracks_per_gap last_played_horizon_days library_age_horizon_days
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback candidate_library_id
         preview_job_id
@@ -299,6 +299,9 @@ sub _job_mode_label {
         if $purpose eq 'satisfy_constraints';
     return 'Extend playlist' if $purpose eq 'extend_playlist'
         || ($options->{extension_mode} || '') eq 'fixed_source_extension';
+    return 'Fill every gap with N bridge tracks'
+        if $purpose eq 'fixed_gap_count'
+            || ($options->{extension_mode} || '') eq 'fixed_gap_count';
     return 'Strict gap bridge placement';
 }
 
@@ -577,6 +580,12 @@ sub _result_view {
                 if $job->{options}->{extension_mode} eq 'exact_count'
                     || $job->{options}->{extension_mode} eq 'target_count'
                     || $job->{options}->{extension_mode} eq 'double_count';
+            $view->{fixed_gap_count_extension} = 1
+                if $job->{options}->{extension_mode} eq 'fixed_gap_count';
+            $view->{tracks_per_gap} =
+                0 + ($job->{options}->{tracks_per_gap} || 0);
+            $view->{source_gap_count} =
+                (0 + ($job->{track_count} || 0)) - 1;
             $view->{target_count_extension} = 1
                 if $job->{options}->{extension_mode} eq 'target_count';
             $view->{double_count_extension} = 1

@@ -85,6 +85,7 @@ sub defaults {
             $plugin_prefs->get('route_exact_intermediates') // 2,
         ),
         additional_track_count => 1,
+        tracks_per_gap => 1,
         bridge_target_track_count => 25,
         target_track_count => 25,
         output_mode => 'create_copy',
@@ -140,7 +141,8 @@ sub normalize {
             || $options->{extension_mode} eq 'target_count'
             || $options->{extension_mode} eq 'double_count'
             || $options->{extension_mode} eq 'destination_route'
-            || $options->{extension_mode} eq 'fixed_source_extension';
+            || $options->{extension_mode} eq 'fixed_source_extension'
+            || $options->{extension_mode} eq 'fixed_gap_count';
 
     my $destination_route = $options->{extension_mode} eq 'destination_route';
     my $addition_purpose_provided = defined $input->{addition_purpose};
@@ -152,11 +154,15 @@ sub normalize {
         $options->{addition_purpose} = 'extend_playlist';
         $options->{addition_amount_mode} = 'target_count';
     }
-    die "Additional tracks must be No additions, Improve difficult transitions, Add spacing tracks as needed, or Extend playlist"
+    die "Additional tracks must be No additions, Improve difficult transitions, Add spacing tracks as needed, Extend playlist, or Fill every gap with N bridge tracks"
         unless $options->{addition_purpose} eq 'none'
             || $options->{addition_purpose} eq 'automatic'
             || $options->{addition_purpose} eq 'satisfy_constraints'
-            || $options->{addition_purpose} eq 'extend_playlist';
+            || $options->{addition_purpose} eq 'extend_playlist'
+            || $options->{addition_purpose} eq 'fixed_gap_count';
+    die "Fill every gap with N bridge tracks requires a compatible bliss-playlist-optimizer"
+        if $options->{addition_purpose} eq 'fixed_gap_count'
+            && !$capability->{fixed_gap_count_available};
     $options->{addition_amount_mode} = $input->{addition_amount_mode}
         if defined $input->{addition_amount_mode};
     die "Chosen amount must be Add exactly N tracks, Reach final track count, or Double track count"
@@ -175,12 +181,16 @@ sub normalize {
             $legacy_fixed_source_extension_purpose = 1;
             $options->{addition_purpose} = 'extend_playlist';
             $options->{addition_amount_mode} = 'target_count';
+        } elsif ($options->{extension_mode} eq 'fixed_gap_count') {
+            $options->{addition_purpose} = 'fixed_gap_count';
         } else {
             $options->{addition_purpose} = 'none';
         }
     }
     if ($addition_purpose_provided && !$destination_route) {
-        if ($options->{addition_purpose} eq 'extend_playlist'
+        if ($options->{addition_purpose} eq 'fixed_gap_count') {
+            $options->{extension_mode} = 'fixed_gap_count';
+        } elsif ($options->{addition_purpose} eq 'extend_playlist'
             || $options->{addition_purpose} eq 'satisfy_constraints') {
             $options->{extension_mode} = 'fixed_source_extension';
         } elsif ($options->{addition_purpose} eq 'automatic'
@@ -281,6 +291,9 @@ sub normalize {
     $options->{additional_track_count} = _integer(
         $input, 'additional_track_count', 1, 100,
         $options->{additional_track_count},
+    );
+    $options->{tracks_per_gap} = _integer(
+        $input, 'tracks_per_gap', 1, 8, $options->{tracks_per_gap},
     );
     $options->{bridge_target_track_count} = _integer(
         $input, 'bridge_target_track_count', 3, 500,

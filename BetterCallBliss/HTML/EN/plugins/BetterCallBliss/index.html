@@ -303,7 +303,11 @@
           <option value="automatic"[% IF bettercallbliss_form.addition_purpose == 'automatic' %] selected[% END %]>Improve difficult transitions when useful</option>
           <option value="satisfy_constraints"[% IF bettercallbliss_form.addition_purpose == 'satisfy_constraints' %] selected[% END %]>Add spacing tracks as needed</option>
           <option value="extend_playlist"[% IF bettercallbliss_form.addition_purpose == 'extend_playlist' %] selected[% END %]>Extend playlist</option>
-          <option disabled>Advanced: strict gap bridge placement [Planned]</option>
+          [% IF bettercallbliss_capability.fixed_gap_count_available %]
+            <option value="fixed_gap_count"[% IF bettercallbliss_form.addition_purpose == 'fixed_gap_count' %] selected[% END %]>Fill every gap with N bridge tracks</option>
+          [% ELSE %]
+            <option disabled>Fill every gap with N bridge tracks [Requires compatible optimizer]</option>
+          [% END %]
           <option disabled>Reach a target duration [Planned]</option>
           <option disabled>Double playlist duration [Planned]</option>
         </select>
@@ -346,14 +350,6 @@
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.trigger_percent %]</span>
     </div>
-    <div class="bea-row" id="gap_context_mode_row">
-      <label for="gap_context_mode">Adaptive gap context</label>
-      <select name="gap_context_mode" id="gap_context_mode">
-        <option value="rolling"[% IF bettercallbliss_form.gap_context_mode == 'rolling' %] selected[% END %]>Follow the evolving route</option>
-        <option value="frozen"[% IF bettercallbliss_form.gap_context_mode == 'frozen' %] selected[% END %]>Freeze weights per source gap</option>
-      </select>
-    </div>
-    <p class="bea-note" id="gap_context_mode_note"></p>
     <p class="bea-note">This is a rank on the job's frozen source-playlist distance scale, not percentage similarity. Lower values are stricter and make more source transitions eligible for bridge search. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.</p>
   </fieldset>
 
@@ -367,6 +363,29 @@
     </div>
     <p class="bea-note" id="extend_playlist_note"></p>
     <div id="exact_count_warning" class="bea-warning bea-hidden"></div>
+  </fieldset>
+
+  <fieldset class="bea-section bea-mode-section" id="fixed_gap_count_fields">
+    <legend>Bridges in every gap</legend>
+    <p class="bea-note">Every neighboring pair of source tracks receives exactly the chosen number of unique bridge tracks. Better Call Bliss plans all gaps together so repeat windows and track membership remain valid across the complete playlist.</p>
+    <div class="bea-row">
+      <label for="tracks_per_gap">Bridge tracks per gap</label>
+      <input type="number" min="1" max="8" class="stdedit sliderInput_1_8_1" name="tracks_per_gap" id="tracks_per_gap" value="[% bettercallbliss_form.tracks_per_gap %]" required>
+      <span class="bea-disabled" id="fixed_gap_count_summary">Choose a source to see the derived total.</span>
+    </div>
+    <div id="fixed_gap_count_warning" class="bea-warning bea-hidden"></div>
+  </fieldset>
+
+  <fieldset class="bea-section bea-mode-section" id="gap_context_fields">
+    <legend>Adaptive gap context</legend>
+    <div class="bea-row" id="gap_context_mode_row">
+      <label for="gap_context_mode">Adaptive gap context</label>
+      <select name="gap_context_mode" id="gap_context_mode">
+        <option value="rolling"[% IF bettercallbliss_form.gap_context_mode == 'rolling' %] selected[% END %]>Follow the evolving route</option>
+        <option value="frozen"[% IF bettercallbliss_form.gap_context_mode == 'frozen' %] selected[% END %]>Freeze weights per source gap</option>
+      </select>
+    </div>
+    <p class="bea-note" id="gap_context_mode_note"></p>
   </fieldset>
 
   <fieldset class="bea-section bea-mode-section" id="target_count_fields">
@@ -554,6 +573,7 @@
     var additionAmountNote = document.getElementById('addition_amount_note');
     var algorithm = document.getElementById('algorithm');
     var gapContextMode = document.getElementById('gap_context_mode');
+    var gapContextFields = document.getElementById('gap_context_fields');
     var gapContextModeRow = document.getElementById('gap_context_mode_row');
     var gapContextModeNote = document.getElementById('gap_context_mode_note');
     var automaticFields = document.getElementById('automatic_extension_fields');
@@ -567,6 +587,11 @@
     var exactCount = document.getElementById('additional_track_count');
     var exactLimit = document.getElementById('exact_count_limit');
     var exactWarning = document.getElementById('exact_count_warning');
+    var fixedGapFields = document.getElementById('fixed_gap_count_fields');
+    var fixedGapInputs = fixedGapFields ? fixedGapFields.querySelectorAll('input') : [];
+    var tracksPerGap = document.getElementById('tracks_per_gap');
+    var fixedGapSummary = document.getElementById('fixed_gap_count_summary');
+    var fixedGapWarning = document.getElementById('fixed_gap_count_warning');
     var targetFields = document.getElementById('target_count_fields');
     var targetInputs = targetFields ? targetFields.querySelectorAll('input') : [];
     var bridgeTarget = document.getElementById('bridge_target_track_count');
@@ -887,6 +912,8 @@
       } else if (mode === 'fixed_source_extension') {
         additionPurpose.value = 'extend_playlist';
         additionAmountMode.value = 'target_count';
+      } else if (mode === 'fixed_gap_count') {
+        additionPurpose.value = 'fixed_gap_count';
       } else {
         additionPurpose.value = 'none';
         additionAmountMode.value = 'exact_count';
@@ -928,6 +955,10 @@
           optimize: 'Extend this playlist by the chosen amount. Additions are selected because they fit the complete original source set as a fixed reference; then originals and additions may be reordered together for flow. Use Reach final track count when the source is a short seed list and you want a fuller mix.',
           preserve: 'Extend this playlist by the chosen amount without moving the original tracks. Additions are selected because they fit the complete original source set as a fixed reference, then placed around the ordered anchors. This is not one bridge per gap.'
         },
+        fixed_gap_count: {
+          optimize: 'Optimize the source order first, freeze that source-only order, then insert exactly N bridge tracks into every resulting gap. All gaps are planned together so a strong local choice cannot make a later gap impossible.',
+          preserve: 'Keep the current source order and insert exactly N bridge tracks into every existing gap. All gaps are planned together and the preview fails without a partial result if the exact route cannot satisfy the constraints.'
+        }
       };
       var amountNotes = {
         exact_count: 'Extend-only amount control: add exactly this many tracks to the source snapshot. This is a playlist-length request, not one bridge per existing gap.',
@@ -984,6 +1015,7 @@
         setVisible(candidateLibraryNote, true);
         setVisible(gapContextModeRow, false);
         setVisible(gapContextModeNote, false);
+        setVisible(gapContextFields, false);
         if (gapContextMode) gapContextMode.disabled = true;
         setVisible(learnedPercentRow, algorithm.value === 'adaptive');
         setReadOnlyWithSlider(learnedPercent, !learnedMatrixAvailable);
@@ -996,6 +1028,7 @@
       var automatic = extension.value === 'automatic';
       var spacingOnly = additionPurpose && additionPurpose.value === 'satisfy_constraints';
       var extendPlaylist = additionPurpose && additionPurpose.value === 'extend_playlist';
+      var fixedGapCount = additionPurpose && additionPurpose.value === 'fixed_gap_count';
       var amountMode = additionAmountMode ? additionAmountMode.value : 'exact_count';
       var exact = extendPlaylist && amountMode === 'exact_count';
       var targetCount = extendPlaylist && amountMode === 'target_count';
@@ -1036,6 +1069,11 @@
       var invalidTarget = targetCount && sourceCount > 0
         && (requestedBridgeTarget <= sourceCount || requestedBridgeTarget > maximumTarget);
       var invalidDouble = doubleCount && sourceCount > 0 && (2 * sourceCount > maximumTarget);
+      var requestedPerGap = parseInt(tracksPerGap && tracksPerGap.value || '0', 10);
+      var fixedGapAdditions = requestedPerGap * Math.max(0, sourceCount - 1);
+      var invalidFixedGap = fixedGapCount && sourceCount > 0
+        && (requestedPerGap < 1 || requestedPerGap > 8
+          || sourceCount + fixedGapAdditions > maximumTarget);
 
       if (noneOption) noneOption.disabled = false;
       ordering.disabled = false;
@@ -1082,7 +1120,7 @@
         ? sourceCount + ' source tracks + ' + sourceCount + ' additions = ' + (2 * sourceCount) + ' tracks.'
           + (invalidDouble ? ' This exceeds the current 500-track target limit.' : '')
         : 'Choose a source to see the calculated final size.';
-      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble;
+      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble || invalidFixedGap;
 
       for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
         setVisible(guidanceProviderFields[providerIndex], additions);
@@ -1109,9 +1147,20 @@
       setVisible(targetFields, targetCount);
       setInputsReadOnly(targetInputs, !targetCount);
       setVisible(doubleFields, doubleCount);
+      setVisible(fixedGapFields, fixedGapCount);
+      setInputsReadOnly(fixedGapInputs, !fixedGapCount);
+      if (fixedGapSummary) fixedGapSummary.textContent = sourceCount > 0
+        ? (sourceCount - 1) + ' source gaps x ' + requestedPerGap + ' bridges = '
+          + fixedGapAdditions + ' additions; final size ' + (sourceCount + fixedGapAdditions) + '.'
+        : 'Choose a source to see the derived total.';
+      if (fixedGapWarning) fixedGapWarning.textContent = invalidFixedGap
+        ? 'Choose between 1 and 8 bridges per gap and keep the derived final size at or below 500 tracks.'
+        : '';
+      setVisible(fixedGapWarning, invalidFixedGap);
       setVisible(triggerPercentRow, automatic);
-      setVisible(gapContextModeRow, automatic && algorithm.value === 'adaptive');
-      setVisible(gapContextModeNote, automatic && algorithm.value === 'adaptive');
+      setVisible(gapContextModeRow, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
+      setVisible(gapContextModeNote, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
+      setVisible(gapContextFields, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
       if (gapContextMode) gapContextMode.disabled = false;
       updateGapContextNote();
       setVisible(learnedPercentRow, algorithm.value === 'adaptive');
@@ -1128,6 +1177,7 @@
     algorithm.addEventListener('change', synchronizeControls);
     if (maximumAdditions) maximumAdditions.addEventListener('input', synchronizeControls);
     if (exactCount) exactCount.addEventListener('input', synchronizeControls);
+    if (tracksPerGap) tracksPerGap.addEventListener('input', synchronizeControls);
     if (bridgeTarget) bridgeTarget.addEventListener('input', synchronizeControls);
     if (gapContextMode) gapContextMode.addEventListener('change', synchronizeControls);
     if (routeLengthPolicy) routeLengthPolicy.addEventListener('change', synchronizeControls);
@@ -1250,6 +1300,9 @@
             <li>Artist and album repeat windows are satisfied by the final route.</li>
           </ul>
         </details>
+      [% ELSIF bettercallbliss_job.fixed_gap_count_extension %]
+        <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Filled each of [% bettercallbliss_job.source_gap_count %] source gaps with exactly [% bettercallbliss_job.tracks_per_gap %] bridge track[% IF bettercallbliss_job.tracks_per_gap != 1 %]s[% END %]; added [% bettercallbliss_job.requested_added_tracks %] tracks in total; final size [% bettercallbliss_job.final_track_count %].</div>
+        <p class="bea-note">The route was planned globally rather than one gap at a time. No opening or closing tracks were added, and an infeasible job would fail without a partial playlist.</p>
       [% ELSIF bettercallbliss_job.exact_count_extension %]
         [% IF bettercallbliss_job.double_count_extension %]
           <div class="bea-ok">Completed using [% bettercallbliss_job.selected_strategy | html %]. Doubled [% bettercallbliss_job.source_track_count %] source tracks to [% bettercallbliss_job.final_track_count %] tracks by adding [% bettercallbliss_job.requested_added_tracks %]. Base-route objective [% bettercallbliss_job.base_route_objective %].</div>

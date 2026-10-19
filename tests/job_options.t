@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 67;
+use Test::More tests => 73;
 
 BEGIN {
     package TestPrefs;
@@ -47,6 +47,7 @@ my $capability = {
     album_window => '10',
     track_window => '100',
     statistics_enabled => 1,
+    fixed_gap_count_available => 1,
     playcount_influence => '-30',
     discovered_guidance_providers => [{
         provider_id => 'lastfm',
@@ -282,6 +283,44 @@ my $frozen_gap = Plugins::BetterCallBliss::JobOptions::normalize(
 );
 is($frozen_gap->{gap_context_mode}, 'frozen',
     'frozen per-gap adaptive context is accepted per job');
+
+my $fixed_gap = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {
+        addition_purpose => 'fixed_gap_count',
+        tracks_per_gap => '3',
+    },
+);
+is($fixed_gap->{addition_purpose}, 'fixed_gap_count',
+    'fixed-gap purpose is retained');
+is($fixed_gap->{extension_mode}, 'fixed_gap_count',
+    'fixed-gap purpose selects the native fixed-gap mode');
+is($fixed_gap->{tracks_per_gap}, 3,
+    'fixed-gap bridge count is normalized to an integer');
+
+for my $invalid (0, 9) {
+    my $accepted = eval {
+        Plugins::BetterCallBliss::JobOptions::normalize(
+            $capability,
+            {
+                addition_purpose => 'fixed_gap_count',
+                tracks_per_gap => "$invalid",
+            },
+        );
+        1;
+    };
+    ok(!$accepted, "fixed-gap count $invalid is rejected");
+}
+
+my %without_fixed_gap = (%$capability, fixed_gap_count_available => 0);
+my $unsupported = eval {
+    Plugins::BetterCallBliss::JobOptions::normalize(
+        \%without_fixed_gap,
+        {addition_purpose => 'fixed_gap_count', tracks_per_gap => '1'},
+    );
+    1;
+};
+ok(!$unsupported, 'fixed-gap mode requires an optimizer capability');
 
 my $extend = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,
