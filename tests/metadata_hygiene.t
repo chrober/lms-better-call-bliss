@@ -93,7 +93,7 @@ like(
 );
 like(
     $extras,
-    qr/setVisible\(gapContextModeRow, automatic && algorithm\.value === 'adaptive'\).*?gapContextMode\.disabled = false/s,
+    qr/setVisible\(gapContextModeRow, \(automatic \|\| fixedGapCount\) && algorithm\.value === 'adaptive'\).*?gapContextMode\.disabled = false/s,
     'gap-context control is shown only when relevant but remains submitted so its value survives strategy changes',
 );
 like(
@@ -169,8 +169,8 @@ like(
 );
 like(
     $extras,
-    qr/setVisible\(triggerPercentRow, automatic\).*?setVisible\(gapContextModeRow, automatic && algorithm\.value === 'adaptive'\)/s,
-    'spacing-track repair hides gap-trigger controls that belong only to difficult-transition repair',
+    qr/setVisible\(triggerPercentRow, automatic\).*?setVisible\(gapContextModeRow, \(automatic \|\| fixedGapCount\) && algorithm\.value === 'adaptive'\)/s,
+    'gap-trigger controls remain automatic-only while adaptive context also supports fixed-gap planning',
 );
 my $plugin_module = slurp(File::Spec->catfile($plugin, 'Plugin.pm'));
 my $defaults_module = slurp(File::Spec->catfile($plugin, 'Defaults.pm'));
