@@ -40,8 +40,10 @@ sub preview {
             {kind => 'original', track_id => 'c'},
         ],
         decisions => [
-            map({+{reason => 'selected', original_position => 1}}, 1 .. 2),
-            map({+{reason => 'selected', original_position => 2}}, 1 .. 2),
+            {reason => 'selected', original_position => 1},
+            {reason => 'selected', original_position => 1},
+            {reason => 'selected', original_position => 2},
+            {reason => 'selected', original_position => 2},
         ],
     };
 }
