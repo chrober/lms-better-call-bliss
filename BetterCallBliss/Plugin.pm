@@ -275,6 +275,9 @@ sub _job_mode_label {
         if $purpose eq 'satisfy_constraints';
     return 'Extend playlist' if $purpose eq 'extend_playlist'
         || ($options->{extension_mode} || '') eq 'fixed_source_extension';
+    return 'Fill every gap with N bridge tracks'
+        if $purpose eq 'fixed_gap_count'
+            || ($options->{extension_mode} || '') eq 'fixed_gap_count';
     return 'Strict gap bridge placement';
 }
 

@@ -23,6 +23,58 @@ sub _same_values {
     return 1;
 }
 
+sub _validate_fixed_gap_layout {
+    my ($preview, $selected, $per_gap) = @_;
+    my $gap_count = @$selected - 1;
+    my $expected_additions = $per_gap * $gap_count;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-gap preview changed its source count')
+        unless ($preview->{source_track_count} || 0) == @$selected;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-gap preview changed its source-gap count')
+        unless ($preview->{source_gap_count} || 0) == $gap_count;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-gap preview changed its per-gap count')
+        unless ($preview->{tracks_per_gap} || 0) == $per_gap;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-gap preview changed the derived addition count')
+        unless ($preview->{requested_added_tracks} || 0) == $expected_additions
+            && ($preview->{added_track_count} || 0) == $expected_additions;
+    for my $proof (qw(
+        feasible no_endpoint_tracks original_subsequence_preserved
+        unique_membership every_gap_exact_count repeat_windows_satisfied
+    )) {
+        _fail('BRIDGE_ARTIFACT_INVALID', "The fixed-gap preview failed its $proof proof")
+            unless $preview->{$proof};
+    }
+
+    my $entries = $preview->{final_sequence} || [];
+    my $cursor = 0;
+    for my $source_index (0 .. $#$selected) {
+        my $entry = $entries->[$cursor] || {};
+        _fail('BRIDGE_ARTIFACT_INVALID', 'A source anchor is missing from its fixed-gap position')
+            unless ($entry->{kind} || '') eq 'original'
+                && ($entry->{track_id} || '') eq $selected->[$source_index];
+        last if $source_index == $#$selected;
+        for (1 .. $per_gap) {
+            $cursor++;
+            my $bridge = $entries->[$cursor] || {};
+            _fail('BRIDGE_ARTIFACT_INVALID', "Source gap " . ($source_index + 1)
+                    . " does not contain exactly $per_gap bridges")
+                unless ($bridge->{kind} || '') eq 'bridge';
+        }
+        $cursor++;
+    }
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-gap preview contains an opening, closing, or misplaced track')
+        unless $cursor == $#$entries;
+
+    my %selected_by_gap;
+    for my $decision (@{$preview->{decisions} || []}) {
+        next unless ($decision->{reason} || '') eq 'selected';
+        $selected_by_gap{0 + ($decision->{original_position} || 0)}++;
+    }
+    for my $position (1 .. $gap_count) {
+        _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position does not contain exactly $per_gap bridge decisions")
+            unless ($selected_by_gap{$position} || 0) == $per_gap;
+    }
+}
+
 sub _track_for_database_file {
     my ($roots, $database_file) = @_;
     my ($path, $cue_track) = ($database_file, 0);
@@ -281,18 +333,9 @@ sub resolve_bridge_preview {
     }
     if ($mode eq 'fixed_gap_count') {
         my $per_gap = 0 + ($job->{options}->{tracks_per_gap} || 0);
-        my $gap_count = @selected - 1;
-        my %selected_by_gap;
-        for my $decision (@{$preview->{decisions} || []}) {
-            next unless ($decision->{reason} || '') eq 'selected';
-            $selected_by_gap{0 + ($decision->{original_position} || 0)}++;
-        }
+        _validate_fixed_gap_layout($preview, \@selected, $per_gap);
         _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-gap preview changed the derived addition count')
-            unless @bridges == $per_gap * $gap_count;
-        for my $position (1 .. $gap_count) {
-            _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position does not contain exactly $per_gap bridges")
-                unless ($selected_by_gap{$position} || 0) == $per_gap;
-        }
+            unless @bridges == $per_gap * (@selected - 1);
     }
     my %extension_selection_for = map {
         (($_->{candidate_id} || '') => $_)
