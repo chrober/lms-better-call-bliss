@@ -32,6 +32,7 @@ provider-specific limitations are documented in the provider's own repository.
 - Adds bridges automatically only where a transition is difficult.
 - Adds spacing tracks as needed when repeated source artists or albums need more room to satisfy the selected repeat windows.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
+- Fills every internal source gap with an exact per-gap bridge count, planned globally across the complete playlist.
 - Preserves the existing order when requested and inserts tracks only in gaps.
 - Uses dynamic Adaptive Bliss similarity, optional learned preferences, per-job variation, and optional guidance from enabled provider plugins.
 - Uses a saved playlist, a full player queue, only upcoming queue tracks, or the current-plus-upcoming queue segment as input.
@@ -198,8 +199,8 @@ flowchart LR
 Better Call Bliss is under active development. The current implementation
 supports Adaptive scoring, optimized or preserved source order, saved-playlist
 and player-queue sources, playlist and queue outputs, reorder-only, automatic
-additions, exact-count additions, target/double track-count presets, and seed
-extension. Disabled controls
+additions, fixed per-gap bridge counts, exact-count additions, target/double
+track-count presets, and fixed-source extension. Disabled controls
 in the UI describe planned capabilities rather than silently pretending to
 work.
 

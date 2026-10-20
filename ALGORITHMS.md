@@ -12,6 +12,7 @@ This document describes the current implementation. **Working** means the choice
 | Keep a carefully chosen order but soften awkward changes | [Preserve source order](#preserve-source-order-and-fill-gaps) + Additional tracks: Improve difficult transitions | Original songs stay in their current order; helpful songs may be inserted between them. |
 | Make repeat-window rules possible for a short or repetitive source | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + Additional tracks: [Add spacing tracks as needed](#add-spacing-tracks-as-needed) | Better Call Bliss adds suitable local songs, within the configured budget, so repeated artists or albums have room to satisfy the selected look-back windows. |
 | Make an existing playlist exactly N songs longer | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + Additional tracks: [Extend playlist](#extend-playlist) | Treat the current playlist as the thing to extend. Better Call Bliss adds the requested number of suitable local songs and then orders or places them according to the chosen source-order policy. |
+| Put the same number of bridges into every existing gap | Optimize or [Preserve](#preserve-source-order-and-fill-gaps) + Additional tracks: [Fill every gap with N bridge tracks](#fill-every-gap-with-n-bridge-tracks) | Better Call Bliss fixes the source-track order, then plans exactly N bridges between every neighboring source pair. All gaps are solved together so track reuse and repeat windows remain valid across the complete playlist. |
 | Turn a tiny seed list into a full mix with the same general character | Additional tracks: [Extend playlist](#extend-playlist) + Chosen amount: Reach a final track count | Treat the input as examples of a desired sound. Better Call Bliss selects enough related local songs to reach the target size, then arranges originals and additions together. |
 | Get a different but still sensible result | [Increase Variation](#variation-and-reproducibility) | Search explores different good alternatives without relaxing its quality and repeat rules. |
 | Let related recordings and artists support addition choices | [Set Last.fm guidance](#lastfm-track-and-artist-guidance) | Similar-track and similar-artist support is pursued within a widened Bliss-qualified pool; Bliss remains the acoustic quality check. |
@@ -20,10 +21,10 @@ This document describes the current implementation. **Working** means the choice
 | Visit a chosen track or album, then return to the existing queue | [Bliss me there... and back again!](#bliss-me-there) from the same context menu | The current song is the start, the selected track or complete album is the required destination, and the first upcoming song is the rejoin point. The complete excursion is inserted before the otherwise unchanged upcoming queue. |
 | Append a fluent path from the queue end to a chosen track or album | [Bliss me there... when we're through!](#bliss-me-there) from the same context menu | The queue end and selected destination stay fixed. Better Call Bliss builds the route in the background and appends its intermediates and destination when every check succeeds. |
 
-Three job choices work together:
+Four job choices work together:
 
 1. **Source-track order** decides whether songs already in the playlist may move.
-2. **Additional tracks** asks for the listener-facing purpose: no additions, improve difficult transitions, add spacing tracks as needed, or extend the source by a chosen amount. **Extend playlist** opens the second **Chosen amount** selector for exact additions, final track count, or double track count; **Reach a final track count** is also the replacement for the former separate target-size workflow.
+2. **Additional tracks** asks for the listener-facing purpose: no additions, improve difficult transitions, add spacing tracks as needed, extend the source by a chosen amount, or fill every source gap with a fixed number of bridges. **Extend playlist** opens the second **Chosen amount** selector for exact additions, final track count, or double track count; **Reach a final track count** is also the replacement for the former separate target-size workflow.
 3. **Mixing strategy** supplies the similarity measurement used by those playlist operations. Better Call Bliss reuses this capability from BlissMixer; it is not the main feature being selected here.
 4. **Candidate library** limits every newly generated track to the selected Lyrion virtual library. Existing source, history, destination, waypoint, and queue-rejoin tracks remain valid anchors even when they are outside that view.
 
@@ -40,7 +41,7 @@ Three job choices work together:
 | [Add spacing tracks as needed](#add-spacing-tracks-as-needed) | Working | The source contains repeated artists or albums too close together for the selected repeat windows. | Starts with the smallest repeat-safe final size and grows only if that size cannot be routed within the selected repeat windows. It does not add optional bridges for merely awkward transitions. |
 | [Extend playlist](#extend-playlist) | Working | The playlist is already the thing you want, just too short. | Adds a chosen amount of local songs. Addition similarity is based on the complete original source set, not on one gap at a time; originals remain required members. |
 | [Bliss me there...](#bliss-me-there) | Working | You want to arrive at one selected local track or play a complete album after the queue, directly after the current song, or as an excursion before the existing upcoming queue. | The three sibling actions append, replace upcoming tracks, or insert a route through the destination and back to the first upcoming track. Albums remain intact in disc and track order. All actions use locked anchors and validate them before changing the queue. |
-| Add N bridge tracks per source transition | Planned | You want a strict "put the same number of bridges inside every existing gap" placement rule. | Future preset; different from Extend playlist because the number of additions is tied to each source transition. |
+| [Fill every gap with N bridge tracks](#fill-every-gap-with-n-bridge-tracks) | Working | You want a strict "put the same number of bridges inside every existing gap" placement rule. | The source order is fixed first, then one global plan inserts exactly N bridges per internal source gap. No opening or closing tracks are added. |
 | Duration target | Planned | You want "make this about 90 minutes" rather than "make this 30 tracks." | Future target unit; track-count targets already work through Extend playlist. |
 
 ### Similarity and evidence inputs
@@ -91,6 +92,7 @@ Variation cannot override it.
 | --- | --- | --- | --- |
 | [Reorder only](#reorder-existing-tracks-only) | Only source tracks not yet placed in the proposed route | Up to N already placed source tracks immediately before the next position | There are no additions. Each placed source track becomes part of the context for the next position. |
 | [Improve difficult transitions](#add-automatically) | Eligible local analyzed library tracks | The local gap `A -> B`, including up to N preceding route tracks ending in A; the complete original source set supplies the frozen percentile scale and Last.fm artist fallback, not the primary acoustic target | The per-job Adaptive gap-context choice decides whether inserted tracks may recalculate feature weights inside a gap. A selected bridge still affects the context used for later gaps, but it does not turn the workflow into whole-playlist growth. |
+| [Fill every gap with N bridge tracks](#fill-every-gap-with-n-bridge-tracks) | Eligible local analyzed library tracks, shortlisted separately for every fixed source gap | The endpoints and preceding route context of each gap; the optimizer retains several exact-N path alternatives and combines them globally | No. Earlier selected paths affect later context, uniqueness, and repeat availability, but do not recruit candidates outside the later gap's frozen shortlist. |
 | [Add spacing tracks as needed](#add-spacing-tracks-as-needed) | Eligible local analyzed library tracks | Every original source track together as one fixed musical reference | No. Selected spacing tracks do not become new relevance seeds. They are used only to make the final route satisfy repeat windows and flow constraints. |
 | [Extend playlist](#extend-playlist) | Eligible local analyzed library tracks | Every original source track together as one fixed musical reference | No. All additions are selected against the unchanged original source set. They influence only the later placement or route search. |
 | [Bliss me there...](#bliss-me-there) | Eligible local analyzed library tracks | For a one-way route, the chosen start and destination entrance drive one acoustic shortlist. For **and back again**, the current song, destination exit, and first upcoming rejoin define a second gap-specific shortlist. A track destination has the same entrance and exit; an album uses its first and last tracks while every track between them remains fixed. For Adaptive, a bounded analyzed queue prefix ending at the start constructs the frozen per-run matrix; this context and all boundary anchors can also provide Last.fm and repeat evidence. | No. Intermediates are chosen from the frozen shortlist for their boundary. An outward path is carried into return-boundary evaluation, so uniqueness and repeat windows apply across the complete excursion, but chosen tracks do not recruit new candidates. |
@@ -337,14 +339,14 @@ For example, A -> B -> C can become A -> X -> B -> Y -> C, but never B -> A -> C
 
 #### Options for Preserve source order
 
-Preserve is an ordering policy used with **Improve difficult transitions**, **Add spacing tracks as needed**, or **Extend playlist**. The chosen addition workflow supplies its remaining controls.
+Preserve is an ordering policy used with **Improve difficult transitions**, **Add spacing tracks as needed**, **Extend playlist**, or **Fill every gap with N bridge tracks**. The chosen addition workflow supplies its remaining controls.
 
-Preserve does not define a candidate-discovery method by itself. It fixes the source route that another addition strategy sees. **Improve difficult transitions** therefore discovers candidates separately for the fixed gaps `A -> B`, `B -> C`, and so on. **Add spacing tracks as needed** and **Extend playlist** discover complete added membership against all original source tracks together, then place only that already selected membership around the anchors.
+Preserve does not define a candidate-discovery method by itself. It fixes the source route that another addition strategy sees. **Improve difficult transitions** and **Fill every gap with N bridge tracks** discover candidates separately for the fixed gaps `A -> B`, `B -> C`, and so on; the fixed-count workflow then chooses the gap paths together in one global plan. **Add spacing tracks as needed** and **Extend playlist** discover complete added membership against all original source tracks together, then place only that already selected membership around the anchors.
 
 ~~~mermaid
 flowchart LR
     S["Source playlist<br/>A -> B -> C"] --> P["Preserve A, B and C<br/>as ordered anchors"]
-    G["Improve:<br/>examine local gaps"] --> P
+    G["Improve / fixed gap count:<br/>examine local gaps"] --> P
     S2["Spacing/Extend:<br/>use all originals together"] --> P
     P --> R["Possible result<br/>A -> +X -> B -> +Y -> C"]
 ~~~
@@ -506,6 +508,45 @@ flowchart LR
     G --> R["Possible result<br/>W -> X -> A -> +C -> B"]
 ~~~
 
+### Fill every gap with N bridge tracks
+
+Use this when the structure itself is the goal: every neighboring pair of source tracks must receive the same number of bridges. With source `A -> B -> C` and two bridges per gap, the only acceptable shape is `A -> +X1 -> +X2 -> B -> +Y1 -> +Y2 -> C`. Unlike **Improve difficult transitions**, an already smooth gap is still filled. Unlike **Extend playlist**, the requested amount is derived from the number of source gaps rather than from a final playlist-size target.  
+
+If **Optimize source order** is selected, Better Call Bliss first chooses the source-only order and then freezes it. With **Preserve source order**, the submitted order is frozen immediately. For `S` source tracks and `N` bridges per gap, the job adds exactly `N x (S - 1)` tracks. It never adds an intro before the first source or an outro after the last source.  
+
+#### Options for Fill every gap
+
+| Option | Range / default | Effect in this workflow |
+| --- | --- | --- |
+| Source-track order | Optimize by default | Either chooses the source-only order first or keeps the submitted source order. The global gap planner never moves those frozen anchors. |
+| Bridge tracks per gap | 1-8 | Requires exactly this many additions in every internal source gap. The derived final size may not exceed 500 tracks. |
+| Musical context window | 1-50; inherited from BlissMixer | Supplies preceding route context while each anchored path is scored. |
+| Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Controls the learned share for Adaptive contexts with at least two tracks; the normal variance/Static fallbacks remain available. |
+| Adaptive gap context | Follow the evolving route (default), or Freeze weights per source gap | Rolling recalculates Adaptive weights as bridges enter the route. Frozen derives one matrix at the original left anchor and reuses it throughout that source gap. |
+| Artist and album look-back | 0-10,000; inherited | Constrain the complete route. A fast preflight rejects source repeats that cannot possibly be spaced far enough by the configured fixed count. |
+| Variation | 0-100%; default 25 | Selects reproducibly among complete routes close to the best global worst-transition and transition-sum result. |
+| Generation seed | 0-4,294,967,295; generated by default | Reproduces the selected global route when all other inputs are unchanged. |
+| Similar-track influence | 0-100%; Better Call Bliss default 25 | Supports candidates related to the current gap endpoints without bypassing Bliss or hard constraints. |
+| Similar-artist strategy and level | Target share or Bounded influence; 0-100%; default 25 | Applies the enabled Last.fm provider's artist support inside each gap's Bliss-qualified candidate pool. |
+| Output | Choose after preview | Preview is read-only. Accepting it can create a verified copy, overwrite the source with confirmation, or send the result to a player queue. |
+
+#### How all gaps are planned together
+
+Each source gap receives its own frozen candidate shortlist. The shared A-to-B path engine returns several valid exact-N alternatives for that gap. A global beam planner processes the gaps in source order while carrying the already used tracks, repeat state, evolving context, transition sum, and worst transition forward. It can therefore discard the locally best route for an early gap when that choice would reuse a track or make a later gap impossible. Candidate batches and independent path work use deterministic parallel evaluation where applicable.  
+
+The route is all-or-nothing. Before expensive search starts, the optimizer rejects an impossible fixed-spacing repeat conflict or an insufficient unique candidate inventory. During search it publishes the current gap plus evaluated and retained state counts. If any gap leaves no complete state, no partial playlist is returned. A successful artifact proves exact per-gap counts, unchanged source subsequence, unique membership, no endpoint additions, and final repeat-window compliance; Better Call Bliss verifies those proofs again before it offers any output action.  
+
+~~~mermaid
+flowchart LR
+    S["Frozen source route<br/>A -> B -> C"] --> G1["Gap 1 alternatives<br/>A -> +X... -> B"]
+    S --> G2["Gap 2 alternatives<br/>B -> +Y... -> C"]
+    C["Eligible local tracks<br/>per-gap shortlists"] --> G1
+    C --> G2
+    G1 --> P["Global beam planner<br/>shared uniqueness, repeats and context"]
+    G2 --> P
+    P --> R["Exact result<br/>A -> +X... -> B -> +Y... -> C"]
+~~~
+
 ### Add spacing tracks as needed
 
 Use this when the source playlist is musically right but too short or too repetitive to obey the selected artist and album look-back windows. For example, four tracks by one artist cannot satisfy an artist look-back of five inside a tiny playlist unless enough other tracks are inserted between them.
@@ -547,7 +588,7 @@ The **Chosen amount** selector has three count-based variants:
 
 These variants use exactly the same candidate-discovery and ranking process. They differ only in the number of additions requested.
 
-Duration-based targets remain future work. Advanced strict gap-bridge placement is a separate planned mode, because it answers a different question: "put bridge routes inside source gaps" rather than "make this playlist larger."
+Duration-based targets remain future work. **Fill every gap with N bridge tracks** is the separate available strict-placement mode, because it answers a different question: "put an exact bridge route inside every source gap" rather than "make this playlist larger."
 
 #### Options for Extend playlist
 
@@ -785,6 +826,7 @@ A successful result proves the invariants relevant to its workflow:
 - every addition belongs to the frozen current LMS-local inventory;
 - membership is unique;
 - requested exact or target counts are satisfied; and
+- fixed-gap jobs contain exactly the requested bridge count in every internal source gap and no endpoint additions;
 - artist, album, and track-repeat rules hold.
 
 Preview writes no playlist. Only the separate user-confirmed action invokes Lyrion's playlist serializer and verifies the saved file and catalog order.
