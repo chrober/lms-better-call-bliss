@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.22.8
+
+- Add **Fill every gap with N bridge tracks** as a preserved-order playlist
+  workflow with an exact per-gap count.
+- Plan all source gaps together so repeat windows, unique membership, and
+  candidate reuse constraints apply to the complete generated playlist.
+- Report live per-gap search progress and fail before expensive artifact or
+  candidate preparation when fixed spacing cannot satisfy source-track repeat
+  constraints.
+- Bundle optimizer 0.2.5.
+
 ## 0.22.7
 
 - Bundle optimizer 0.2.4 so destination routes enforce artist, album, and
