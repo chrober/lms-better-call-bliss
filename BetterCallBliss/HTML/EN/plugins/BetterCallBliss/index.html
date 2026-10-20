@@ -914,6 +914,8 @@
         additionAmountMode.value = 'target_count';
       } else if (mode === 'fixed_gap_count') {
         additionPurpose.value = 'fixed_gap_count';
+      } else if (mode === 'repeat_window_repair') {
+        additionPurpose.value = 'satisfy_constraints';
       } else {
         additionPurpose.value = 'none';
         additionAmountMode.value = 'exact_count';
@@ -922,9 +924,10 @@
 
     function syncExtensionModeFromAdditionControls() {
       if (!additionPurpose || !additionAmountMode) return extension.value;
-      if (additionPurpose.value === 'extend_playlist'
-          || additionPurpose.value === 'satisfy_constraints') {
+      if (additionPurpose.value === 'extend_playlist') {
         extension.value = 'fixed_source_extension';
+      } else if (additionPurpose.value === 'satisfy_constraints') {
+        extension.value = 'repeat_window_repair';
       } else {
         extension.value = additionPurpose.value;
       }
@@ -1280,14 +1283,21 @@
           [% IF bettercallbliss_job.route_adaptive_model_comparison %]<br><span class="bea-note">Acoustic model check: the configured adaptive context ([% bettercallbliss_job.route_adaptive_algorithm | html %]) rated the direct jump at the [% bettercallbliss_job.route_adaptive_direct_percent %]th percentile and governed this route[% IF bettercallbliss_job.route_has_static_model %]; current static BlissMixer weights rated it at the [% bettercallbliss_job.route_static_direct_percent %]th percentile[% END %][% IF bettercallbliss_job.route_has_learned_model %]; the learned matrix alone rated it at the [% bettercallbliss_job.route_learned_direct_percent %]th percentile[% END %].</span>[% ELSIF bettercallbliss_job.route_model_comparison %]<br><span class="bea-note">Acoustic safety check: static BlissMixer weights rated the direct jump at the [% bettercallbliss_job.route_static_direct_percent %]th percentile; the learned matrix rated it at the [% bettercallbliss_job.route_learned_direct_percent %]th percentile. The [% bettercallbliss_job.route_selected_model_label %] view governed this route.</span>[% END %]
         </div>
       [% END %]
-      [% IF bettercallbliss_job.fixed_source_extension %]
-        [% IF bettercallbliss_job.constraint_spacing_extension %]
-          <div class="bea-ok">Added [% bettercallbliss_job.added_track_count %] spacing track[% IF bettercallbliss_job.added_track_count != 1 %]s[% END %] so [% bettercallbliss_job.relevance_reference_track_count %] source tracks can satisfy the selected repeat windows in a [% bettercallbliss_job.target_track_count %]-track route.</div>
-          <p class="bea-note">This path adds tracks for repeat-window feasibility. It does not add optional bridges merely because a transition sounds awkward.</p>
-        [% ELSE %]
-          <div class="bea-ok">Extended [% bettercallbliss_job.relevance_reference_track_count %] source tracks to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
-          <p class="bea-note">The original source set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
-        [% END %]
+      [% IF bettercallbliss_job.constraint_spacing_extension %]
+        <div class="bea-ok">Added the minimum feasible [% bettercallbliss_job.added_track_count %] spacing track[% IF bettercallbliss_job.added_track_count != 1 %]s[% END %] within the configured budget of [% bettercallbliss_job.max_added_tracks %]. The complete [% bettercallbliss_job.final_track_count %]-track route satisfies the selected repeat windows.</div>
+        <p class="bea-note">Source tracks stayed in their selected order. Additions were placed only inside source gaps; no opening or closing track was added.</p>
+        <details>
+          <summary>Verified acceptance checks</summary>
+          <ul>
+            <li>The globally smallest feasible number of spacing tracks was selected.</li>
+            <li>Every source track was retained exactly once and in the selected order.</li>
+            <li>Every addition resolved from the current local LMS candidate inventory.</li>
+            <li>Membership is unique and the final route satisfies the selected repeat windows.</li>
+          </ul>
+        </details>
+      [% ELSIF bettercallbliss_job.fixed_source_extension %]
+        <div class="bea-ok">Extended [% bettercallbliss_job.relevance_reference_track_count %] source tracks to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
+        <p class="bea-note">The original source set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
         <p class="bea-note"><b>Fixed-source relevance:</b> best [% bettercallbliss_job.relevance_minimum %], average [% bettercallbliss_job.relevance_mean %], furthest [% bettercallbliss_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
         <p class="bea-note"><b>Final route flow:</b> [% bettercallbliss_job.selected_strategy | html %]; transition sum [% bettercallbliss_job.route_transition_sum %], worst transition [% bettercallbliss_job.route_worst_transition %], objective [% bettercallbliss_job.route_objective %], arc error [% bettercallbliss_job.route_arc_error %].</p>
         <details>

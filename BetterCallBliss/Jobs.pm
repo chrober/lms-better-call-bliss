@@ -186,13 +186,10 @@ sub _extension_detail {
         . (0 + ($options->{target_track_count} || 0))
         . ' total tracks.'
         if $mode eq 'double_count';
-    return 'Additional tracks: add spacing tracks dynamically; start at '
-        . (0 + ($options->{target_track_count} || 0))
-        . ' total tracks and grow only if needed, up to '
+    return 'Additional tracks: add the minimum repeat-window spacing needed, up to '
         . (0 + ($options->{max_added_tracks} || 0))
         . ' additions.'
-        if $mode eq 'fixed_source_extension'
-            && ($options->{constraint_spacing} || 0);
+        if $mode eq 'repeat_window_repair';
     return 'Additional tracks: extend the playlist against the complete source '
         . 'set as the fixed reference.'
         if $mode eq 'fixed_source_extension';
@@ -968,9 +965,9 @@ sub _start_preview_from_built {
                 . " derived_additions=$effective->{additional_track_count}"
                 . " gap_context=$effective->{gap_context_mode}"
             : '')
-        . (($effective->{extension_mode} eq 'fixed_source_extension'
-                && ($effective->{constraint_spacing} || 0))
-            ? " dynamic_spacing_max_added=$effective->{max_added_tracks}"
+        . ($effective->{extension_mode} eq 'repeat_window_repair'
+            ? " repeat_window_repair_max_added=$effective->{max_added_tracks}"
+                . " gap_context=$effective->{gap_context_mode}"
             : '')
         . " output_mode=$effective->{output_mode}"
         . ($effective->{output_mode} eq 'player_queue'
@@ -1727,6 +1724,12 @@ sub _poll {
                     0 + ($route->{worst_transition} || 0),
                     0 + ($route->{objective} || 0),
                 );
+            }
+            if ($job->{options}->{extension_mode} eq 'repeat_window_repair') {
+                my $preview = $job->{artifact}->{selection_preview} || {};
+                $fixed_source_extension_summary = ' repeat_window_proofs=passed'
+                    . ' minimum_total=' . (0 + ($preview->{added_track_count} || 0))
+                    . ' budget=' . (0 + ($preview->{max_added_tracks} || 0));
             }
             $log->info(
                 "job=$job_id stage=Completed elapsed_ms=$elapsed_ms"

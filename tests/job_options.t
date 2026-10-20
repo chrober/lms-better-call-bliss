@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 73;
+use Test::More tests => 74;
 
 BEGIN {
     package TestPrefs;
@@ -48,6 +48,7 @@ my $capability = {
     track_window => '100',
     statistics_enabled => 1,
     fixed_gap_count_available => 1,
+    repeat_window_repair_available => 1,
     playcount_influence => '-30',
     discovered_guidance_providers => [{
         provider_id => 'lastfm',
@@ -342,10 +343,21 @@ my $spacing = Plugins::BetterCallBliss::JobOptions::normalize(
         max_added_tracks => '42',
     },
 );
-is($spacing->{extension_mode}, 'fixed_source_extension',
-    'spacing-track repair uses the native fixed-source extension');
+is($spacing->{extension_mode}, 'repeat_window_repair',
+    'spacing-track repair uses the native minimum-total repair mode');
 is($spacing->{max_added_tracks}, 42,
     'spacing-track repair retains the maximum-additions budget');
+
+my %without_repair = (%$capability, repeat_window_repair_available => 0);
+my $unsupported_repair = eval {
+    Plugins::BetterCallBliss::JobOptions::normalize(
+        \%without_repair,
+        {addition_purpose => 'satisfy_constraints', max_added_tracks => '42'},
+    );
+    1;
+};
+ok(!$unsupported_repair,
+    'spacing-track repair requires an optimizer capability');
 
 my $queue = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

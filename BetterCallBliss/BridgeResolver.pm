@@ -75,6 +75,60 @@ sub _validate_fixed_gap_layout {
     }
 }
 
+sub _validate_repeat_window_repair_layout {
+    my ($preview, $selected, $requested_budget) = @_;
+    my $gap_count = @$selected - 1;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair changed its source count')
+        unless ($preview->{source_track_count} || 0) == @$selected;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair changed its source-gap count')
+        unless ($preview->{source_gap_count} || 0) == $gap_count;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair changed its additions budget')
+        unless ($preview->{max_added_tracks} || 0) == $requested_budget;
+    for my $proof (qw(
+        feasible no_endpoint_tracks original_subsequence_preserved
+        unique_membership repeat_windows_satisfied minimum_total_selected
+    )) {
+        _fail('BRIDGE_ARTIFACT_INVALID', "The repeat-window repair failed its $proof proof")
+            unless $preview->{$proof};
+    }
+
+    my $entries = $preview->{final_sequence} || [];
+    my $cursor = 0;
+    my %actual_by_gap;
+    for my $source_index (0 .. $#$selected) {
+        my $entry = $entries->[$cursor] || {};
+        _fail('BRIDGE_ARTIFACT_INVALID', 'A source anchor is missing from its repeat-window repair position')
+            unless ($entry->{kind} || '') eq 'original'
+                && ($entry->{track_id} || '') eq $selected->[$source_index];
+        last if $source_index == $#$selected;
+        $cursor++;
+        while ($cursor <= $#$entries
+            && (($entries->[$cursor] || {})->{kind} || '') eq 'bridge') {
+            $actual_by_gap{$source_index + 1}++;
+            $cursor++;
+        }
+    }
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair contains an opening, closing, or misplaced track')
+        unless $cursor == $#$entries;
+
+    my %selected_by_gap;
+    for my $decision (@{$preview->{decisions} || []}) {
+        next unless ($decision->{reason} || '') eq 'selected';
+        $selected_by_gap{0 + ($decision->{original_position} || 0)}++;
+    }
+    for my $position (1 .. $gap_count) {
+        _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position bridge decisions do not match its final layout")
+            unless ($selected_by_gap{$position} || 0)
+                == ($actual_by_gap{$position} || 0);
+    }
+    my $actual_total = 0;
+    $actual_total += $_ for values %actual_by_gap;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair changed its reported addition count')
+        unless ($preview->{added_track_count} || 0) == $actual_total;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair exceeded its additions budget')
+        if $actual_total > $requested_budget;
+}
+
 sub _track_for_database_file {
     my ($roots, $database_file) = @_;
     my ($path, $cue_track) = ($database_file, 0);
@@ -141,7 +195,8 @@ sub resolve_bridge_preview {
         unless ($artifact->{ordering_policy} || '') eq $artifact_ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong addition mode')
         unless (($mode eq 'automatic' || $exact_like || $destination_route
-                || $mode eq 'fixed_source_extension')
+                || $mode eq 'fixed_source_extension'
+                || $mode eq 'repeat_window_repair')
             && ($preview->{mode} || '') eq $preview_mode);
     _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview changed the requested count')
         if $exact_like
@@ -296,6 +351,9 @@ sub resolve_bridge_preview {
                     == $job->{options}->{additional_track_count};
         _fail('BRIDGE_ARTIFACT_INVALID', 'The exact-count preview returned a partial result')
             unless @bridges == $job->{options}->{additional_track_count};
+    } elsif ($mode eq 'repeat_window_repair') {
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair exceeded its additions budget')
+            if @bridges > ($job->{options}->{max_added_tracks} || 0);
     } else {
         my $expected = $job->{options}->{target_track_count} - @source;
         if ($dynamic_spacing_extension) {
@@ -336,6 +394,13 @@ sub resolve_bridge_preview {
         _validate_fixed_gap_layout($preview, \@selected, $per_gap);
         _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-gap preview changed the derived addition count')
             unless @bridges == $per_gap * (@selected - 1);
+    }
+    if ($mode eq 'repeat_window_repair') {
+        _validate_repeat_window_repair_layout(
+            $preview,
+            \@selected,
+            0 + ($job->{options}->{max_added_tracks} || 0),
+        );
     }
     my %extension_selection_for = map {
         (($_->{candidate_id} || '') => $_)

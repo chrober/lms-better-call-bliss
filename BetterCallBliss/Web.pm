@@ -596,8 +596,7 @@ sub _result_view {
                 if $job->{options}->{extension_mode} eq 'fixed_source_extension'
                     && ($job->{options}->{addition_purpose} || '') ne 'satisfy_constraints';
             $view->{constraint_spacing_extension} = 1
-                if $job->{options}->{extension_mode} eq 'fixed_source_extension'
-                    && ($job->{options}->{addition_purpose} || '') eq 'satisfy_constraints';
+                if $job->{options}->{extension_mode} eq 'repeat_window_repair';
             $view->{base_route_objective} = sprintf(
                 '%.3f', $artifact->{selected_route_objective},
             );

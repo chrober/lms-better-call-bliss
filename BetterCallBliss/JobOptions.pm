@@ -134,7 +134,7 @@ sub normalize {
 
     $options->{extension_mode} = $input->{extension_mode}
         if defined $input->{extension_mode};
-    die "Extension mode must be Reorder only, Improve difficult transitions, Add exactly N tracks, Reach final track count, Double track count, destination route, or the internal fixed-source extension mode"
+    die "Extension mode must be Reorder only, Improve difficult transitions, Add exactly N tracks, Reach final track count, Double track count, destination route, or a supported internal extension mode"
         unless $options->{extension_mode} eq 'none'
             || $options->{extension_mode} eq 'automatic'
             || $options->{extension_mode} eq 'exact_count'
@@ -142,6 +142,7 @@ sub normalize {
             || $options->{extension_mode} eq 'double_count'
             || $options->{extension_mode} eq 'destination_route'
             || $options->{extension_mode} eq 'fixed_source_extension'
+            || $options->{extension_mode} eq 'repeat_window_repair'
             || $options->{extension_mode} eq 'fixed_gap_count';
 
     my $destination_route = $options->{extension_mode} eq 'destination_route';
@@ -163,6 +164,9 @@ sub normalize {
     die "Fill every gap with N bridge tracks requires a compatible bliss-playlist-optimizer"
         if $options->{addition_purpose} eq 'fixed_gap_count'
             && !$capability->{fixed_gap_count_available};
+    die "Add spacing tracks as needed requires a compatible bliss-playlist-optimizer"
+        if $options->{addition_purpose} eq 'satisfy_constraints'
+            && !$capability->{repeat_window_repair_available};
     $options->{addition_amount_mode} = $input->{addition_amount_mode}
         if defined $input->{addition_amount_mode};
     die "Chosen amount must be Add exactly N tracks, Reach final track count, or Double track count"
@@ -183,6 +187,8 @@ sub normalize {
             $options->{addition_amount_mode} = 'target_count';
         } elsif ($options->{extension_mode} eq 'fixed_gap_count') {
             $options->{addition_purpose} = 'fixed_gap_count';
+        } elsif ($options->{extension_mode} eq 'repeat_window_repair') {
+            $options->{addition_purpose} = 'satisfy_constraints';
         } else {
             $options->{addition_purpose} = 'none';
         }
@@ -190,9 +196,10 @@ sub normalize {
     if ($addition_purpose_provided && !$destination_route) {
         if ($options->{addition_purpose} eq 'fixed_gap_count') {
             $options->{extension_mode} = 'fixed_gap_count';
-        } elsif ($options->{addition_purpose} eq 'extend_playlist'
-            || $options->{addition_purpose} eq 'satisfy_constraints') {
+        } elsif ($options->{addition_purpose} eq 'extend_playlist') {
             $options->{extension_mode} = 'fixed_source_extension';
+        } elsif ($options->{addition_purpose} eq 'satisfy_constraints') {
+            $options->{extension_mode} = 'repeat_window_repair';
         } elsif ($options->{addition_purpose} eq 'automatic'
             || $options->{addition_purpose} eq 'none') {
             $options->{extension_mode} = $options->{addition_purpose};

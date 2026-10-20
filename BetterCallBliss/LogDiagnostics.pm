@@ -193,8 +193,7 @@ sub start_info_lines {
             * ((0 + ($job->{track_count} || 0)) - 1),
     ) if $mode eq 'fixed_gap_count';
     push @lines, sprintf(
-        'Spacing target: start at %d total tracks and grow only if needed, up to %d additions.',
-        0 + ($options->{target_track_count} || 0),
+        'Spacing target: choose the minimum feasible total, up to %d additions.',
         0 + ($options->{max_added_tracks} || 0),
     ) if ($options->{addition_purpose} || '') eq 'satisfy_constraints';
     if ($mode eq 'none') {
@@ -430,6 +429,12 @@ sub result_info_lines {
         0 + ($search->{maximum_additions_found} || 0),
         0 + ($search->{structural_upper_bound} || 0),
     ) if %$search;
+    my $preview = $artifact->{selection_preview} || {};
+    push @lines, sprintf(
+        'Repeat-window repair: minimum feasible total %d additions within budget %d; source order, internal-gap placement, uniqueness, and repeat-window proofs passed.',
+        0 + ($preview->{added_track_count} || 0),
+        0 + ($preview->{max_added_tracks} || 0),
+    ) if ($preview->{mode} || '') eq 'repeat_window_repair';
     push @lines, _provider_lines($job)
         if ($job->{options} || {})->{lastfm_enabled}
             || ($job->{options} || {})->{playcount_influence}

@@ -35,6 +35,7 @@ BEGIN {
             ready => 1,
             problems => [],
             fixed_gap_count_available => 1,
+            repeat_window_repair_available => 1,
             database => '/tmp/bliss-2026.db',
             matrix_available => 1,
             matrix => '/tmp/learned_matrix.json',
@@ -548,10 +549,10 @@ $Plugins::BetterCallBliss::JobOptions::max_added_tracks = '20';
 my $static = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
     7, 'preview-json-types-spacing', '/tmp/semantic-evidence.json', {},
 );
-is($static->{request}->{extension}->{mode}, 'fixed_source_extension',
-    'spacing-track repair uses fixed-source extension');
-is($static->{request}->{extension}->{target_track_count}, 12,
-    'spacing-track repair starts from the minimum repeat-safe target');
+is($static->{request}->{extension}->{mode}, 'repeat_window_repair',
+    'spacing-track repair uses the native minimum-total repair mode');
+ok(!exists $static->{request}->{extension}->{target_track_count},
+    'spacing-track repair does not turn the lower-bound preflight into a target');
 is($static->{request}->{extension}->{max_added_tracks}, 20,
     'spacing-track repair gives the optimizer the maximum additions budget for dynamic growth');
 ok(!exists $static->{request}->{extension}->{gap_context_mode},

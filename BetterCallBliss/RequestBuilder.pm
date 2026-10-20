@@ -590,8 +590,7 @@ sub _build_sequence_request {
             )
             . chr(10)
             if $needed > $options->{max_added_tracks};
-        $options->{extension_mode} = 'fixed_source_extension';
-        $options->{target_track_count} = $minimum_repeat_safe_target;
+        $options->{extension_mode} = 'repeat_window_repair';
         $options->{constraint_spacing} = 1;
     }
     if (($options->{addition_purpose} || '') eq 'extend_playlist') {
@@ -826,6 +825,13 @@ sub _build_sequence_request {
                 tracks_per_gap => _json_integer(
                     $options->{tracks_per_gap}, 'tracks_per_gap',
                 ),
+            }
+            : $options->{extension_mode} eq 'repeat_window_repair' ? {
+                mode => 'repeat_window_repair',
+                %adaptive_gap_context,
+                candidate_limit => _json_integer(16),
+                shortlist_limit => _json_integer(256),
+                max_added_tracks => _json_integer($options->{max_added_tracks}),
             }
             : $exact_like_extension ? {
                 mode => 'exact_count',
