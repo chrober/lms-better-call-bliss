@@ -197,7 +197,8 @@ sub start_info_lines {
             * ((0 + ($job->{track_count} || 0)) - 1),
     ) if $mode eq 'fixed_gap_count';
     push @lines, sprintf(
-        'Spacing target: choose the minimum feasible total, up to %d additions.',
+        'Spacing target: start at %d total tracks and grow only if needed, up to %d additions.',
+        0 + ($options->{target_track_count} || 0),
         0 + ($options->{max_added_tracks} || 0),
     ) if ($options->{addition_purpose} || '') eq 'satisfy_constraints';
     if ($mode eq 'none') {

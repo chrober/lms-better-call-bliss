@@ -551,6 +551,8 @@ my $static = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
 );
 is($static->{request}->{extension}->{mode}, 'repeat_window_repair',
     'spacing-track repair uses the native minimum-total repair mode');
+is($static->{options}->{target_track_count}, 12,
+    'spacing diagnostics retain the preflight lower-bound start target');
 ok(!exists $static->{request}->{extension}->{target_track_count},
     'spacing-track repair does not turn the lower-bound preflight into a target');
 is($static->{request}->{extension}->{max_added_tracks}, 20,

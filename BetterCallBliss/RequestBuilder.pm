@@ -630,6 +630,7 @@ sub _build_sequence_request {
             )
             . chr(10)
             if $needed > $options->{max_added_tracks};
+        $options->{target_track_count} = $source_count + $needed;
         $options->{extension_mode} = 'repeat_window_repair';
         $options->{constraint_spacing} = 1;
     }

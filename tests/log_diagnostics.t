@@ -333,6 +333,7 @@ my $repeat_repair_start = join "\n",
             extension_mode => 'repeat_window_repair',
             addition_purpose => 'satisfy_constraints',
             ordering_policy => 'optimize_order',
+            target_track_count => 5,
             max_added_tracks => 12,
         },
     })};
@@ -343,7 +344,7 @@ like(
 );
 like(
     $repeat_repair_start,
-    qr/Spacing target: choose the minimum feasible total, up to 12 additions\./,
+    qr/Spacing target: start at 5 total tracks and grow only if needed, up to 12 additions\./,
     'existing spacing-target log body is retained',
 );
 

@@ -42,10 +42,13 @@ sub preview {
         ],
         decisions => [
             {reason => 'selected', original_position => 2,
+                left_track_id => 'b', right_track_id => 'c', route_position => 2,
                 selected_bridge => {candidate_id => 'x1'}},
             {reason => 'selected', original_position => 2,
+                left_track_id => 'b', right_track_id => 'c', route_position => 3,
                 selected_bridge => {candidate_id => 'x2'}},
             {reason => 'selected', original_position => 3,
+                left_track_id => 'c', right_track_id => 'd', route_position => 5,
                 selected_bridge => {candidate_id => 'y1'}},
         ],
     };
@@ -95,6 +98,24 @@ ok(!eval {
     );
     1;
 }, 'each selected bridge identity must belong to its physical source gap');
+
+my $wrong_anchors = preview();
+$wrong_anchors->{decisions}->[0]->{left_track_id} = 'a';
+ok(!eval {
+    Plugins::BetterCallBliss::BridgeResolver::_validate_repeat_window_repair_layout(
+        $wrong_anchors, [qw(a b c d)], 5,
+    );
+    1;
+}, 'selected decisions must name the physical source-gap anchors');
+
+my $wrong_route_position = preview();
+$wrong_route_position->{decisions}->[1]->{route_position} = 4;
+ok(!eval {
+    Plugins::BetterCallBliss::BridgeResolver::_validate_repeat_window_repair_layout(
+        $wrong_route_position, [qw(a b c d)], 5,
+    );
+    1;
+}, 'selected decisions must name the physical final-route position');
 
 my $failed_proof = preview();
 $failed_proof->{minimum_total_selected} = 0;

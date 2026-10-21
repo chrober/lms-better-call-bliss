@@ -94,7 +94,7 @@ sub _validate_repeat_window_repair_layout {
 
     my $entries = $preview->{final_sequence} || [];
     my $cursor = 0;
-    my (%actual_by_gap, %actual_ids_by_gap);
+    my (%actual_by_gap, %actual_ids_by_gap, %actual_positions_by_gap);
     for my $source_index (0 .. $#$selected) {
         my $entry = $entries->[$cursor] || {};
         _fail('BRIDGE_ARTIFACT_INVALID', 'A source anchor is missing from its repeat-window repair position')
@@ -107,22 +107,32 @@ sub _validate_repeat_window_repair_layout {
             $actual_by_gap{$source_index + 1}++;
             push @{$actual_ids_by_gap{$source_index + 1}},
                 $entries->[$cursor]->{track_id} || '';
+            push @{$actual_positions_by_gap{$source_index + 1}}, $cursor;
             $cursor++;
         }
     }
     _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair contains an opening, closing, or misplaced track')
         unless $cursor == $#$entries;
 
-    my (%selected_by_gap, %selected_ids_by_gap);
+    my (%selected_by_gap, %selected_ids_by_gap, %selected_positions_by_gap);
     for my $decision (@{$preview->{decisions} || []}) {
         next unless ($decision->{reason} || '') eq 'selected';
         my $position = 0 + ($decision->{original_position} || 0);
+        _fail('BRIDGE_ARTIFACT_INVALID', "Selected repeat-window repair decision names invalid source gap $position")
+            unless $position >= 1 && $position <= $gap_count;
+        _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position decision does not match its physical anchors")
+            unless ($decision->{left_track_id} || '') eq $selected->[$position - 1]
+                && ($decision->{right_track_id} || '') eq $selected->[$position];
         my $bridge = $decision->{selected_bridge} || {};
         my $track_id = $bridge->{candidate_id} || '';
         _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position has a selected decision without a bridge identity")
             unless length $track_id;
+        my $route_position = $decision->{route_position};
+        _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position decision has no valid final-route position")
+            unless defined $route_position && "$route_position" =~ /\A[0-9]+\z/;
         $selected_by_gap{$position}++;
         push @{$selected_ids_by_gap{$position}}, $track_id;
+        push @{$selected_positions_by_gap{$position}}, 0 + $route_position;
     }
     for my $position (1 .. $gap_count) {
         _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position bridge decisions do not match its final layout")
@@ -132,6 +142,11 @@ sub _validate_repeat_window_repair_layout {
             unless _same_values(
                 $selected_ids_by_gap{$position} || [],
                 $actual_ids_by_gap{$position} || [],
+            );
+        _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position bridge route positions do not match its final layout")
+            unless _same_values(
+                $selected_positions_by_gap{$position} || [],
+                $actual_positions_by_gap{$position} || [],
             );
     }
     my $actual_total = 0;
