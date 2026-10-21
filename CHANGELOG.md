@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.22.9
 
 - Make **Add spacing tracks as needed** use the optimizer's global
   minimum-total repeat-window repair instead of treating a calculated minimum
@@ -14,6 +14,11 @@
 - Use a positional preflight for preserved source order so local repeat
   conflicts are not mistaken for an already feasible playlist; optimized
   source order is frozen before the native repair determines its real minimum.
+- Retain globally valid multi-leg repairs when an isolated bridge detour check
+  would reject one of their selected spacing tracks.
+- Default player-queue output to the currently selected player, replacing its
+  queue and starting playback after the preview is accepted.
+- Bundle optimizer 0.2.6.
 
 ## 0.22.8
 
