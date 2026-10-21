@@ -1922,9 +1922,11 @@ sub _apply_output_options {
         $options->{queue_action} = $action;
         $options->{queue_start_playback} = $job->{route_to_track}
             ? 0
-            : (exists $params->{queue_start_playback}
-                ? ($params->{queue_start_playback} ? 1 : 0)
-                : ($options->{queue_start_playback} ? 1 : 0));
+            : (exists $params->{queue_start_playback_present}
+                ? (exists $params->{queue_start_playback} ? 1 : 0)
+                : exists $params->{queue_start_playback}
+                    ? ($params->{queue_start_playback} ? 1 : 0)
+                    : ($options->{queue_start_playback} ? 1 : 0));
     }
 }
 sub create_copy {

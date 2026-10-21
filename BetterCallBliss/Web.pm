@@ -807,7 +807,10 @@ sub handler {
     $params ||= {};
     Plugins::BetterCallBliss::Jobs::note_web_activity();
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
-    my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
+    my $selected_player_id = $client ? (eval { $client->id } || '') : '';
+    my $defaults = Plugins::BetterCallBliss::JobOptions::defaults(
+        $capability, $selected_player_id,
+    );
     my $candidate_library_was_explicit =
         exists $params->{candidate_library_id} || exists $params->{job_id};
     unless ($candidate_library_was_explicit) {

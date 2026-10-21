@@ -7,7 +7,9 @@ use Plugins::BetterCallBliss::GuidanceProviderPolicy;
 my $plugin_prefs = preferences('plugin.bettercallbliss');
 
 sub defaults {
-    my $capability = shift;
+    my ($capability, $selected_player_id) = @_;
+    $selected_player_id = '' unless defined $selected_player_id;
+    $selected_player_id =~ s/^\s+|\s+$//g;
     my $bridge_budget = $plugin_prefs->get('auto_bridge_budget');
     $bridge_budget = 8 unless defined $bridge_budget;
     my $trigger_percent = $plugin_prefs->get('auto_trigger_percent');
@@ -91,11 +93,11 @@ sub defaults {
         output_mode => 'create_copy',
         output_name => '',
         output_name_generated => 0,
-        queue_player_id => '',
+        queue_player_id => $selected_player_id,
         queue_action => 'replace',
         source_queue_scope => 'full',
         candidate_library_id => '',
-        queue_start_playback => 0,
+        queue_start_playback => 1,
     };
 }
 

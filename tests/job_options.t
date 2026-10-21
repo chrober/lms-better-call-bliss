@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 75;
+use Test::More tests => 78;
 
 BEGIN {
     package TestPrefs;
@@ -198,6 +198,16 @@ is($defaults->{route_search_effort}, 'balanced',
     'destination search effort is read from plugin preferences');
 is($defaults->{candidate_library_id}, '',
     'all tracks is the non-contextual candidate-library default');
+
+my $player_defaults = Plugins::BetterCallBliss::JobOptions::defaults(
+    $capability, 'aa:bb:cc:dd:ee:ff',
+);
+is($player_defaults->{queue_player_id}, 'aa:bb:cc:dd:ee:ff',
+    'the selected LMS player is the initial queue-output player');
+is($player_defaults->{queue_action}, 'replace',
+    'queue output initially replaces the selected player queue');
+is($player_defaults->{queue_start_playback}, 1,
+    'queue output initially starts playback');
 
 my $without_matrix = {%$capability, matrix_available => 0};
 my $unpersonalized = Plugins::BetterCallBliss::JobOptions::normalize(

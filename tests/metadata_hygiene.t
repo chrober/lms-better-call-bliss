@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 162;
+use Test::More tests => 166;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -726,6 +726,26 @@ like(
     $web,
     qr/getPlaylistIdsSQL\('all'.*?JOIN playlist_track.*?GROUP BY tracks\.id/s,
     'Extras obtains playlist sizes in one query instead of one query per playlist',
+);
+like(
+    $web,
+    qr/my \$selected_player_id\s*=.*?\$client->id.*?JobOptions::defaults\(\s*\$capability,\s*\$selected_player_id/s,
+    'Extras supplies the currently selected LMS player to queue-output defaults',
+);
+like(
+    $extras,
+    qr/id="bea-main-form".*?name="queue_player_id"\s+value="\[% bettercallbliss_form\.queue_player_id \| html %\]"/s,
+    'preview submission preserves the selected player for later queue acceptance',
+);
+like(
+    $extras,
+    qr/name="queue_start_playback_present"\s+value="1".*?name="queue_start_playback"/s,
+    'queue acceptance distinguishes an explicitly unchecked start-playback control',
+);
+like(
+    $jobs,
+    qr/exists \$params->\{queue_start_playback_present\}.*?exists \$params->\{queue_start_playback\}/s,
+    'queue acceptance preserves an explicit unchecked start-playback choice',
 );
 like(
     $web,

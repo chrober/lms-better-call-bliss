@@ -194,6 +194,7 @@
 <form id="settingsForm" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post" class="bea-hidden"></form>
 
 <form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post"[% IF bettercallbliss_quick_route && bettercallbliss_job %] class="bea-hidden"[% END %]>
+  <input type="hidden" name="queue_player_id" value="[% bettercallbliss_form.queue_player_id | html %]">
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
     [% IF bettercallbliss_form.source_mode == 'route_to_track' %]
@@ -1478,6 +1479,7 @@
                 </div>
                 <div class="bea-row">
                   <label for="accept_queue_start_playback">Start playback</label>
+                  <input type="hidden" name="queue_start_playback_present" value="1">
                   <input type="checkbox" name="queue_start_playback" id="accept_queue_start_playback" value="1"[% IF bettercallbliss_job.queue_start_playback %] checked[% END %]>
                 </div>
                 <p class="bea-note">Replace queue clears the selected player's queue, adds the generated order, and starts only when this checkbox is checked. Replace upcoming tracks keeps the current queue item and playback state, removes only later queue entries, then appends the accepted result. When source and target are the same player, Better Call Bliss rechecks the live queue at send time and trims already-played preview items when it can still recognize the snapshot. Append adds the result at the end. Play next inserts it after the current song.</p>
