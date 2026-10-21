@@ -951,8 +951,8 @@
           preserve: 'Repair the current order: keep the source tracks where they are and inspect their existing handovers. A bridge is added only if it improves both sides of one specific gap. If the current source set itself cannot satisfy the repeat windows, use Add spacing tracks as needed instead.'
         },
         satisfy_constraints: {
-          optimize: 'Add spacing tracks only when the source set cannot satisfy the selected repeat windows. Better Call Bliss starts with the mathematical minimum repeat-safe size, then lets the optimizer grow only as far as needed within the maximum-additions budget. It routes the complete membership and does not inspect individual gaps for optional transition bridges.',
-          preserve: 'Add spacing tracks only when the current anchored playlist needs more room for the selected repeat windows. Original tracks remain fixed in their current order; the optimizer starts with the minimum repeat-safe size, grows only if needed, and places selected additions around those anchors.'
+          optimize: 'Optimize and freeze the source-only order first, then add the minimum number of spacing tracks needed across its gaps to satisfy the selected repeat windows. All gaps are planned together within the maximum-additions budget.',
+          preserve: 'Keep the current source order, then add the minimum number of spacing tracks needed across its fixed gaps to satisfy the selected repeat windows. All gaps are planned together within the maximum-additions budget.'
         },
         extend_playlist: {
           optimize: 'Extend this playlist by the chosen amount. Additions are selected because they fit the complete original source set as a fixed reference; then originals and additions may be reordered together for flow. Use Reach final track count when the source is a short seed list and you want a fuller mix.',

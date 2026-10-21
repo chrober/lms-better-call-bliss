@@ -765,4 +765,50 @@ is(
     'legacy exact-credit spacing retains display-credit behavior',
 );
 
+my $positional_spacing_source = [
+    {
+        id => 'lms-track-1', artist => 'Repeated Artist', album => 'One',
+        artist_identity_keys => ['artist-mbid:repeated'],
+    },
+    {
+        id => 'lms-track-2', artist => 'Repeated Artist', album => 'Two',
+        artist_identity_keys => ['artist-mbid:repeated'],
+    },
+    map {
+        {
+            id => 'lms-track-' . ($_ + 2), artist => 'Artist ' . $_,
+            album => 'Album ' . $_,
+            artist_identity_keys => ['artist-mbid:artist-' . $_],
+        }
+    } 1 .. 8,
+];
+is(
+    Plugins::BetterCallBliss::RequestBuilder::_minimum_repeat_spacing_additions_for_order(
+        $positional_spacing_source,
+        {
+            artist_window => 5, album_window => 0, track_window => 0,
+            artist_repeat_mode => 'shared_artist',
+        },
+    ),
+    5,
+    'preserved adjacent artist repeats require local spacing even when the total source count is already large',
+);
+
+my $already_safe_source = [
+    $positional_spacing_source->[0],
+    @{$positional_spacing_source}[2 .. 7],
+    $positional_spacing_source->[1],
+];
+is(
+    Plugins::BetterCallBliss::RequestBuilder::_minimum_repeat_spacing_additions_for_order(
+        $already_safe_source,
+        {
+            artist_window => 5, album_window => 0, track_window => 0,
+            artist_repeat_mode => 'shared_artist',
+        },
+    ),
+    0,
+    'preserved source order needs no spacing when repeated artists are already beyond the window',
+);
+
 done_testing();

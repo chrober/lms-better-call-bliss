@@ -41,9 +41,12 @@ sub preview {
             {kind => 'original', track_id => 'd'},
         ],
         decisions => [
-            {reason => 'selected', original_position => 2},
-            {reason => 'selected', original_position => 2},
-            {reason => 'selected', original_position => 3},
+            {reason => 'selected', original_position => 2,
+                selected_bridge => {candidate_id => 'x1'}},
+            {reason => 'selected', original_position => 2,
+                selected_bridge => {candidate_id => 'x2'}},
+            {reason => 'selected', original_position => 3,
+                selected_bridge => {candidate_id => 'y1'}},
         ],
     };
 }
@@ -82,6 +85,16 @@ ok(!eval {
     );
     1;
 }, 'per-gap decisions must match actual bridge placement');
+
+my $swapped_decisions = preview();
+$swapped_decisions->{decisions}->[0]->{selected_bridge}->{candidate_id} = 'y1';
+$swapped_decisions->{decisions}->[2]->{selected_bridge}->{candidate_id} = 'x1';
+ok(!eval {
+    Plugins::BetterCallBliss::BridgeResolver::_validate_repeat_window_repair_layout(
+        $swapped_decisions, [qw(a b c d)], 5,
+    );
+    1;
+}, 'each selected bridge identity must belong to its physical source gap');
 
 my $failed_proof = preview();
 $failed_proof->{minimum_total_selected} = 0;

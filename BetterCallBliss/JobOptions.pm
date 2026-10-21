@@ -164,9 +164,6 @@ sub normalize {
     die "Fill every gap with N bridge tracks requires a compatible bliss-playlist-optimizer"
         if $options->{addition_purpose} eq 'fixed_gap_count'
             && !$capability->{fixed_gap_count_available};
-    die "Add spacing tracks as needed requires a compatible bliss-playlist-optimizer"
-        if $options->{addition_purpose} eq 'satisfy_constraints'
-            && !$capability->{repeat_window_repair_available};
     $options->{addition_amount_mode} = $input->{addition_amount_mode}
         if defined $input->{addition_amount_mode};
     die "Chosen amount must be Add exactly N tracks, Reach final track count, or Double track count"
@@ -205,6 +202,10 @@ sub normalize {
             $options->{extension_mode} = $options->{addition_purpose};
         }
     }
+    die "Add spacing tracks as needed requires a compatible bliss-playlist-optimizer"
+        if ($options->{addition_purpose} eq 'satisfy_constraints'
+                || $options->{extension_mode} eq 'repeat_window_repair')
+            && !$capability->{repeat_window_repair_available};
 
     $options->{algorithm} = $input->{algorithm}
         if defined $input->{algorithm};

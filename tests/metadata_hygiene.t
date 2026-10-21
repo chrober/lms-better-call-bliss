@@ -164,7 +164,7 @@ like(
 );
 like(
     $extras,
-    qr/does not inspect individual gaps for optional transition bridges/,
+    qr/Optimize and freeze the source-only order first.*?minimum number of spacing tracks needed across its gaps.*?All gaps are planned together/s,
     'spacing-track repair copy distinguishes constraint repair from difficult-transition repair',
 );
 like(

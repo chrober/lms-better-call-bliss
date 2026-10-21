@@ -208,6 +208,11 @@ sub _extension_detail {
 
 sub _ordering_detail {
     my $options = shift || {};
+    if (($options->{extension_mode} || '') eq 'repeat_window_repair') {
+        return ($options->{ordering_policy} || '') eq 'preserve_order'
+            ? 'Ordering: preserve and freeze the source order, then repair its gaps.'
+            : 'Ordering: optimize and freeze the source-only order, then repair its gaps.';
+    }
     return ($options->{ordering_policy} || '') eq 'preserve_order'
         ? 'Ordering: preserve the source order; additions are placed around those anchors.'
         : 'Ordering: optimize source and added tracks together.';

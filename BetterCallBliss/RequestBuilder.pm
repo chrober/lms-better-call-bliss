@@ -484,6 +484,43 @@ sub _minimum_repeat_safe_target {
     return $minimum;
 }
 
+sub _minimum_repeat_spacing_additions_for_order {
+    my ($source_tracks, $options) = @_;
+    return 0 unless ref($source_tracks) eq 'ARRAY' && @$source_tracks > 1;
+
+    my @cumulative = (0) x scalar(@$source_tracks);
+    for my $right (1 .. $#$source_tracks) {
+        $cumulative[$right] = $cumulative[$right - 1];
+        for my $left (0 .. $right - 1) {
+            my $window = 0;
+            if (($options->{artist_window} || 0) > 0
+                && Plugins::BetterCallBliss::RepeatIdentity::tracks_repeat_artist(
+                    $source_tracks->[$left], $source_tracks->[$right],
+                    $options->{artist_repeat_mode},
+                )) {
+                $window = 0 + $options->{artist_window};
+            }
+            if (($options->{album_window} || 0) > $window) {
+                my $left_album = _repeat_key($source_tracks->[$left]->{album});
+                my $right_album = _repeat_key($source_tracks->[$right]->{album});
+                $window = 0 + $options->{album_window}
+                    if length($left_album) && $left_album eq $right_album;
+            }
+            if (($options->{track_window} || 0) > $window) {
+                my $left_id = $source_tracks->[$left]->{id} || '';
+                my $right_id = $source_tracks->[$right]->{id} || '';
+                $window = 0 + $options->{track_window}
+                    if length($left_id) && $left_id eq $right_id;
+            }
+            next unless $window > 0;
+            my $required = $cumulative[$left] + $window + 1 - ($right - $left);
+            $cumulative[$right] = $required
+                if $required > $cumulative[$right];
+        }
+    }
+    return $cumulative[-1];
+}
+
 sub _repeat_safe_target_error {
     my ($source_count, $target, $minimum) = @_;
     my $needed = $minimum - $source_count;
@@ -576,17 +613,20 @@ sub _build_sequence_request {
         $options->{target_track_count} = $final_count;
     }
     if (($options->{addition_purpose} || '') eq 'satisfy_constraints') {
+        my $preserve_order = ($options->{ordering_policy} || '') eq 'preserve_order';
         my $minimum_repeat_safe_target = _minimum_repeat_safe_target(
             $source_tracks, $options,
         );
+        my $needed = $preserve_order
+            ? _minimum_repeat_spacing_additions_for_order($source_tracks, $options)
+            : $minimum_repeat_safe_target - $source_count;
         die 'The selected repeat windows are already feasible for this source; no spacing tracks are necessary. Use Reorder only or Improve difficult transitions instead.'
             . chr(10)
-            if $minimum_repeat_safe_target <= $source_count;
-        my $needed = $minimum_repeat_safe_target - $source_count;
+            if $preserve_order && $needed <= 0;
         die _repeat_safe_target_error(
                 $source_count,
                 $source_count + $options->{max_added_tracks},
-                $minimum_repeat_safe_target,
+                $source_count + $needed,
             )
             . chr(10)
             if $needed > $options->{max_added_tracks};

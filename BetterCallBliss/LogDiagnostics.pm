@@ -166,10 +166,14 @@ sub start_info_lines {
             0 + ($options->{variation_percent} || 0),
         ),
     );
-    my $ordering = ($options->{ordering_policy} || '') eq 'preserve_order'
-        ? 'preserve source order and fill gaps'
-        : 'optimize source and added tracks together';
     my $mode = $options->{extension_mode} || 'none';
+    my $ordering = $mode eq 'repeat_window_repair'
+        ? (($options->{ordering_policy} || '') eq 'preserve_order'
+            ? 'preserve and freeze source order, then repair its gaps'
+            : 'optimize and freeze the source-only order, then repair its gaps')
+        : ($options->{ordering_policy} || '') eq 'preserve_order'
+            ? 'preserve source order and fill gaps'
+            : 'optimize source and added tracks together';
     my $addition = $mode eq 'none' ? 'none'
         : $mode eq 'automatic' ? 'improve difficult transitions'
         : ($options->{addition_purpose} || '') eq 'satisfy_constraints'

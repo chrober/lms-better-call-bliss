@@ -324,6 +324,29 @@ like($result, qr/Selected route \(3\):.*Tail Song.*Bridge Song.*Destination Song
     'destination logging omits earlier context and lists only the audible route');
 unlike($result, qr/Context Song/, 'earlier queue context is absent from the audible route');
 
+my $repeat_repair_start = join "\n",
+    @{Plugins::BetterCallBliss::LogDiagnostics::start_info_lines({
+        %$job,
+        route_to_track => 0,
+        options => {
+            %{$job->{options}},
+            extension_mode => 'repeat_window_repair',
+            addition_purpose => 'satisfy_constraints',
+            ordering_policy => 'optimize_order',
+            max_added_tracks => 12,
+        },
+    })};
+like(
+    $repeat_repair_start,
+    qr/Job mode: optimize and freeze the source-only order, then repair its gaps; additional tracks: add spacing tracks as needed\./,
+    'repeat-window repair logging describes the frozen source route rather than joint rerouting',
+);
+like(
+    $repeat_repair_start,
+    qr/Spacing target: choose the minimum feasible total, up to 12 additions\./,
+    'existing spacing-target log body is retained',
+);
+
 my $fixed_source_guidance = {
     %$job,
     options => {%{$job->{options}}, extension_mode => 'fixed_source_extension'},

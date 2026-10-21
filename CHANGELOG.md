@@ -9,8 +9,11 @@
   add none at the beginning or end, and preserve the existing maximum-additions
   control as a hard global ceiling.
 - Validate native per-gap counts, source subsequence, unique membership,
-  endpoint exclusion, and final artist, album, and track repeat proofs before a
-  repaired preview can be accepted.
+  candidate identities per physical gap, endpoint exclusion, and final artist,
+  album, and track repeat proofs before a repaired preview can be accepted.
+- Use a positional preflight for preserved source order so local repeat
+  conflicts are not mistaken for an already feasible playlist; optimized
+  source order is frozen before the native repair determines its real minimum.
 
 ## 0.22.8
 

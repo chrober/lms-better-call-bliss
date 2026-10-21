@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 74;
+use Test::More tests => 75;
 
 BEGIN {
     package TestPrefs;
@@ -358,6 +358,16 @@ my $unsupported_repair = eval {
 };
 ok(!$unsupported_repair,
     'spacing-track repair requires an optimizer capability');
+
+my $unsupported_restored_repair = eval {
+    Plugins::BetterCallBliss::JobOptions::normalize(
+        \%without_repair,
+        {extension_mode => 'repeat_window_repair', max_added_tracks => '42'},
+    );
+    1;
+};
+ok(!$unsupported_restored_repair,
+    'restored native repair mode also requires an optimizer capability');
 
 my $queue = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

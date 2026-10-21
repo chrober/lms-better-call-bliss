@@ -94,7 +94,7 @@ sub _validate_repeat_window_repair_layout {
 
     my $entries = $preview->{final_sequence} || [];
     my $cursor = 0;
-    my %actual_by_gap;
+    my (%actual_by_gap, %actual_ids_by_gap);
     for my $source_index (0 .. $#$selected) {
         my $entry = $entries->[$cursor] || {};
         _fail('BRIDGE_ARTIFACT_INVALID', 'A source anchor is missing from its repeat-window repair position')
@@ -105,21 +105,34 @@ sub _validate_repeat_window_repair_layout {
         while ($cursor <= $#$entries
             && (($entries->[$cursor] || {})->{kind} || '') eq 'bridge') {
             $actual_by_gap{$source_index + 1}++;
+            push @{$actual_ids_by_gap{$source_index + 1}},
+                $entries->[$cursor]->{track_id} || '';
             $cursor++;
         }
     }
     _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair contains an opening, closing, or misplaced track')
         unless $cursor == $#$entries;
 
-    my %selected_by_gap;
+    my (%selected_by_gap, %selected_ids_by_gap);
     for my $decision (@{$preview->{decisions} || []}) {
         next unless ($decision->{reason} || '') eq 'selected';
-        $selected_by_gap{0 + ($decision->{original_position} || 0)}++;
+        my $position = 0 + ($decision->{original_position} || 0);
+        my $bridge = $decision->{selected_bridge} || {};
+        my $track_id = $bridge->{candidate_id} || '';
+        _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position has a selected decision without a bridge identity")
+            unless length $track_id;
+        $selected_by_gap{$position}++;
+        push @{$selected_ids_by_gap{$position}}, $track_id;
     }
     for my $position (1 .. $gap_count) {
         _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position bridge decisions do not match its final layout")
             unless ($selected_by_gap{$position} || 0)
                 == ($actual_by_gap{$position} || 0);
+        _fail('BRIDGE_ARTIFACT_INVALID', "Source gap $position bridge identities do not match its final layout")
+            unless _same_values(
+                $selected_ids_by_gap{$position} || [],
+                $actual_ids_by_gap{$position} || [],
+            );
     }
     my $actual_total = 0;
     $actual_total += $_ for values %actual_by_gap;
