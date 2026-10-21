@@ -88,7 +88,11 @@ tracks, the configured maximum is a global ceiling rather than a target, and
 the planner minimizes the total additions before comparing route quality.
 There are no opening or closing additions. A source that is already repeat-safe
 keeps the explicit no-op response; an impossible budget fails atomically
-without exposing a partial repair.
+without exposing a partial repair. Route-search restarts apply only to the
+preliminary source-only ordering when **Optimize** is selected; the later global
+spacing search has its own bounded search and **Preserve** does not use those
+restarts. Final acceptance validates every adjacent leg and the complete repeat
+proof rather than reapplying the isolated single-bridge detour rule.
 
 Difficult-transition bridge improvements use a deterministic 256-track internal-gap
 shortlist before strict bridge evaluation. This is an implementation-level

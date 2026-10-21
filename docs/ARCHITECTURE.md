@@ -70,9 +70,23 @@ the contextual two-leg Adaptive scorer and all semantic, repeat, membership,
 and acoustic gates. Omitting the limit at the native contract keeps exhaustive
 behavior for parity and diagnosis.
 
-## First writable vertical slice
+The current global gap-planning path supports two proof-carrying policies.
+Fixed-gap mode places exactly the requested count in every internal source gap;
+repeat-window repair permits variable counts and minimizes the complete route's
+total additions under a global ceiling. Both preserve the frozen source
+subsequence, add nothing at either endpoint, coordinate membership and repeat
+state across every gap, and fail without a partial result. When source ordering
+is optimized, `restart_count` applies only while computing the preliminary
+source-only route. The global spacing planner has its own bounded beam and does
+not consume that setting; preserved order bypasses route restarts entirely.
+Repeat-window repair accepts a final route only when every adjacent leg passes
+its configured threshold and the complete route satisfies the repeat proof. It
+does not reuse the isolated one-bridge detour gate that belongs to local
+difficult-transition decisions.
 
-The connected milestone supports **Reorder only**, **Extend automatically**,
+## Historical first writable vertical slice
+
+The first connected milestone supported **Reorder only**, **Extend automatically**,
 and **Add exactly N tracks** through Preview and explicit **Create optimized copy**.
 Both addition modes support optimized source order or immutable preserved
 source order; preserved jobs add only inside existing gaps in this slice.

@@ -557,6 +557,8 @@ Each gap starts with a Bliss-qualified shortlist suited to its two source anchor
 
 The result is chosen lexicographically: it must satisfy all hard constraints; then the smallest total number of additions wins; only then are worst transition, total transition distance, guidance, and Variation considered. The **Maximum additional tracks** value is therefore a ceiling, never a target. With Preserve, the plugin can calculate the exact positional minimum implied by the fixed source anchors before candidate capture. With Optimize, only an order-independent capacity lower bound is checked early; the native optimizer decides the real minimum after it has frozen the optimized source-only route. Neither precheck chooses the added tracks or the final route.
 
+The final repair is accepted as one complete multi-leg route. Every adjacent leg must satisfy the configured transition threshold, and the complete route must satisfy all repeat windows. The optimizer does not reapply the separate single-bridge detour test to one chosen spacing track in isolation; that test belongs to workflows that decide whether one local bridge improves one direct handover.
+
 This workflow does not use **Bridge trigger percentile** and does not add optional bridges merely because one handover sounds awkward. Use **Improve difficult transitions** for that listener intent.
 
 ~~~mermaid
@@ -575,6 +577,7 @@ flowchart LR
 | Option | Range / default | Effect in this workflow |
 | --- | --- | --- |
 | Source-track order | Optimize by default | Optimize computes and freezes a source-only order first. Preserve freezes the input order. Repair then inserts tracks only inside that frozen route's gaps. |
+| Additional route-search attempts | 0-200; inherited | Used only when **Source-track order** is **Optimize**. It explores additional starting routes while computing the preliminary source-only order. It does not widen the later global spacing search and has no effect with **Preserve**. |
 | Maximum additional tracks | 0-100; plugin default | Hard global ceiling for all spacing additions. The optimizer uses fewer whenever a smaller complete repair exists. If even the source-only lower bound exceeds it, the preview fails before the global search. |
 | Musical context window | 1-50; inherited from BlissMixer | Controls contextual scoring of candidate paths in each gap. Earlier chosen additions can affect later gap context. |
 | Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Learned share for contexts with at least two tracks. |
