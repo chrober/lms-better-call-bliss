@@ -12,7 +12,7 @@ additions, and per-leg governing plus secondary acoustic-model measurements.
 Under Cautious automatic routing every distinct available acoustic view constrains
 selection; under Normal the secondary views remain diagnostic.
 
-The connected saved-playlist path selects a real saved playlist and starts a native Preview using the selected addition purpose: no additions, difficult-transition improvements, **Add spacing tracks as needed**, **Extend playlist** (exact additions, final track count, or double count), or **Fill every gap with N bridge tracks**. Difficult-transition improvements use each local gap as their similarity base. Extend playlist selects new members against the complete original source set as a fixed reference, so **Reach a final track count** also covers the former seed-list growth workflow. Fixed-gap mode freezes the selected source order and globally plans exactly the requested bridge count in every internal source gap.  
+The connected saved-playlist path selects a real saved playlist and starts a native Preview using the selected addition purpose: no additions, difficult-transition improvements, **Add spacing tracks as needed**, **Extend playlist** (exact additions, final track count, or double count), or **Fill every gap with N bridge tracks**. Difficult-transition improvements use each local gap as their similarity base. Spacing repair freezes the selected source order and globally finds the smallest feasible distribution of additions across its internal gaps. Extend playlist selects new members against the complete original source set as a fixed reference, so **Reach a final track count** also covers the former seed-list growth workflow. Fixed-gap mode freezes the selected source order and globally plans exactly the requested bridge count in every internal source gap.  
 It can route the complete source-plus-addition set freely or preserve the source-track order and place additions around those anchors. The connected player-queue path snapshots the full queue, the current-plus-upcoming segment, or only upcoming tracks and optimizes that immutable snapshot.  
 The connected track and album paths start a saved-default native destination route in the background without opening the Extras page. An album is an immutable destination block: all of its tracks play in canonical disc and track order, while generated bridges are searched only before its first track and, for the round trip, after its last track. An album containing a non-local, non-audio, or unresolved Bliss member is rejected rather than silently truncated. In menu order, **Bliss me there...** starts at the current song, preserves it and playback, and replaces only the later queue entries with the route suffix. **Bliss me there... and back again!** inserts the outward route, complete destination, and return route after the current song, then rejoins the unchanged upcoming queue at its first track. **Bliss me there... when we're through!** starts at the queue end and appends the generated route suffix. The round trip's one configured intermediate-track budget is shared across both route boundaries. Their requests separate repeat-tolerant immutable listening history from unique route anchors.  
 Automatic uses a dedicated fixed-matrix adjacent path search and offers Normal or Cautious direct-transition handling. Static uses the current BlissMixer feature weights. Adaptive builds a per-run matrix from bounded analyzed history ending at the chosen route start, applies BlissMixerLab's configured learned blend when its optional learned matrix is available, and otherwise follows the variance/Static fallback rules. The matrix remains fixed during that route search.
@@ -35,15 +35,18 @@ Credit: lms-blissmixer already provides the **Create bliss mix** action for imme
 The job editor labels ordering as **Source-track order**, asks for the **Additional tracks** purpose separately from **Chosen amount**, and labels Adaptive history as **Musical context window (previous tracks)**. It hides mode-specific sections when they are irrelevant, keeps their values for easy mode switching, uses BlissMixer-style slider-enhanced numeric inputs for bounded ranges where practical, places route-search attempts under Advanced, and rejects guaranteed no-op preserved combinations in both the page and server validator.
 
 **Preserve source order and fill gaps** is connected for difficult-transition
-improvements and Extend playlist. Every original track
-remains an immutable anchor in its input order. Difficult-transition
-improvements inspect source gaps and may add zero. Extend playlist uses the
-same fixed-source-set membership selection as the native extension path, so exact additions,
-final target count, and double-count requests are not capped by the number of
-existing gaps. Preserve order with no possible addition is rejected as a
-guaranteed no-op. The plugin verifies the native ordering-policy echo, exact
-source order, final original subsequence, unique membership, and requested
-count before a result can be persisted.
+improvements, repeat-window spacing repair, Extend playlist, and fixed bridges
+per gap. Every original track remains an immutable anchor in its input order.
+Difficult-transition improvements inspect source gaps and may add zero.
+Spacing repair jointly searches all source gaps and inserts the minimum
+feasible total inside them, subject to the job's maximum-additions budget.
+Extend playlist uses the fixed-source-set membership selection path, so exact
+additions, final target count, and double-count requests are not capped by the
+number of existing gaps. Preserve order with no possible addition is rejected
+as a guaranteed no-op. The plugin verifies the native ordering-policy echo,
+exact source order, final original subsequence, unique membership, requested
+count policy, endpoint exclusion, and repeat proof before a result can be
+persisted.
 
 The package includes a 512x512 transparent monochrome route icon. Its filename
 contains Material's `MTL_icon_timeline` marker, so the Extras renderer selects
@@ -78,6 +81,14 @@ Every addition job first snapshots current local LMS track identities, intersect
 Extend playlist accepts a per-job exact addition count, final track count, or double-count preset. It computes the requested final size and delegates membership selection to the native fixed-source extension request, so it can add more tracks than there are source gaps. Infeasible searches fail visibly and no partial result can be persisted.
 
 Fill every gap accepts one through eight bridge tracks per internal source gap. It derives the total addition count from the frozen source order, prepares a separate candidate shortlist for each gap, and uses the shared anchored-path engine plus a global beam planner so earlier choices cannot reuse tracks or consume repeat capacity needed later. Impossible fixed-spacing repeat conflicts and insufficient unique-candidate inventories fail before expensive search. A successful result proves exact per-gap placement, no endpoint additions, unique membership, preserved source subsequence, and final repeat-window compliance before it can be accepted.
+
+Add spacing tracks as needed uses the same shared inner path search and global
+planner with a different count policy. Every gap may receive zero or more
+tracks, the configured maximum is a global ceiling rather than a target, and
+the planner minimizes the total additions before comparing route quality.
+There are no opening or closing additions. A source that is already repeat-safe
+keeps the explicit no-op response; an impossible budget fails atomically
+without exposing a partial repair.
 
 Difficult-transition bridge improvements use a deterministic 256-track internal-gap
 shortlist before strict bridge evaluation. This is an implementation-level

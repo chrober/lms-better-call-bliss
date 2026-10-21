@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Make **Add spacing tracks as needed** use the optimizer's global
+  minimum-total repeat-window repair instead of treating a calculated minimum
+  size as an exact fixed-source extension target.
+- Allow every frozen source gap to receive a different number of additions,
+  add none at the beginning or end, and preserve the existing maximum-additions
+  control as a hard global ceiling.
+- Validate native per-gap counts, source subsequence, unique membership,
+  endpoint exclusion, and final artist, album, and track repeat proofs before a
+  repaired preview can be accepted.
+
 ## 0.22.8
 
 - Add **Fill every gap with N bridge tracks** as a preserved-order playlist
