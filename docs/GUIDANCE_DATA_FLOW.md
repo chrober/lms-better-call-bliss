@@ -49,9 +49,10 @@ defaults plus sparse host/job overrides, and asks each enabled provider to
 acquire any provider-owned artifact and build its own trusted native
 configuration. In LastMix mode the Last.fm provider asks LastMix for raw
 observations. In API Key mode its native provider performs bounded acquisition
-and cache lookup during `prepare`; later `score` requests remain network-free.
-Only the Library Signals provider opens `persist.db`. The optimizer itself has
-no Last.fm or Lyrion-specific SQLite implementation.
+and provider-owned SQLite graph lookup during `prepare`; later `score` requests
+remain network-free. The Library Signals provider opens `persist.db`; the
+Last.fm provider opens only its own graph. The optimizer itself has no Last.fm
+or Lyrion-specific SQLite implementation.
 
 ## Who consumes each setting, and when?
 
@@ -132,8 +133,8 @@ sequenceDiagram
     B->>B: Write hash-bound artifacts and trusted request JSON
     B->>O: Start native job with request path, cache and progress paths
     opt API Key source
-        O->>X: prepare(anchors, cache options, bounded request limits)
-        X->>X: Resolve cache and bounded Last.fm HTTP queries
+        O->>X: prepare(anchors, provider-owned graph options, bounded request limits)
+        X->>X: Resolve SQLite observations and bounded Last.fm HTTP queries
         X-->>O: Frozen session relations and diagnostics
     end
 ```
@@ -148,10 +149,13 @@ Call Bliss resolves returned artist, title, and available MBID data against the
 frozen local candidate inventory, then writes successful local matches as the
 hash-bound `resolved-lastfm-evidence-v1` artifact.
 
-In **API Key** mode the native provider obtains and caches bounded relations
-during `prepare`; subsequent scoring remains network-free. The key reaches the
-provider only through its child-process environment and is not written to
-optimizer requests, artifacts, caches, logs, progress, or results. In LastMix
+In **API Key** mode the native provider reads or obtains bounded relations
+during `prepare` and transactionally persists complete responses in its own
+SQLite graph; subsequent scoring remains network-free. The provider plugin also
+offers an explicit background update over a frozen snapshot of local Lyrion
+artists and Artist MBIDs. The key reaches the native provider only through its
+child-process environment and is not written to optimizer requests, artifacts,
+SQLite, logs, progress, or results. In LastMix
 mode a remote, unresolved, stale, or non-LMS track is not a native candidate.
 Missing network access, rate limiting, or provider failure leaves the evidence
 partial or absent and the job continues with Bliss alone.
@@ -199,7 +203,7 @@ and continues with Bliss-only search.
 
 | Provider | Data acquisition | `prepare` work | `score` work |
 | --- | --- | --- | --- |
-| `bliss-guidance-lastfm` | Its Lyrion provider supplies the source default and keeps the API key private; the host may save a source override. LastMix mode returns raw observations to Better Call Bliss for local resolution; API Key mode gives the native provider a launch-only key plus trusted cache/request limits. | Verifies and indexes resolved Last.fm relations or acquires/cache-fills anchor relations directly. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. No score request performs network I/O. |
+| `bliss-guidance-lastfm` | Its Lyrion provider supplies the source default and keeps the API key private; the host may save a source override. LastMix mode returns raw observations to Better Call Bliss for local resolution; API Key mode gives the native provider a launch-only key plus provider-owned graph policy and paths. | Verifies and indexes resolved Last.fm relations or reads/acquires the required anchor relations through its SQLite graph. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. No score request performs network I/O. |
 | `bliss-guidance-library-signals` | Its separately installed Lyrion provider owns defaults, including the listening-history source, while Better Call Bliss may persist a host-specific override exposed from the provider descriptor. The provider resolves its own binary and trusted read-only `persist.db` path and returns the effective configuration. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
 
 Each distribution is calculated from the complete frozen eligible candidate
