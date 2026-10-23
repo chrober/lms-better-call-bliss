@@ -92,5 +92,10 @@ like(
     qr/CandidateGuidance::native_provider_state\(/,
     'native diagnostics update the host Last.fm lifecycle state',
 );
+unlike(
+    $jobs,
+    qr/lastfm-guidance-v1\.json|cache_path\s*=>/,
+    'the generic host no longer constructs or supplies a Last.fm cache path',
+);
 
 done_testing();
