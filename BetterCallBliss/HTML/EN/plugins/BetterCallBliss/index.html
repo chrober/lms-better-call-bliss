@@ -201,11 +201,11 @@
     <p class="bea-note">Plugin defaults follow the current settings of Better Call Bliss, BlissMixer and installed guidance providers. Saved Extras defaults are independent.</p>
     [% IF bettercallbliss_extras_defaults.status %]<p class="bea-ok">[% bettercallbliss_extras_defaults.status | html %]</p>[% END %]
     [% FOREACH warning IN bettercallbliss_extras_defaults.warnings %]<p class="bea-warning">[% warning | html %]</p>[% END %]
-    <label for="extras_defaults_source">Defaults source</label>
-    <select id="extras_defaults_source" name="extras_defaults_source">
-      <option value="plugin"[% IF bettercallbliss_extras_defaults.source != 'extras' %] selected[% END %]>Use plugin defaults</option>
-      <option value="extras"[% IF bettercallbliss_extras_defaults.source == 'extras' %] selected[% END %][% UNLESS bettercallbliss_extras_defaults.has_profile %] disabled[% END %]>Use saved Extras defaults</option>
-    </select>
+    <div role="group" aria-labelledby="extras_defaults_source_label">
+      <span id="extras_defaults_source_label">Defaults source</span><br>
+      <label><input type="radio" name="extras_defaults_source" value="plugin"[% IF bettercallbliss_extras_defaults.source != 'extras' %] checked[% END %]> Use plugin defaults</label><br>
+      <label><input type="radio" name="extras_defaults_source" value="extras"[% IF bettercallbliss_extras_defaults.source == 'extras' %] checked[% END %][% UNLESS bettercallbliss_extras_defaults.has_profile %] disabled[% END %]> Use saved Extras defaults</label>
+    </div>
     <button type="submit" id="load_extras_defaults" name="load_extras_defaults" value="1" formnovalidate onclick="return confirm('Load these defaults and replace the current preview settings?');">Load selected defaults</button>
     <button type="submit" id="save_extras_defaults" name="save_extras_defaults" value="1" formnovalidate>Save current settings as Extras defaults</button>
     <span id="extras_defaults_selection_status" class="bea-note" role="status" aria-live="polite"></span>
@@ -1217,36 +1217,41 @@
     if (routeMinimum) routeMinimum.addEventListener('input', synchronizeControls);
     if (routeMaximum) routeMaximum.addEventListener('input', synchronizeControls);
     if (routeExact) routeExact.addEventListener('input', synchronizeControls);
-    var defaultsSource = document.getElementById('extras_defaults_source');
+    var defaultsSources = document.querySelectorAll('input[name="extras_defaults_source"]');
     var defaultsStatus = document.getElementById('extras_defaults_selection_status');
     var defaultsLoad = document.getElementById('load_extras_defaults');
     var defaultsSave = document.getElementById('save_extras_defaults');
-    if (defaultsSource && mainForm && window.fetch) {
-      var savedDefaultsSource = defaultsSource.value;
-      defaultsSource.addEventListener('change', function () {
-        var selected = defaultsSource.value;
-        defaultsSource.disabled = true;
-        defaultsLoad.disabled = true;
-        defaultsSave.disabled = true;
-        defaultsStatus.textContent = 'Saving selection...';
-        var body = 'select_extras_defaults=1&extras_defaults_source=' + encodeURIComponent(selected);
-        fetch(mainForm.action, {method: 'POST', credentials: 'same-origin',
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
-          .then(function (response) { if (!response.ok) throw new Error('Request failed'); return response.text(); })
-          .then(function (text) {
-            if (text.trim() !== 'ok') throw new Error(text);
-            savedDefaultsSource = selected;
-            defaultsStatus.textContent = 'Selection saved for new previews.';
-          })
-          .catch(function () {
-            defaultsSource.value = savedDefaultsSource;
-            defaultsStatus.textContent = 'Could not save selection. Please try again.';
-          })
-          .then(function () {
-            defaultsSource.disabled = false;
-            defaultsLoad.disabled = false;
-            defaultsSave.disabled = false;
-          });
+    if (defaultsSources.length && mainForm && window.fetch) {
+      var savedDefaultsSource = 'plugin';
+      defaultsSources.forEach(function (source) {
+        if (source.checked) savedDefaultsSource = source.value;
+        source.addEventListener('change', function () {
+          if (!source.checked) return;
+          var selected = source.value;
+          var disabledStates = Array.prototype.map.call(defaultsSources, function (item) { return item.disabled; });
+          defaultsSources.forEach(function (item) { item.disabled = true; });
+          defaultsLoad.disabled = true;
+          defaultsSave.disabled = true;
+          defaultsStatus.textContent = 'Saving selection...';
+          var body = 'select_extras_defaults=1&extras_defaults_source=' + encodeURIComponent(selected);
+          fetch(mainForm.action, {method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
+            .then(function (response) { if (!response.ok) throw new Error('Request failed'); return response.text(); })
+            .then(function (text) {
+              if (text.trim() !== 'ok') throw new Error(text);
+              savedDefaultsSource = selected;
+              defaultsStatus.textContent = 'Selection saved for new previews.';
+            })
+            .catch(function () {
+              defaultsSources.forEach(function (item) { item.checked = item.value === savedDefaultsSource; });
+              defaultsStatus.textContent = 'Could not save selection. Please try again.';
+            })
+            .then(function () {
+              defaultsSources.forEach(function (item, index) { item.disabled = disabledStates[index]; });
+              defaultsLoad.disabled = false;
+              defaultsSave.disabled = false;
+            });
+        });
       });
     }
     if (mainForm && submit) {
