@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 78;
+use Test::More tests => 82;
 
 BEGIN {
     package TestPrefs;
@@ -494,3 +494,19 @@ eval {
 };
 like($@, qr/Choose a player/,
     'player queue output requires a selected player');
+
+my $extras = Plugins::BetterCallBliss::JobOptions::normalize($capability, {
+    extras_weight_tempo => 8, extras_weight_timbre => 30,
+    extras_weight_loudness => 9, extras_weight_chroma => 57,
+    'guidance_provider_library-signals_enabled_present' => 1,
+});
+is($extras->{static_weights}->{tempo}, 8, 'preview captures its chosen static weights');
+is($extras->{guidance_provider_policies}->{'library-signals'}->{enabled}, 0,
+    'preview can disable a provider without changing host defaults');
+eval { Plugins::BetterCallBliss::JobOptions::normalize($capability, {
+    extras_weight_tempo => -1, extras_weight_timbre => 30,
+    extras_weight_loudness => 9, extras_weight_chroma => 57,
+}) };
+like($@, qr/Invalid static scoring weight/, 'invalid captured weights are rejected');
+my $ordinary = Plugins::BetterCallBliss::JobOptions::normalize($capability, {});
+ok(!exists $ordinary->{static_weights}, 'ordinary destination defaults do not acquire an Extras override');

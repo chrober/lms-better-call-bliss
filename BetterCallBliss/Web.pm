@@ -21,6 +21,7 @@ use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::GuidanceReporting;
 use Plugins::BlissGuidance::SettingsModel;
 use Plugins::BetterCallBliss::JobOptions;
+use Plugins::BetterCallBliss::ExtrasDefaults;
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::PlaylistWriter;
 use Plugins::BetterCallBliss::RouteMode;
@@ -190,6 +191,7 @@ sub _form_from_params {
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
         queue_player_id queue_action queue_start_playback candidate_library_id
         preview_job_id
+        extras_weight_tempo extras_weight_timbre extras_weight_loudness extras_weight_chroma
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
     }
@@ -234,11 +236,15 @@ sub _guidance_provider_sections {
                     || ($control->{type} eq 'integer' ? 'slider' : ''),
             };
         }
+        my $enabled_field = 'guidance_provider_' . $provider->{provider_id} . '_enabled';
+        my $enabled = exists $form->{$enabled_field . '_present'}
+            ? ($form->{$enabled_field} ? 1 : 0) : ($policy->{enabled} ? 1 : 0);
         push @sections, {
             provider_id => $provider->{provider_id},
             display_name => $descriptor->{display_name} || $provider->{provider_id},
             available => $provider->{available} ? 1 : 0,
-            enabled => $policy->{enabled} ? 1 : 0,
+            enabled => $enabled,
+            enabled_field => $enabled_field,
             valid => $policy->{valid} ? 1 : 0,
             diagnostic => $provider->{diagnostic} || $policy->{diagnostic} || '',
             controls => \@controls,
@@ -255,10 +261,17 @@ sub _form_from_job {
         ? $options->{guidance_provider_policies} : {}}) {
         my $policy = $options->{guidance_provider_policies}->{$provider_id};
         next unless ref($policy) eq 'HASH' && ref($policy->{effective}) eq 'HASH';
+        my $enabled_field = 'guidance_provider_' . $provider_id . '_enabled';
+        $params{$enabled_field . '_present'} = 1;
+        $params{$enabled_field} = $policy->{enabled} ? 1 : 0;
         for my $key (keys %{$policy->{effective}}) {
             $params{'guidance_provider_' . $provider_id . '_' . $key}
                 = $policy->{effective}->{$key};
         }
+    }
+    if (ref($options->{static_weights}) eq 'HASH') {
+        $params{'extras_weight_' . $_} = $options->{static_weights}->{$_}
+            for qw(tempo timbre loudness chroma);
     }
     if (($job->{source_mode} || '') eq 'player_queue') {
         $params{source_mode} = 'player_queue';
@@ -818,6 +831,14 @@ sub handler {
             Plugins::BetterCallBliss::CandidateLibrary::active_id($client);
     }
     my $form = _form_from_params($params, $defaults);
+    my ($defaults_view, $editor_error);
+    eval {
+        ($form, $defaults_view) = Plugins::BetterCallBliss::ExtrasDefaults::prepare_editor(
+            $plugin_prefs, $params, $form, $defaults, $capability,
+        );
+    };
+    $editor_error = $@;
+    $editor_error =~ s/\s+/ /g if $editor_error;
     if (($form->{source_mode} || '') eq 'player_queue') {
         $form->{source_player_id} ||= $form->{queue_player_id};
         if (!$form->{source_player_id} && $client) {
@@ -848,6 +869,7 @@ sub handler {
     $form->{output_name_generated} = length($form->{output_name}) ? 0 : 1;
 
     my ($job, $error);
+    $error = $editor_error if $editor_error;
     if ($params->{cancel_job}) {
         eval {
             die "Preview job is no longer available"
@@ -958,6 +980,7 @@ sub handler {
     $params->{bettercallbliss_material_library_autoselect} =
         $candidate_library_was_explicit ? 0 : 1;
     $params->{bettercallbliss_form} = $form;
+    $params->{bettercallbliss_extras_defaults} = $defaults_view || {};
     $params->{bettercallbliss_guidance_provider_sections} =
         _guidance_provider_sections($capability, $form);
     $params->{bettercallbliss_quick_route} = $job

@@ -14,6 +14,7 @@ use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
 use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::JobOptions;
+use Plugins::BetterCallBliss::ExtrasDefaults;
 use Plugins::BetterCallBliss::RepeatIdentity;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
@@ -737,7 +738,9 @@ sub _build_sequence_request {
             },
             feature_weights => [
                 map { _json_number($_, 'feature_weight') }
-                @{$capability->{feature_weights} || []}
+                @{ref($options->{static_weights}) eq 'HASH'
+                    ? Plugins::BetterCallBliss::ExtrasDefaults::expand_weights($options->{static_weights})
+                    : ($capability->{feature_weights} || [])}
             ],
             captured_blissmixer_preferences => {
                 algorithm => $capability->{algorithm},

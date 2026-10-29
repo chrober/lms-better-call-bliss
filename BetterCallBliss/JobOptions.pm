@@ -242,6 +242,13 @@ sub normalize {
     $options->{variation_percent} = _integer(
         $input, 'variation_percent', 0, 100, $options->{variation_percent},
     );
+    if (grep { exists $input->{'extras_weight_' . $_} } qw(tempo timbre loudness chroma)) {
+        require Plugins::BetterCallBliss::ExtrasDefaults;
+        my %weights = map { $_ => $input->{'extras_weight_' . $_} }
+            qw(tempo timbre loudness chroma);
+        Plugins::BetterCallBliss::ExtrasDefaults::expand_weights(\%weights);
+        $options->{static_weights} = \%weights;
+    }
     _resolve_provider_job_policies($options, $input, $capability);
     if (defined $input->{generation_seed} && length "$input->{generation_seed}") {
         $options->{generation_seed} = _integer(
@@ -399,8 +406,13 @@ sub _resolve_provider_job_policies {
                 $overrides{$control->{key}} = $input->{$field};
             }
         }
+        my %job_policy = (overrides => \%overrides);
+        my $enabled_field = 'guidance_provider_' . $provider->{provider_id} . '_enabled';
+        if (exists $input->{$enabled_field . '_present'}) {
+            $job_policy{enabled} = $provider->{available} && $input->{$enabled_field} ? 1 : 0;
+        }
         my $resolved = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve(
-            $provider, $provider->{host_state}, { overrides => \%overrides },
+            $provider, $provider->{host_state}, \%job_policy,
         );
         die "Guidance provider '$provider->{provider_id}' policy is invalid: $resolved->{diagnostic}"
             unless $resolved->{valid};

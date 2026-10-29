@@ -34,6 +34,8 @@ Credit: lms-blissmixer already provides the **Create bliss mix** action for imme
 
 The job editor labels ordering as **Source-track order**, asks for the **Additional tracks** purpose separately from **Chosen amount**, and labels Adaptive history as **Musical context window (previous tracks)**. It hides mode-specific sections when they are irrelevant, keeps their values for easy mode switching, uses BlissMixer-style slider-enhanced numeric inputs for bounded ranges where practical, places route-search attempts under Advanced, and rejects guaranteed no-op preserved combinations in both the page and server validator.
 
+On Extras, choose **Use plugin defaults** to start new previews from the current contributing plugin settings, or save the current reusable options as independent **Extras defaults**. **Load selected defaults** replaces the current preview options; running a preview does not change saved defaults. The saved set includes provider policies, repeat and scoring options, and the current BlissMixer static weights. It excludes the source playlist, player, destination, output name, and generation seed. Provider credentials and other provider-wide setup remain on their own settings pages. Missing providers and settings that no longer validate are reported; their saved values are retained. The three Bliss me there actions continue to use general plugin defaults and their route-specific settings.
+
 **Preserve source order and fill gaps** is connected for difficult-transition
 improvements, repeat-window spacing repair, Extend playlist, and fixed bridges
 per gap. Every original track remains an immutable anchor in its input order.

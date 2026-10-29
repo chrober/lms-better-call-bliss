@@ -195,6 +195,30 @@
 
 <form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post"[% IF bettercallbliss_quick_route && bettercallbliss_job %] class="bea-hidden"[% END %]>
   <input type="hidden" name="queue_player_id" value="[% bettercallbliss_form.queue_player_id | html %]">
+  [% UNLESS bettercallbliss_form.source_mode == 'route_to_track' %]
+  <fieldset class="bea-section" id="extras_defaults_fields">
+    <legend>Defaults for new previews</legend>
+    <p class="bea-note">Plugin defaults follow the current settings of Better Call Bliss, BlissMixer and installed guidance providers. Saved Extras defaults are independent.</p>
+    [% IF bettercallbliss_extras_defaults.status %]<p class="bea-ok">[% bettercallbliss_extras_defaults.status | html %]</p>[% END %]
+    [% FOREACH warning IN bettercallbliss_extras_defaults.warnings %]<p class="bea-warning">[% warning | html %]</p>[% END %]
+    <label for="extras_defaults_source">Defaults source</label>
+    <select id="extras_defaults_source" name="extras_defaults_source">
+      <option value="plugin"[% IF bettercallbliss_extras_defaults.source != 'extras' %] selected[% END %]>Use plugin defaults</option>
+      <option value="extras"[% IF bettercallbliss_extras_defaults.source == 'extras' %] selected[% END %][% UNLESS bettercallbliss_extras_defaults.has_profile %] disabled[% END %]>Use saved Extras defaults</option>
+    </select>
+    <button type="submit" name="load_extras_defaults" value="1" formnovalidate onclick="return confirm('Load these defaults and replace the current preview settings?');">Load selected defaults</button>
+    <button type="submit" name="save_extras_defaults" value="1" formnovalidate>Save current settings as Extras defaults</button>
+    [% UNLESS bettercallbliss_extras_defaults.has_profile %]<p class="bea-note">Save your current settings to make Extras defaults available.</p>[% END %]
+    <p class="bea-note">Running a preview does not save defaults. Loading defaults leaves the selected source and player unchanged.</p>
+  </fieldset>
+  [% END %]
+  [% IF bettercallbliss_form.extras_weight_tempo.defined %]
+    <input type="hidden" name="extras_weight_tempo" value="[% bettercallbliss_form.extras_weight_tempo | html %]">
+    <input type="hidden" name="extras_weight_timbre" value="[% bettercallbliss_form.extras_weight_timbre | html %]">
+    <input type="hidden" name="extras_weight_loudness" value="[% bettercallbliss_form.extras_weight_loudness | html %]">
+    <input type="hidden" name="extras_weight_chroma" value="[% bettercallbliss_form.extras_weight_chroma | html %]">
+    <p class="bea-note">Static scoring uses saved Extras weights: tempo [% bettercallbliss_form.extras_weight_tempo | html %], timbre [% bettercallbliss_form.extras_weight_timbre | html %], loudness [% bettercallbliss_form.extras_weight_loudness | html %], chroma [% bettercallbliss_form.extras_weight_chroma | html %].</p>
+  [% END %]
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
     [% IF bettercallbliss_form.source_mode == 'route_to_track' %]
@@ -425,7 +449,11 @@
   [% FOREACH provider IN bettercallbliss_guidance_provider_sections %]
   <fieldset class="bea-section guidance_provider_fields" id="guidance_provider_[% provider.provider_id | html %]_fields">
     <legend>[% provider.display_name | html %]</legend>
-    [% IF provider.available && provider.enabled && provider.valid %]
+    [% IF provider.available && provider.valid %]
+      <div class="bea-row">
+        <input type="hidden" name="[% provider.enabled_field | html %]_present" value="1">
+        <label><input type="checkbox" name="[% provider.enabled_field | html %]" value="1"[% IF provider.enabled %] checked="checked"[% END %]> Enable for this preview</label>
+      </div>
       [% FOREACH control IN provider.controls %]
       <div class="bea-row">
         <label for="[% control.field_name | html %]">[% control.label_token | string %]</label>

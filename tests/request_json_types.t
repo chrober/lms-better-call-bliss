@@ -166,6 +166,7 @@ BEGIN {
     our $max_added_tracks = '8';
     our $addition_purpose = '';
     our $tracks_per_gap = '1';
+    our $static_weights;
     sub normalize {
         return {
             ordering_policy => 'preserve_order',
@@ -173,6 +174,7 @@ BEGIN {
             addition_purpose => $addition_purpose,
             tracks_per_gap => $tracks_per_gap,
             algorithm => $algorithm,
+            (defined $static_weights ? (static_weights => $static_weights) : ()),
             seed_limit => '3',
             learned_percent => '20',
             artist_window => '5',
@@ -546,9 +548,15 @@ like($@, qr/final playlist of at least 12 tracks.*current request targets 11 tra
 $Plugins::BetterCallBliss::JobOptions::extension_mode = 'fixed_source_extension';
 $Plugins::BetterCallBliss::JobOptions::addition_purpose = 'satisfy_constraints';
 $Plugins::BetterCallBliss::JobOptions::max_added_tracks = '20';
+$Plugins::BetterCallBliss::JobOptions::static_weights = {
+    tempo => 8, timbre => 30, loudness => 9, chroma => 57,
+};
 my $static = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
     7, 'preview-json-types-spacing', '/tmp/semantic-evidence.json', {},
 );
+cmp_ok(abs($static->{request}->{scoring}->{feature_weights}->[0] - 8 / 104 * 25),
+    '<', 0.000001, 'preview scoring uses the captured Extras weights');
+$Plugins::BetterCallBliss::JobOptions::static_weights = undef;
 is($static->{request}->{extension}->{mode}, 'repeat_window_repair',
     'spacing-track repair uses the native minimum-total repair mode');
 is($static->{options}->{target_track_count}, 12,

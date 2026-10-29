@@ -95,9 +95,13 @@ fall through to either working mode.
 
 ## Settings
 
-The Extras editor initializes base scoring and repeat fields from the original
-BlissMixer. The submitted values belong to that job only and never update its
-global preferences. A compatible BlissMixerLab optionally supplies
+The Extras editor can initialize reusable options either from current plugin
+defaults or from an independently saved Extras set. The saved set includes
+repeat and scoring values, static BlissMixer weights, and provider job policies;
+source and destination details are not saved. Loading a set is explicit for an
+open editor, and a preview never saves defaults. Bliss me there continues to use
+general plugin defaults. The submitted values belong to that job only and never
+update global plugin preferences. A compatible BlissMixerLab optionally supplies
 `learned_matrix.json` and the learned-blend default. Its absence is shown as a
 non-blocking personalization notice, and the effective learned percentage is
 forced to zero. The enabled Last.fm provider supplies its own defaults, which
