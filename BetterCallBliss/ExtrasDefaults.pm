@@ -37,9 +37,10 @@ sub capture {
     my %validation_capability = (
         seed_limit => 3, learned_percent => 0, artist_window => 0,
         album_window => 0, track_window => 0, %$capability,
-        matrix_available => 1,
+        matrix_available => 1, discovered_guidance_providers => [],
     );
-    my %validation_input = (%$form, output_mode => 'create_copy');
+    my %validation_input = map { exists $form->{$_} ? ($_ => $form->{$_}) : () } @OPTION_KEYS;
+    $validation_input{output_mode} = 'create_copy';
     require Plugins::BetterCallBliss::JobOptions;
     Plugins::BetterCallBliss::JobOptions::normalize(
         \%validation_capability, \%validation_input,
@@ -112,8 +113,8 @@ sub apply {
         album_window => 0, track_window => 0, %$capability,
         matrix_available => 1, discovered_guidance_providers => [],
     );
-    my %validation_input = (%result, output_mode => 'create_copy');
-    delete @validation_input{grep { /^extras_weight_/ } keys %validation_input};
+    my %validation_input = map { exists $result{$_} ? ($_ => $result{$_}) : () } @OPTION_KEYS;
+    $validation_input{output_mode} = 'create_copy';
     require Plugins::BetterCallBliss::JobOptions;
     unless (eval { Plugins::BetterCallBliss::JobOptions::normalize(
         \%validation_capability, \%validation_input); 1 }) {

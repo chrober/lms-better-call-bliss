@@ -222,4 +222,16 @@ is($new_setting_form->{variation_percent}, 33, 'new preview option uses the plug
 like(join(' ', @$new_setting_warnings), qr/variation percent/,
     'new preview option identifies its plugin default source');
 
+ok(eval {
+    Plugins::BetterCallBliss::ExtrasDefaults::capture(
+        {artist_window => 5, generation_seed => 'not a seed',
+         output_mode => 'player_queue', queue_player_id => ''}, $simple_capability,
+    ); 1;
+}, 'saving defaults ignores invalid run-specific output and seed fields');
+my ($unrelated_form, $unrelated_warnings) = Plugins::BetterCallBliss::ExtrasDefaults::apply(
+    {schema_version => 1, options => {artist_window => 7}, providers => {}},
+    {artist_window => 5, generation_seed => 'not a seed'}, $simple_capability,
+);
+is($unrelated_form->{artist_window}, 7, 'loading saved defaults ignores invalid run-specific seed');
+
 done_testing();
