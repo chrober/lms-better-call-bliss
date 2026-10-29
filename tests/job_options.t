@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 82;
+use Test::More tests => 83;
 
 BEGIN {
     package TestPrefs;
@@ -510,3 +510,9 @@ eval { Plugins::BetterCallBliss::JobOptions::normalize($capability, {
 like($@, qr/Invalid static scoring weight/, 'invalid captured weights are rejected');
 my $ordinary = Plugins::BetterCallBliss::JobOptions::normalize($capability, {});
 ok(!exists $ordinary->{static_weights}, 'ordinary destination defaults do not acquire an Extras override');
+my $explicit_false = Plugins::BetterCallBliss::JobOptions::normalize($capability, {
+    'guidance_provider_library-signals_use_alternative_play_count_present' => 1,
+    'guidance_provider_library-signals_use_alternative_play_count' => 0,
+});
+is($explicit_false->{guidance_provider_policies}->{'library-signals'}->{effective}->{use_alternative_play_count}, 0,
+    'an explicitly stored false boolean remains false after normalization');

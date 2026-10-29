@@ -79,7 +79,7 @@ ok(!eval { Plugins::BetterCallBliss::ExtrasDefaults::expand_weights(
     'invalid static weight is rejected');
 
 my ($loaded, $warnings) = Plugins::BetterCallBliss::ExtrasDefaults::apply(
-    $with_provider, { artist_window => 5 },
+    $with_provider, {},
     { discovered_guidance_providers => [$provider] },
 );
 is($loaded->{'guidance_provider_library-signals_library_age_influence'}, 0,
@@ -187,5 +187,39 @@ Plugins::BetterCallBliss::ExtrasDefaults::prepare_editor(
 );
 is($prefs->get('extras_defaults')->{providers}->{'library-signals'}->{overrides}->{library_age_influence}, 0,
     'saving while a provider is absent retains its saved values');
+
+my ($unchanged, $selection) = Plugins::BetterCallBliss::ExtrasDefaults::prepare_editor(
+    $prefs, {select_extras_defaults => 1, extras_defaults_source => 'plugin'},
+    {artist_window => 12}, $base, $simple_capability,
+);
+is($prefs->get('extras_defaults_source'), 'plugin', 'changing selector persists the source immediately');
+is($unchanged->{artist_window}, 12, 'changing selector does not replace current editor values');
+
+my %configured_without_matrix = (%without_matrix, configured_learned_percent => 35);
+Plugins::BetterCallBliss::ExtrasDefaults::prepare_editor(
+    $prefs, {save_extras_defaults => 1}, {learned_percent => 0}, $base, \%configured_without_matrix,
+);
+is($prefs->get('extras_defaults')->{options}->{learned_percent}, 35,
+    'first save with unavailable matrix retains the configured plugin blend');
+
+my ($invalid_form, $invalid_warnings) = Plugins::BetterCallBliss::ExtrasDefaults::apply(
+    {schema_version => 1, options => {artist_window => -7}, providers => {}},
+    {artist_window => 5}, $simple_capability,
+);
+is($invalid_form->{artist_window}, 5, 'invalid saved job options fall back to current plugin defaults');
+ok(@$invalid_warnings, 'invalid saved job options are reported');
+
+my ($new_provider_form, $new_provider_warnings) = Plugins::BetterCallBliss::ExtrasDefaults::apply(
+    {schema_version => 1, options => {}, providers => {}}, {},
+    { %$simple_capability, discovered_guidance_providers => [$provider] },
+);
+ok(@$new_provider_warnings, 'new provider defaults are identified on profile load');
+my ($new_setting_form, $new_setting_warnings) = Plugins::BetterCallBliss::ExtrasDefaults::apply(
+    {schema_version => 1, options => {artist_window => 7}, providers => {}},
+    {artist_window => 5, variation_percent => 33}, $simple_capability,
+);
+is($new_setting_form->{variation_percent}, 33, 'new preview option uses the plugin default');
+like(join(' ', @$new_setting_warnings), qr/variation percent/,
+    'new preview option identifies its plugin default source');
 
 done_testing();

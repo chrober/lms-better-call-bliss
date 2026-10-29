@@ -401,7 +401,7 @@ sub _resolve_provider_job_policies {
                 . '_' . $control->{key};
             my $present_field = $field . '_present';
             if ($control->{type} eq 'boolean' && exists $input->{$present_field}) {
-                $overrides{$control->{key}} = exists $input->{$field} ? 1 : 0;
+                $overrides{$control->{key}} = $input->{$field} ? 1 : 0;
             } elsif (exists $input->{$field}) {
                 $overrides{$control->{key}} = $input->{$field};
             }

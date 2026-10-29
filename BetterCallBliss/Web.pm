@@ -269,8 +269,11 @@ sub _form_from_job {
                 = $policy->{effective}->{$key};
         }
     }
-    if (ref($options->{static_weights}) eq 'HASH') {
-        $params{'extras_weight_' . $_} = $options->{static_weights}->{$_}
+    my $captured_weights = ref($options->{static_weights}) eq 'HASH'
+        ? $options->{static_weights}
+        : ref($job->{capability}) eq 'HASH' ? $job->{capability}->{static_weight_sliders} : undef;
+    if (ref($captured_weights) eq 'HASH') {
+        $params{'extras_weight_' . $_} = $captured_weights->{$_}
             for qw(tempo timbre loudness chroma);
     }
     if (($job->{source_mode} || '') eq 'player_queue') {
@@ -839,6 +842,11 @@ sub handler {
     };
     $editor_error = $@;
     $editor_error =~ s/\s+/ /g if $editor_error;
+    if ($params->{select_extras_defaults}) {
+        Plugins::BetterCallBliss::Jobs::finish_web_response();
+        my $result = $editor_error ? 'error: ' . $editor_error : 'ok';
+        return \$result;
+    }
     if (($form->{source_mode} || '') eq 'player_queue') {
         $form->{source_player_id} ||= $form->{queue_player_id};
         if (!$form->{source_player_id} && $client) {
@@ -914,6 +922,9 @@ sub handler {
         $error = $@;
         $error =~ s/\s+/ /g if $error;
         $error = undef if $job && ($job->{write_state} || '') eq 'failed';
+    } elsif ($params->{save_extras_defaults} || $params->{load_extras_defaults}) {
+        # These editor actions must never launch a preview, including when a
+        # previous AJAX submission left a run_preview field in the form.
     } elsif ($params->{quick_route} || $params->{run_route_to_track_preview}
         || ($params->{run_preview} && ($form->{source_mode} || '') eq 'route_to_track')) {
         eval {

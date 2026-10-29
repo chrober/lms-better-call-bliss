@@ -206,10 +206,11 @@
       <option value="plugin"[% IF bettercallbliss_extras_defaults.source != 'extras' %] selected[% END %]>Use plugin defaults</option>
       <option value="extras"[% IF bettercallbliss_extras_defaults.source == 'extras' %] selected[% END %][% UNLESS bettercallbliss_extras_defaults.has_profile %] disabled[% END %]>Use saved Extras defaults</option>
     </select>
-    <button type="submit" name="load_extras_defaults" value="1" formnovalidate onclick="return confirm('Load these defaults and replace the current preview settings?');">Load selected defaults</button>
-    <button type="submit" name="save_extras_defaults" value="1" formnovalidate>Save current settings as Extras defaults</button>
+    <button type="submit" id="load_extras_defaults" name="load_extras_defaults" value="1" formnovalidate onclick="return confirm('Load these defaults and replace the current preview settings?');">Load selected defaults</button>
+    <button type="submit" id="save_extras_defaults" name="save_extras_defaults" value="1" formnovalidate>Save current settings as Extras defaults</button>
+    <span id="extras_defaults_selection_status" class="bea-note" role="status" aria-live="polite"></span>
     [% UNLESS bettercallbliss_extras_defaults.has_profile %]<p class="bea-note">Save your current settings to make Extras defaults available.</p>[% END %]
-    <p class="bea-note">Running a preview does not save defaults. Loading defaults leaves the selected source and player unchanged.</p>
+    <p class="bea-note">Changing the selection affects future new previews. Load selected defaults to apply it here. Running a preview does not save defaults; loading leaves the selected source and player unchanged.</p>
   </fieldset>
   [% END %]
   [% IF bettercallbliss_form.extras_weight_tempo.defined %]
@@ -506,7 +507,7 @@
       [% END %]
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
-    <p class="bea-note">Current BlissMixer strategy: [% bettercallbliss_capability.algorithm | html %]. These values are passed to the optimizer request for this preview. Static uses BlissMixer's four metric sliders expanded to the 23 Bliss audio features. Adaptive can run without a learned matrix; in that case multi-track contexts use variance and one-track contexts fall back to the static BlissMixer weights.</p>
+    <p class="bea-note">Current BlissMixer strategy: [% bettercallbliss_capability.algorithm | html %]. These values are passed to the optimizer request for this preview. Static uses four metric sliders expanded to the 23 Bliss audio features; saved Extras weights are shown above when selected. Adaptive can run without a learned matrix; in that case multi-track contexts use variance and one-track contexts fall back to the static weights.</p>
     [% IF bettercallbliss_capability.algorithm == 'forest' %]<p class="bea-warning">BlissMixer currently uses Extended Isolation Forest, but Better Call Bliss does not route playlists with Forest yet. Choose Adaptive or Static for now.</p>[% END %]
   </fieldset>
 
@@ -1216,6 +1217,38 @@
     if (routeMinimum) routeMinimum.addEventListener('input', synchronizeControls);
     if (routeMaximum) routeMaximum.addEventListener('input', synchronizeControls);
     if (routeExact) routeExact.addEventListener('input', synchronizeControls);
+    var defaultsSource = document.getElementById('extras_defaults_source');
+    var defaultsStatus = document.getElementById('extras_defaults_selection_status');
+    var defaultsLoad = document.getElementById('load_extras_defaults');
+    var defaultsSave = document.getElementById('save_extras_defaults');
+    if (defaultsSource && mainForm && window.fetch) {
+      var savedDefaultsSource = defaultsSource.value;
+      defaultsSource.addEventListener('change', function () {
+        var selected = defaultsSource.value;
+        defaultsSource.disabled = true;
+        defaultsLoad.disabled = true;
+        defaultsSave.disabled = true;
+        defaultsStatus.textContent = 'Saving selection...';
+        var body = 'select_extras_defaults=1&extras_defaults_source=' + encodeURIComponent(selected);
+        fetch(mainForm.action, {method: 'POST', credentials: 'same-origin',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
+          .then(function (response) { if (!response.ok) throw new Error('Request failed'); return response.text(); })
+          .then(function (text) {
+            if (text.trim() !== 'ok') throw new Error(text);
+            savedDefaultsSource = selected;
+            defaultsStatus.textContent = 'Selection saved for new previews.';
+          })
+          .catch(function () {
+            defaultsSource.value = savedDefaultsSource;
+            defaultsStatus.textContent = 'Could not save selection. Please try again.';
+          })
+          .then(function () {
+            defaultsSource.disabled = false;
+            defaultsLoad.disabled = false;
+            defaultsSave.disabled = false;
+          });
+      });
+    }
     if (mainForm && submit) {
       mainForm.addEventListener('submit', function (event) {
         var submitter = event.submitter || document.activeElement;

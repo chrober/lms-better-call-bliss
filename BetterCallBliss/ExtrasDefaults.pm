@@ -99,8 +99,29 @@ sub apply {
         return (\%result, ['Saved Extras defaults are unavailable or unsupported.']);
     }
     my $options = ref($profile->{options}) eq 'HASH' ? $profile->{options} : {};
+    my @new_options = grep { !exists $options->{$_} && exists $defaults->{$_} } @OPTION_KEYS;
+    if (@new_options) {
+        s/_/ /g for @new_options;
+        push @warnings, 'These preview settings use current plugin defaults: ' . join(', ', @new_options) . '.';
+    }
     for my $key (@OPTION_KEYS) {
         $result{$key} = $options->{$key} if exists $options->{$key};
+    }
+    my %validation_capability = (
+        seed_limit => 3, learned_percent => 0, artist_window => 0,
+        album_window => 0, track_window => 0, %$capability,
+        matrix_available => 1, discovered_guidance_providers => [],
+    );
+    my %validation_input = (%result, output_mode => 'create_copy');
+    delete @validation_input{grep { /^extras_weight_/ } keys %validation_input};
+    require Plugins::BetterCallBliss::JobOptions;
+    unless (eval { Plugins::BetterCallBliss::JobOptions::normalize(
+        \%validation_capability, \%validation_input); 1 }) {
+        for my $key (@OPTION_KEYS) {
+            if (exists $defaults->{$key}) { $result{$key} = $defaults->{$key}; }
+            else { delete $result{$key}; }
+        }
+        push @warnings, 'Saved preview settings are no longer valid; current plugin defaults will be used.';
     }
     if (ref($profile->{static_weights}) eq 'HASH'
         && eval { expand_weights($profile->{static_weights}); 1 }) {
@@ -116,7 +137,10 @@ sub apply {
         my $id = $provider->{provider_id} || next;
         $seen{$id} = 1;
         my $saved = $stored->{$id};
-        next unless ref($saved) eq 'HASH';
+        unless (ref($saved) eq 'HASH') {
+            push @warnings, "Provider $id uses current plugin defaults; it was not in the saved set.";
+            next;
+        }
         if (!$provider->{available}) {
             push @warnings, "Provider $id is unavailable; its saved settings are retained.";
             next;
@@ -129,7 +153,10 @@ sub apply {
             next unless $control->{host_overridable};
             my $key = $control->{key};
             $known{$key} = 1;
-            next unless exists $values->{$key};
+            unless (exists $values->{$key}) {
+                push @warnings, "New $id setting $key uses its current plugin default.";
+                next;
+            }
             if (Plugins::BetterCallBliss::GuidanceProviderPolicy::_validate_value($control, $values->{$key})) {
                 push @warnings, "Saved $id setting $key is no longer valid; the plugin default will be used.";
                 next;
@@ -167,12 +194,21 @@ sub prepare_editor {
     return ($form, $view) if ($form->{source_mode} || '') eq 'route_to_track'
         || $params->{quick_route};
 
-    if ($params->{save_extras_defaults}) {
+    if ($params->{select_extras_defaults}) {
+        my $chosen = $params->{extras_defaults_source} || 'plugin';
+        die 'Saved Extras defaults are not available' if $chosen eq 'extras' && !$has_profile;
+        die 'Unknown Extras defaults selection' unless $chosen eq 'plugin' || $chosen eq 'extras';
+        $prefs->set('extras_defaults_source', $chosen);
+        $view->{source} = $chosen;
+    } elsif ($params->{save_extras_defaults}) {
         my %save_form = %$form;
         if (!$capability->{matrix_available} && $source eq 'extras'
             && ref($profile->{options}) eq 'HASH'
             && exists $profile->{options}->{learned_percent}) {
             $save_form{learned_percent} = $profile->{options}->{learned_percent};
+        } elsif (!$capability->{matrix_available}
+            && defined $capability->{configured_learned_percent}) {
+            $save_form{learned_percent} = $capability->{configured_learned_percent};
         }
         my $new = capture(\%save_form, $capability);
         # Retain settings for providers and controls temporarily unavailable.
