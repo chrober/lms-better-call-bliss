@@ -142,6 +142,9 @@ jobs:
             --pattern 'bliss-playlist-optimizer-*'
           ls -l optimizer-assets
           (cd optimizer-assets && sha256sum -c *.sha256)
+          git check-ref-format "refs/tags/$OPTIMIZER_RELEASE"
+          commit="$(git ls-remote "https://github.com/$OPTIMIZER_REPO.git" "refs/tags/$OPTIMIZER_RELEASE" "refs/tags/$OPTIMIZER_RELEASE^{}" | tail -n 1 | cut -f 1)"
+          python scripts/verify_native_source.py optimizer-assets/bliss-playlist-optimizer-source.tar.gz "$commit"
 
       - name: Install optimizer binaries into plugin tree
         run: |
@@ -164,6 +167,9 @@ jobs:
           LINUX_ASSET: ${{ steps.meta.outputs.linux_asset }}
           MAC_ASSET: ${{ steps.meta.outputs.mac_asset }}
           WINDOWS_ASSET: ${{ steps.meta.outputs.windows_asset }}
+          OPTIMIZER_RELEASE: ${{ steps.meta.outputs.optimizer_release }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+          RELEASE_TAG: ${{ steps.meta.outputs.tag }}
         run: |
           set -euo pipefail
           mkdir -p dist staging
@@ -172,17 +178,30 @@ jobs:
             asset="$2"
             rm -rf staging/BetterCallBliss
             cp -a BetterCallBliss staging/BetterCallBliss
+            cp LICENSE THIRD_PARTY_NOTICES.md staging/BetterCallBliss/
+            printf '# Source provenance\n\nPlugin commit: %s\nhttps://github.com/chrober/lms-better-call-bliss/tree/%s\n\nNative optimizer release: %s\nhttps://github.com/chrober/bliss-playlist-optimizer/releases/tag/%s\n\nThese references do not constitute a complete Corresponding Source bundle.\n' "$GITHUB_SHA" "$GITHUB_SHA" "$OPTIMIZER_RELEASE" "$OPTIMIZER_RELEASE" > staging/BetterCallBliss/SOURCE.md
+            printf '\nPlugin source archive: https://github.com/chrober/lms-better-call-bliss/releases/download/%s/lms-better-call-bliss-source-%s.zip\n' "$RELEASE_TAG" "$RELEASE_VERSION" >> staging/BetterCallBliss/SOURCE.md
+            printf 'Native source archive: https://github.com/chrober/bliss-playlist-optimizer/releases/download/%s/bliss-playlist-optimizer-source.tar.gz\n' "$OPTIMIZER_RELEASE" >> staging/BetterCallBliss/SOURCE.md
+            cp staging/BetterCallBliss/SOURCE.md staging/BetterCallBliss/Bin/SOURCE.md
             case "$platform" in
               linux) rm -rf staging/BetterCallBliss/Bin/mac staging/BetterCallBliss/Bin/windows ;;
               mac) rm -rf staging/BetterCallBliss/Bin/aarch64-linux staging/BetterCallBliss/Bin/armhf-linux staging/BetterCallBliss/Bin/x86_64-linux staging/BetterCallBliss/Bin/windows ;;
               windows) rm -rf staging/BetterCallBliss/Bin/aarch64-linux staging/BetterCallBliss/Bin/armhf-linux staging/BetterCallBliss/Bin/x86_64-linux staging/BetterCallBliss/Bin/mac ;;
             esac
             (cd staging && zip -q -r "../dist/$asset" BetterCallBliss)
+            unzip -tq "dist/$asset" >/dev/null
+            unzip -p "dist/$asset" BetterCallBliss/LICENSE | cmp - LICENSE
+            unzip -p "dist/$asset" BetterCallBliss/THIRD_PARTY_NOTICES.md | cmp - THIRD_PARTY_NOTICES.md
+            unzip -p "dist/$asset" BetterCallBliss/SOURCE.md | grep -F -- "$OPTIMIZER_RELEASE" >/dev/null
           }
           package_platform linux "$LINUX_ASSET"
           package_platform mac "$MAC_ASSET"
           package_platform windows "$WINDOWS_ASSET"
-          for asset in "$LINUX_ASSET" "$MAC_ASSET" "$WINDOWS_ASSET"; do
+          if git ls-tree -r "$GITHUB_SHA" | grep '^160000 ' >/dev/null; then echo 'Submodule source capture is not implemented' >&2; exit 1; fi
+          SOURCE_ASSET="lms-better-call-bliss-source-$RELEASE_VERSION.zip"
+          git archive --format=zip --output="dist/$SOURCE_ASSET" "$GITHUB_SHA"
+          unzip -tq "dist/$SOURCE_ASSET" >/dev/null
+          for asset in "$LINUX_ASSET" "$MAC_ASSET" "$WINDOWS_ASSET" "$SOURCE_ASSET"; do
             (cd dist && sha1sum "$asset" > "$asset.sha1")
             (cd dist && sha256sum "$asset" > "$asset.sha256")
           done
@@ -237,6 +256,11 @@ jobs:
             prerelease_flag=(--prerelease)
           fi
 
+          remote_tag="$(git ls-remote --tags origin "refs/tags/$TAG")"
+          if [ -n "$remote_tag" ]; then
+            git fetch --no-tags origin "refs/tags/$TAG:refs/tags/$TAG"
+            test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$GITHUB_SHA" || { echo 'Release tag points to a different source commit' >&2; exit 1; }
+          fi
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/*.zip dist/*.sha1 dist/*.sha256 --clobber
           else
