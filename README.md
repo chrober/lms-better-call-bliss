@@ -6,7 +6,7 @@
 
 **Make your playlists flow.**
 
-Have a playlist you love, but wish the songs flowed together better? **Better Call Bliss** uses acoustic analysis provided by [Bliss Mixer](https://github.com/CDrummond/lms-blissmixer) to reorder tracks, add suitable tracks between them, or extend a short playlist into a longer listening session.
+Have a playlist you love, but wish the songs flowed together better? **Better Call Bliss** is a plugin for [Lyrion Music Server (LMS)](https://lyrion.org/) that uses acoustic analysis provided by [Bliss Mixer](https://github.com/CDrummond/lms-blissmixer) to reorder tracks, add suitable tracks between them, or extend a short playlist into a longer listening session.
 
 It can also optimize your current player queue or build a musical route to a particular track or album. **Playlist and queue editing jobs show a read-only preview before you apply the result.** The three **Bliss me there...** context-menu shortcuts run in the background and apply a successful route automatically after checking the live player queue. Your audio files and the Bliss analysis database are never modified.
 
