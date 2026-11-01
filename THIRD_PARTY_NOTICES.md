@@ -2,6 +2,4 @@
 
 Better Call Bliss credits Craig Drummond's [Bliss Mixer](https://github.com/CDrummond/lms-blissmixer).
 The plugin package includes the separately released [bliss-playlist-optimizer](https://github.com/chrober/bliss-playlist-optimizer).
-The optimizer's dependencies and their individual licenses must be reviewed against the exact source and Cargo.lock used to build the bundled binary.
-Supplemental upstream dependency notices are provided in `third-party-licenses/` in release packages.
-This note is not a complete third-party license inventory.
+The release package contains the optimizer's version-specific dependency inventory, license texts and supplemental upstream notices in `third-party-licenses/`. The native source archive is linked from `SOURCE.md` in the package.

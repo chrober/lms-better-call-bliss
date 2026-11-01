@@ -6,9 +6,9 @@ separate `chrober/bliss-playlist-optimizer` repository.
 
 Latest packaged optimizer source:
 
-- Optimizer release: `v0.2.6`
+- Optimizer release: `v0.2.7`
 - Optimizer commit: `adad000abe24c8b0922da0922ec438a4e32a63bd`
-- Program contract: `0.2.6`, core API `0.1`, guidance SPI `2`
+- Program contract: `0.2.7`, core API `0.1`, guidance SPI `2`
 
 The GitHub release workflow downloads the optimizer release above, verifies its
 published `.sha256` file, places the binaries below the matching

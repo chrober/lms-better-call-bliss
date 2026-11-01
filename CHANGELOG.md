@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.10
+
+- Bundle optimizer 0.2.7 and distribute version-specific source and
+  third-party license material with the release.
+
 ## 0.22.9
 
 - Make **Add spacing tracks as needed** use the optimizer's global
