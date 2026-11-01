@@ -72,7 +72,7 @@ Better Call Bliss complements [Bliss Mixer](https://github.com/CDrummond/lms-bli
 | [Library Signals](https://github.com/chrober/lms-guidance-library-signals) | Optional preferences based on play count, last played, and library age | No |
 | [Last.fm Guidance](https://github.com/chrober/lms-guidance-lastfm) | Optional related-track and related-artist information | No |
 
-The separate **Bliss Guidance** plugins are passive providers: installing them alone does not change any playlist or queue. Better Call Bliss discovers compatible providers automatically but keeps each one disabled until you explicitly enable it. They can influence how an already Bliss-eligible candidate set is ranked; Bliss acoustic similarity and hard constraints still apply.
+The separate **Bliss Guidance** plugins are passive providers: installing them alone does not change any playlist or queue. Better Call Bliss discovers compatible providers automatically but keeps each one disabled until you explicitly enable it. Depending on the workflow and settings, they can influence candidate shortlisting and ranking within the Bliss-eligible local pool; Bliss acoustic similarity and hard constraints still apply.
 
 ## Requirements
 
