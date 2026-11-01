@@ -29,7 +29,7 @@ use Plugins::BetterCallBliss::Web;
 
 my $log = Slim::Utils::Log->addLogCategory({
     category     => 'plugin.bettercallbliss',
-    defaultLevel => 'INFO',
+    defaultLevel => 'WARN',
     description  => 'DEBUG_PLUGIN_BETTERCALLBLISS',
     logGroups    => 'SCANNER',
 });
