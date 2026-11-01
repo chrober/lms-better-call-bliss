@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use FindBin;
 use File::Spec;
-use Test::More tests => 166;
+use Test::More tests => 167;
 
 my $root = File::Spec->catdir($FindBin::Bin, '..');
 my $plugin = File::Spec->catdir($root, 'BetterCallBliss');
@@ -277,9 +277,11 @@ like(
 );
 like(
     $settings,
-    qr/compatibility-section-header.*?job-defaults-section-header.*?route-section-header.*?guidance-providers-section-header.*?roadmap-section-header/s,
+    qr/compatibility-section-header.*?job-defaults-section-header.*?route-section-header.*?guidance-providers-section-header/s,
     'settings page groups preferences into collapsible sections',
 );
+unlike($settings, qr/roadmap-section|pref_(?:listenbrainz_enabled|semantic_cache_days|semantic_stale_days|report_retention_days)/,
+    'unconnected roadmap settings are not displayed');
 like(
     $settings,
     qr/<div id="compatibility-section">.*?<hr[^>]+class="sub-sep"[^>]*>.*?<\/div>.*?'compatibility-section': true/s,

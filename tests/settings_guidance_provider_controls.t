@@ -59,6 +59,12 @@ $INC{'Plugins/BetterCallBliss/GuidanceProviderPolicy.pm'}
     = $INC{'BetterCallBliss/GuidanceProviderPolicy.pm'};
 require 'BetterCallBliss/Settings.pm';
 
+my (undef, @editable_prefs) = Plugins::BetterCallBliss::Settings->prefs();
+my %editable_prefs = map { $_ => 1 } @editable_prefs;
+for my $name (qw(listenbrainz_enabled semantic_cache_days semantic_stale_days report_retention_days)) {
+    ok(!$editable_prefs{$name}, "hidden roadmap preference $name is not overwritten on save");
+}
+
 my $provider = {
     provider_id => 'library-signals',
     available => 1,

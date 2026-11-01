@@ -46,10 +46,6 @@ sub prefs {
         route_min_intermediates
         route_max_intermediates
         route_exact_intermediates
-        report_retention_days
-        semantic_cache_days
-        semantic_stale_days
-        listenbrainz_enabled
     ));
 }
 
@@ -114,14 +110,6 @@ sub handler {
         && $params->{pref_route_direct_caution} ne 'normal'
         && $params->{pref_route_direct_caution} ne 'cautious') {
         $params->{pref_route_direct_caution} = 'cautious';
-    }
-    _clamp($params, 'pref_report_retention_days', 1, 3650);
-    _clamp($params, 'pref_semantic_cache_days', 1, 365);
-    _clamp($params, 'pref_semantic_stale_days', 1, 3650);
-    if (defined $params->{pref_semantic_cache_days}
-        && defined $params->{pref_semantic_stale_days}
-        && $params->{pref_semantic_stale_days} < $params->{pref_semantic_cache_days}) {
-        $params->{pref_semantic_stale_days} = $params->{pref_semantic_cache_days};
     }
     return $class->SUPER::handler($client, $params);
 }

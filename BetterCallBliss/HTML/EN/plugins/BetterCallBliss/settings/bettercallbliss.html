@@ -157,28 +157,6 @@
     [% END %]
   </div>
 
-  <br><hr style="opacity:0.4" class="sub-sep"><br>
-
-  <b style="font-size:125%" id="roadmap-section-header" class="hidden-section" onclick="toggleSection('roadmap-section')">Stored for features that are not connected yet</b><br><br>
-  <div id="roadmap-section" class="hidden">
-    <p>ListenBrainz, semantic cache retention, and durable reports remain roadmap settings.</p>
-
-    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED" desc="PLUGIN_BETTERCALLBLISS_LISTENBRAINZ_ENABLED_DESC" %]
-      <input type="checkbox" name="pref_listenbrainz_enabled" id="listenbrainz_enabled" value="1" [% IF prefs.listenbrainz_enabled %]checked="checked"[% END %]>
-    [% END %]
-
-    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS" desc="PLUGIN_BETTERCALLBLISS_SEMANTIC_CACHE_DAYS_DESC" %]
-      <input type="number" min="1" max="365" class="stdedit" name="pref_semantic_cache_days" id="semantic_cache_days" value="[% prefs.semantic_cache_days %]" size="6">
-    [% END %]
-
-    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS" desc="PLUGIN_BETTERCALLBLISS_SEMANTIC_STALE_DAYS_DESC" %]
-      <input type="number" min="1" max="3650" class="stdedit" name="pref_semantic_stale_days" id="semantic_stale_days" value="[% prefs.semantic_stale_days %]" size="6">
-    [% END %]
-
-    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS" desc="PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC" %]
-      <input type="number" min="1" max="3650" class="stdedit" name="pref_report_retention_days" id="report_retention_days" value="[% prefs.report_retention_days %]" size="6">
-    [% END %]
-  </div>
 [% END %]
 
 [% PROCESS settings/footer.html %]
@@ -250,8 +228,7 @@
       'compatibility-section': true,
       'job-defaults-section': true,
       'route-section': false,
-      'guidance-providers-section': false,
-      'roadmap-section': false
+      'guidance-providers-section': false
     };
     try {
       Object.keys(defaults).forEach(function (id) {
