@@ -143,6 +143,7 @@ jobs:
           ls -l optimizer-assets
           (cd optimizer-assets && sha256sum -c *.sha256)
           (cd optimizer-assets && sha256sum -c bliss-playlist-optimizer-third-party-nugine-LICENSE.sha256)
+          (cd optimizer-assets && sha256sum -c bliss-playlist-optimizer-third-party-licenses.zip.sha256)
           git check-ref-format "refs/tags/$OPTIMIZER_RELEASE"
           commit="$(git ls-remote "https://github.com/$OPTIMIZER_REPO.git" "refs/tags/$OPTIMIZER_RELEASE" "refs/tags/$OPTIMIZER_RELEASE^{}" | tail -n 1 | cut -f 1)"
           python scripts/verify_native_source.py optimizer-assets/bliss-playlist-optimizer-source.tar.gz "$commit"
@@ -182,6 +183,7 @@ jobs:
             cp LICENSE THIRD_PARTY_NOTICES.md staging/BetterCallBliss/
             mkdir -p staging/BetterCallBliss/third-party-licenses
             cp optimizer-assets/bliss-playlist-optimizer-third-party-nugine-LICENSE staging/BetterCallBliss/third-party-licenses/
+            cp optimizer-assets/bliss-playlist-optimizer-third-party-licenses.zip staging/BetterCallBliss/third-party-licenses/
             printf '# Source provenance\n\nPlugin commit: %s\nhttps://github.com/chrober/lms-better-call-bliss/tree/%s\n\nNative optimizer release: %s\nhttps://github.com/chrober/bliss-playlist-optimizer/releases/tag/%s\n\nThese references do not constitute a complete Corresponding Source bundle.\n' "$GITHUB_SHA" "$GITHUB_SHA" "$OPTIMIZER_RELEASE" "$OPTIMIZER_RELEASE" > staging/BetterCallBliss/SOURCE.md
             printf '\nPlugin source archive: https://github.com/chrober/lms-better-call-bliss/releases/download/%s/lms-better-call-bliss-source-%s.zip\n' "$RELEASE_TAG" "$RELEASE_VERSION" >> staging/BetterCallBliss/SOURCE.md
             printf 'Native source archive: https://github.com/chrober/bliss-playlist-optimizer/releases/download/%s/bliss-playlist-optimizer-source.tar.gz\n' "$OPTIMIZER_RELEASE" >> staging/BetterCallBliss/SOURCE.md
