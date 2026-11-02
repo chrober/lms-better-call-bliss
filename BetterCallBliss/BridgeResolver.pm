@@ -203,6 +203,47 @@ sub _track_for_database_file {
     return;
 }
 
+sub _validate_automatic_improvement_layout {
+    my ($preview, $sources, $budget, $spacing_enabled, $smoothing_enabled) = @_;
+    my $sequence = $preview->{final_sequence};
+    my $reasons = $preview->{addition_reasons};
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement omitted its final sequence or addition reasons')
+        unless ref($sequence) eq 'ARRAY' && ref($reasons) eq 'ARRAY' && @$sequence >= 2;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement failed its route proofs')
+        unless $preview->{original_subsequence_preserved} && $preview->{unique_membership}
+            && $preview->{repeat_windows_satisfied};
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement omitted its minimum-spacing proof')
+        if $spacing_enabled && !$preview->{minimum_spacing_selected};
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement changed its additions budget')
+        unless defined $preview->{max_added_tracks} && $preview->{max_added_tracks} == $budget;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement added an opening or closing track')
+        unless ($sequence->[0]->{kind} || '') eq 'original'
+            && ($sequence->[-1]->{kind} || '') eq 'original';
+    my @originals = map { $_->{track_id} } grep { ($_->{kind} || '') eq 'original' } @$sequence;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement changed source order')
+        unless _same_values(\@originals, $sources);
+    my @bridges = map { $_->{track_id} } grep { ($_->{kind} || '') eq 'bridge' } @$sequence;
+    my %bridges = map { $_ => 1 } @bridges;
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement has invalid addition counts')
+        unless @bridges <= $budget && keys(%bridges) == @bridges
+            && defined $preview->{added_track_count} && $preview->{added_track_count} == @bridges
+            && @$reasons == @bridges;
+    my (%seen, %counts);
+    for my $entry (@$reasons) {
+        my $id = $entry->{candidate_id} || '';
+        my $reason = $entry->{reason} || '';
+        _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement has invalid addition reasons')
+            unless $bridges{$id} && !$seen{$id}++ && ($reason eq 'spacing' || $reason eq 'smoothing');
+        $counts{$reason}++;
+    }
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement changed its selected goals')
+        if (!$spacing_enabled && $counts{spacing}) || (!$smoothing_enabled && $counts{smoothing});
+    _fail('BRIDGE_ARTIFACT_INVALID', 'Automatic improvement has inconsistent phase counts')
+        unless defined $preview->{spacing_additions} && defined $preview->{smoothing_additions}
+            && $preview->{spacing_additions} == ($counts{spacing} || 0)
+            && $preview->{smoothing_additions} == ($counts{smoothing} || 0);
+}
+
 sub resolve_bridge_preview {
     my $job = shift;
     my $artifact = $job->{artifact} || {};
@@ -223,7 +264,7 @@ sub resolve_bridge_preview {
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong source-order policy')
         unless ($artifact->{ordering_policy} || '') eq $artifact_ordering;
     _fail('BRIDGE_ARTIFACT_INVALID', 'The optimizer returned the wrong addition mode')
-        unless (($mode eq 'automatic' || $exact_like || $destination_route
+        unless (($mode eq 'automatic' || $mode eq 'automatic_improvement' || $exact_like || $destination_route
                 || $mode eq 'fixed_source_extension'
                 || $mode eq 'repeat_window_repair')
             && ($preview->{mode} || '') eq $preview_mode);
@@ -361,7 +402,12 @@ sub resolve_bridge_preview {
     _fail('BRIDGE_ARTIFACT_INVALID', 'The reported added-track count does not match the sequence')
         unless defined $preview->{added_track_count}
             && $preview->{added_track_count} == @bridges;
-    if ($mode eq 'automatic') {
+    if ($mode eq 'automatic_improvement') {
+        _validate_automatic_improvement_layout(
+            $preview, \@selected, 0 + ($job->{options}->{max_added_tracks} || 0),
+            $job->{options}->{satisfy_repeat_windows}, $job->{options}->{smooth_transitions},
+        );
+    } elsif ($mode eq 'automatic') {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The automatic preview exceeded its bridge budget')
             if @bridges > ($preview->{max_added_tracks} || 0);
     } elsif ($destination_route) {
@@ -446,6 +492,9 @@ sub resolve_bridge_preview {
     my %extension_selection_for = map {
         (($_->{candidate_id} || '') => $_)
     } @{$preview->{selected_additions} || []};
+    my %improvement_reason_for = map {
+        (($_->{candidate_id} || '') => ($_->{reason} || ''))
+    } @{$preview->{addition_reasons} || []};
     _fail('BRIDGE_ARTIFACT_INVALID', 'Fixed-source extension selection details do not match final additions')
         if $mode eq 'fixed_source_extension'
             && (scalar(keys %extension_selection_for) != @bridges
@@ -519,6 +568,8 @@ sub resolve_bridge_preview {
                 my $selected_bridge = $decision->{selected_bridge} || {};
                 push @additions, {
                     track_id => $id,
+                    ($mode eq 'automatic_improvement'
+                        ? (addition_reason => $improvement_reason_for{$id}) : ()),
                     left_track_id => $decision->{left_track_id},
                     right_track_id => $decision->{right_track_id},
                     direct_percentile => $decision->{direct_percentile},

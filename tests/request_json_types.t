@@ -166,15 +166,21 @@ BEGIN {
     our $target_track_count = '25';
     our $max_added_tracks = '8';
     our $addition_purpose = '';
+    our $satisfy_repeat_windows = 1;
+    our $smooth_transitions = 1;
     our $tracks_per_gap = '1';
+    our $static_weights;
     sub normalize {
         my $input = $_[1] || {};
         return {
             ordering_policy => 'preserve_order',
             extension_mode => $extension_mode,
             addition_purpose => $addition_purpose,
+            satisfy_repeat_windows => $satisfy_repeat_windows,
+            smooth_transitions => $smooth_transitions,
             tracks_per_gap => $tracks_per_gap,
             algorithm => $algorithm,
+            (defined $static_weights ? (static_weights => $static_weights) : ()),
             seed_limit => '3',
             learned_percent => '20',
             artist_window => '5',
@@ -595,9 +601,15 @@ like($@, qr/final playlist of at least 12 tracks.*current request targets 11 tra
 $Plugins::BetterCallBliss::JobOptions::extension_mode = 'fixed_source_extension';
 $Plugins::BetterCallBliss::JobOptions::addition_purpose = 'satisfy_constraints';
 $Plugins::BetterCallBliss::JobOptions::max_added_tracks = '20';
+$Plugins::BetterCallBliss::JobOptions::static_weights = {
+    tempo => 8, timbre => 30, loudness => 9, chroma => 57,
+};
 my $static = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
     7, 'preview-json-types-spacing', '/tmp/semantic-evidence.json', {},
 );
+cmp_ok(abs($static->{request}->{scoring}->{feature_weights}->[0] - 8 / 104 * 25),
+    '<', 0.000001, 'preview scoring uses the captured Extras weights');
+$Plugins::BetterCallBliss::JobOptions::static_weights = undef;
 is($static->{request}->{extension}->{mode}, 'repeat_window_repair',
     'spacing-track repair uses the native minimum-total repair mode');
 is($static->{options}->{target_track_count}, 12,
@@ -606,6 +618,56 @@ ok(!exists $static->{request}->{extension}->{target_track_count},
     'spacing-track repair does not turn the lower-bound preflight into a target');
 is($static->{request}->{extension}->{max_added_tracks}, 20,
     'spacing-track repair gives the optimizer the maximum additions budget for dynamic growth');
+
+$Plugins::BetterCallBliss::JobOptions::addition_purpose = 'automatic_improvement';
+$Plugins::BetterCallBliss::JobOptions::extension_mode = 'automatic_improvement';
+my $combined = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+    7, 'preview-json-types-combined', '/tmp/semantic-evidence.json', {},
+);
+is($combined->{request}->{extension}->{mode}, 'automatic_improvement',
+    'combined goals select the native automatic-improvement mode');
+is(JSON::XS->new->encode($combined->{request}->{extension}->{satisfy_repeat_windows}), 'true',
+    'spacing goal is a JSON boolean');
+is(JSON::XS->new->encode($combined->{request}->{extension}->{smooth_transitions}), 'true',
+    'smoothing goal is a JSON boolean');
+is($combined->{request}->{extension}->{max_added_tracks}, 20,
+    'combined phases share the submitted budget');
+$Plugins::BetterCallBliss::JobOptions::satisfy_repeat_windows = 0;
+my $smoothing_conflict = eval {
+    Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+        7, 'preview-json-types-smoothing-conflict', '/tmp/semantic-evidence.json', {},
+    );
+    1;
+};
+ok(!$smoothing_conflict, 'smoothing alone rejects an impossible source before launch');
+like($@, qr/enable.*spacing/i, 'smoothing conflict points to the spacing goal');
+{
+    package TestDiverseTrack;
+    our @ISA = ('TestTrack');
+    sub artistName { return $_[0]->{artist_name} }
+    sub albumname { return 'album ' . $_[0]->{id} }
+}
+{
+    no warnings 'redefine';
+    local *TestPlaylist::tracks = sub {
+        return map {
+            my $track = TestDiverseTrack->new($_, "track $_");
+            $track->{artist_name} = $_ <= 2 ? 'Repeated artist' : "artist $_";
+            $track;
+        } 1..8;
+    };
+    my $local_conflict = eval {
+        Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+            7, 'preview-preserved-local-conflict', '/tmp/semantic-evidence.json', {},
+        );
+        1;
+    };
+    ok(!$local_conflict, 'smoothing alone rejects a preserved local repeat even when overall capacity is sufficient');
+    like($@, qr/enable.*spacing/i, 'preserved local repeat explains how to enable spacing');
+}
+$Plugins::BetterCallBliss::JobOptions::satisfy_repeat_windows = 1;
+$Plugins::BetterCallBliss::JobOptions::addition_purpose = 'satisfy_constraints';
+$Plugins::BetterCallBliss::JobOptions::extension_mode = 'fixed_source_extension';
 ok(!exists $static->{request}->{extension}->{gap_context_mode},
     'Static spacing-track repair omits the Adaptive-only gap-context policy');
 

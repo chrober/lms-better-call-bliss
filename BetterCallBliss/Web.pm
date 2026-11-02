@@ -22,6 +22,7 @@ use Plugins::BetterCallBliss::DurationTarget;
 use Plugins::BetterCallBliss::GuidanceReporting;
 use Plugins::BlissGuidance::SettingsModel;
 use Plugins::BetterCallBliss::JobOptions;
+use Plugins::BetterCallBliss::ExtrasDefaults;
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::PlaylistWriter;
 use Plugins::BetterCallBliss::RouteMode;
@@ -188,12 +189,20 @@ sub _form_from_params {
         variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         gap_context_mode tracks_per_gap last_played_horizon_days library_age_horizon_days
+        satisfy_repeat_windows smooth_transitions
         max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count
         target_duration_minutes duration_tolerance_below_percent duration_tolerance_above_percent output_mode output_name
         queue_player_id queue_action queue_start_playback candidate_library_id
         preview_job_id
+        extras_weight_tempo extras_weight_timbre extras_weight_loudness extras_weight_chroma
     )) {
         $form->{$name} = $params->{$name} if defined $params->{$name};
+    }
+    for my $goal (qw(satisfy_repeat_windows smooth_transitions)) {
+        if (exists $params->{$goal . '_present'}) {
+            $form->{$goal} = $params->{$goal} ? 1 : 0;
+            $form->{$goal . '_present'} = 1;
+        }
     }
     for my $name (keys %$params) {
         next unless $name =~ /^guidance_provider_[a-z][a-z0-9-]{1,63}_[a-z][a-z0-9_]{1,63}$/;
@@ -204,6 +213,17 @@ sub _form_from_params {
             || ($form->{source_mode} || '') eq 'player_queue';
     $form->{source_queue_scope} ||= 'full';
     return $form;
+}
+
+sub _migrate_legacy_automatic_goals {
+    my ($form, $capability) = @_;
+    return unless $capability->{automatic_improvement_available};
+    my $purpose = $form->{addition_purpose} || '';
+    return unless $purpose eq 'automatic' || $purpose eq 'satisfy_constraints';
+    $form->{addition_purpose} = 'automatic_improvement';
+    $form->{extension_mode} = 'automatic_improvement';
+    $form->{satisfy_repeat_windows} = $purpose eq 'satisfy_constraints' ? 1 : 0;
+    $form->{smooth_transitions} = $purpose eq 'automatic' ? 1 : 0;
 }
 
 sub _guidance_provider_sections {
@@ -236,11 +256,15 @@ sub _guidance_provider_sections {
                     || ($control->{type} eq 'integer' ? 'slider' : ''),
             };
         }
+        my $enabled_field = 'guidance_provider_' . $provider->{provider_id} . '_enabled';
+        my $enabled = exists $form->{$enabled_field . '_present'}
+            ? ($form->{$enabled_field} ? 1 : 0) : ($policy->{enabled} ? 1 : 0);
         push @sections, {
             provider_id => $provider->{provider_id},
             display_name => $descriptor->{display_name} || $provider->{provider_id},
             available => $provider->{available} ? 1 : 0,
-            enabled => $policy->{enabled} ? 1 : 0,
+            enabled => $enabled,
+            enabled_field => $enabled_field,
             valid => $policy->{valid} ? 1 : 0,
             diagnostic => $provider->{diagnostic} || $policy->{diagnostic} || '',
             controls => \@controls,
@@ -257,10 +281,20 @@ sub _form_from_job {
         ? $options->{guidance_provider_policies} : {}}) {
         my $policy = $options->{guidance_provider_policies}->{$provider_id};
         next unless ref($policy) eq 'HASH' && ref($policy->{effective}) eq 'HASH';
+        my $enabled_field = 'guidance_provider_' . $provider_id . '_enabled';
+        $params{$enabled_field . '_present'} = 1;
+        $params{$enabled_field} = $policy->{enabled} ? 1 : 0;
         for my $key (keys %{$policy->{effective}}) {
             $params{'guidance_provider_' . $provider_id . '_' . $key}
                 = $policy->{effective}->{$key};
         }
+    }
+    my $captured_weights = ref($options->{static_weights}) eq 'HASH'
+        ? $options->{static_weights}
+        : ref($job->{capability}) eq 'HASH' ? $job->{capability}->{static_weight_sliders} : undef;
+    if (ref($captured_weights) eq 'HASH') {
+        $params{'extras_weight_' . $_} = $captured_weights->{$_}
+            for qw(tempo timbre loudness chroma);
     }
     if (($job->{source_mode} || '') eq 'player_queue') {
         $params{source_mode} = 'player_queue';
@@ -295,6 +329,8 @@ sub _job_mode_label {
         $job->{route_source},
     ) if $job->{route_to_track};
     return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
+    return 'Improve playlist automatically' if $purpose eq 'automatic_improvement'
+        || ($options->{extension_mode} || '') eq 'automatic_improvement';
     return 'Improve difficult transitions' if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
     return 'Add spacing tracks as needed'
@@ -431,6 +467,13 @@ sub _guidance_summary {
         present => @parts ? 1 : 0,
         text => join('; ', @parts),
     };
+}
+
+sub _addition_reason_label {
+    my $reason = shift || '';
+    return 'Repeat-window spacing' if $reason eq 'spacing';
+    return 'Transition smoothing' if $reason eq 'smoothing';
+    return '';
 }
 
 sub _result_view {
@@ -576,6 +619,14 @@ sub _result_view {
         if ($job->{options}->{extension_mode} ne 'none') {
             my $preview = $artifact->{selection_preview} || {};
             $view->{bridge_extension} = 1;
+            if ($job->{options}->{extension_mode} eq 'automatic_improvement') {
+                $view->{automatic_improvement} = 1;
+                $view->{satisfy_repeat_windows} = $job->{options}->{satisfy_repeat_windows} ? 1 : 0;
+                $view->{smooth_transitions} = $job->{options}->{smooth_transitions} ? 1 : 0;
+                $view->{improvement_budget} = 0 + ($job->{options}->{max_added_tracks} || 0);
+                $view->{spacing_additions} = 0 + ($preview->{spacing_additions} || 0);
+                $view->{smoothing_additions} = 0 + ($preview->{smoothing_additions} || 0);
+            }
             $view->{automatic_extension} = 1
                 if $job->{options}->{extension_mode} eq 'automatic';
             $view->{exact_count_extension} = 1
@@ -745,6 +796,7 @@ sub _result_view {
                 push @additions, {
                     artist => $label->{artist} || 'Unknown Artist',
                     title => $label->{title} || $addition->{track_id},
+                    addition_reason_label => _addition_reason_label($addition->{addition_reason}),
                     left => $left->{title} || $addition->{left_track_id},
                     right => $right->{title} || $addition->{right_track_id},
                     direct_percent => sprintf(
@@ -827,6 +879,20 @@ sub handler {
             Plugins::BetterCallBliss::CandidateLibrary::active_id($client);
     }
     my $form = _form_from_params($params, $defaults);
+    my ($defaults_view, $editor_error);
+    eval {
+        ($form, $defaults_view) = Plugins::BetterCallBliss::ExtrasDefaults::prepare_editor(
+            $plugin_prefs, $params, $form, $defaults, $capability,
+        );
+    };
+    $editor_error = $@;
+    $editor_error =~ s/\s+/ /g if $editor_error;
+    _migrate_legacy_automatic_goals($form, $capability);
+    if ($params->{select_extras_defaults}) {
+        Plugins::BetterCallBliss::Jobs::finish_web_response();
+        my $result = $editor_error ? 'error: ' . $editor_error : 'ok';
+        return \$result;
+    }
     if (($form->{source_mode} || '') eq 'player_queue') {
         $form->{source_player_id} ||= $form->{queue_player_id};
         if (!$form->{source_player_id} && $client) {
@@ -857,6 +923,7 @@ sub handler {
     $form->{output_name_generated} = length($form->{output_name}) ? 0 : 1;
 
     my ($job, $error);
+    $error = $editor_error if $editor_error;
     if ($params->{cancel_job}) {
         eval {
             die "Preview job is no longer available"
@@ -901,6 +968,9 @@ sub handler {
         $error = $@;
         $error =~ s/\s+/ /g if $error;
         $error = undef if $job && ($job->{write_state} || '') eq 'failed';
+    } elsif ($params->{save_extras_defaults} || $params->{load_extras_defaults}) {
+        # These editor actions must never launch a preview, including when a
+        # previous AJAX submission left a run_preview field in the form.
     } elsif ($params->{quick_route} || $params->{run_route_to_track_preview}
         || ($params->{run_preview} && ($form->{source_mode} || '') eq 'route_to_track')) {
         eval {
@@ -947,6 +1017,7 @@ sub handler {
     my $playlists = _playlists();
     my $players = _players();
     $form = _form_from_job($job, $defaults) if $job;
+    _migrate_legacy_automatic_goals($form, $capability);
 
     my ($running_jobs, $recent_jobs) = _job_lists();
     $params->{bettercallbliss_running_jobs} = $running_jobs;
@@ -967,6 +1038,7 @@ sub handler {
     $params->{bettercallbliss_material_library_autoselect} =
         $candidate_library_was_explicit ? 0 : 1;
     $params->{bettercallbliss_form} = $form;
+    $params->{bettercallbliss_extras_defaults} = $defaults_view || {};
     $params->{bettercallbliss_guidance_provider_sections} =
         _guidance_provider_sections($capability, $form);
     $params->{bettercallbliss_quick_route} = $job

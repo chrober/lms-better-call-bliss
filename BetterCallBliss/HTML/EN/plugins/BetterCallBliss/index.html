@@ -199,6 +199,31 @@
 
 <form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post"[% IF bettercallbliss_quick_route && bettercallbliss_job %] class="bea-hidden"[% END %]>
   <input type="hidden" name="queue_player_id" value="[% bettercallbliss_form.queue_player_id | html %]">
+  [% UNLESS bettercallbliss_form.source_mode == 'route_to_track' %]
+  <fieldset class="bea-section" id="extras_defaults_fields">
+    <legend>Defaults for new previews</legend>
+    <p class="bea-note">Plugin defaults follow the current settings of Better Call Bliss, BlissMixer and installed guidance providers. Saved Extras defaults are independent.</p>
+    [% IF bettercallbliss_extras_defaults.status %]<p class="bea-ok">[% bettercallbliss_extras_defaults.status | html %]</p>[% END %]
+    [% FOREACH warning IN bettercallbliss_extras_defaults.warnings %]<p class="bea-warning">[% warning | html %]</p>[% END %]
+    <div role="group" aria-labelledby="extras_defaults_source_label">
+      <span id="extras_defaults_source_label">Defaults source</span><br>
+      <label><input type="radio" name="extras_defaults_source" value="plugin"[% IF bettercallbliss_extras_defaults.source != 'extras' %] checked[% END %]> Use plugin defaults</label><br>
+      <label><input type="radio" name="extras_defaults_source" value="extras"[% IF bettercallbliss_extras_defaults.source == 'extras' %] checked[% END %][% UNLESS bettercallbliss_extras_defaults.has_profile %] disabled[% END %]> Use saved Extras defaults</label>
+    </div>
+    <button type="submit" id="load_extras_defaults" name="load_extras_defaults" value="1" formnovalidate onclick="return confirm('Load these defaults and replace the current preview settings?');">Load selected defaults</button>
+    <button type="submit" id="save_extras_defaults" name="save_extras_defaults" value="1" formnovalidate>Save current settings as Extras defaults</button>
+    <span id="extras_defaults_selection_status" class="bea-note" role="status" aria-live="polite"></span>
+    [% UNLESS bettercallbliss_extras_defaults.has_profile %]<p class="bea-note">Save your current settings to make Extras defaults available.</p>[% END %]
+    <p class="bea-note">Changing the selection affects future new previews. Load selected defaults to apply it here. Running a preview does not save defaults; loading leaves the selected source and player unchanged.</p>
+  </fieldset>
+  [% END %]
+  [% IF bettercallbliss_form.extras_weight_tempo.defined %]
+    <input type="hidden" name="extras_weight_tempo" value="[% bettercallbliss_form.extras_weight_tempo | html %]">
+    <input type="hidden" name="extras_weight_timbre" value="[% bettercallbliss_form.extras_weight_timbre | html %]">
+    <input type="hidden" name="extras_weight_loudness" value="[% bettercallbliss_form.extras_weight_loudness | html %]">
+    <input type="hidden" name="extras_weight_chroma" value="[% bettercallbliss_form.extras_weight_chroma | html %]">
+    <p class="bea-note">Static scoring uses saved Extras weights: tempo [% bettercallbliss_form.extras_weight_tempo | html %], timbre [% bettercallbliss_form.extras_weight_timbre | html %], loudness [% bettercallbliss_form.extras_weight_loudness | html %], chroma [% bettercallbliss_form.extras_weight_chroma | html %].</p>
+  [% END %]
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
     [% IF bettercallbliss_form.source_mode == 'route_to_track' %]
@@ -305,8 +330,12 @@
         <label for="addition_purpose">Additional tracks</label>
         <select name="addition_purpose" id="addition_purpose">
           <option value="none"[% IF bettercallbliss_form.addition_purpose == 'none' %] selected[% END %]>No additions - only use the source tracks</option>
-          <option value="automatic"[% IF bettercallbliss_form.addition_purpose == 'automatic' %] selected[% END %]>Improve difficult transitions when useful</option>
-          <option value="satisfy_constraints"[% IF bettercallbliss_form.addition_purpose == 'satisfy_constraints' %] selected[% END %]>Add spacing tracks as needed</option>
+          [% IF bettercallbliss_capability.automatic_improvement_available %]
+            <option value="automatic_improvement"[% IF bettercallbliss_form.addition_purpose == 'automatic_improvement' || bettercallbliss_form.addition_purpose == 'automatic' || bettercallbliss_form.addition_purpose == 'satisfy_constraints' %] selected[% END %]>Improve playlist automatically</option>
+          [% ELSE %]
+            <option value="automatic"[% IF bettercallbliss_form.addition_purpose == 'automatic' %] selected[% END %]>Improve difficult transitions when useful</option>
+            <option value="satisfy_constraints"[% IF bettercallbliss_form.addition_purpose == 'satisfy_constraints' %] selected[% END %]>Add spacing tracks as needed</option>
+          [% END %]
           <option value="extend_playlist"[% IF bettercallbliss_form.addition_purpose == 'extend_playlist' %] selected[% END %]>Extend playlist</option>
           [% IF bettercallbliss_capability.fixed_gap_count_available %]
             <option value="fixed_gap_count"[% IF bettercallbliss_form.addition_purpose == 'fixed_gap_count' %] selected[% END %]>Fill every gap with N bridge tracks</option>
@@ -348,6 +377,13 @@
   <fieldset class="bea-section bea-mode-section" id="automatic_extension_fields">
     <legend id="automatic_extension_legend">Automatic additions</legend>
     <p class="bea-note" id="automatic_extension_note"></p>
+    <div id="automatic_improvement_goals" class="bea-row">
+      <input type="hidden" name="satisfy_repeat_windows_present" value="1">
+      <label><input type="checkbox" name="satisfy_repeat_windows" id="satisfy_repeat_windows" value="1"[% IF bettercallbliss_form.satisfy_repeat_windows %] checked[% END %]> Satisfy repeat windows with spacing tracks</label>
+      <input type="hidden" name="smooth_transitions_present" value="1">
+      <label><input type="checkbox" name="smooth_transitions" id="smooth_transitions" value="1"[% IF bettercallbliss_form.smooth_transitions %] checked[% END %]> Improve difficult transitions when useful</label>
+    </div>
+    <p class="bea-warning bea-hidden" id="automatic_improvement_warning">Select at least one improvement goal.</p>
     <div class="bea-row">
       <label for="max_added_tracks">Maximum additional tracks</label>
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="max_added_tracks" id="max_added_tracks" value="[% bettercallbliss_form.max_added_tracks %]" required>
@@ -358,7 +394,7 @@
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.trigger_percent %]</span>
     </div>
-    <p class="bea-note">This is a rank on the job's frozen source-playlist distance scale, not percentage similarity. Lower values are stricter and make more source transitions eligible for bridge search. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.</p>
+    <p class="bea-note" id="trigger_percent_note">This is a rank on the job's frozen source-playlist distance scale, not percentage similarity. Lower values are stricter and make more source transitions eligible for bridge search. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.</p>
   </fieldset>
 
   <fieldset class="bea-section bea-mode-section" id="exact_count_fields">
@@ -448,7 +484,11 @@
   [% FOREACH provider IN bettercallbliss_guidance_provider_sections %]
   <fieldset class="bea-section guidance_provider_fields" id="guidance_provider_[% provider.provider_id | html %]_fields">
     <legend>[% provider.display_name | html %]</legend>
-    [% IF provider.available && provider.enabled && provider.valid %]
+    [% IF provider.available && provider.valid %]
+      <div class="bea-row">
+        <input type="hidden" name="[% provider.enabled_field | html %]_present" value="1">
+        <label><input type="checkbox" name="[% provider.enabled_field | html %]" value="1"[% IF provider.enabled %] checked="checked"[% END %]> Enable for this preview</label>
+      </div>
       [% FOREACH control IN provider.controls %]
       <div class="bea-row">
         <label for="[% control.field_name | html %]">[% control.label_token | string %]</label>
@@ -501,7 +541,7 @@
       [% END %]
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
-    <p class="bea-note">Current BlissMixer strategy: [% bettercallbliss_capability.algorithm | html %]. These values are passed to the optimizer request for this preview. Static uses BlissMixer's four metric sliders expanded to the 23 Bliss audio features. Adaptive can run without a learned matrix; in that case multi-track contexts use variance and one-track contexts fall back to the static BlissMixer weights.</p>
+    <p class="bea-note">Current BlissMixer strategy: [% bettercallbliss_capability.algorithm | html %]. These values are passed to the optimizer request for this preview. Static uses four metric sliders expanded to the 23 Bliss audio features; saved Extras weights are shown above when selected. Adaptive can run without a learned matrix; in that case multi-track contexts use variance and one-track contexts fall back to the static weights.</p>
     [% IF bettercallbliss_capability.algorithm == 'forest' %]<p class="bea-warning">BlissMixer currently uses Extended Isolation Forest, but Better Call Bliss does not route playlists with Forest yet. Choose Adaptive or Static for now.</p>[% END %]
   </fieldset>
 
@@ -601,10 +641,15 @@
     var gapContextModeRow = document.getElementById('gap_context_mode_row');
     var gapContextModeNote = document.getElementById('gap_context_mode_note');
     var automaticFields = document.getElementById('automatic_extension_fields');
+    var automaticGoals = document.getElementById('automatic_improvement_goals');
+    var spacingGoal = document.getElementById('satisfy_repeat_windows');
+    var smoothingGoal = document.getElementById('smooth_transitions');
+    var automaticGoalWarning = document.getElementById('automatic_improvement_warning');
     var automaticLegend = document.getElementById('automatic_extension_legend');
     var automaticNote = document.getElementById('automatic_extension_note');
     var automaticInputs = automaticFields ? automaticFields.querySelectorAll('input') : [];
     var triggerPercentRow = document.getElementById('trigger_percent_row');
+    var triggerPercentNote = document.getElementById('trigger_percent_note');
     var exactFields = document.getElementById('exact_count_fields');
     var extendPlaylistNote = document.getElementById('extend_playlist_note');
     var exactInputs = exactFields ? exactFields.querySelectorAll('input') : [];
@@ -980,6 +1025,10 @@
           optimize: 'Optimize and freeze the source-only order first, then add the minimum number of spacing tracks needed across its gaps to satisfy the selected repeat windows. All gaps are planned together within the maximum-additions budget.',
           preserve: 'Keep the current source order, then add the minimum number of spacing tracks needed across its fixed gaps to satisfy the selected repeat windows. All gaps are planned together within the maximum-additions budget.'
         },
+        automatic_improvement: {
+          optimize: 'Optimize the source order first. If selected, add the minimum spacing needed for the repeat windows, then use the remaining budget to improve difficult transitions.',
+          preserve: 'Keep the source order. If selected, add the minimum spacing needed for the repeat windows, then use the remaining budget to improve difficult transitions.'
+        },
         extend_playlist: {
           optimize: 'Extend this playlist by the chosen amount. Additions are selected because they fit the complete original source set as a fixed reference; then originals and additions may be reordered together for flow. Use Reach final track count when the source is a short seed list and you want a fuller mix.',
           preserve: 'Extend this playlist by the chosen amount without moving the original tracks. Additions are selected because they fit the complete original source set as a fixed reference, then placed around the ordered anchors. This is not one bridge per gap.'
@@ -995,11 +1044,21 @@
         double_count: 'Extend-only amount control: add one track per source track, so the final result has exactly twice as many tracks. This is still full-playlist extension, not one bridge per existing transition.',
         target_duration: 'Extend the playlist to the chosen duration within the allowed tolerances.'
       };
+      if (purpose === 'automatic_improvement') {
+        var actions = [];
+        if (spacingGoal && spacingGoal.checked) actions.push('add the minimum spacing needed for the repeat windows');
+        if (smoothingGoal && smoothingGoal.checked) actions.push('improve difficult transitions where useful');
+        var prefix = preserve ? 'Keep the source order' : 'Optimize the source order first';
+        var description = prefix + (actions.length ? ', then ' + actions.join(' and ') + '.' : '. Select at least one improvement goal.');
+        purposeNotes.automatic_improvement = {optimize: description, preserve: description};
+      }
       var orderKey = preserve ? 'preserve' : 'optimize';
       additionPurposeNote.textContent = purposeNotes[purpose] ? purposeNotes[purpose][orderKey] : '';
       additionAmountNote.textContent = purpose === 'extend_playlist' ? (amountNotes[mode] || '') : '';
       if (automaticNote) {
-        automaticNote.textContent = purpose === 'satisfy_constraints'
+        automaticNote.textContent = purpose === 'automatic_improvement'
+          ? purposeNotes.automatic_improvement[orderKey]
+          : purpose === 'satisfy_constraints'
           ? purposeNotes.satisfy_constraints[orderKey]
           : purposeNotes.automatic[orderKey];
       }
@@ -1017,6 +1076,10 @@
 
     initializeAdditionControls();
     selectMaterialCandidateLibrary(0);
+
+    function automaticImprovementState(enabled, spacing, smoothing) {
+      return {showThreshold: enabled && smoothing, invalid: enabled && !spacing && !smoothing};
+    }
 
     function synchronizeControls() {
       var destinationRoute = sourceMode && sourceMode.value === 'route_to_track';
@@ -1056,6 +1119,9 @@
       var preserve = ordering.value === 'preserve_order';
       var noAdditions = extension.value === 'none';
       var automatic = extension.value === 'automatic';
+      var combinedAutomatic = extension.value === 'automatic_improvement';
+      var goalState = automaticImprovementState(combinedAutomatic,
+        spacingGoal && spacingGoal.checked, smoothingGoal && smoothingGoal.checked);
       var spacingOnly = additionPurpose && additionPurpose.value === 'satisfy_constraints';
       var extendPlaylist = additionPurpose && additionPurpose.value === 'extend_playlist';
       var fixedGapCount = additionPurpose && additionPurpose.value === 'fixed_gap_count';
@@ -1090,10 +1156,10 @@
       var maximumTarget = 500;
       var requestedExact = parseInt(exactCount.value || '0', 10);
       var requestedBridgeTarget = parseInt(bridgeTarget.value || '0', 10);
-      var zeroAutomaticBudget = (automatic || spacingOnly)
+      var zeroAutomaticBudget = (automatic || spacingOnly || combinedAutomatic)
         && parseInt(maximumAdditions && maximumAdditions.value || '0', 10) === 0;
       var invalidCombination = preserve
-        && (noAdditions || zeroAutomaticBudget);
+        && (noAdditions || (zeroAutomaticBudget && !combinedAutomatic));
       var invalidExact = exact && sourceCount > 0
         && (requestedExact < 1 || requestedExact > maximumExact
           || sourceCount + requestedExact > maximumTarget);
@@ -1151,7 +1217,7 @@
         ? sourceCount + ' source tracks + ' + sourceCount + ' additions = ' + (2 * sourceCount) + ' tracks.'
           + (invalidDouble ? ' This exceeds the current 500-track target limit.' : '')
         : 'Choose a source to see the calculated final size.';
-      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble || invalidFixedGap;
+      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble || invalidFixedGap || goalState.invalid;
 
       for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
         setVisible(guidanceProviderFields[providerIndex], additions);
@@ -1166,13 +1232,15 @@
         ? 'Not used when source order is preserved.'
         : 'Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.';
 
-      setVisible(automaticFields, automatic || spacingOnly);
+      setVisible(automaticFields, automatic || spacingOnly || combinedAutomatic);
+      setVisible(automaticGoals, combinedAutomatic);
+      setVisible(automaticGoalWarning, goalState.invalid);
       if (automaticLegend) {
         automaticLegend.textContent = spacingOnly
           ? 'Spacing tracks'
           : 'Automatic additions';
       }
-      setInputsReadOnly(automaticInputs, !(automatic || spacingOnly));
+      setInputsReadOnly(automaticInputs, !(automatic || spacingOnly || combinedAutomatic));
       setVisible(exactFields, exact);
       setInputsReadOnly(exactInputs, !exact);
       setVisible(targetFields, targetCount);
@@ -1190,10 +1258,11 @@
         ? 'Choose between 1 and 8 bridges per gap and keep the derived final size at or below 500 tracks.'
         : '';
       setVisible(fixedGapWarning, invalidFixedGap);
-      setVisible(triggerPercentRow, automatic);
-      setVisible(gapContextModeRow, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
-      setVisible(gapContextModeNote, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
-      setVisible(gapContextFields, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
+      setVisible(triggerPercentRow, automatic || goalState.showThreshold);
+      setVisible(triggerPercentNote, automatic || goalState.showThreshold);
+      setVisible(gapContextModeRow, (automatic || combinedAutomatic || fixedGapCount) && algorithm.value === 'adaptive');
+      setVisible(gapContextModeNote, (automatic || combinedAutomatic || fixedGapCount) && algorithm.value === 'adaptive');
+      setVisible(gapContextFields, (automatic || combinedAutomatic || fixedGapCount) && algorithm.value === 'adaptive');
       if (gapContextMode) gapContextMode.disabled = false;
       updateGapContextNote();
       setVisible(learnedPercentRow, algorithm.value === 'adaptive');
@@ -1206,6 +1275,8 @@
     if (sourcePlayer) sourcePlayer.addEventListener('change', synchronizeControls);
     if (sourceQueueScope) sourceQueueScope.addEventListener('change', synchronizeControls);
     if (additionPurpose) additionPurpose.addEventListener('change', synchronizeControls);
+    if (spacingGoal) spacingGoal.addEventListener('change', synchronizeControls);
+    if (smoothingGoal) smoothingGoal.addEventListener('change', synchronizeControls);
     if (additionAmountMode) additionAmountMode.addEventListener('change', synchronizeControls);
     algorithm.addEventListener('change', synchronizeControls);
     if (maximumAdditions) maximumAdditions.addEventListener('input', synchronizeControls);
@@ -1217,6 +1288,43 @@
     if (routeMinimum) routeMinimum.addEventListener('input', synchronizeControls);
     if (routeMaximum) routeMaximum.addEventListener('input', synchronizeControls);
     if (routeExact) routeExact.addEventListener('input', synchronizeControls);
+    var defaultsSources = document.querySelectorAll('input[name="extras_defaults_source"]');
+    var defaultsStatus = document.getElementById('extras_defaults_selection_status');
+    var defaultsLoad = document.getElementById('load_extras_defaults');
+    var defaultsSave = document.getElementById('save_extras_defaults');
+    if (defaultsSources.length && mainForm && window.fetch) {
+      var savedDefaultsSource = 'plugin';
+      defaultsSources.forEach(function (source) {
+        if (source.checked) savedDefaultsSource = source.value;
+        source.addEventListener('change', function () {
+          if (!source.checked) return;
+          var selected = source.value;
+          var disabledStates = Array.prototype.map.call(defaultsSources, function (item) { return item.disabled; });
+          defaultsSources.forEach(function (item) { item.disabled = true; });
+          defaultsLoad.disabled = true;
+          defaultsSave.disabled = true;
+          defaultsStatus.textContent = 'Saving selection...';
+          var body = 'select_extras_defaults=1&extras_defaults_source=' + encodeURIComponent(selected);
+          fetch(mainForm.action, {method: 'POST', credentials: 'same-origin',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'}, body: body})
+            .then(function (response) { if (!response.ok) throw new Error('Request failed'); return response.text(); })
+            .then(function (text) {
+              if (text.trim() !== 'ok') throw new Error(text);
+              savedDefaultsSource = selected;
+              defaultsStatus.textContent = 'Selection saved for new previews.';
+            })
+            .catch(function () {
+              defaultsSources.forEach(function (item) { item.checked = item.value === savedDefaultsSource; });
+              defaultsStatus.textContent = 'Could not save selection. Please try again.';
+            })
+            .then(function () {
+              defaultsSources.forEach(function (item, index) { item.disabled = disabledStates[index]; });
+              defaultsLoad.disabled = false;
+              defaultsSave.disabled = false;
+            });
+        });
+      });
+    }
     if (mainForm && submit) {
       mainForm.addEventListener('submit', function (event) {
         var submitter = event.submitter || document.activeElement;
@@ -1383,6 +1491,9 @@
         [% END %]
       </ol>
       [% IF bettercallbliss_job.bridge_extension %]
+        [% IF bettercallbliss_job.automatic_improvement %]
+          <p class="bea-note">Added [% bettercallbliss_job.spacing_additions %] spacing tracks and [% bettercallbliss_job.smoothing_additions %] transition-smoothing tracks.</p>
+        [% END %]
         [% IF bettercallbliss_job.guidance_stats.total %]
           <p class="bea-note"><b>Optional guidance applied to additions:</b>
             [% bettercallbliss_job.guidance_stats.lastfm_any %] of [% bettercallbliss_job.guidance_stats.total %] addition[% IF bettercallbliss_job.guidance_stats.total != 1 %]s[% END %] used Last.fm guidance
@@ -1402,11 +1513,14 @@
               [% ELSE %]
                 <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
                 "[% addition.left | html %]" and "[% addition.right | html %]";
+                [% IF addition.addition_reason_label %][% addition.addition_reason_label | html %];[% END %]
                 direct gap [% addition.direct_percent %]th percentile; guidance: [% addition.guidance_summary | html %].
               </li>
               [% END %]
             [% END %]
           </ul>
+        [% ELSIF bettercallbliss_job.automatic_improvement %]
+          <p>No tracks were added.[% IF bettercallbliss_job.satisfy_repeat_windows %] The source order already satisfies the repeat windows.[% END %][% IF bettercallbliss_job.smooth_transitions %][% IF bettercallbliss_job.improvement_budget %] No beneficial bridge was found within the selected settings.[% ELSE %] The additions budget was zero, so no bridge could be added.[% END %][% END %]</p>
         [% ELSIF bettercallbliss_job.automatic_extension %]
           <p>No bridge met the trigger, acoustic-improvement, uniqueness, and repeat constraints. The optimized base order is still a valid result.</p>
         [% END %]

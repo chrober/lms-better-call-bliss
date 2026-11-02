@@ -35,11 +35,12 @@ fall through to either working mode.
 | Select saved playlist | Working | Lists LMS saved playlists with at least two tracks. |
 | Optimize source order | Working for no additions, difficult-transition improvements, spacing-track repair, Extend playlist, and fixed bridges per gap | Original tracks may move. Fixed-gap and spacing modes first choose and then freeze the source-only order; repeat repair then inserts tracks only inside its frozen gaps, while Extend playlist routes the complete final membership. |
 | Preserve source order | Working for difficult-transition improvements, spacing-track repair, Extend playlist, and fixed bridges per gap | Every original track remains an immutable anchor in its input order. Difficult-transition, spacing, and fixed-gap modes inspect source gaps. Spacing repair chooses a variable count per gap; Extend playlist instead places already selected whole-source-relevant additions around the anchors. |
-| Additional-track purpose | Working | The visible editor asks for the purpose first: no additions, improve difficult transitions, add spacing tracks as needed, Extend playlist, or Fill every gap with N bridge tracks. Spacing repair and fixed-gap mode use the native global multi-gap planner with different count policies; Extend playlist uses fixed-source membership selection. The dedicated destination-route mode is used only by Bliss me there. |
+| Additional-track purpose | Working | With a compatible optimizer, the editor offers one automatic improvement workflow with independently selectable repeat-spacing and transition-smoothing goals. Older optimizers retain the separate choices. Extend playlist uses fixed-source membership selection; fixed-gap mode uses the global multi-gap planner. The dedicated destination-route mode is used only by Bliss me there. |
 | No additions | Working | Uses every original track exactly once and inserts none; rejected with preserved order because that combination is a guaranteed no-op. |
 | Improve difficult transitions | Working | Formerly shown as Add automatically. With optimized order it reorders the source before examining gaps; with preserved order it examines only the original gaps. It adds up to the per-job budget where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass, and may add zero. Before candidate capture or Last.fm work, preserved order checks its immutable source anchors against the selected artist and album windows. A conflict fails immediately, names the repeated artist or album and source positions, and directs the listener to Add spacing tracks as needed or Optimize source order. |
 | Add spacing tracks as needed | Working | Freezes the preserved or source-only optimized order, then searches every internal gap together. It inserts the minimum feasible total needed for artist, album, and track repeat windows, may use a different count in each gap, never adds opening or closing tracks, and treats the per-job maximum additions as a hard global ceiling. It does not use the bridge-trigger percentile or add optional tracks merely for awkward transitions. Route-search restarts affect only the preliminary source-only ordering when **Optimize** is selected; they do not widen the later spacing search and have no effect with **Preserve**. |
 | Extend playlist | Working | Shows a second amount selector for Add exactly N tracks, Reach final track count, Double track count, or Reach a target duration. Membership is selected against the fixed complete source set rather than capped by internal gaps. Count targets that are too small for the artist or album repeat windows fail before optimizer launch. |
+| Automatic improvement | Working with compatible optimizer | Spacing searches internal gaps together and uses the smallest feasible total; smoothing then examines the resulting adjacent tracks with the remaining shared budget. Either goal can be disabled. The preview identifies the purpose of each addition. Existing saved choices migrate to their equivalent individual goal. Route-search restarts affect only preliminary source ordering. |
 | Add exactly N tracks | Working under Extend playlist | Adds exactly the validated user-entered number of unique eligible local tracks or fails without returning a partial playlist. The visible Extend playlist path is not limited by `S - 1` gaps. |
 | Reach target track count | Working under Extend playlist | User enters the desired final track count. The plugin derives `N = T - S` and runs fixed-source membership selection. |
 | Fill every gap with N bridge tracks | Working | Accepts `N = 1..8`, derives `N * (S - 1)` additions, and globally plans exact anchored paths for all source gaps under shared uniqueness, repeat, guidance, and contextual scoring state. It adds no opening or closing tracks, fails without a partial result, reports per-gap progress, and verifies the native proof before output. |
@@ -94,9 +95,13 @@ fall through to either working mode.
 
 ## Settings
 
-The Extras editor initializes base scoring and repeat fields from the original
-BlissMixer. The submitted values belong to that job only and never update its
-global preferences. A compatible BlissMixerLab optionally supplies
+The Extras editor can initialize reusable options either from current plugin
+defaults or from an independently saved Extras set. The saved set includes
+repeat and scoring values, static BlissMixer weights, and provider job policies;
+source and destination details are not saved. Loading a set is explicit for an
+open editor, and a preview never saves defaults. Bliss me there continues to use
+general plugin defaults. The submitted values belong to that job only and never
+update global plugin preferences. A compatible BlissMixerLab optionally supplies
 `learned_matrix.json` and the learned-blend default. Its absence is shown as a
 non-blocking personalization notice, and the effective learned percentage is
 forced to zero. The enabled Last.fm provider supplies its own defaults, which

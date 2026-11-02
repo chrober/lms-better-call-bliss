@@ -31,6 +31,16 @@ is(Plugins::BetterCallBliss::CandidateLibrary::active_id(undef), '4d2ba37f',
     'the player/global active virtual library is detected');
 is(Plugins::BetterCallBliss::CandidateLibrary::normalize_id('noAudioBooks'),
     '4d2ba37f', 'stable virtual-library names resolve to LMS internal ids');
+is(Plugins::BetterCallBliss::CandidateLibrary::route_context_id(undef, undef, 'abcd1234'),
+    'abcd1234', 'route command uses standard library_id when supplied');
+is(Plugins::BetterCallBliss::CandidateLibrary::route_context_id(undef, '', 'abcd1234'),
+    '', 'explicit all-tracks candidate selection is not replaced');
+is(Plugins::BetterCallBliss::CandidateLibrary::route_context_id(undef, '4d2ba37f', 'abcd1234'),
+    '4d2ba37f', 'explicit candidate selection takes precedence over context library');
+is(Plugins::BetterCallBliss::CandidateLibrary::route_context_id(undef, undef, undef),
+    '4d2ba37f', 'route command falls back to the player library when context is absent');
+eval { Plugins::BetterCallBliss::CandidateLibrary::route_context_id(undef, undef, 'missing') };
+like($@, qr/no longer available/, 'unknown context library fails rather than silently widening candidates');
 is_deeply(
     Plugins::BetterCallBliss::CandidateLibrary::describe('4d2ba37f'),
     {

@@ -22,6 +22,7 @@ sub _action_name {
     my $mode = ($job->{options} || {})->{extension_mode} || 'none';
     my $purpose = ($job->{options} || {})->{addition_purpose} || '';
     return 'Reorder playlist' if $mode eq 'none';
+    return 'Improve playlist automatically' if $mode eq 'automatic_improvement';
     return 'Improve difficult transitions' if $mode eq 'automatic';
     return 'Add spacing tracks as needed' if $purpose eq 'satisfy_constraints';
     return 'Fill every gap with N bridge tracks'

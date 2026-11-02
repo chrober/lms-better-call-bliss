@@ -41,6 +41,7 @@ my $optimizer_supports_destination_blocks;
 my $optimizer_supports_fixed_gap_count;
 my $optimizer_supports_repeat_window_repair;
 my $optimizer_supports_duration_extension;
+my $optimizer_supports_automatic_improvement;
 
 sub getDisplayName { return 'PLUGIN_BETTERCALLBLISS_NAME'; }
 
@@ -88,6 +89,8 @@ sub initPlugin {
         _optimizerSupportsRepeatWindowRepair($optimizer_binary);
     $optimizer_supports_duration_extension =
         _optimizerSupportsDurationExtension($optimizer_binary);
+    $optimizer_supports_automatic_improvement =
+        _optimizerSupportsAutomaticImprovement($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
         $optimizer_binary,
         $optimizer_supports_genre_policy,
@@ -96,6 +99,7 @@ sub initPlugin {
         $optimizer_supports_fixed_gap_count,
         $optimizer_supports_repeat_window_repair,
         $optimizer_supports_duration_extension,
+        $optimizer_supports_automatic_improvement,
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -211,6 +215,12 @@ sub _optimizerSupportsDurationExtension {
     return $output =~ /"duration_extension_v1"\s*:\s*true/ ? 1 : 0;
 }
 
+sub _optimizerSupportsAutomaticImprovement {
+    my $binary = shift;
+    my $output = _binaryVersionOutput($binary);
+    return $output =~ /"automatic_improvement_v1"\s*:\s*true/ ? 1 : 0;
+}
+
 sub _binaryVersionOutput {
     my $binary = shift;
     return 0 unless $binary && -x $binary;
@@ -291,6 +301,8 @@ sub _job_mode_label {
         $job->{route_source},
     ) if $job->{route_to_track};
     return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
+    return 'Improve playlist automatically' if $purpose eq 'automatic_improvement'
+        || ($options->{extension_mode} || '') eq 'automatic_improvement';
     return 'Improve difficult transitions' if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
     return 'Add spacing tracks as needed'
@@ -377,9 +389,6 @@ sub routeToCommand {
         $request->setStatusBadParams();
         return;
     }
-    $candidate_library_id =
-        Plugins::BetterCallBliss::CandidateLibrary::active_id($client)
-        unless defined $candidate_library_id;
     if (!defined $route_source) {
         $request->addResult('state', 'failed');
         $request->addResult('error_code', 'INVALID_ROUTE_SOURCE');
@@ -432,6 +441,9 @@ sub routeToCommand {
 
     my ($job, $error);
     eval {
+        $candidate_library_id = Plugins::BetterCallBliss::CandidateLibrary::route_context_id(
+            $client, $candidate_library_id, $request->getParam('library_id'),
+        );
         $job = Plugins::BetterCallBliss::Jobs::start_route_to_track_preview_deferred(
             $client->id,
             $track_target ? 0 + $target_track_id : undef,
