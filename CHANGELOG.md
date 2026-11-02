@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.22.12
+
+- Bundle optimizer 0.2.8, enabling combined automatic playlist improvement and
+  duration-target extension with independent shorter/longer tolerances.
+- Offer reusable Extras defaults, preserve virtual-library context, reuse
+  on-demand candidate caches, and recover from transient preview status errors.
+
 ## 0.22.11
 
 - Refresh release packaging with the current optimizer 0.2.7 and its source and license material.

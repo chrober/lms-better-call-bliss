@@ -1,6 +1,6 @@
 # Automatic playlist improvement
 
-Status: implemented on main; a release bundling a compatible optimizer is pending.
+Status: implemented on main with optimizer `v0.2.8`.
 Owner: Better Call Bliss and bliss-playlist-optimizer.  
 
 ## Goal

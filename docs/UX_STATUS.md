@@ -1,9 +1,8 @@
 # UX contract and implementation status
 
 This document describes the **Better Call Bliss** interaction model and current
-main-branch implementation. The packaged optimizer pin remains `v0.2.7`;
-automatic improvement and duration targets require a newer compatible build and
-are not yet delivered together in an official plugin release.
+main-branch implementation. The optimizer pin is `v0.2.8`, which supports
+automatic improvement and duration targets.
 
 The UI uses three explicit states:
 
@@ -75,7 +74,7 @@ fall through to either working mode.
 | Active preview | Partial | Real running job, retained only in LMS process memory; the page polls JSON-RPC status in place, keeps a manual full-result link, and exposes Cancel while the native process is still running. When the job reaches a terminal state, the page performs one anchored server render to show the full result. |
 | Result | Partial | Real completed, failed, or cancelled job, lost on LMS restart. |
 | Refresh result | Working | Automatically re-reads the selected in-memory job through `bettercallbliss job status` every 1.5 seconds while running without reloading or resetting scroll position. A manual full-result link remains available. |
-| Temporary connection failure | Implemented on main; release pending | Status polling retries transient failures. If preview submission has an uncertain outcome, the UI checks whether the job exists and offers an explicit retry instead of silently starting a duplicate. |
+| Temporary connection failure | Implemented on main | Status polling retries transient failures. If preview submission has an uncertain outcome, the UI checks whether the job exists and offers an explicit retry instead of silently starting a duplicate. |
 | Cancel preview | Working for running previews | The current job and the running/recent previews panel can terminate the native optimizer process. No playlist or queue output is changed; persistence-phase cancellation and restart recovery remain future work. |
 | Result summary | Working | Prominently reports running, Preview success/failure, and accept-time save/send success/failure, then shows selected strategy, objective, worst transition, and constraint validation. |
 | Proposed order | Working | Shows every original track and its original position. |
