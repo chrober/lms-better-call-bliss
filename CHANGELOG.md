@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.22.11
+
+- Refresh release packaging with the current optimizer 0.2.7 and its source and license material.
+
 ## 0.22.10
 
 - Bundle optimizer 0.2.7 and distribute version-specific source and
