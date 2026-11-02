@@ -1,4 +1,4 @@
-# Guidance SPI migration design
+# Guidance SPI migration design and rationale
 
 > **Status (2026-10-03): Implemented as the SPI v2 Library Signals and
 > artifact-backed Last.fm migration.** It remains the architectural rationale

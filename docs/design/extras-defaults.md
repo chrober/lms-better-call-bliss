@@ -1,4 +1,4 @@
-# Extras defaults design
+# Extras defaults design and rationale
 
 ## Intent
 
