@@ -20,6 +20,13 @@ sub active_id {
     return normalize_id($id);
 }
 
+sub route_context_id {
+    my ($client, $explicit_id, $library_id) = @_;
+    return normalize_id($explicit_id) if defined $explicit_id;
+    return normalize_id($library_id) if defined $library_id;
+    return active_id($client);
+}
+
 sub describe {
     my ($value, $client) = @_;
     my $id = normalize_id($value);

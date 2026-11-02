@@ -211,7 +211,39 @@ is_deeply($disk_cached->{identity_artifact}, $first->{identity_artifact},
 is_deeply($disk_cached->{track_identity_artifact}, $first->{track_identity_artifact},
     'a persisted cache hit retains the hash-bound repeat identity artifact');
 
-my $state_path = File::Spec->catfile($root, 'candidate-inventory', 'current.json');
+my $all_tracks = {id => '', name => 'All tracks', virtual => 0};
+my ($all_result, $snapshot_rebuilds);
+{
+    no warnings 'redefine';
+    my $original = \&Plugins::BetterCallBliss::CandidateInventory::_new_repeat_identity_snapshot;
+    local *Plugins::BetterCallBliss::CandidateInventory::_new_repeat_identity_snapshot = sub {
+        $snapshot_rebuilds++;
+        return $original->(@_);
+    };
+    $all_result = Plugins::BetterCallBliss::CandidateInventory::prepare(
+        $capability, 'bliss-fixture-v1', $all_tracks,
+    );
+}
+is($snapshot_rebuilds || 0, 0,
+    'building another library does not rescan and rebuild global artist identities');
+is($all_result->{status}->{allowed_row_count}, 2,
+    'All tracks admits both matching local Bliss rows');
+Plugins::BetterCallBliss::CandidateInventory::init($root);
+my $again_virtual = Plugins::BetterCallBliss::CandidateInventory::prepare(
+    $capability, 'bliss-fixture-v1', $library,
+);
+is($again_virtual->{status}->{cache_state}, 'hit',
+    'the virtual-library cache survives an All tracks job and restart');
+is($again_virtual->{status}->{allowed_row_count}, 1,
+    'switching back never exposes candidates outside the requested library');
+is_deeply($all_result->{track_identity_artifact}, $first->{track_identity_artifact},
+    'different candidate libraries reuse the same library-wide identity snapshot');
+
+my $state_path = Plugins::BetterCallBliss::CandidateInventory::_manifest_path_for_key(
+    join('|', 'bliss-fixture-v1', 12345,
+        Plugins::BetterCallBliss::CandidateInventory::_media_roots_identity(['/music']),
+        '4d2ba37f', 1),
+);
 open my $state_fh, '<:raw', $state_path or die "Cannot read $state_path: $!";
 my $state = JSON::XS->new->decode(do { local $/; <$state_fh> });
 close $state_fh;
@@ -225,6 +257,16 @@ my $root_rebound = Plugins::BetterCallBliss::CandidateInventory::prepare(
 );
 is($root_rebound->{status}->{cache_state}, 'miss',
     'a changed media-root cache identity rebuilds the persisted snapshot');
+
+$Slim::Schema::dbh->do(q{UPDATE library_track SET track = 2 WHERE library = '4d2ba37f'});
+my $same_count = Plugins::BetterCallBliss::CandidateInventory::prepare(
+    $capability, 'bliss-fixture-v1', $library,
+);
+is($same_count->{status}->{cache_state}, 'miss',
+    'replacing a virtual-library member invalidates the cache even when its count is unchanged');
+is($same_count->{status}->{allowed_row_count}, 1,
+    'the replacement snapshot contains only the currently eligible track');
+$Slim::Schema::dbh->do(q{UPDATE library_track SET track = 1 WHERE library = '4d2ba37f'});
 
 $Slim::Schema::dbh->do(
     q{INSERT INTO library_track VALUES ('4d2ba37f', 2)}

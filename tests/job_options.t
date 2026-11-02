@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 83;
+use Test::More tests => 95;
 
 BEGIN {
     package TestPrefs;
@@ -98,6 +98,58 @@ my $capability = {
         },
     }],
 };
+
+my $automatic_capability = {%$capability, automatic_improvement_available => 1};
+for my $case (
+    [1, 0, 'spacing only'],
+    [0, 1, 'smoothing only'],
+    [1, 1, 'both goals'],
+) {
+    my ($spacing, $smoothing, $name) = @$case;
+    my $actual = eval {
+        Plugins::BetterCallBliss::JobOptions::normalize($automatic_capability, {
+            addition_purpose => 'automatic_improvement',
+            satisfy_repeat_windows => $spacing,
+            smooth_transitions => $smoothing,
+        });
+    };
+    is($actual && $actual->{satisfy_repeat_windows}, $spacing, "$name retains spacing choice");
+    is($actual && $actual->{smooth_transitions}, $smoothing, "$name retains smoothing choice");
+}
+eval {
+    Plugins::BetterCallBliss::JobOptions::normalize($automatic_capability, {
+        addition_purpose => 'automatic_improvement',
+        satisfy_repeat_windows => 0,
+        smooth_transitions => 0,
+    });
+};
+like($@, qr/Select at least one/, 'rejects a request with neither goal enabled');
+eval {
+    Plugins::BetterCallBliss::JobOptions::normalize($capability, {
+        addition_purpose => 'automatic_improvement',
+    });
+};
+like($@, qr/compatible bliss-playlist-optimizer/,
+    'combined workflow requires explicit native capability');
+my $unchecked_goal = Plugins::BetterCallBliss::JobOptions::normalize($automatic_capability, {
+    addition_purpose => 'automatic_improvement',
+    satisfy_repeat_windows_present => 1,
+    smooth_transitions_present => 1,
+    smooth_transitions => 1,
+});
+is($unchecked_goal->{satisfy_repeat_windows}, 0,
+    'unchecked spacing control is captured as false instead of using the default');
+is($unchecked_goal->{smooth_transitions}, 1, 'checked smoothing control is captured as true');
+my $legacy_smooth = Plugins::BetterCallBliss::JobOptions::normalize($automatic_capability, {
+    addition_purpose => 'automatic',
+});
+is_deeply([$legacy_smooth->{satisfy_repeat_windows}, $legacy_smooth->{smooth_transitions}],
+    [0, 1], 'legacy automatic selection restores only the smoothing goal');
+my $legacy_spacing = Plugins::BetterCallBliss::JobOptions::normalize($automatic_capability, {
+    addition_purpose => 'satisfy_constraints',
+});
+is_deeply([$legacy_spacing->{satisfy_repeat_windows}, $legacy_spacing->{smooth_transitions}],
+    [1, 0], 'legacy spacing selection restores only the spacing goal');
 
 my $defaults = Plugins::BetterCallBliss::JobOptions::defaults($capability);
 is($defaults->{algorithm}, 'adaptive',

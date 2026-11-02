@@ -115,6 +115,13 @@ chmod 0755, $lastfm_guidance;
 Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {});
 my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 1, 1, 1);
+ok(Plugins::BetterCallBliss::BlissCompatibility::snapshot()->{automatic_improvement_available},
+    'combined improvement is available when the optimizer advertises its capability');
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 1, 1, 0);
+ok(!Plugins::BetterCallBliss::BlissCompatibility::snapshot()->{automatic_improvement_available},
+    'older optimizers do not expose combined improvement');
+
 ok($snapshot->{ready}, 'compatible optimizer and readable Bliss database are ready');
 ok($snapshot->{database_available}, 'the readable Bliss database is reported explicitly');
 ok($snapshot->{bliss_compatible}, 'original BlissMixer satisfies the required base version');

@@ -93,7 +93,7 @@ like(
 );
 like(
     $extras,
-    qr/setVisible\(gapContextModeRow, \(automatic \|\| fixedGapCount\) && algorithm\.value === 'adaptive'\).*?gapContextMode\.disabled = false/s,
+    qr/setVisible\(gapContextModeRow, \(automatic \|\| combinedAutomatic \|\| fixedGapCount\) && algorithm\.value === 'adaptive'\).*?gapContextMode\.disabled = false/s,
     'gap-context control is shown only when relevant but remains submitted so its value survives strategy changes',
 );
 like(
@@ -169,8 +169,8 @@ like(
 );
 like(
     $extras,
-    qr/setVisible\(triggerPercentRow, automatic\).*?setVisible\(gapContextModeRow, \(automatic \|\| fixedGapCount\) && algorithm\.value === 'adaptive'\)/s,
-    'gap-trigger controls remain automatic-only while adaptive context also supports fixed-gap planning',
+    qr/setVisible\(triggerPercentRow, automatic \|\| goalState\.showThreshold\).*?setVisible\(gapContextModeRow, \(automatic \|\| combinedAutomatic \|\| fixedGapCount\) && algorithm\.value === 'adaptive'\)/s,
+    'gap-trigger controls follow smoothing while adaptive context also supports fixed-gap planning',
 );
 my $plugin_module = slurp(File::Spec->catfile($plugin, 'Plugin.pm'));
 my $defaults_module = slurp(File::Spec->catfile($plugin, 'Defaults.pm'));
@@ -777,8 +777,8 @@ unlike(
 );
 like(
     $responsive_candidate_inventory,
-    qr/_candidate_library_track_count.*?_load_cached_inventory\(.*?undef, \$membership_count/s,
-    'candidate inventory checks its persisted cache before walking full virtual-library membership',
+    qr/_candidate_library_membership\(\$candidate_library\).*?_load_cached_inventory\(.*?\$membership_sha256, \$membership_count/s,
+    'candidate inventory validates cached virtual-library membership by digest and count',
 );
 my $responsive_candidate_guidance = slurp(
     File::Spec->catfile($plugin, 'CandidateGuidance.pm'),

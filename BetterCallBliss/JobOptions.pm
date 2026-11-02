@@ -43,6 +43,8 @@ sub defaults {
         ordering_policy => 'optimize_order',
         extension_mode => 'none',
         addition_purpose => 'none',
+        satisfy_repeat_windows => 1,
+        smooth_transitions => 1,
         addition_amount_mode => 'exact_count',
         algorithm => $default_algorithm,
         seed_limit => int($capability->{seed_limit}),
@@ -139,6 +141,7 @@ sub normalize {
     die "Extension mode must be Reorder only, Improve difficult transitions, Add exactly N tracks, Reach final track count, Double track count, destination route, or a supported internal extension mode"
         unless $options->{extension_mode} eq 'none'
             || $options->{extension_mode} eq 'automatic'
+            || $options->{extension_mode} eq 'automatic_improvement'
             || $options->{extension_mode} eq 'exact_count'
             || $options->{extension_mode} eq 'target_count'
             || $options->{extension_mode} eq 'double_count'
@@ -160,6 +163,7 @@ sub normalize {
     die "Additional tracks must be No additions, Improve difficult transitions, Add spacing tracks as needed, Extend playlist, or Fill every gap with N bridge tracks"
         unless $options->{addition_purpose} eq 'none'
             || $options->{addition_purpose} eq 'automatic'
+            || $options->{addition_purpose} eq 'automatic_improvement'
             || $options->{addition_purpose} eq 'satisfy_constraints'
             || $options->{addition_purpose} eq 'extend_playlist'
             || $options->{addition_purpose} eq 'fixed_gap_count';
@@ -180,6 +184,8 @@ sub normalize {
             $options->{addition_amount_mode} = $options->{extension_mode};
         } elsif ($options->{extension_mode} eq 'automatic') {
             $options->{addition_purpose} = $options->{extension_mode};
+        } elsif ($options->{extension_mode} eq 'automatic_improvement') {
+            $options->{addition_purpose} = 'automatic_improvement';
         } elsif ($options->{extension_mode} eq 'fixed_source_extension') {
             $legacy_fixed_source_extension_purpose = 1;
             $options->{addition_purpose} = 'extend_playlist';
@@ -199,10 +205,28 @@ sub normalize {
             $options->{extension_mode} = 'fixed_source_extension';
         } elsif ($options->{addition_purpose} eq 'satisfy_constraints') {
             $options->{extension_mode} = 'repeat_window_repair';
+        } elsif ($options->{addition_purpose} eq 'automatic_improvement') {
+            $options->{extension_mode} = 'automatic_improvement';
         } elsif ($options->{addition_purpose} eq 'automatic'
             || $options->{addition_purpose} eq 'none') {
             $options->{extension_mode} = $options->{addition_purpose};
         }
+    }
+    if ($options->{addition_purpose} eq 'automatic_improvement') {
+        die 'Automatic playlist improvement requires a compatible bliss-playlist-optimizer'
+            unless $capability->{automatic_improvement_available};
+        for my $goal (qw(satisfy_repeat_windows smooth_transitions)) {
+            $options->{$goal} = $input->{$goal} ? 1 : 0
+                if exists $input->{$goal} || exists $input->{$goal . '_present'};
+        }
+        die 'Select at least one automatic improvement goal'
+            unless $options->{satisfy_repeat_windows} || $options->{smooth_transitions};
+    } elsif ($options->{addition_purpose} eq 'automatic') {
+        $options->{satisfy_repeat_windows} = 0;
+        $options->{smooth_transitions} = 1;
+    } elsif ($options->{addition_purpose} eq 'satisfy_constraints') {
+        $options->{satisfy_repeat_windows} = 1;
+        $options->{smooth_transitions} = 0;
     }
     die "Add spacing tracks as needed requires a compatible bliss-playlist-optimizer"
         if ($options->{addition_purpose} eq 'satisfy_constraints'

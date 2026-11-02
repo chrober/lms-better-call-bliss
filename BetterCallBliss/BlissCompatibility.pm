@@ -21,6 +21,7 @@ my $optimizer_supports_candidate_library_scope;
 my $optimizer_supports_guidance_spi_v2;
 my $optimizer_supports_fixed_gap_count;
 my $optimizer_supports_repeat_window_repair;
+my $optimizer_supports_automatic_improvement;
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
@@ -33,6 +34,7 @@ sub init {
     $optimizer_supports_guidance_spi_v2 = shift ? 1 : 0;
     $optimizer_supports_fixed_gap_count = shift ? 1 : 0;
     $optimizer_supports_repeat_window_repair = shift ? 1 : 0;
+    $optimizer_supports_automatic_improvement = shift ? 1 : 0;
 }
 
 sub _int_pref {
@@ -241,6 +243,8 @@ sub snapshot {
         fixed_gap_count_available => $optimizer_supports_fixed_gap_count ? 1 : 0,
         repeat_window_repair_available =>
             $optimizer_supports_repeat_window_repair ? 1 : 0,
+        automatic_improvement_available =>
+            $optimizer_supports_automatic_improvement ? 1 : 0,
         scanning          => $scanning,
         music_root        => $music_root,
         music_roots       => $music_roots,

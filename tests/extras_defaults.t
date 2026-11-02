@@ -30,6 +30,16 @@ ok(!exists $profile->{options}->{queue_player_id}, 'player is excluded');
 ok(!exists $profile->{options}->{generation_seed}, 'generation seed is excluded');
 is($profile->{static_weights}->{tempo}, 4, 'static scoring weights are captured');
 
+my $goal_profile = Plugins::BetterCallBliss::ExtrasDefaults::capture(
+    {addition_purpose => 'automatic_improvement',
+     satisfy_repeat_windows => 0, smooth_transitions => 1},
+    {automatic_improvement_available => 1, discovered_guidance_providers => []},
+);
+is($goal_profile->{options}->{satisfy_repeat_windows}, 0,
+    'saved Extras defaults preserve a disabled spacing goal');
+is($goal_profile->{options}->{smooth_transitions}, 1,
+    'saved Extras defaults preserve an enabled smoothing goal');
+
 my $provider = {
     provider_id => 'library-signals', available => 1,
     descriptor => { controls => [

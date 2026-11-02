@@ -87,6 +87,11 @@ sub _json {
     return JSON::XS->new->utf8->canonical->pretty;
 }
 
+sub _manifest_path_for_key {
+    my $key = shift;
+    return $inventory_root . '/state-' . sha256_hex(encode_utf8($key)) . '.json';
+}
+
 sub _write_atomic {
     my ($path, $bytes) = @_;
     my $temporary = $path . '.tmp-' . $$;
@@ -186,6 +191,38 @@ sub _publish_repeat_identity_snapshot {
     }, $path, $sha256);
 }
 
+sub _open_shared_repeat_identity_snapshot {
+    my ($scan_time, $database_identity, $media_roots_identity) = @_;
+    return unless $state_path && -r $state_path;
+    my ($dbh, $result);
+    eval {
+        my $state = _json()->decode(scalar read_file($state_path, binmode => ':raw'));
+        die 'invalid shared snapshot state' unless ref($state) eq 'HASH';
+        my $path = $state->{track_identity_path} || '';
+        my ($digest) = $path =~ /^\Q$inventory_root\E\/track-identities-([0-9a-f]{64})\.sqlite$/;
+        die 'invalid shared snapshot path' unless $digest && -r $path
+            && $digest eq ($state->{track_identity_sha256} || '');
+        die 'shared snapshot checksum changed' unless _sha256_file($path) eq $digest;
+        $dbh = DBI->connect('dbi:SQLite:dbname=' . $path, '', '', {
+            RaiseError => 1, PrintError => 0, AutoCommit => 1,
+            sqlite_unicode => 1, sqlite_open_flags => 1,
+        }) or die 'could not open shared snapshot';
+        my $rows = $dbh->selectall_arrayref('SELECT key, value FROM metadata');
+        my %metadata = map { $_->[0] => $_->[1] } @$rows;
+        die 'shared snapshot identity changed'
+            unless ($metadata{schema_identity} || '') eq 'lyrion-track-identities-v1'
+                && ($metadata{database_cache_identity} || '') eq $database_identity
+                && 0 + ($metadata{lms_scan_time} || 0) == $scan_time
+                && ($metadata{media_roots_identity} || '') eq $media_roots_identity;
+        $result = {dbh => $dbh, path => $path, sha256 => $digest};
+        1;
+    } or do {
+        eval { $dbh->disconnect if $dbh };
+        return;
+    };
+    return $result;
+}
+
 sub _relative_database_file {
     my ($path, $url, $tracknum, $roots) = @_;
     $path =~ s{\\}{/}g;
@@ -271,8 +308,10 @@ sub _load_cached_inventory {
         $log->info("candidate_inventory stage=CacheMiss reason=$reason");
         return;
     };
-    return $miss->('state_unreadable') unless $state_path && -r $state_path;
-    my $state_bytes = eval { scalar read_file($state_path, binmode => ':raw') };
+    my $keyed_state_path = _manifest_path_for_key($key);
+    my $loaded_state_path = -r $keyed_state_path ? $keyed_state_path : $state_path;
+    return $miss->('state_unreadable') unless $loaded_state_path && -r $loaded_state_path;
+    my $state_bytes = eval { scalar read_file($loaded_state_path, binmode => ':raw') };
     my $state = defined $state_bytes
         ? eval { _json()->decode($state_bytes) } : undef;
     return $miss->('state_invalid') unless ref($state) eq 'HASH';
@@ -358,9 +397,13 @@ sub _load_cached_inventory {
                 $identity_lookup_path, $identity_index->{candidates},
             );
             $state->{identity_lookup_path} = $identity_lookup_path;
-            _write_atomic($state_path, _json()->encode($state));
+            _write_atomic($loaded_state_path, _json()->encode($state));
             1;
         } or return $miss->('identity_lookup_migration_failed');
+    }
+    if ($loaded_state_path ne $keyed_state_path) {
+        eval { _write_atomic($keyed_state_path, _json()->encode($state)); 1 }
+            or return $miss->('state_migration_failed');
     }
     my $ledger = _load_ledger();
     my $status = {
@@ -482,16 +525,6 @@ sub _candidate_library_membership {
     return (\%members, $digest->hexdigest, scalar keys %members);
 }
 
-sub _candidate_library_track_count {
-    my $candidate_library = shift || {};
-    my $id = $candidate_library->{id} || '';
-    return undef unless length $id;
-    my ($count) = _lms_dbh()->selectrow_array(
-        'SELECT COUNT(1) FROM library_track WHERE library = ?', undef, $id,
-    );
-    return 0 + ($count || 0);
-}
-
 sub _update_audit {
     my ($unmatched, $summary, $now) = @_;
     my $ledger = _load_ledger();
@@ -554,18 +587,21 @@ sub prepare {
     my $scan_time = int($scan_time_value);
     my $roots = $capability->{music_roots} || [];
     my $media_roots_identity = _media_roots_identity($roots);
-    my $membership_count = _candidate_library_track_count($candidate_library);
+    my ($library_members, $membership_sha256, $membership_count) =
+        _candidate_library_membership($candidate_library);
     my $key = join('|', $database_identity, $scan_time,
         $media_roots_identity,
         $candidate_library->{id} || '', defined $membership_count
             ? $membership_count : 'all');
-    if ($cached_result && ($cached_key || '') eq $key) {
+    if ($cached_result && ($cached_key || '') eq $key
+        && ($cached_result->{status}->{candidate_library_membership_sha256} || '')
+            eq ($membership_sha256 || '')) {
         $cached_result->{status}->{cache_state} = 'memory';
         return $cached_result;
     }
     if (my $disk = _load_cached_inventory(
         $key, $database_identity, $scan_time, $candidate_library,
-        undef, $membership_count,
+        $membership_sha256, $membership_count,
     )) {
         $cached_key = $key;
         $cached_result = $disk;
@@ -579,19 +615,20 @@ sub prepare {
         return $cached_result;
     }
 
-    my ($library_members, $membership_sha256, $captured_membership_count) =
-        _candidate_library_membership($candidate_library);
-    $membership_count = $captured_membership_count
-        if defined $captured_membership_count;
-
     my (%lms_files, %candidate_files, %lms_files_folded, %ambiguous_folded,
         %lms_identity_for);
     my $lms_track_count = 0;
     my $candidate_library_track_count = 0;
     my $root_descriptors = _root_descriptors($roots);
-    my $repeat_snapshot = _new_repeat_identity_snapshot();
+    my $shared_snapshot = _open_shared_repeat_identity_snapshot(
+        $scan_time, $database_identity, $media_roots_identity,
+    );
+    my $repeat_snapshot = $shared_snapshot ? undef : _new_repeat_identity_snapshot();
     _worker_progress('Rebuilding candidate library: scanning local LMS tracks');
-    my $lms_sth = _lms_dbh()->prepare(
+    my $lms_sth = $shared_snapshot ? $shared_snapshot->{dbh}->prepare(
+        'SELECT lms_track_id, database_file, lms_urlmd5, recording_mbid, '
+        . 'primary_contributor_id, primary_artist_mbid, primary_artist_name FROM track_identity'
+    ) : _lms_dbh()->prepare(
         'SELECT tracks.id, tracks.url, tracks.tracknum, tracks.urlmd5, tracks.musicbrainz_id, '
         . 'contributors.id, contributors.musicbrainz_id, contributors.name FROM tracks '
         . 'LEFT JOIN contributors ON contributors.id = tracks.primary_artist '
@@ -599,18 +636,24 @@ sub prepare {
     );
     $lms_sth->execute;
     my $lms_last_yield = time();
-    while (my ($track_id, $url, $tracknum, $urlmd5, $recording_mbid,
-        $primary_contributor_id, $artist_mbid, $artist_name)
-        = $lms_sth->fetchrow_array) {
-        my $database_file = _database_file_for_url(
-            $url, $tracknum, $root_descriptors, $roots,
-        );
+    while (my @row = $lms_sth->fetchrow_array) {
+        my ($track_id, $database_file, $urlmd5, $recording_mbid,
+            $primary_contributor_id, $artist_mbid, $artist_name);
+        if ($shared_snapshot) {
+            ($track_id, $database_file, $urlmd5, $recording_mbid,
+                $primary_contributor_id, $artist_mbid, $artist_name) = @row;
+        } else {
+            my ($url, $tracknum);
+            ($track_id, $url, $tracknum, $urlmd5, $recording_mbid,
+                $primary_contributor_id, $artist_mbid, $artist_name) = @row;
+            $database_file = _database_file_for_url($url, $tracknum, $root_descriptors, $roots);
+        }
         next unless defined $database_file && length $database_file;
         $repeat_snapshot->{insert_track}->execute(
             $database_file, 0 + $track_id, $urlmd5, $recording_mbid,
             $primary_contributor_id, $artist_mbid, $artist_name,
             defined $artist_name ? $artist_name : '',
-        );
+        ) if $repeat_snapshot;
         $lms_files{$database_file} = 1;
         if (!length($candidate_library->{id} || '')
             || $library_members->{0 + $track_id}) {
@@ -638,6 +681,9 @@ sub prepare {
     }
     $lms_sth->finish;
 
+    if ($shared_snapshot) {
+        $shared_snapshot->{dbh}->disconnect;
+    } else {
     _worker_progress('Rebuilding candidate library: collecting artist identities');
     my $artist_sth = _lms_dbh()->prepare(
         'SELECT tracks.url, tracks.tracknum, contributor_track.role, contributors.id, '
@@ -668,6 +714,7 @@ sub prepare {
         _yield_to_lms_if_due(\$artist_last_yield);
     }
     $artist_sth->finish;
+    }
 
     _worker_progress('Rebuilding candidate library: matching Bliss rows');
     my $dbh = DBI->connect(
@@ -695,7 +742,7 @@ sub prepare {
         my $database_file = _database_text($file);
         $repeat_snapshot->{update_credit}->execute(
             defined $artist ? $artist : '', $database_file,
-        ) if defined $database_file && $lms_files{$database_file};
+        ) if $repeat_snapshot && defined $database_file && $lms_files{$database_file};
         my $folded = defined $database_file ? lc($database_file) : '';
         if (defined $database_file && $candidate_files{$database_file}) {
             push @allowed, 0 + $row_id;
@@ -746,7 +793,10 @@ sub prepare {
 
     _worker_progress('Rebuilding candidate library: publishing stable identities');
     my ($track_identity_artifact, $track_identity_path, $track_identity_sha256) =
-        _publish_repeat_identity_snapshot(
+        $shared_snapshot ? ({
+            path => $shared_snapshot->{path}, sha256 => $shared_snapshot->{sha256},
+            schema_identity => 'lyrion-track-identities-v1',
+        }, $shared_snapshot->{path}, $shared_snapshot->{sha256}) : _publish_repeat_identity_snapshot(
             $repeat_snapshot, $scan_time, $database_identity,
             $media_roots_identity,
         );
@@ -829,7 +879,7 @@ sub prepare {
         identity_lookup_path => $identity_lookup_path,
         track_identity_artifact => $track_identity_artifact,
     };
-    _write_atomic($state_path, _json()->encode({
+    my $published_state = {
         schema_version => 1,
         builder_revision => BUILDER_REVISION,
         cache_key => $key,
@@ -847,7 +897,10 @@ sub prepare {
         identity_lookup_path => $identity_lookup_path,
         track_identity_path => $track_identity_path,
         track_identity_sha256 => $track_identity_sha256,
-    }));
+    };
+    my $state_bytes = _json()->encode($published_state);
+    _write_atomic(_manifest_path_for_key($key), $state_bytes);
+    _write_atomic($state_path, $state_bytes);
     $log->info(
         'candidate_inventory stage=Ready'
         . " lms_local=$lms_track_count bliss_usable=$usable_count"

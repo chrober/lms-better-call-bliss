@@ -29,10 +29,9 @@ provider-specific limitations are documented in the provider's own repository.
 ## What it does
 
 - Reorders every song in a curated playlist or queue snapshot for better transition flow.
-- Adds bridges automatically only where a transition is difficult.
-- Adds the minimum feasible number of spacing tracks inside source gaps when
-  repeated source tracks, artists, or albums need more room to satisfy the
-  selected repeat windows.
+- Improves a playlist automatically using either or both goals: satisfy repeat
+  windows with as few spacing tracks as feasible, and smooth difficult transitions.
+  Both goals share one maximum-additions budget; spacing takes priority.
 - Adds exactly a requested number of tracks, reaches a final track count, or doubles the track count.
 - Fills every internal source gap with an exact per-gap bridge count, planned globally across the complete playlist.
 - Preserves the existing order when requested and inserts tracks only in gaps.

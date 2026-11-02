@@ -613,7 +613,9 @@ sub _build_sequence_request {
         $options->{additional_track_count} = $additions;
         $options->{target_track_count} = $final_count;
     }
-    if (($options->{addition_purpose} || '') eq 'satisfy_constraints') {
+    if (($options->{addition_purpose} || '') eq 'satisfy_constraints'
+        || (($options->{addition_purpose} || '') eq 'automatic_improvement'
+            && $options->{satisfy_repeat_windows})) {
         my $preserve_order = ($options->{ordering_policy} || '') eq 'preserve_order';
         my $minimum_repeat_safe_target = _minimum_repeat_safe_target(
             $source_tracks, $options,
@@ -623,7 +625,8 @@ sub _build_sequence_request {
             : $minimum_repeat_safe_target - $source_count;
         die 'The selected repeat windows are already feasible for this source; no spacing tracks are necessary. Use Reorder only or Improve difficult transitions instead.'
             . chr(10)
-            if $preserve_order && $needed <= 0;
+            if $preserve_order && $needed <= 0
+                && ($options->{addition_purpose} || '') ne 'automatic_improvement';
         die _repeat_safe_target_error(
                 $source_count,
                 $source_count + $options->{max_added_tracks},
@@ -632,7 +635,8 @@ sub _build_sequence_request {
             . chr(10)
             if $needed > $options->{max_added_tracks};
         $options->{target_track_count} = $source_count + $needed;
-        $options->{extension_mode} = 'repeat_window_repair';
+        $options->{extension_mode} = 'repeat_window_repair'
+            unless ($options->{addition_purpose} || '') eq 'automatic_improvement';
         $options->{constraint_spacing} = 1;
     }
     if (($options->{addition_purpose} || '') eq 'extend_playlist') {
@@ -655,11 +659,20 @@ sub _build_sequence_request {
             if $options->{target_track_count} <= $source_count;
         $options->{extension_mode} = 'fixed_source_extension';
     }
-    if ($options->{extension_mode} eq 'automatic') {
+    if ($options->{extension_mode} eq 'automatic'
+        || ($options->{extension_mode} eq 'automatic_improvement'
+            && !$options->{satisfy_repeat_windows})) {
         my $minimum_repeat_safe_target = _minimum_repeat_safe_target(
             $source_tracks, $options,
         );
-        if ($minimum_repeat_safe_target > $source_count) {
+        my $preserved_local_conflict = $options->{extension_mode} eq 'automatic_improvement'
+            && ($options->{ordering_policy} || '') eq 'preserve_order'
+            && _minimum_repeat_spacing_additions_for_order($source_tracks, $options) > 0;
+        if ($minimum_repeat_safe_target > $source_count || $preserved_local_conflict) {
+            if ($options->{extension_mode} eq 'automatic_improvement') {
+                die 'The source tracks cannot satisfy the selected repeat windows without spacing tracks. Enable the spacing goal, increase the maximum-additions budget if necessary, or relax the repeat windows.'
+                    . chr(10);
+            }
             die 'The source tracks cannot satisfy the selected repeat windows without spacing tracks. Choose Add spacing tracks as needed, increase its maximum-additions budget if necessary, or relax the repeat windows.'
                 . chr(10);
         }
@@ -853,7 +866,21 @@ sub _build_sequence_request {
             track => _json_integer($options->{track_window}),
             artist_identity_mode => $options->{artist_repeat_mode},
         },
-        extension => $options->{extension_mode} eq 'automatic' ? {
+        extension => $options->{extension_mode} eq 'automatic_improvement' ? {
+                mode => 'automatic_improvement',
+                %adaptive_gap_context,
+                candidate_limit => _json_integer(16),
+                shortlist_limit => _json_integer(256),
+                max_added_tracks => _json_integer($options->{max_added_tracks}),
+                satisfy_repeat_windows => $options->{satisfy_repeat_windows}
+                    ? JSON::XS::true : JSON::XS::false,
+                smooth_transitions => $options->{smooth_transitions}
+                    ? JSON::XS::true : JSON::XS::false,
+                ($options->{smooth_transitions} ? (
+                    trigger_percentile => $options->{trigger_percent} / 100,
+                ) : ()),
+            }
+            : $options->{extension_mode} eq 'automatic' ? {
                 mode => 'automatic',
                 %adaptive_gap_context,
                 candidate_limit => _json_integer(5),

@@ -84,4 +84,34 @@ my $job_form = Plugins::BetterCallBliss::Web::_form_from_job({
 is($job_form->{extras_weight_tempo}, 9,
     'reopening a plugin-default job restores the captured static weights');
 
+my $goals = Plugins::BetterCallBliss::Web::_form_from_params({
+    addition_purpose => 'automatic_improvement',
+    satisfy_repeat_windows_present => 1,
+    smooth_transitions_present => 1,
+    smooth_transitions => 1,
+}, {satisfy_repeat_windows => 1, smooth_transitions => 1});
+is($goals->{satisfy_repeat_windows}, 0, 'unchecked spacing remains unchecked in the editor');
+is($goals->{smooth_transitions}, 1, 'checked smoothing remains checked in the editor');
+
+my $restored_goals = Plugins::BetterCallBliss::Web::_form_from_job({
+    options => {satisfy_repeat_windows => 0, smooth_transitions => 1},
+}, {satisfy_repeat_windows => 1, smooth_transitions => 1});
+is($restored_goals->{satisfy_repeat_windows}, 0, 'reopened preview restores unchecked spacing');
+is($restored_goals->{smooth_transitions}, 1, 'reopened preview restores checked smoothing');
+
+my $legacy_goals = {addition_purpose => 'satisfy_constraints', extension_mode => 'repeat_window_repair'};
+Plugins::BetterCallBliss::Web::_migrate_legacy_automatic_goals(
+    $legacy_goals, {automatic_improvement_available => 1},
+);
+is($legacy_goals->{addition_purpose}, 'automatic_improvement', 'legacy spacing becomes combined editor');
+is($legacy_goals->{satisfy_repeat_windows}, 1, 'legacy spacing selects spacing goal');
+is($legacy_goals->{smooth_transitions}, 0, 'legacy spacing does not silently enable smoothing');
+is(Plugins::BetterCallBliss::Web::_addition_reason_label('spacing'), 'Repeat-window spacing',
+    'spacing additions explain their purpose');
+is(Plugins::BetterCallBliss::Web::_addition_reason_label('smoothing'), 'Transition smoothing',
+    'smoothing additions explain their purpose');
+is(Plugins::BetterCallBliss::Web::_job_mode_label({options => {
+    extension_mode => 'automatic_improvement', addition_purpose => 'automatic_improvement',
+}}), 'Improve playlist automatically', 'running job identifies the combined workflow');
+
 done_testing();

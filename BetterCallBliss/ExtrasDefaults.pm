@@ -5,6 +5,7 @@ use warnings;
 use Plugins::BetterCallBliss::GuidanceProviderPolicy;
 my @OPTION_KEYS = qw(
     ordering_policy extension_mode addition_purpose addition_amount_mode
+    satisfy_repeat_windows smooth_transitions
     algorithm seed_limit learned_percent artist_window artist_repeat_mode
     album_window track_window restart_count variation_percent max_added_tracks
     trigger_percent gap_context_mode tracks_per_gap additional_track_count

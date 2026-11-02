@@ -326,8 +326,12 @@
         <label for="addition_purpose">Additional tracks</label>
         <select name="addition_purpose" id="addition_purpose">
           <option value="none"[% IF bettercallbliss_form.addition_purpose == 'none' %] selected[% END %]>No additions - only use the source tracks</option>
-          <option value="automatic"[% IF bettercallbliss_form.addition_purpose == 'automatic' %] selected[% END %]>Improve difficult transitions when useful</option>
-          <option value="satisfy_constraints"[% IF bettercallbliss_form.addition_purpose == 'satisfy_constraints' %] selected[% END %]>Add spacing tracks as needed</option>
+          [% IF bettercallbliss_capability.automatic_improvement_available %]
+            <option value="automatic_improvement"[% IF bettercallbliss_form.addition_purpose == 'automatic_improvement' || bettercallbliss_form.addition_purpose == 'automatic' || bettercallbliss_form.addition_purpose == 'satisfy_constraints' %] selected[% END %]>Improve playlist automatically</option>
+          [% ELSE %]
+            <option value="automatic"[% IF bettercallbliss_form.addition_purpose == 'automatic' %] selected[% END %]>Improve difficult transitions when useful</option>
+            <option value="satisfy_constraints"[% IF bettercallbliss_form.addition_purpose == 'satisfy_constraints' %] selected[% END %]>Add spacing tracks as needed</option>
+          [% END %]
           <option value="extend_playlist"[% IF bettercallbliss_form.addition_purpose == 'extend_playlist' %] selected[% END %]>Extend playlist</option>
           [% IF bettercallbliss_capability.fixed_gap_count_available %]
             <option value="fixed_gap_count"[% IF bettercallbliss_form.addition_purpose == 'fixed_gap_count' %] selected[% END %]>Fill every gap with N bridge tracks</option>
@@ -366,6 +370,13 @@
   <fieldset class="bea-section bea-mode-section" id="automatic_extension_fields">
     <legend id="automatic_extension_legend">Automatic additions</legend>
     <p class="bea-note" id="automatic_extension_note"></p>
+    <div id="automatic_improvement_goals" class="bea-row">
+      <input type="hidden" name="satisfy_repeat_windows_present" value="1">
+      <label><input type="checkbox" name="satisfy_repeat_windows" id="satisfy_repeat_windows" value="1"[% IF bettercallbliss_form.satisfy_repeat_windows %] checked[% END %]> Satisfy repeat windows with spacing tracks</label>
+      <input type="hidden" name="smooth_transitions_present" value="1">
+      <label><input type="checkbox" name="smooth_transitions" id="smooth_transitions" value="1"[% IF bettercallbliss_form.smooth_transitions %] checked[% END %]> Improve difficult transitions when useful</label>
+    </div>
+    <p class="bea-warning bea-hidden" id="automatic_improvement_warning">Select at least one improvement goal.</p>
     <div class="bea-row">
       <label for="max_added_tracks">Maximum additional tracks</label>
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="max_added_tracks" id="max_added_tracks" value="[% bettercallbliss_form.max_added_tracks %]" required>
@@ -376,7 +387,7 @@
       <input type="number" min="0" max="100" class="stdedit sliderInput_0_100_1" name="trigger_percent" id="trigger_percent" value="[% bettercallbliss_form.trigger_percent %]" required>
       <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.trigger_percent %]</span>
     </div>
-    <p class="bea-note">This is a rank on the job's frozen source-playlist distance scale, not percentage similarity. Lower values are stricter and make more source transitions eligible for bridge search. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.</p>
+    <p class="bea-note" id="trigger_percent_note">This is a rank on the job's frozen source-playlist distance scale, not percentage similarity. Lower values are stricter and make more source transitions eligible for bridge search. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.</p>
   </fieldset>
 
   <fieldset class="bea-section bea-mode-section" id="exact_count_fields">
@@ -607,10 +618,15 @@
     var gapContextModeRow = document.getElementById('gap_context_mode_row');
     var gapContextModeNote = document.getElementById('gap_context_mode_note');
     var automaticFields = document.getElementById('automatic_extension_fields');
+    var automaticGoals = document.getElementById('automatic_improvement_goals');
+    var spacingGoal = document.getElementById('satisfy_repeat_windows');
+    var smoothingGoal = document.getElementById('smooth_transitions');
+    var automaticGoalWarning = document.getElementById('automatic_improvement_warning');
     var automaticLegend = document.getElementById('automatic_extension_legend');
     var automaticNote = document.getElementById('automatic_extension_note');
     var automaticInputs = automaticFields ? automaticFields.querySelectorAll('input') : [];
     var triggerPercentRow = document.getElementById('trigger_percent_row');
+    var triggerPercentNote = document.getElementById('trigger_percent_note');
     var exactFields = document.getElementById('exact_count_fields');
     var extendPlaylistNote = document.getElementById('extend_playlist_note');
     var exactInputs = exactFields ? exactFields.querySelectorAll('input') : [];
@@ -984,6 +1000,10 @@
           optimize: 'Optimize and freeze the source-only order first, then add the minimum number of spacing tracks needed across its gaps to satisfy the selected repeat windows. All gaps are planned together within the maximum-additions budget.',
           preserve: 'Keep the current source order, then add the minimum number of spacing tracks needed across its fixed gaps to satisfy the selected repeat windows. All gaps are planned together within the maximum-additions budget.'
         },
+        automatic_improvement: {
+          optimize: 'Optimize the source order first. If selected, add the minimum spacing needed for the repeat windows, then use the remaining budget to improve difficult transitions.',
+          preserve: 'Keep the source order. If selected, add the minimum spacing needed for the repeat windows, then use the remaining budget to improve difficult transitions.'
+        },
         extend_playlist: {
           optimize: 'Extend this playlist by the chosen amount. Additions are selected because they fit the complete original source set as a fixed reference; then originals and additions may be reordered together for flow. Use Reach final track count when the source is a short seed list and you want a fuller mix.',
           preserve: 'Extend this playlist by the chosen amount without moving the original tracks. Additions are selected because they fit the complete original source set as a fixed reference, then placed around the ordered anchors. This is not one bridge per gap.'
@@ -998,11 +1018,21 @@
         target_count: 'Extend-only amount control: enter the desired final track count and Better Call Bliss calculates how many additions are needed.',
         double_count: 'Extend-only amount control: add one track per source track, so the final result has exactly twice as many tracks. This is still full-playlist extension, not one bridge per existing transition.'
       };
+      if (purpose === 'automatic_improvement') {
+        var actions = [];
+        if (spacingGoal && spacingGoal.checked) actions.push('add the minimum spacing needed for the repeat windows');
+        if (smoothingGoal && smoothingGoal.checked) actions.push('improve difficult transitions where useful');
+        var prefix = preserve ? 'Keep the source order' : 'Optimize the source order first';
+        var description = prefix + (actions.length ? ', then ' + actions.join(' and ') + '.' : '. Select at least one improvement goal.');
+        purposeNotes.automatic_improvement = {optimize: description, preserve: description};
+      }
       var orderKey = preserve ? 'preserve' : 'optimize';
       additionPurposeNote.textContent = purposeNotes[purpose] ? purposeNotes[purpose][orderKey] : '';
       additionAmountNote.textContent = purpose === 'extend_playlist' ? (amountNotes[mode] || '') : '';
       if (automaticNote) {
-        automaticNote.textContent = purpose === 'satisfy_constraints'
+        automaticNote.textContent = purpose === 'automatic_improvement'
+          ? purposeNotes.automatic_improvement[orderKey]
+          : purpose === 'satisfy_constraints'
           ? purposeNotes.satisfy_constraints[orderKey]
           : purposeNotes.automatic[orderKey];
       }
@@ -1020,6 +1050,10 @@
 
     initializeAdditionControls();
     selectMaterialCandidateLibrary(0);
+
+    function automaticImprovementState(enabled, spacing, smoothing) {
+      return {showThreshold: enabled && smoothing, invalid: enabled && !spacing && !smoothing};
+    }
 
     function synchronizeControls() {
       var destinationRoute = sourceMode && sourceMode.value === 'route_to_track';
@@ -1059,6 +1093,9 @@
       var preserve = ordering.value === 'preserve_order';
       var noAdditions = extension.value === 'none';
       var automatic = extension.value === 'automatic';
+      var combinedAutomatic = extension.value === 'automatic_improvement';
+      var goalState = automaticImprovementState(combinedAutomatic,
+        spacingGoal && spacingGoal.checked, smoothingGoal && smoothingGoal.checked);
       var spacingOnly = additionPurpose && additionPurpose.value === 'satisfy_constraints';
       var extendPlaylist = additionPurpose && additionPurpose.value === 'extend_playlist';
       var fixedGapCount = additionPurpose && additionPurpose.value === 'fixed_gap_count';
@@ -1092,10 +1129,10 @@
       var maximumTarget = 500;
       var requestedExact = parseInt(exactCount.value || '0', 10);
       var requestedBridgeTarget = parseInt(bridgeTarget.value || '0', 10);
-      var zeroAutomaticBudget = (automatic || spacingOnly)
+      var zeroAutomaticBudget = (automatic || spacingOnly || combinedAutomatic)
         && parseInt(maximumAdditions && maximumAdditions.value || '0', 10) === 0;
       var invalidCombination = preserve
-        && (noAdditions || zeroAutomaticBudget);
+        && (noAdditions || (zeroAutomaticBudget && !combinedAutomatic));
       var invalidExact = exact && sourceCount > 0
         && (requestedExact < 1 || requestedExact > maximumExact
           || sourceCount + requestedExact > maximumTarget);
@@ -1153,7 +1190,7 @@
         ? sourceCount + ' source tracks + ' + sourceCount + ' additions = ' + (2 * sourceCount) + ' tracks.'
           + (invalidDouble ? ' This exceeds the current 500-track target limit.' : '')
         : 'Choose a source to see the calculated final size.';
-      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble || invalidFixedGap;
+      submit.disabled = !capabilityReady || invalidSource || invalidCombination || invalidExact || invalidTarget || invalidDouble || invalidFixedGap || goalState.invalid;
 
       for (var providerIndex = 0; providerIndex < guidanceProviderFields.length; providerIndex++) {
         setVisible(guidanceProviderFields[providerIndex], additions);
@@ -1168,13 +1205,15 @@
         ? 'Not used when source order is preserved.'
         : 'Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.';
 
-      setVisible(automaticFields, automatic || spacingOnly);
+      setVisible(automaticFields, automatic || spacingOnly || combinedAutomatic);
+      setVisible(automaticGoals, combinedAutomatic);
+      setVisible(automaticGoalWarning, goalState.invalid);
       if (automaticLegend) {
         automaticLegend.textContent = spacingOnly
           ? 'Spacing tracks'
           : 'Automatic additions';
       }
-      setInputsReadOnly(automaticInputs, !(automatic || spacingOnly));
+      setInputsReadOnly(automaticInputs, !(automatic || spacingOnly || combinedAutomatic));
       setVisible(exactFields, exact);
       setInputsReadOnly(exactInputs, !exact);
       setVisible(targetFields, targetCount);
@@ -1190,10 +1229,11 @@
         ? 'Choose between 1 and 8 bridges per gap and keep the derived final size at or below 500 tracks.'
         : '';
       setVisible(fixedGapWarning, invalidFixedGap);
-      setVisible(triggerPercentRow, automatic);
-      setVisible(gapContextModeRow, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
-      setVisible(gapContextModeNote, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
-      setVisible(gapContextFields, (automatic || fixedGapCount) && algorithm.value === 'adaptive');
+      setVisible(triggerPercentRow, automatic || goalState.showThreshold);
+      setVisible(triggerPercentNote, automatic || goalState.showThreshold);
+      setVisible(gapContextModeRow, (automatic || combinedAutomatic || fixedGapCount) && algorithm.value === 'adaptive');
+      setVisible(gapContextModeNote, (automatic || combinedAutomatic || fixedGapCount) && algorithm.value === 'adaptive');
+      setVisible(gapContextFields, (automatic || combinedAutomatic || fixedGapCount) && algorithm.value === 'adaptive');
       if (gapContextMode) gapContextMode.disabled = false;
       updateGapContextNote();
       setVisible(learnedPercentRow, algorithm.value === 'adaptive');
@@ -1206,6 +1246,8 @@
     if (sourcePlayer) sourcePlayer.addEventListener('change', synchronizeControls);
     if (sourceQueueScope) sourceQueueScope.addEventListener('change', synchronizeControls);
     if (additionPurpose) additionPurpose.addEventListener('change', synchronizeControls);
+    if (spacingGoal) spacingGoal.addEventListener('change', synchronizeControls);
+    if (smoothingGoal) smoothingGoal.addEventListener('change', synchronizeControls);
     if (additionAmountMode) additionAmountMode.addEventListener('change', synchronizeControls);
     algorithm.addEventListener('change', synchronizeControls);
     if (maximumAdditions) maximumAdditions.addEventListener('input', synchronizeControls);
@@ -1415,6 +1457,9 @@
         [% END %]
       </ol>
       [% IF bettercallbliss_job.bridge_extension %]
+        [% IF bettercallbliss_job.automatic_improvement %]
+          <p class="bea-note">Added [% bettercallbliss_job.spacing_additions %] spacing tracks and [% bettercallbliss_job.smoothing_additions %] transition-smoothing tracks.</p>
+        [% END %]
         [% IF bettercallbliss_job.guidance_stats.total %]
           <p class="bea-note"><b>Optional guidance applied to additions:</b>
             [% bettercallbliss_job.guidance_stats.lastfm_any %] of [% bettercallbliss_job.guidance_stats.total %] addition[% IF bettercallbliss_job.guidance_stats.total != 1 %]s[% END %] used Last.fm guidance
@@ -1434,11 +1479,14 @@
               [% ELSE %]
                 <li><b>[% addition.artist | html %] - [% addition.title | html %]</b> between
                 "[% addition.left | html %]" and "[% addition.right | html %]";
+                [% IF addition.addition_reason_label %][% addition.addition_reason_label | html %];[% END %]
                 direct gap [% addition.direct_percent %]th percentile; guidance: [% addition.guidance_summary | html %].
               </li>
               [% END %]
             [% END %]
           </ul>
+        [% ELSIF bettercallbliss_job.automatic_improvement %]
+          <p>No tracks were added.[% IF bettercallbliss_job.satisfy_repeat_windows %] The source order already satisfies the repeat windows.[% END %][% IF bettercallbliss_job.smooth_transitions %][% IF bettercallbliss_job.improvement_budget %] No beneficial bridge was found within the selected settings.[% ELSE %] The additions budget was zero, so no bridge could be added.[% END %][% END %]</p>
         [% ELSIF bettercallbliss_job.automatic_extension %]
           <p>No bridge met the trigger, acoustic-improvement, uniqueness, and repeat constraints. The optimized base order is still a valid result.</p>
         [% END %]

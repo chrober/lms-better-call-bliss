@@ -170,6 +170,9 @@ sub _extension_detail {
     my $mode = $options->{extension_mode} || 'none';
     return 'Additional tracks: none; this run only reorders the source set.'
         if $mode eq 'none';
+    return 'Additional tracks: automatically improve the playlist; shared maximum '
+        . (0 + ($options->{max_added_tracks} || 0)) . ' tracks.'
+        if $mode eq 'automatic_improvement';
     return 'Additional tracks: improve difficult transitions; may add up to '
         . (0 + ($options->{max_added_tracks} || 0))
         . ' tracks when transitions exceed the configured trigger.'
@@ -208,7 +211,8 @@ sub _extension_detail {
 
 sub _ordering_detail {
     my $options = shift || {};
-    if (($options->{extension_mode} || '') eq 'repeat_window_repair') {
+    if (($options->{extension_mode} || '') eq 'repeat_window_repair'
+        || ($options->{extension_mode} || '') eq 'automatic_improvement') {
         return ($options->{ordering_policy} || '') eq 'preserve_order'
             ? 'Ordering: preserve and freeze the source order, then repair its gaps.'
             : 'Ordering: optimize and freeze the source-only order, then repair its gaps.';
