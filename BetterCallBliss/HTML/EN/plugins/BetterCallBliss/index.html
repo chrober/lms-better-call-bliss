@@ -151,7 +151,7 @@
           </li>
         [% END %]
       </ul>
-      <p class="bea-note[% UNLESS bettercallbliss_recent_jobs.size %] bea-hidden[% END %]" id="bea-recent-jobs-note">Recent previews are kept only while LMS is running. Persistent job history is still on the roadmap.</p>
+      <p class="bea-note[% UNLESS bettercallbliss_recent_jobs.size %] bea-hidden[% END %]" id="bea-recent-jobs-note">The eight most recent completed, failed, or cancelled previews are kept across LMS restarts.</p>
   </details>
 
 [% IF bettercallbliss_candidate_inventory.ready && bettercallbliss_candidate_inventory.unmatched_row_count %]

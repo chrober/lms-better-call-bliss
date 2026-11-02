@@ -8,6 +8,7 @@ use File::Copy qw(copy);
 use File::Spec ();
 use File::Spec::Functions qw(abs2rel catfile);
 use Scalar::Util qw(blessed);
+use Slim::Formats::Playlists;
 use Slim::Formats::Playlists::M3U;
 use Slim::Schema;
 use Slim::Utils::Misc;
@@ -30,6 +31,23 @@ sub _same_urls {
             && $expected->[$index] eq $actual->[$index];
     }
     return 1;
+}
+
+sub _verify_source_snapshot {
+    my ($job, $source_path, $source_url) = @_;
+    my $source_ids = $job->{source_track_ids} || [];
+    my $track_urls = $job->{track_urls} || {};
+    my @expected = map { $track_urls->{$_} } @$source_ids;
+    _fail('SOURCE_PLAYLIST_CHANGED', 'The original playlist snapshot is unavailable. Run the preview again.')
+        unless @expected && @expected == ($job->{track_count} || 0)
+            && !grep { !defined $_ || !length $_ } @expected;
+    my @tracks = eval {
+        Slim::Formats::Playlists->parseList($source_url, undef, undef)
+    };
+    _fail('SOURCE_PLAYLIST_CHANGED', 'The source playlist cannot be verified. Run the preview again.') if $@;
+    my @actual = map { blessed($_) && $_->can('url') ? $_->url : '' } @tracks;
+    _fail('SOURCE_PLAYLIST_CHANGED', 'The source playlist changed since the preview. Run the preview again.')
+        unless _same_urls(\@expected, \@actual);
 }
 
 sub _normalized_name {
@@ -270,6 +288,8 @@ sub overwrite_source {
     _fail('SOURCE_PLAYLIST_NOT_WRITABLE', 'The source playlist file is not writable')
         unless -w $source_path;
 
+    _verify_source_snapshot($job, $source_path, $source_url);
+
     my ($tracks, $urls) = _resolved_tracks($job);
     my $temp_path = catfile(
         $playlist_dir, '.bettercallbliss-' . $job->{id} . '-' . $$ . '.overwrite.tmp',
@@ -298,6 +318,7 @@ sub overwrite_source {
         _fail('SERIALIZATION_MISMATCH', 'Temporary M3U order did not verify')
             unless _same_urls($urls, \@serialized_urls);
 
+        _verify_source_snapshot($job, $source_path, $source_url);
         copy($source_path, $backup_path)
             or _fail('BACKUP_FAILED', "Could not back up source playlist: $!");
         rename($temp_path, $source_path)

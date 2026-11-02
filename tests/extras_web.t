@@ -1,6 +1,8 @@
 use strict;
 use warnings;
 use FindBin;
+use File::Path qw(make_path);
+use File::Temp qw(tempdir);
 use Test::More;
 
 BEGIN {
@@ -83,6 +85,27 @@ my $job_form = Plugins::BetterCallBliss::Web::_form_from_job({
 }, {});
 is($job_form->{extras_weight_tempo}, 9,
     'reopening a plugin-default job restores the captured static weights');
+
+require "$FindBin::Bin/../BetterCallBliss/JobHistory.pm";
+my $history_root = tempdir(CLEANUP => 1);
+make_path("$history_root/preview-1000-editor");
+my $history = Plugins::BetterCallBliss::JobHistory->new($history_root);
+$history->save({
+    id => 'preview-1000-editor', state => 'completed', started_at => 1000,
+    playlist_id => 42, source_mode => 'saved_playlist',
+    capability => { static_weight_sliders => {tempo => 9, timbre => 30, loudness => 9, chroma => 57} },
+    options => { ordering_policy => 'preserve_order', extension_mode => 'automatic_improvement',
+        addition_purpose => 'automatic_improvement', satisfy_repeat_windows => 0,
+        smooth_transitions => 1, artist_window => 4 },
+    artifact => { artifact_kind => 'adaptive-route-v1' },
+});
+my ($restored_job) = $history->load;
+my $restored_form = Plugins::BetterCallBliss::Web::_form_from_job($restored_job, {});
+is($restored_form->{playlist_id}, 42, 'reopening restored preview retains playlist');
+is($restored_form->{artist_window}, 4, 'reopening restored preview retains repeat window');
+is($restored_form->{satisfy_repeat_windows}, 0, 'reopening restored preview retains disabled goal');
+is($restored_form->{smooth_transitions}, 1, 'reopening restored preview retains enabled goal');
+is($restored_form->{extras_weight_tempo}, 9, 'reopening restored preview retains captured weights');
 
 my $goals = Plugins::BetterCallBliss::Web::_form_from_params({
     addition_purpose => 'automatic_improvement',

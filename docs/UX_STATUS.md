@@ -72,7 +72,7 @@ fall through to either working mode.
 | Screen or action | Status | Current behavior |
 | --- | --- | --- |
 | Active preview | Partial | Real running job, retained only in LMS process memory; the page polls JSON-RPC status in place, keeps a manual full-result link, and exposes Cancel while the native process is still running. When the job reaches a terminal state, the page performs one anchored server render to show the full result. |
-| Result | Partial | Real completed, failed, or cancelled job, lost on LMS restart. |
+| Result | Partial | The eight most recent completed, failed, or cancelled jobs can be reopened after an LMS restart; earlier job formats are not automatically migrated. |
 | Refresh result | Working | Automatically re-reads the selected in-memory job through `bettercallbliss job status` every 1.5 seconds while running without reloading or resetting scroll position. A manual full-result link remains available. |
 | Temporary connection failure | Implemented on main | Status polling retries transient failures. If preview submission has an uncertain outcome, the UI checks whether the job exists and offers an explicit retry instead of silently starting a duplicate. |
 | Cancel preview | Working for running previews | The current job and the running/recent previews panel can terminate the native optimizer process. No playlist or queue output is changed; persistence-phase cancellation and restart recovery remain future work. |
@@ -82,7 +82,7 @@ fall through to either working mode.
 | Fixed-source extension diagnostics | Working | Reports best/mean/furthest fixed-source Adaptive relevance separately from final-route strategy, transition sum, worst transition, objective, and arc error. A collapsible acceptance section confirms exact target, every source track once, local additions, unique membership, and repeat-window compliance. |
 | Transition summary | Partial | Aggregate reorder diagnostics are real; difficult-transition, exact-count, and fixed-gap workflows show decisions for original gaps, while a general per-leg drill-down remains open. |
 | Warnings | Partial | Repeat validation, read-only safety, Last.fm provider fallback states, and a service-wide-error circuit breaker are real; a complete provider/cache dashboard remains open. |
-| Running and recent previews | Partial | Extras shows running previews plus the most recent completed, failed, and cancelled previews retained in LMS memory. The current Preview status and the Running/Recent lists update in place from JSON-RPC polling; users can open retained jobs and cancel running previews. Durable history, search, and export are not connected. |
+| Running and recent previews | Partial | Extras shows running previews plus up to eight completed, failed, and cancelled previews. Newly recorded jobs are restored across LMS restarts; a job interrupted by a restart is shown as failed so its captured parameters can be reused. Older managed jobs are removed after they leave this list, except when background work may still use them. Unconfirmed orphan directories after a crash and legacy directories without history records are not automatically removed. Search, export, and explicit result disposal remain future work. |
 | Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
 | Non-LMS Bliss-row audit | Working | The audit is now diagnostic rather than part of the normal workflow: Extras shows it only when the current inventory has excluded rows. The private JSON ledger retains current/resolved state, reason, row identity, metadata, and first/last-seen observations across LMS restarts. Existing case-variant duplicates are identified separately and include the related exact LMS identity. |
 | Accept preview | Working | Completed previews expose the output target only after the result has been reviewed. Changing output fields does not rerun the optimizer, and failed accept attempts keep the same preview available for retry. |
@@ -90,7 +90,7 @@ fall through to either working mode.
 | Overwrite source | Working | Separate post-Preview action requires explicit confirmation, replaces the source playlist file and LMS catalog order, and attempts to restore the original file if publication fails. |
 | Send to player queue | Working | Separate post-Preview action sends the generated order to a selected player with Replace queue, Replace upcoming tracks, Append to queue, or Play next behavior, and optional playback start. Same-player Replace upcoming tracks rechecks the live queue and trims already-played preview items when the snapshot is still recognizable. |
 | Change options and rerun | Working for in-memory jobs | Polling, success, failure, and accept-action pages restore every normalized job value into the editor; users can adjust those values and start another Preview. Drafts do not survive an LMS restart. |
-| Discard result | Not connected yet | Session results expire naturally on LMS restart. |
+| Discard result | Not connected yet | Managed results leave the history when superseded by newer completed jobs; explicit disposal is not yet available. |
 
 ## Settings
 

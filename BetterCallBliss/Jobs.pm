@@ -2,8 +2,10 @@ package Plugins::BetterCallBliss::Jobs;
 
 use strict;
 use Digest::SHA qw(sha256_hex);
+use Errno qw(ESRCH);
 use File::Basename qw(basename);
 use File::Path qw(make_path);
+use Fcntl qw(:flock);
 use File::Slurp qw(read_file write_file);
 use Scalar::Util qw(blessed);
 use JSON::XS;
@@ -26,6 +28,7 @@ use Plugins::BetterCallBliss::DurationTarget;
 use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::JobOptions;
+use Plugins::BetterCallBliss::JobHistory;
 use Plugins::BetterCallBliss::LogDiagnostics;
 use Plugins::BetterCallBliss::RequestBuilder;
 use Plugins::BetterCallBliss::PlaylistWriter;
@@ -40,6 +43,8 @@ my ($optimizer_binary, $job_root, $library_cache_root,
     $optimizer_supports_progress, $optimizer_supports_trusted_request);
 my %jobs;
 my %pre_start_cancels;
+my $job_history;
+my $history_recheck_scheduled = 0;
 my $serial = 0;
 my $last_web_activity = 0;
 my @pending_web_preparations;
@@ -96,6 +101,111 @@ sub init {
     make_path($job_root) unless -d $job_root;
     make_path($library_cache_root) unless -d $library_cache_root;
     Plugins::BetterCallBliss::CandidateInventory::init($cache_root);
+    $job_history = Plugins::BetterCallBliss::JobHistory->new($job_root);
+    $history_recheck_scheduled = 0;
+    for my $job ($job_history->load) {
+        if (($job->{state} || '') eq 'running') {
+            $job->{state} = 'failed';
+            $job->{stage} = 'Interrupted';
+            $job->{finished_at} = time();
+            $job->{error_code} = 'PREVIEW_INTERRUPTED';
+            $job->{error} = 'Lyrion stopped before the preview finished. Adjust the settings and run the preview again.';
+            $job->{_history_orphaned} = 1;
+        } elsif ($job->{_history_cleanup_pending}) {
+            $job->{_history_orphaned} = 1;
+        }
+        $jobs{$job->{id}} = $job;
+    }
+    _prune_history();
+}
+
+sub _prune_history {
+    return unless $job_history;
+    for my $job (values %jobs) {
+        next unless $job->{_history_orphaned};
+        next unless _history_process_exited($job->{_history_owner_pid});
+        if ($job->{_history_launching}) {
+            next if $job_history->result_in_use($job->{id});
+        } else {
+            next unless _history_process_exited($job->{_history_optimizer_pid});
+        }
+        delete @{$job}{qw(_history_orphaned _history_cleanup_pending _history_external_pending _history_launching)};
+        my $ok = eval { $job_history->save($job); 1 };
+        unless ($ok) {
+            $job->{_history_orphaned} = 1;
+            $log->warn('Could not save preview history: ' . $@);
+        }
+    }
+    my %protected = map { $_->{id} => 1 }
+        grep { ($_->{state} || '') eq 'running' || $_->{_history_busy} || $_->{_history_orphaned}
+            || ($_->{write_state} || '') eq 'running' } values %jobs;
+    my @removed = eval { $job_history->prune(\%protected) };
+    if ($@) { $log->warn('Could not prune preview history: ' . $@); return; }
+    delete $jobs{$_} for @removed;
+    if (!$history_recheck_scheduled && !main::ISWINDOWS && grep {
+        $_->{_history_orphaned}
+            && ($_->{_history_owner_pid} || '') =~ /\A[1-9]\d*\z/
+            && ($_->{_history_optimizer_pid} || '') =~ /\A[1-9]\d*\z/
+    } values %jobs) {
+        $history_recheck_scheduled = 1;
+        my $scheduled_history = $job_history;
+        Slim::Utils::Timers::setTimer(undef, time() + 10, sub {
+            return unless $job_history && $job_history eq $scheduled_history;
+            $history_recheck_scheduled = 0;
+            _prune_history();
+        });
+    }
+}
+
+sub _history_process_exited {
+    my ($pid) = @_;
+    return 0 if main::ISWINDOWS || !defined($pid) || $pid !~ /\A[1-9]\d*\z/;
+    local $! = 0;
+    return 0 if kill 0, $pid;
+    return $! == ESRCH ? 1 : 0;
+}
+
+sub _remember_terminal {
+    my ($job) = @_;
+    return unless $job_history && $job && ($job->{state} || '') =~ /\A(?:completed|failed|cancelled)\z/;
+    return if $job->{_history_orphaned};
+    if ($job->{_history_busy}) {
+        $job->{_history_cleanup_pending} = 1;
+    } else {
+        delete @{$job}{qw(_history_cleanup_pending _history_external_pending)};
+    }
+    my $ok = eval { $job_history->save($job); 1 };
+    unless ($ok) { $log->warn('Could not save preview history: ' . $@); return; }
+    _prune_history();
+}
+
+sub _remember_running {
+    my ($job) = @_;
+    return unless $job_history && $job && ($job->{state} || '') eq 'running';
+    $job->{_history_owner_pid} = $$;
+    $job->{_history_optimizer_pid} = $$ unless defined $job->{_history_optimizer_pid};
+    $job->{_history_external_pending} = ($job->{_history_busy} || 0)
+        > ($job->{_history_waiting_optimizer} ? 1 : 0) ? 1 : 0;
+    my $ok = eval { $job_history->save($job); 1 };
+    $log->warn('Could not save running preview history: ' . $@) unless $ok;
+    return $ok;
+}
+
+sub _history_busy_begin {
+    my ($job) = @_;
+    if ($job) {
+        $job->{_history_busy}++;
+        _remember_running($job);
+    }
+}
+
+sub _history_busy_end {
+    my ($job) = @_;
+    return unless $job;
+    $job->{_history_busy}-- if $job->{_history_busy};
+    _remember_running($job) if ($job->{state} || '') eq 'running';
+    _remember_terminal($job)
+        if !$job->{_history_busy} && ($job->{state} || '') ne 'running';
 }
 
 sub _json {
@@ -497,6 +607,8 @@ sub _launch_optimizer {
 
     open my $result_fh, '>', $job->{result_path}
         or die "Could not open optimizer result: $!";
+    flock($result_fh, LOCK_EX | LOCK_NB)
+        or die "Could not lock optimizer result: $!" unless main::ISWINDOWS;
     open my $stderr_fh, '>', $job->{stderr_path}
         or die "Could not open optimizer log: $!";
 
@@ -511,6 +623,8 @@ sub _launch_optimizer {
 
     my $retie_stderr = !main::ISWINDOWS && tied(*STDERR) ? 1 : 0;
     untie *STDERR if $retie_stderr;
+    $job->{_history_launching} = 1;
+    die 'Could not persist preview launch state' unless _remember_running($job);
     my ($process, $launch_error);
     eval {
         local %ENV = (%ENV, %$process_environment);
@@ -532,8 +646,11 @@ sub _launch_optimizer {
     _deprioritize_optimizer($process);
 
     $job->{process} = $process;
+    $job->{_history_optimizer_pid} = $process->pid if $process->can('pid');
+    delete $job->{_history_launching};
     $job->{stage} = $job->{native_command} eq 'bridge'
         ? 'Optimizing and selecting additions' : 'Optimizing';
+    _remember_running($job);
     _schedule_poll($job, 0.5);
 }
 
@@ -779,6 +896,7 @@ sub _start_preview_from_built {
     )) {
         $jobs{$job_id}->{$key} = $fields->{$key} if exists $fields->{$key};
     }
+    _remember_running($jobs{$job_id});
     if (delete $pre_start_cancels{$job_id}) {
         _mark_cancelled($jobs{$job_id});
         $log->info("job=$job_id stage=Cancelled pre_start=1");
@@ -811,12 +929,20 @@ sub _start_preview_from_built {
         $jobs{$job_id}->{stage} = 'Capturing candidate library';
         if (!$candidate_inventory) {
             my %continued_fields = %$fields;
+            my $preparing_job = $jobs{$job_id};
+            _history_busy_begin($preparing_job);
+            my $preparation_finished = 0;
+            my $finish_preparation = sub {
+                return if $preparation_finished++;
+                _history_busy_end($preparing_job);
+            };
             my $prepare_ok = eval {
                 Plugins::BetterCallBliss::CandidateInventory::prepare_async(
                     $built->{capability}, $database_identity,
                     $built->{candidate_library},
                     sub {
                         my $prepared = shift;
+                        $finish_preparation->();
                         my $job = $jobs{$job_id};
                         return unless $job
                             && ($job->{state} || '') eq 'running';
@@ -830,6 +956,7 @@ sub _start_preview_from_built {
                     sub {
                         my $message = shift
                             || 'Could not capture candidate library';
+                        $finish_preparation->();
                         _fail_deferred_route_job(
                             $job_id, $message,
                             'CANDIDATE_LIBRARY_FAILED',
@@ -844,6 +971,7 @@ sub _start_preview_from_built {
                 );
                 1;
             };
+            $finish_preparation->() unless $prepare_ok;
             _fail_deferred_route_job(
                 $job_id, $@ || 'Could not start candidate-library worker',
                 'CANDIDATE_LIBRARY_FAILED',
@@ -878,6 +1006,7 @@ sub _start_preview_from_built {
             Plugins::BetterCallBliss::UserNotification::route_failure(
                 $job, $job->{error},
             );
+            _remember_terminal($job);
             return $job;
         }
         return $jobs{$job_id}
@@ -1030,8 +1159,13 @@ sub _start_preview_from_built {
             . " output_mode=$effective->{output_mode}"
         );
     }
+    my $acquiring_job = $jobs{$job_id};
+    _history_busy_begin($acquiring_job);
+    my $acquisition_finished = 0;
     my $on_prepared = sub {
         my $acquisition = shift || {};
+        return if $acquisition_finished++;
+        _history_busy_end($acquiring_job);
         my $job = $jobs{$job_id} || return;
         return unless ($job->{state} || '') eq 'running';
         my $source = $lastfm_applies ? ($lastfm_policy->{source} || '') : '';
@@ -1100,6 +1234,7 @@ sub _start_preview_from_built {
 sub _fail_deferred_route_job {
     my ($job_id, $message, $code) = @_;
     my $job = $jobs{$job_id} || return;
+    return unless ($job->{state} || '') eq 'running';
     $message ||= 'Could not start Bliss me there';
     $message =~ s/\s+at\s+\S+\s+line\s+\d+\.?\s*$//;
     $message =~ s/\s+/ /g;
@@ -1116,6 +1251,7 @@ sub _fail_deferred_route_job {
     Plugins::BetterCallBliss::UserNotification::route_failure(
         $job, $job->{error},
     );
+    _remember_terminal($job);
 }
 
 sub _create_deferred_sequence_job {
@@ -1149,6 +1285,7 @@ sub _create_deferred_sequence_job {
             ? 'bridge' : 'route',
         %$fields,
     };
+    _remember_running($jobs{$job_id});
     return $jobs{$job_id};
 }
 
@@ -1306,6 +1443,7 @@ sub _create_deferred_route_job {
             route_target_album_id => 0 + $option_ref->{target_album_id},
         ) : ()),
     };
+    _remember_running($jobs{$job_id});
     return $jobs{$job_id};
 }
 
@@ -1825,6 +1963,7 @@ sub _poll {
             );
         }
     }
+    _remember_terminal($job);
 }
 
 sub get {
@@ -1833,7 +1972,7 @@ sub get {
 }
 
 sub all {
-    return sort { $b->{started_at} <=> $a->{started_at} } values %jobs;
+    return sort { $b->{started_at} <=> $a->{started_at} || $b->{id} cmp $a->{id} } values %jobs;
 }
 
 sub _mark_cancelled {
@@ -1845,6 +1984,7 @@ sub _mark_cancelled {
     $job->{finished_at} = time();
     $job->{error_code} = 'CANCELLED';
     $job->{error} = 'Preview cancelled by user. No playlist or player queue was changed.';
+    _remember_terminal($job);
     return $job;
 }
 
@@ -1868,17 +2008,42 @@ sub cancel {
     }
     return $job unless ($job->{state} || '') eq 'running';
 
+    my $cancelled_process = $job->{process};
+    if ($cancelled_process) {
+        $job->{_history_waiting_optimizer} = 1;
+        _history_busy_begin($job);
+    }
     if ($job->{process}) {
         if ($job->{process}->alive) {
             eval { $job->{process}->die; };
             eval { $job->{process}->terminate; } if $@;
         } else {
+            delete $job->{_history_waiting_optimizer};
+            _history_busy_end($job);
             _poll($job_id);
             return $jobs{$job_id};
         }
     }
 
     _mark_cancelled($job);
+    if ($cancelled_process) {
+        my $check;
+        $check = sub {
+            my $alive = eval { $cancelled_process->alive };
+            if ($@) {
+                $log->warn('Could not confirm cancelled preview process has exited: ' . $@);
+                return;
+            }
+            if ($alive) {
+                Slim::Utils::Timers::setTimer(undef, time() + 0.5, $check);
+                return;
+            }
+            delete $job->{_history_waiting_optimizer};
+            _history_busy_end($job);
+            $check = undef;
+        };
+        $check->();
+    }
     $log->info("job=$job_id stage=Cancelled");
     return $job;
 }
@@ -1988,6 +2153,7 @@ sub create_copy {
                 . " message=$job->{write_error}"
             );
         }
+        _remember_terminal($job);
         die "$job->{write_error_code}: $job->{write_error}\n";
     }
 
@@ -2007,6 +2173,7 @@ sub create_copy {
     main::DEBUGLOG && $log->is_debug && $log->debug(
         "job=$job_id Output playlist path: $result->{path}"
     );
+    _remember_terminal($job);
     return $result;
 }
 
@@ -2047,6 +2214,7 @@ sub overwrite_source {
             "job=$job_id stage=OverwriteFailed code=$job->{write_error_code}"
             . " message=$job->{write_error}"
         );
+        _remember_terminal($job);
         die "$job->{write_error_code}: $job->{write_error}\n";
     }
 
@@ -2065,6 +2233,7 @@ sub overwrite_source {
     main::DEBUGLOG && $log->is_debug && $log->debug(
         "job=$job_id Overwritten playlist path: $result->{path}"
     );
+    _remember_terminal($job);
     return $result;
 }
 
@@ -2106,6 +2275,7 @@ sub send_to_queue {
             "job=$job_id stage=QueueSendFailed code=$job->{write_error_code}"
             . " message=$job->{write_error}"
         );
+        _remember_terminal($job);
         die "$job->{write_error_code}: $job->{write_error}\n";
     }
 
@@ -2124,16 +2294,34 @@ sub send_to_queue {
         $job_id, $result->{queue_action}, $result->{track_count},
         $result->{player_id}, $result->{started_playback} ? 'started' : 'unchanged',
     )) if main::INFOLOG;
+    _remember_terminal($job);
     return $result;
 }
 
 sub shutdown {
-    for my $job (values %jobs) {
-        if ($job->{process} && $job->{process}->alive) {
-            $job->{process}->terminate;
+    my @shutdown_jobs = values %jobs;
+    for my $job (@shutdown_jobs) {
+        next unless ($job->{state} || '') eq 'running';
+        my $process = $job->{process};
+        if ($process) {
+            my $stopped = eval {
+                $process->terminate if $process->alive;
+                !$process->alive;
+            };
+            next unless $stopped;
+            delete $job->{process};
         }
+        next if $job->{_history_busy};
+        $job->{state} = 'failed';
+        $job->{stage} = 'Interrupted';
+        $job->{finished_at} = time();
+        $job->{error_code} = 'PREVIEW_INTERRUPTED';
+        $job->{error} = 'Lyrion stopped before the preview finished. Adjust the settings and run the preview again.';
+        _remember_terminal($job);
     }
     %jobs = ();
+    $job_history = undef;
+    $history_recheck_scheduled = 0;
     %pre_start_cancels = ();
     Plugins::BetterCallBliss::CandidateInventory::shutdown();
 }
