@@ -30,6 +30,8 @@ Keep the original sequence and insert suitable bridging tracks between the exist
 
 Add a specific number of tracks, reach a target track count or duration, or double the track count while following the sound and constraints of the original selection.
 
+Target duration requires a compatible newer optimizer; it is not available in the currently pinned optimizer package.
+
 ### Take a musical journey to a track or album
 
 *"I'm listening to something now, and I want to arrive at this other song—or even a whole album—without an abrupt jump."*

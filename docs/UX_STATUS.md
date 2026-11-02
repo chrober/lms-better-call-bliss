@@ -1,9 +1,9 @@
 # UX contract and implementation status
 
-This document describes the complete intended **Better Call Bliss** interaction
-model and the exact boundary of the current `0.22.9` UX shell. The shell is
-deliberately broader than the backend so the remaining implementation can be
-connected without redesigning the user journey.
+This document describes the **Better Call Bliss** interaction model and current
+main-branch implementation. The packaged optimizer pin remains `v0.2.7`;
+automatic improvement and duration targets require a newer compatible build and
+are not yet delivered together in an official plugin release.
 
 The UI uses three explicit states:
 
@@ -37,14 +37,13 @@ fall through to either working mode.
 | Preserve source order | Working for difficult-transition improvements, spacing-track repair, Extend playlist, and fixed bridges per gap | Every original track remains an immutable anchor in its input order. Difficult-transition, spacing, and fixed-gap modes inspect source gaps. Spacing repair chooses a variable count per gap; Extend playlist instead places already selected whole-source-relevant additions around the anchors. |
 | Additional-track purpose | Working | With a compatible optimizer, the editor offers one automatic improvement workflow with independently selectable repeat-spacing and transition-smoothing goals. Older optimizers retain the separate choices. Extend playlist uses fixed-source membership selection; fixed-gap mode uses the global multi-gap planner. The dedicated destination-route mode is used only by Bliss me there. |
 | No additions | Working | Uses every original track exactly once and inserts none; rejected with preserved order because that combination is a guaranteed no-op. |
-| Improve difficult transitions | Working | Formerly shown as Add automatically. With optimized order it reorders the source before examining gaps; with preserved order it examines only the original gaps. It adds up to the per-job budget where the contextual trigger, acoustic-improvement, uniqueness, and repeat gates pass, and may add zero. Before candidate capture or Last.fm work, preserved order checks its immutable source anchors against the selected artist and album windows. A conflict fails immediately, names the repeated artist or album and source positions, and directs the listener to Add spacing tracks as needed or Optimize source order. |
-| Add spacing tracks as needed | Working | Freezes the preserved or source-only optimized order, then searches every internal gap together. It inserts the minimum feasible total needed for artist, album, and track repeat windows, may use a different count in each gap, never adds opening or closing tracks, and treats the per-job maximum additions as a hard global ceiling. It does not use the bridge-trigger percentile or add optional tracks merely for awkward transitions. Route-search restarts affect only the preliminary source-only ordering when **Optimize** is selected; they do not widen the later spacing search and have no effect with **Preserve**. |
+| Legacy individual improvement options | Working with older optimizers | Older compatible optimizers expose difficult-transition improvement and repeat-spacing repair separately. New optimizers expose them as the two goals of Automatic improvement. |
 | Extend playlist | Working | Shows a second amount selector for Add exactly N tracks, Reach final track count, Double track count, or Reach a target duration. Membership is selected against the fixed complete source set rather than capped by internal gaps. Count targets that are too small for the artist or album repeat windows fail before optimizer launch. |
 | Automatic improvement | Working with compatible optimizer | Spacing searches internal gaps together and uses the smallest feasible total; smoothing then examines the resulting adjacent tracks with the remaining shared budget. Either goal can be disabled. The preview identifies the purpose of each addition. Existing saved choices migrate to their equivalent individual goal. Route-search restarts affect only preliminary source ordering. |
 | Add exactly N tracks | Working under Extend playlist | Adds exactly the validated user-entered number of unique eligible local tracks or fails without returning a partial playlist. The visible Extend playlist path is not limited by `S - 1` gaps. |
 | Reach target track count | Working under Extend playlist | User enters the desired final track count. The plugin derives `N = T - S` and runs fixed-source membership selection. |
 | Fill every gap with N bridge tracks | Working | Accepts `N = 1..8`, derives `N * (S - 1)` additions, and globally plans exact anchored paths for all source gaps under shared uniqueness, repeat, guidance, and contextual scoring state. It adds no opening or closing tracks, fails without a partial result, reports per-gap progress, and verifies the native proof before output. |
-| Target duration | Implemented locally; requires compatible optimizer | Independent below/above tolerances default to 10%; valid Lyrion source durations are required. The bounded native search selects duration-compatible additions, enforces repeat rules, and fails without a partial result if none is found. A source already within bounds receives no additions. The preview verifies the final duration and displays target, bounds, result, and deviation. |
+| Target duration | Implemented on main; requires compatible optimizer | Independent below/above tolerances default to 10%; valid Lyrion source durations are required. The bounded native search selects duration-compatible additions, enforces repeat rules, and fails without a partial result if none is found. A source already within bounds receives no additions. The preview verifies the final duration and displays target, bounds, result, and deviation. |
 | Double track count | Working under Extend playlist | Adds exactly `S` local tracks, yielding `2S` tracks, through fixed-source membership selection. |
 | Numeric editor for N/T | Working for Extend playlist and fixed-gap targets | Exact-addition input is validated as 1-100 and converted to final size `S + N`. Target track count is validated as 3-500 and must exceed `S`. Double count is disabled when `2S` would exceed the 500-track target limit. Fixed-gap input accepts 1-8 bridges per gap and shows the derived addition and final counts; every final size is capped at 500. |
 | Musical context window (previous tracks) | Working, per job | Rolling preceding-track count used for every directional Adaptive leg. A bridge C between A and B is scored as history-to-C and updated-history-with-C-to-B; variance-based weighting begins with two available context tracks. |
@@ -76,6 +75,7 @@ fall through to either working mode.
 | Active preview | Partial | Real running job, retained only in LMS process memory; the page polls JSON-RPC status in place, keeps a manual full-result link, and exposes Cancel while the native process is still running. When the job reaches a terminal state, the page performs one anchored server render to show the full result. |
 | Result | Partial | Real completed, failed, or cancelled job, lost on LMS restart. |
 | Refresh result | Working | Automatically re-reads the selected in-memory job through `bettercallbliss job status` every 1.5 seconds while running without reloading or resetting scroll position. A manual full-result link remains available. |
+| Temporary connection failure | Implemented on main; release pending | Status polling retries transient failures. If preview submission has an uncertain outcome, the UI checks whether the job exists and offers an explicit retry instead of silently starting a duplicate. |
 | Cancel preview | Working for running previews | The current job and the running/recent previews panel can terminate the native optimizer process. No playlist or queue output is changed; persistence-phase cancellation and restart recovery remain future work. |
 | Result summary | Working | Prominently reports running, Preview success/failure, and accept-time save/send success/failure, then shows selected strategy, objective, worst transition, and constraint validation. |
 | Proposed order | Working | Shows every original track and its original position. |
@@ -112,11 +112,7 @@ Adaptive otherwise uses variance weighting for multi-track contexts plus Static
 BlissMixer weights for one-track contexts. Extended Isolation Forest remains
 disabled and labeled.
 
-**Additional route-search attempts**, automatic bridge budget, automatic trigger percentile, and enabled-provider values supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The following settings are persisted to establish their future contract but are labeled **not connected yet** on the settings page:
-
-- ListenBrainz enablement;
-- semantic cache freshness and stale-offline lifetime; and
-- persistent report retention.
+**Additional route-search attempts**, automatic bridge budget, automatic trigger percentile, and enabled-provider values supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The obsolete unconnected settings section has been removed; ListenBrainz and persistent report retention remain future work.
 
 Last.fm is optional and is supplied by the separately installed Last.fm
 provider. It supports provider-owned acquisition through either LastMix or a

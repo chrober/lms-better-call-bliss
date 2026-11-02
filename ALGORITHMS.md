@@ -275,7 +275,7 @@ flowchart LR
 
 ## Playlist workflows
 
-Each working workflow below lists only the controls that can affect it. Defaults are copied from BlissMixer or Better Call Bliss settings when the editor opens; changing a job never changes those global preferences.
+Each working workflow below lists only the controls that can affect it. The editor can use general plugin defaults or an explicitly saved Extras-specific set; a preview's edits remain job-local unless the user saves the Extras set. Bliss me there uses general plugin defaults, not saved Extras defaults.
 
 ### Reorder existing tracks only
 
@@ -375,7 +375,7 @@ When Better Call Bliss adds music, it chooses only analyzed songs that Lyrion cu
 
 #### How eligible candidates are frozen
 
-Before search, the plugin freezes the selected Lyrion `library_track` membership and intersects it with usable rows in `bliss.db` and the current local LMS catalog. The membership checksum participates in the inventory cache key, so a rebuilt virtual library cannot silently reuse an obsolete allowlist. From that intersection it excludes:
+Before search, the plugin freezes the selected Lyrion `library_track` membership and intersects it with usable rows in `bliss.db` and the current local LMS catalog. The membership checksum participates in the inventory cache key, so a rebuilt virtual library cannot silently reuse an obsolete allowlist. Inventories are built on demand per library and can reuse a validated library-wide artist-identity snapshot; candidate durations are retained when the snapshot is reused. For Bliss me there, an invoking UI's supplied library takes precedence, followed by the player's assigned library and then All tracks. From the eligible intersection it excludes:
 
 - every source file already in the playlist; and
 - another file with the same normalized artist-and-title identity as a source.
