@@ -28,7 +28,7 @@ Keep the original sequence and insert suitable bridging tracks between the exist
 
 *"I have a great 30-minute playlist, but I want music for the whole evening."*
 
-Add a specific number of tracks, grow to a target track count, or double the playlist length while following the sound and constraints of the original selection.
+Add a specific number of tracks, reach a target track count or duration, or double the track count while following the sound and constraints of the original selection.
 
 ### Take a musical journey to a track or album
 

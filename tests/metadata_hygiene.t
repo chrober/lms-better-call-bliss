@@ -108,7 +108,7 @@ like(
 );
 like(
     $extras,
-    qr/mainForm\.addEventListener\('submit'.*?event\.preventDefault\(\).*?BetterCallBlissPreviewStatus\.follow\(previewJobId, true\).*?fetch\(mainForm\.action/s,
+    qr/mainForm\.addEventListener\('submit'.*?event\.preventDefault\(\).*?BetterCallBlissPreviewStatus\.follow\(previewJobId, true, actionName\).*?fetch\(mainForm\.action/s,
     'preview submission remains in the Extras document while following the reserved job ID',
 );
 like(
@@ -133,7 +133,7 @@ like(
 );
 like(
     $extras,
-    qr/if \(response\.result\.job\) \{\s*updateJobLists.*?else if \(response\.result\.state === 'not_found' && !waitingForRegistration\)/s,
+    qr/if \(response\.result\.job\) \{\s*updateJobLists.*?else if \(response\.result\.state === 'not_found' && !waitingForRegistration && !startupUncertain\)/s,
     'a provisional preparation row survives not-found polls until the reserved job is registered',
 );
 unlike(

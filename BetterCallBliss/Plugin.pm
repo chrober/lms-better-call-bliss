@@ -40,6 +40,7 @@ my %binary_version_output;
 my $optimizer_supports_destination_blocks;
 my $optimizer_supports_fixed_gap_count;
 my $optimizer_supports_repeat_window_repair;
+my $optimizer_supports_duration_extension;
 
 sub getDisplayName { return 'PLUGIN_BETTERCALLBLISS_NAME'; }
 
@@ -85,6 +86,8 @@ sub initPlugin {
         _optimizerSupportsFixedGapCount($optimizer_binary);
     $optimizer_supports_repeat_window_repair =
         _optimizerSupportsRepeatWindowRepair($optimizer_binary);
+    $optimizer_supports_duration_extension =
+        _optimizerSupportsDurationExtension($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
         $optimizer_binary,
         $optimizer_supports_genre_policy,
@@ -92,6 +95,7 @@ sub initPlugin {
         $optimizer_supports_guidance_spi_v2,
         $optimizer_supports_fixed_gap_count,
         $optimizer_supports_repeat_window_repair,
+        $optimizer_supports_duration_extension,
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -199,6 +203,12 @@ sub _optimizerSupportsRepeatWindowRepair {
     my $binary = shift;
     my $output = _binaryVersionOutput($binary);
     return $output =~ /"repeat_window_repair_v1"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerSupportsDurationExtension {
+    my $binary = shift;
+    my $output = _binaryVersionOutput($binary);
+    return $output =~ /"duration_extension_v1"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _binaryVersionOutput {

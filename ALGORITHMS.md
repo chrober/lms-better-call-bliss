@@ -24,7 +24,7 @@ This document describes the current implementation. **Working** means the choice
 Four job choices work together:
 
 1. **Source-track order** decides whether songs already in the playlist may move.
-2. **Additional tracks** asks for the listener-facing purpose: no additions, improve difficult transitions, add spacing tracks as needed, extend the source by a chosen amount, or fill every source gap with a fixed number of bridges. **Extend playlist** opens the second **Chosen amount** selector for exact additions, final track count, or double track count; **Reach a final track count** is also the replacement for the former separate target-size workflow.
+2. **Additional tracks** asks for the listener-facing purpose: no additions, improve difficult transitions, add spacing tracks as needed, extend the source by a chosen amount, or fill every source gap with a fixed number of bridges. **Extend playlist** opens the second **Chosen amount** selector for exact additions, final track count, double track count, or target duration; **Reach a final track count** is also the replacement for the former separate target-size workflow.
 3. **Mixing strategy** supplies the similarity measurement used by those playlist operations. Better Call Bliss reuses this capability from BlissMixer; it is not the main feature being selected here.
 4. **Candidate library** limits every newly generated track to the selected Lyrion virtual library. Existing source, history, destination, waypoint, and queue-rejoin tracks remain valid anchors even when they are outside that view.
 
@@ -42,7 +42,7 @@ Four job choices work together:
 | [Extend playlist](#extend-playlist) | Working | The playlist is already the thing you want, just too short. | Adds a chosen amount of local songs. Addition similarity is based on the complete original source set, not on one gap at a time; originals remain required members. |
 | [Bliss me there...](#bliss-me-there) | Working | You want to arrive at one selected local track or play a complete album after the queue, directly after the current song, or as an excursion before the existing upcoming queue. | The three sibling actions append, replace upcoming tracks, or insert a route through the destination and back to the first upcoming track. Albums remain intact in disc and track order. All actions use locked anchors and validate them before changing the queue. |
 | [Fill every gap with N bridge tracks](#fill-every-gap-with-n-bridge-tracks) | Working | You want a strict "put the same number of bridges inside every existing gap" placement rule. | The source order is fixed first, then one global plan inserts exactly N bridges per internal source gap. No opening or closing tracks are added. |
-| Duration target | Planned | You want "make this about 90 minutes" rather than "make this 30 tracks." | Future target unit; track-count targets already work through Extend playlist. |
+| Duration target | Extend playlist | You want "make this about 90 minutes" rather than "make this 30 tracks." | Select a target and independent shorter/longer tolerances; a compatible optimizer is required. |
 
 ### Similarity and evidence inputs
 
@@ -596,24 +596,27 @@ Each eligible library track receives one relevance distance to that complete sou
 
 Use **Add exactly N tracks** or **Double the track count** when the source is already an existing playlist and you know how many songs it should gain. Use **Reach a final track count** when you want to expand a short seed list, mood board, or queue snapshot to a chosen size. After membership is chosen, **Source-track order** decides placement: Optimize may route the enlarged set freely, while Preserve keeps the original songs as ordered anchors and places additions around them when the repeat windows can be satisfied.
 
-The **Chosen amount** selector has three count-based variants:
+The **Chosen amount** selector offers three count-based variants and one duration-based variant:
 
 - **Add exactly N tracks:** final size is `S + N`.
 - **Reach a final track count:** final size is the entered target `T`; additions are `T - S`.
 - **Double the track count:** final size is `2S`; additions are `S`.
+- **Reach a target duration:** enter a final duration and independent shorter/longer percentage tolerances, each defaulting to 10%. For example, a two-hour target with those defaults accepts 1:48 to 2:12.
 
-These variants use exactly the same candidate-discovery and ranking process. They differ only in the number of additions requested.
+All variants use the same fixed source-set relevance and candidate ranking. Duration targeting searches for a combination of complete tracks within the requested inclusive range; it does not estimate a track count from an average song length. The optimizer checks repeat capacity and routes the selected membership under the chosen source-order policy.
 
-Duration-based targets remain future work. **Fill every gap with N bridge tracks** is the separate available strict-placement mode, because it answers a different question: "put an exact bridge route inside every source gap" rather than "make this playlist larger."
+For duration targeting, source tracks need valid Lyrion durations and candidates without valid durations cannot be selected. If the source already fits, no tracks are added; if it exceeds the upper bound, the request fails. A bounded search that cannot find a valid result fails without offering a partial playlist; widen the tolerances or relax repeat windows to try again. The preview shows the target, accepted range, achieved duration, and deviation. **Fill every gap with N bridge tracks** is a separate strict-placement mode.
 
 #### Options for Extend playlist
 
 | Option | Range / default | Effect in this workflow |
 | --- | --- | --- |
 | Source-track order | Optimize by default | Optimize routes the complete extended set freely. Preserve keeps source tracks as ordered anchors and places additions around them. |
-| Chosen amount | Exact additions, final track count, or double count | Defines the requested final size. |
+| Chosen amount | Exact additions, final track count, double count, or target duration | Defines the requested final size or duration. |
 | Exact number of additions | 1-100; default 1 | Used only by Add exactly N tracks. It is not limited by `S - 1` gaps. |
 | Final track count | 3-500; default 25 | Used only by Reach final track count. Must be greater than `S`. |
+| Final duration | Minutes; default 120 | Desired final playlist duration, including all original tracks. Requires a compatible optimizer. |
+| Below / above target | 0-100%; default 10% each | Independent, inclusive hard tolerances for the final duration. |
 | Musical context window | 1-50; inherited from BlissMixer | Controls final route ordering only. Membership relevance always uses every original source track. |
 | Learned-matrix blend | 0-100%; inherited from BlissMixerLab when available | Learned share for contexts with at least two tracks. If no learned matrix is available, multi-track contexts use pure variance and one-track contexts use Static BlissMixer weights. |
 | Artist look-back | 0-10,000; inherited | Limits artist membership capacity and constrains the final route. Zero disables it. |
@@ -631,7 +634,7 @@ Extend playlist uses the native fixed-source extension request for membership se
 
 When Variation or Last.fm guidance is active, only a bounded top-quality acoustic pool is diversified or semantically adjusted first. Candidates below that pool remain ordered acoustic fallbacks for satisfying repeat-window capacity; Last.fm cannot pull an acoustically distant track into the preferred pool. Artist and album capacity is checked while the requested membership is assembled. Only after the exact membership exists does route placement begin.
 
-This means Extend playlist behaves like users expect from an extension feature: the chosen count is a real count request. It can still fail, but failures should be about real constraints such as insufficient repeat-safe local candidates, missing Bliss analysis, or a target larger than the supported 500-track request limit - not merely because the original playlist has too few internal gaps.
+Count-based requests require the chosen count. Duration-based requests explore bounded alternative memberships against the same source relevance ordering; each candidate membership must fit the duration range and repeat capacity before routing. Every resolved addition is checked again against Lyrion's duration before the preview is accepted. The 500-track final-size limit applies to both forms. A bounded search may fail to find a route even if one exists outside the explored search space.
 
 ~~~mermaid
 flowchart LR

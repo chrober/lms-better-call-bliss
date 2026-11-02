@@ -22,7 +22,7 @@ use Plugins::BetterCallBliss::CandidateIdentity;
 use Plugins::BetterCallBliss::RepeatIdentity;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
-use constant BUILDER_REVISION => 6;
+use constant BUILDER_REVISION => 7;
 my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
@@ -592,14 +592,14 @@ sub prepare {
     my $repeat_snapshot = _new_repeat_identity_snapshot();
     _worker_progress('Rebuilding candidate library: scanning local LMS tracks');
     my $lms_sth = _lms_dbh()->prepare(
-        'SELECT tracks.id, tracks.url, tracks.tracknum, tracks.urlmd5, tracks.musicbrainz_id, '
+        'SELECT tracks.id, tracks.url, tracks.tracknum, tracks.urlmd5, tracks.musicbrainz_id, tracks.secs, '
         . 'contributors.id, contributors.musicbrainz_id, contributors.name FROM tracks '
         . 'LEFT JOIN contributors ON contributors.id = tracks.primary_artist '
         . 'WHERE tracks.remote = 0 AND tracks.audio = 1'
     );
     $lms_sth->execute;
     my $lms_last_yield = time();
-    while (my ($track_id, $url, $tracknum, $urlmd5, $recording_mbid,
+    while (my ($track_id, $url, $tracknum, $urlmd5, $recording_mbid, $seconds,
         $primary_contributor_id, $artist_mbid, $artist_name)
         = $lms_sth->fetchrow_array) {
         my $database_file = _database_file_for_url(
@@ -617,6 +617,8 @@ sub prepare {
             $candidate_files{$database_file} = 1;
             $lms_identity_for{$database_file} = {
                 lms_track_id => 0 + $track_id,
+                defined $seconds && $seconds > 0
+                    ? (duration_ms => int($seconds * 1000 + 0.5)) : (),
                 defined $urlmd5 && length $urlmd5
                     ? (lms_urlmd5 => "$urlmd5") : (),
                 defined $recording_mbid && length $recording_mbid
@@ -704,6 +706,8 @@ sub prepare {
                 candidate_id => 'bliss-row-' . (0 + $row_id),
                 row_id => 0 + $row_id,
                 lms_track_id => 0 + ($lms_identity->{lms_track_id} || 0),
+                defined $lms_identity->{duration_ms} && $lms_identity->{duration_ms} > 0
+                    ? (duration_ms => 0 + $lms_identity->{duration_ms}) : (),
                 defined $lms_identity->{lms_urlmd5}
                     ? (lms_urlmd5 => $lms_identity->{lms_urlmd5}) : (),
                 title => defined $title ? $title : '',

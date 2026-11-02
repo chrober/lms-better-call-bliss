@@ -36,6 +36,7 @@ BEGIN {
             problems => [],
             fixed_gap_count_available => 1,
             repeat_window_repair_available => 1,
+            duration_extension_available => 1,
             database => '/tmp/bliss-2026.db',
             matrix_available => 1,
             matrix => '/tmp/learned_matrix.json',
@@ -167,6 +168,7 @@ BEGIN {
     our $addition_purpose = '';
     our $tracks_per_gap = '1';
     sub normalize {
+        my $input = $_[1] || {};
         return {
             ordering_policy => 'preserve_order',
             extension_mode => $extension_mode,
@@ -230,6 +232,12 @@ BEGIN {
                     },
                 },
             },
+            (($input->{addition_amount_mode} || '') eq 'target_duration' ? (
+                %$input,
+                extension_mode => 'fixed_source_extension',
+                duration_tolerance_below_percent => $input->{duration_tolerance_below_percent} // 10,
+                duration_tolerance_above_percent => $input->{duration_tolerance_above_percent} // 10,
+            ) : ()),
         };
     }
     $INC{'Plugins/BetterCallBliss/JobOptions.pm'} = __FILE__;
@@ -249,8 +257,10 @@ BEGIN {
     sub musicbrainz_id { return $_[0]->{musicbrainz_id} }
 
     package TestTrack;
+    our $seconds = 60;
     sub new { return bless {id => $_[1], title => $_[2]}, $_[0] }
     sub remote { return 0 }
+    sub secs { return $seconds }
     sub id { return $_[0]->{id} }
     sub artistName { return 'Numeric Artist' }
     sub title { return $_[0]->{title} }
@@ -304,6 +314,45 @@ is(
 my $built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
     7, 'preview-json-types', '/tmp/semantic-evidence.json', {},
 );
+my $duration_built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+    7, 'preview-duration', '/tmp/semantic-evidence.json', {
+        addition_purpose => 'extend_playlist', addition_amount_mode => 'target_duration',
+        target_duration_minutes => 4, duration_tolerance_below_percent => 10,
+        duration_tolerance_above_percent => 10, artist_window => 0, album_window => 0, track_window => 0,
+    },
+);
+is_deeply($duration_built->{request}->{extension}->{duration_target},
+    {source_ms => 120000, minimum_ms => 216000, maximum_ms => 264000},
+    'duration request captures source duration and both hard millisecond bounds');
+for my $key (qw(source_ms minimum_ms maximum_ms)) {
+    $duration_built->{request}->{extension}->{duration_target}->{$key} =
+        "" . $duration_built->{request}->{extension}->{duration_target}->{$key};
+}
+Plugins::BetterCallBliss::RequestBuilder::normalize_request_types($duration_built->{request});
+my $duration_json = JSON::XS->new->encode($duration_built->{request});
+like($duration_json, qr/"source_ms"\s*:\s*120000\b/,
+    'duration bounds remain JSON integers after normalization');
+my $within_built = Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+    7, 'preview-duration-within', '/tmp/semantic-evidence.json', {
+        addition_purpose => 'extend_playlist', addition_amount_mode => 'target_duration',
+        target_duration_minutes => 2, artist_window => 0, album_window => 0, track_window => 0,
+    },
+);
+is($within_built->{request}->{extension}->{target_track_count}, 2,
+    'duration request allows the unextended source when already in range');
+ok(!eval { Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+    7, 'preview-too-long', '/tmp/semantic-evidence.json', {
+        addition_purpose => 'extend_playlist', addition_amount_mode => 'target_duration',
+        target_duration_minutes => 1, artist_window => 0, album_window => 0, track_window => 0,
+    }); 1 }, 'duration request rejects a source longer than the upper tolerance');
+{
+    local $TestTrack::seconds;
+    ok(!eval { Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+        7, 'preview-no-duration', '/tmp/semantic-evidence.json', {
+            addition_purpose => 'extend_playlist', addition_amount_mode => 'target_duration',
+            target_duration_minutes => 4, artist_window => 0, album_window => 0, track_window => 0,
+        }); 1 }, 'duration request rejects a source with missing track durations');
+}
 Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
     $built->{request},
     $built->{capability},

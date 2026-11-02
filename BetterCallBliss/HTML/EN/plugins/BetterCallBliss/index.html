@@ -99,6 +99,10 @@
     <span id="bea-live-status-elapsed"></span>
   </div>
 [% END %]
+<div id="bea-start-recovery-controls" class="bea-hidden">
+  <button type="button" class="inputbutton bea-small-button" id="bea-check-start-status">Check again</button>
+  <button type="button" class="inputbutton bea-small-button" id="bea-retry-start">Run preview again</button>
+</div>
 
 [% IF !bettercallbliss_capability.ready %]
   <div class="bea-warning">
@@ -309,8 +313,6 @@
           [% ELSE %]
             <option disabled>Fill every gap with N bridge tracks [Requires compatible optimizer]</option>
           [% END %]
-          <option disabled>Reach a target duration [Planned]</option>
-          <option disabled>Double playlist duration [Planned]</option>
         </select>
       </div>
       <p class="bea-note" id="addition_purpose_note"></p>
@@ -320,6 +322,11 @@
           <option value="exact_count"[% IF bettercallbliss_form.addition_amount_mode == 'exact_count' %] selected[% END %]>Add exactly N tracks</option>
           <option value="target_count"[% IF bettercallbliss_form.addition_amount_mode == 'target_count' %] selected[% END %]>Reach a final track count</option>
           <option value="double_count"[% IF bettercallbliss_form.addition_amount_mode == 'double_count' %] selected[% END %]>Double the track count</option>
+          [% IF bettercallbliss_capability.duration_extension_available %]
+            <option value="target_duration"[% IF bettercallbliss_form.addition_amount_mode == 'target_duration' %] selected[% END %]>Reach a target duration</option>
+          [% ELSE %]
+            <option disabled>Reach a target duration [Requires compatible optimizer]</option>
+          [% END %]
         </select>
       </div>
       <p class="bea-note" id="addition_amount_note"></p>
@@ -404,6 +411,22 @@
     <legend>Double track count</legend>
     <p class="bea-note">This preset asks for one added local track per source track, yielding exactly twice as many tracks.</p>
     <p class="bea-note" id="double_count_summary">Choose a source to see the calculated final size.</p>
+  </fieldset>
+  <fieldset class="bea-section bea-mode-section" id="target_duration_fields">
+    <legend>Target duration</legend>
+    <p class="bea-note">The final duration must be within the chosen tolerances. If the source is already within the range, no tracks are added.</p>
+    <div class="bea-row">
+      <label for="target_duration_minutes">Final duration (minutes)</label>
+      <input class="stdedit" type="number" min="1" max="100000" name="target_duration_minutes" id="target_duration_minutes" value="[% bettercallbliss_form.target_duration_minutes %]" required>
+    </div>
+    <div class="bea-row">
+      <label for="duration_tolerance_below_percent">Maximum below target (%)</label>
+      <input class="stdedit" type="number" min="0" max="100" name="duration_tolerance_below_percent" id="duration_tolerance_below_percent" value="[% bettercallbliss_form.duration_tolerance_below_percent %]" required>
+    </div>
+    <div class="bea-row">
+      <label for="duration_tolerance_above_percent">Maximum above target (%)</label>
+      <input class="stdedit" type="number" min="0" max="100" name="duration_tolerance_above_percent" id="duration_tolerance_above_percent" value="[% bettercallbliss_form.duration_tolerance_above_percent %]" required>
+    </div>
   </fieldset>
   [% END %]
 
@@ -599,6 +622,8 @@
     var targetLimit = document.getElementById('target_count_limit');
     var targetWarning = document.getElementById('target_count_warning');
     var doubleFields = document.getElementById('double_count_fields');
+    var durationFields = document.getElementById('target_duration_fields');
+    var durationInputs = durationFields ? durationFields.querySelectorAll('input') : [];
     var doubleSummary = document.getElementById('double_count_summary');
     var maximumAdditions = document.getElementById('max_added_tracks');
     var routeLengthPolicy = document.getElementById('route_length_policy');
@@ -967,7 +992,8 @@
       var amountNotes = {
         exact_count: 'Extend-only amount control: add exactly this many tracks to the source snapshot. This is a playlist-length request, not one bridge per existing gap.',
         target_count: 'Extend-only amount control: enter the desired final track count and Better Call Bliss calculates how many additions are needed.',
-        double_count: 'Extend-only amount control: add one track per source track, so the final result has exactly twice as many tracks. This is still full-playlist extension, not one bridge per existing transition.'
+        double_count: 'Extend-only amount control: add one track per source track, so the final result has exactly twice as many tracks. This is still full-playlist extension, not one bridge per existing transition.',
+        target_duration: 'Extend the playlist to the chosen duration within the allowed tolerances.'
       };
       var orderKey = preserve ? 'preserve' : 'optimize';
       additionPurposeNote.textContent = purposeNotes[purpose] ? purposeNotes[purpose][orderKey] : '';
@@ -1037,6 +1063,7 @@
       var exact = extendPlaylist && amountMode === 'exact_count';
       var targetCount = extendPlaylist && amountMode === 'target_count';
       var doubleCount = extendPlaylist && amountMode === 'double_count';
+      var targetDuration = extendPlaylist && amountMode === 'target_duration';
       var additions = !noAdditions;
       var noneOption = additionPurpose ? additionPurpose.querySelector('option[value="none"]') : null;
       var currentSourceMode = sourceMode ? sourceMode.value : 'saved_playlist';
@@ -1151,6 +1178,8 @@
       setVisible(targetFields, targetCount);
       setInputsReadOnly(targetInputs, !targetCount);
       setVisible(doubleFields, doubleCount);
+      setVisible(durationFields, targetDuration);
+      setInputsReadOnly(durationInputs, !targetDuration);
       setVisible(fixedGapFields, fixedGapCount);
       setInputsReadOnly(fixedGapInputs, !fixedGapCount);
       if (fixedGapSummary) fixedGapSummary.textContent = sourceCount > 0
@@ -1211,7 +1240,7 @@
         setHiddenInput('preview_job_id', previewJobId);
         showStartingPreviewRow(previewJobId);
         if (window.BetterCallBlissPreviewStatus) {
-          window.BetterCallBlissPreviewStatus.follow(previewJobId, true);
+          window.BetterCallBlissPreviewStatus.follow(previewJobId, true, actionName);
         }
         setPreviewStartButtons(true, 'Preparing preview...');
         var formData = new FormData(mainForm);
@@ -1297,14 +1326,19 @@
           </ul>
         </details>
       [% ELSIF bettercallbliss_job.fixed_source_extension %]
-        <div class="bea-ok">Extended [% bettercallbliss_job.relevance_reference_track_count %] source tracks to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
+        [% IF bettercallbliss_job.duration_extension %]
+          <div class="bea-ok">Final duration: [% bettercallbliss_job.duration_report.actual | html %] ([% bettercallbliss_job.duration_report.deviation_percent | html %] from target). Added [% bettercallbliss_job.added_track_count %] local tracks.</div>
+          <p class="bea-note">Target: [% bettercallbliss_job.duration_report.target | html %]; allowed range: [% bettercallbliss_job.duration_report.minimum | html %]–[% bettercallbliss_job.duration_report.maximum | html %].</p>
+        [% ELSE %]
+          <div class="bea-ok">Extended [% bettercallbliss_job.relevance_reference_track_count %] source tracks to exactly [% bettercallbliss_job.target_track_count %] tracks by adding [% bettercallbliss_job.added_track_count %] local songs.</div>
+        [% END %]
         <p class="bea-note">The original source set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.</p>
         <p class="bea-note"><b>Fixed-source relevance:</b> best [% bettercallbliss_job.relevance_minimum %], average [% bettercallbliss_job.relevance_mean %], furthest [% bettercallbliss_job.relevance_maximum %] Adaptive distance (lower is closer).</p>
         <p class="bea-note"><b>Final route flow:</b> [% bettercallbliss_job.selected_strategy | html %]; transition sum [% bettercallbliss_job.route_transition_sum %], worst transition [% bettercallbliss_job.route_worst_transition %], objective [% bettercallbliss_job.route_objective %], arc error [% bettercallbliss_job.route_arc_error %].</p>
         <details>
           <summary>Verified acceptance checks</summary>
           <ul>
-            <li>Exact target size reached.</li>
+            [% IF bettercallbliss_job.duration_extension %]<li>Final duration is within the requested bounds.</li>[% ELSE %]<li>Exact target size reached.</li>[% END %]
             <li>Every original source track retained exactly once.</li>
             <li>Every addition resolved from the current local LMS candidate inventory.</li>
             <li>Membership is unique, satisfying the track-repeat rule.</li>
@@ -1510,6 +1544,12 @@
     var finishing = false;
     var waitingForRegistration = false;
     var startupError = '';
+    var startupUncertain = false;
+    var startupCheckTimer;
+    var jobConfirmed = !!jobId;
+    var pollEpoch = 0;
+    var pollingPaused = false;
+    var previewActionName = '';
 
     function text(value) {
       return value === undefined || value === null ? '' : String(value);
@@ -1708,6 +1748,11 @@
 
     function updateCurrentJob(job) {
       if (!job) return;
+      jobConfirmed = true;
+      setText('bea-running-jobs-heading', 'Running');
+      startupUncertain = false;
+      window.clearTimeout(startupCheckTimer);
+      setVisibleById('bea-start-recovery-controls', false);
       var state = text(job.state);
       // Keep the browser-side timer alive through the plugin-owned preparation
       // phase. The server already returns a running job at that point, but the
@@ -1723,6 +1768,8 @@
       if (banner) {
         banner.classList.remove('bea-hidden');
         banner.setAttribute('data-job-id', jobId);
+        var bannerTitle = banner.querySelector('b');
+        if (bannerTitle) bannerTitle.textContent = 'Optimization is running.';
       }
       setText('bea-live-status-text', status);
       setText('bea-live-status-elapsed', elapsedText(job, true));
@@ -1756,14 +1803,16 @@
     }
 
     function pollJob() {
-      if (!jobId || finishing || pollInFlight) return;
+      if (!jobId || finishing || pollInFlight || pollingPaused) return;
       pollInFlight = true;
+      var requestEpoch = pollEpoch;
       requestJob('status', jobId).then(function (response) {
+        if (requestEpoch !== pollEpoch) return;
         if (response && response.result) {
           if (response.result.job) {
             updateJobLists(response.result);
             updateCurrentJob(response.result.job);
-          } else if (response.result.state === 'not_found' && !waitingForRegistration) {
+          } else if (response.result.state === 'not_found' && !waitingForRegistration && !startupUncertain) {
             updateJobLists(response.result);
             showStartupFailure(startupError || response.result.error || 'Preview job could not be started');
           } else if (response.result.state !== 'not_found') {
@@ -1771,12 +1820,14 @@
           }
         }
       }).catch(function (error) {
+        if (requestEpoch !== pollEpoch) return;
         if (window.console && window.console.warn) {
           window.console.warn('Better Call Bliss status update will be retried:', error);
         }
       }).then(function () {
+        if (requestEpoch !== pollEpoch) return;
         pollInFlight = false;
-        if (!finishing) schedulePoll(1500);
+        if (!finishing && !pollingPaused) schedulePoll(1500);
       });
     }
 
@@ -1834,6 +1885,8 @@
       var banner = document.getElementById('bea-live-status-banner');
       setClass(banner, 'bea-error');
       if (banner) banner.classList.remove('bea-hidden');
+      var bannerTitle = banner && banner.querySelector('b');
+      if (bannerTitle) bannerTitle.textContent = 'Preview could not be started.';
       setText('bea-live-status-text', message || 'Preview could not be started');
       setText('bea-live-status-elapsed', '');
       setText('bea-starting-status', message || 'Preview could not be started');
@@ -1848,17 +1901,98 @@
       }
     }
 
+    function checkUncertainStart() {
+      if (!jobId || jobConfirmed) return;
+      pollEpoch++;
+      pollInFlight = false;
+      pollingPaused = false;
+      startupUncertain = true;
+      waitingForRegistration = true;
+      finishing = false;
+      setVisibleById('bea-start-recovery-controls', false);
+      var banner = document.getElementById('bea-live-status-banner');
+      setClass(banner, 'bea-info');
+      var title = banner && banner.querySelector('b');
+      if (title) title.textContent = 'Checking preview status.';
+      setText('bea-running-jobs-heading', 'Unconfirmed preview');
+      setText('bea-job-overview-summary', 'Running and recent previews (1 unconfirmed)');
+      var startingRow = document.getElementById('bea-starting-preview-row');
+      var startLabel = startingRow && startingRow.querySelector('tr:first-child td:first-child');
+      if (startLabel) startLabel.textContent = 'Attempt:';
+      var message = 'Connection interrupted. Checking whether the preview started...';
+      setText('bea-live-status-text', message);
+      setText('bea-starting-status', message);
+      window.clearTimeout(startupCheckTimer);
+      startupCheckTimer = window.setTimeout(function () {
+        if (!startupUncertain || jobConfirmed) return;
+        stopPolling();
+        pollingPaused = true;
+        pollEpoch++;
+        pollInFlight = false;
+        if (window.BetterCallBlissPreviewPreparation) {
+          window.BetterCallBlissPreviewPreparation.stopTimer();
+        }
+        var uncertain = 'Could not confirm whether the preview started. Check again before starting another preview.';
+        if (title) title.textContent = 'Preview start unconfirmed.';
+        setText('bea-live-status-text', uncertain);
+        setText('bea-starting-status', uncertain);
+        setText('bea-starting-duration', '-');
+        setText('bea-live-status-elapsed', '');
+        setVisibleById('bea-start-recovery-controls', true);
+      }, 15000);
+      startPolling();
+    }
+
+    var checkStart = document.getElementById('bea-check-start-status');
+    if (checkStart) checkStart.addEventListener('click', checkUncertainStart);
+    var retryStart = document.getElementById('bea-retry-start');
+    if (retryStart) retryStart.addEventListener('click', function () {
+      if (!window.confirm('The earlier preview may still be running. Start another preview anyway?')) return;
+      startupUncertain = false;
+      pollEpoch++;
+      pollInFlight = false;
+      pollingPaused = true;
+      window.clearTimeout(startupCheckTimer);
+      stopPolling();
+      setVisibleById('bea-start-recovery-controls', false);
+      var buttons = document.querySelectorAll('input[type="submit"][name="run_preview"], input[type="submit"][name="run_route_to_track_preview"]');
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].disabled = false;
+        buttons[i].removeAttribute('aria-disabled');
+        var original = buttons[i].getAttribute('data-bea-original-label');
+        if (original) buttons[i].value = original;
+      }
+      for (var j = 0; j < buttons.length; j++) {
+        if (!previewActionName || buttons[j].name === previewActionName) {
+          buttons[j].click();
+          break;
+        }
+      }
+    });
+
     window.BetterCallBlissPreviewStatus = {
-      follow: function (id, pendingRegistration) {
+      follow: function (id, pendingRegistration, actionName) {
         if (!id) return;
         jobId = id;
+        previewActionName = actionName || '';
+        setText('bea-running-jobs-heading', 'Running');
         waitingForRegistration = !!pendingRegistration;
         startupError = '';
+        startupUncertain = false;
+        jobConfirmed = !pendingRegistration;
+        pollEpoch++;
+        pollInFlight = false;
+        pollingPaused = false;
+        window.clearTimeout(startupCheckTimer);
+        setVisibleById('bea-start-recovery-controls', false);
         finishing = false;
         var banner = document.getElementById('bea-live-status-banner');
         if (banner) {
           banner.classList.remove('bea-hidden');
           banner.setAttribute('data-job-id', jobId);
+          setClass(banner, 'bea-info');
+          var title = banner.querySelector('b');
+          if (title) title.textContent = 'Optimization is running.';
         }
         startPolling();
       },
@@ -1870,9 +2004,9 @@
       },
       submissionFailed: function (id, message) {
         if (id !== jobId) return;
+        if (jobConfirmed) return;
         startupError = message || 'The preview request failed';
-        waitingForRegistration = false;
-        showStartupFailure(startupError);
+        checkUncertainStart();
       }
     };
 

@@ -22,6 +22,7 @@ use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateGuidance;
+use Plugins::BetterCallBliss::DurationTarget;
 use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::JobOptions;
@@ -959,7 +960,13 @@ sub _start_preview_from_built {
         . (($effective->{extension_mode} eq 'fixed_source_extension'
                 || $effective->{extension_mode} eq 'target_count'
                 || $effective->{extension_mode} eq 'double_count')
+                && ($effective->{addition_amount_mode} || '') ne 'target_duration'
             ? " target_tracks=$effective->{target_track_count}"
+            : '')
+        . (($effective->{addition_amount_mode} || '') eq 'target_duration'
+            ? ' duration_target_minutes=' . $effective->{target_duration_minutes}
+                . ' duration_tolerance_below_percent=' . $effective->{duration_tolerance_below_percent}
+                . ' duration_tolerance_above_percent=' . $effective->{duration_tolerance_above_percent}
             : '')
         . ($effective->{extension_mode} eq 'fixed_gap_count'
             ? " tracks_per_gap=$effective->{tracks_per_gap}"
@@ -1655,6 +1662,12 @@ sub _poll {
         if ($code eq 'ROUTE_SEARCH_FAILED') {
             my $hint = _repeat_capacity_hint($job);
             $ui_message .= " $hint" if $hint;
+        }
+        if (($job->{options}->{addition_amount_mode} || '') eq 'target_duration'
+            && $code =~ /^(?:DURATION_TARGET_NOT_FOUND|FIXED_SOURCE_EXTENSION_INFEASIBLE|FIXED_SOURCE_EXTENSION_ROUTE_FAILED|FIXED_SOURCE_EXTENSION_PRESERVE_ORDER_INFEASIBLE)$/) {
+            $ui_message = Plugins::BetterCallBliss::DurationTarget::failure_message(
+                $job->{options}->{duration_target},
+            );
         }
         $job->{state} = 'failed';
         $job->{stage} = 'Failed';

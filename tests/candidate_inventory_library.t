@@ -91,6 +91,8 @@ $Slim::Schema::dbh->do(
 $Slim::Schema::dbh->do('ALTER TABLE tracks ADD COLUMN urlmd5 TEXT');
 $Slim::Schema::dbh->do(q{UPDATE tracks SET urlmd5 = 'allowed' WHERE id = 1});
 $Slim::Schema::dbh->do(q{UPDATE tracks SET urlmd5 = 'outside' WHERE id = 2});
+$Slim::Schema::dbh->do('ALTER TABLE tracks ADD COLUMN secs REAL');
+$Slim::Schema::dbh->do(q{UPDATE tracks SET secs = 234.567 WHERE id = 1});
 $Slim::Schema::dbh->do(
     'CREATE TABLE tracks_persistent (urlmd5 TEXT PRIMARY KEY, playcount INTEGER)'
 );
@@ -129,6 +131,7 @@ is_deeply(
     $first->{identities},
     [{
         candidate_id => 'bliss-row-1', row_id => 1, lms_track_id => 1,
+        duration_ms => 234567,
         lms_urlmd5 => 'allowed',
         title => 'Allowed', artist => 'A',
         recording_mbid => '11111111-1111-4111-8111-111111111111',
@@ -139,6 +142,11 @@ is_deeply(
 is($first->{identity_artifact}->{schema_identity},
     'eligible-candidate-identities-v1',
     'the provider-facing identity artifact uses the optimizer schema identity');
+open my $identity_file, '<:raw', $first->{identity_artifact}->{path} or die $!;
+my $identity_json = do { local $/; <$identity_file> };
+close $identity_file;
+is(JSON::XS->new->decode($identity_json)->{candidates}->[0]->{duration_ms}, 234567,
+    'the hash-bound optimizer identity artifact includes the candidate duration');
 is($first->{identity_artifact}->{kind},
     'eligible-candidate-identities-v1',
     'the provider-facing identity artifact carries the native-provider kind');

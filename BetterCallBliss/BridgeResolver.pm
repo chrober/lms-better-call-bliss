@@ -7,6 +7,7 @@ use Scalar::Util qw(blessed);
 use Slim::Schema;
 use Slim::Utils::Misc;
 use Slim::Utils::Unicode;
+use Plugins::BetterCallBliss::DurationTarget;
 
 sub _fail {
     my ($code, $message) = @_;
@@ -264,12 +265,15 @@ sub resolve_bridge_preview {
     }
     my $dynamic_spacing_extension = $mode eq 'fixed_source_extension'
         && ($job->{options}->{constraint_spacing} || 0);
+    my $duration_extension = $mode eq 'fixed_source_extension'
+        && ($job->{options}->{addition_amount_mode} || '') eq 'target_duration';
     _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-source extension preview omitted its target')
         if $mode eq 'fixed_source_extension'
             && !exists $preview->{target_track_count};
     _fail('BRIDGE_ARTIFACT_INVALID', 'The fixed-source extension preview changed the requested target')
         if $mode eq 'fixed_source_extension'
             && !$dynamic_spacing_extension
+            && !$duration_extension
             && $preview->{target_track_count}
                 != $job->{options}->{target_track_count};
     if ($dynamic_spacing_extension) {
@@ -382,6 +386,15 @@ sub resolve_bridge_preview {
     } elsif ($mode eq 'repeat_window_repair') {
         _fail('BRIDGE_ARTIFACT_INVALID', 'The repeat-window repair exceeded its additions budget')
             if @bridges > ($job->{options}->{max_added_tracks} || 0);
+    } elsif ($duration_extension) {
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The duration preview target does not match its final sequence')
+            unless @final == $preview->{target_track_count}
+                && @final == @source + @bridges;
+        my $target = $job->{options}->{duration_target} || {};
+        _fail('BRIDGE_ARTIFACT_INVALID', 'The preview added tracks although the source already met the duration target')
+            if defined $target->{source_ms} && defined $target->{minimum_ms}
+                && defined $target->{maximum_ms} && $target->{source_ms} >= $target->{minimum_ms}
+                && $target->{source_ms} <= $target->{maximum_ms} && @bridges;
     } else {
         my $expected = $job->{options}->{target_track_count} - @source;
         if ($dynamic_spacing_extension) {
@@ -460,7 +473,7 @@ sub resolve_bridge_preview {
     my %labels = %{$job->{labels} || {}};
     my %positions = %{$job->{original_positions} || {}};
     my %used_url = map { $urls{$_} => 1 } keys %urls;
-    my @additions;
+    my (@additions, @addition_durations);
     my $ok = eval {
         for my $bridge (@bridges) {
             my ($id, $row_id) = @$bridge;
@@ -473,6 +486,14 @@ sub resolve_bridge_preview {
             );
             _fail('BRIDGE_TRACK_NOT_IN_LMS', "Bridge '$id' is not a local LMS track")
                 unless blessed($track) && $track->can('url') && !$track->remote;
+            if ($duration_extension) {
+                my $milliseconds = eval {
+                    Plugins::BetterCallBliss::DurationTarget::lms_source_milliseconds([$track]);
+                };
+                _fail('DURATION_MISSING', "Bridge '$id' has no valid duration")
+                    if $@ || !defined $milliseconds;
+                push @addition_durations, $milliseconds;
+            }
             my $url = $track->url;
             _fail('BRIDGE_TRACK_DUPLICATE', "Bridge '$id' duplicates a source or bridge track")
                 if $used_url{$url}++;
@@ -514,6 +535,14 @@ sub resolve_bridge_preview {
     $sth->finish;
     $dbh->disconnect;
     die $error unless $ok;
+    if ($duration_extension) {
+        my $valid = eval {
+            Plugins::BetterCallBliss::DurationTarget::validate_result(
+                $job->{options}->{duration_target}, $preview->{duration_result}, \@addition_durations,
+            );
+        };
+        _fail('DURATION_RESULT_INVALID', $@ || 'The duration result is invalid') unless $valid;
+    }
 
     return {
         final_track_ids => \@final,

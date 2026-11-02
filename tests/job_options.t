@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
-use Test::More tests => 78;
+use Test::More tests => 85;
 
 BEGIN {
     package TestPrefs;
@@ -49,6 +49,7 @@ my $capability = {
     statistics_enabled => 1,
     fixed_gap_count_available => 1,
     repeat_window_repair_available => 1,
+    duration_extension_available => 1,
     playcount_influence => '-30',
     discovered_guidance_providers => [{
         provider_id => 'lastfm',
@@ -345,6 +346,35 @@ is($extend->{extension_mode}, 'fixed_source_extension',
     'extend playlist uses the native fixed-source extension');
 is($extend->{bridge_target_track_count}, 33,
     'target track count input is normalized to an integer');
+
+my $duration = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {addition_purpose => 'extend_playlist', addition_amount_mode => 'target_duration',
+        target_duration_minutes => '120'},
+);
+is($duration->{target_duration_minutes}, 120, 'duration target is normalized');
+is($duration->{duration_tolerance_below_percent}, 10, 'shorter tolerance defaults to 10 percent');
+is($duration->{duration_tolerance_above_percent}, 10, 'longer tolerance defaults to 10 percent');
+my $asymmetric = Plugins::BetterCallBliss::JobOptions::normalize(
+    $capability,
+    {addition_purpose => 'extend_playlist', addition_amount_mode => 'target_duration',
+        target_duration_minutes => '90', duration_tolerance_below_percent => '0',
+        duration_tolerance_above_percent => '25'},
+);
+is($asymmetric->{duration_tolerance_below_percent}, 0, 'zero below-target tolerance is retained');
+is($asymmetric->{duration_tolerance_above_percent}, 25, 'above-target tolerance is independent');
+my $invalid_duration = eval {
+    Plugins::BetterCallBliss::JobOptions::normalize($capability,
+        {addition_purpose => 'extend_playlist', addition_amount_mode => 'target_duration',
+            target_duration_minutes => '0'});
+    1;
+};
+ok(!$invalid_duration, 'zero target duration is rejected');
+my %without_duration = (%$capability, duration_extension_available => 0);
+ok(!eval { Plugins::BetterCallBliss::JobOptions::normalize(\%without_duration,
+    {addition_purpose => 'extend_playlist', addition_amount_mode => 'target_duration',
+        target_duration_minutes => '120'}); 1 },
+    'duration mode is rejected when the optimizer lacks the capability');
 
 my $spacing = Plugins::BetterCallBliss::JobOptions::normalize(
     $capability,

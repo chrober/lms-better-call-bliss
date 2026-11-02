@@ -90,6 +90,9 @@ sub defaults {
         tracks_per_gap => 1,
         bridge_target_track_count => 25,
         target_track_count => 25,
+        target_duration_minutes => 120,
+        duration_tolerance_below_percent => 10,
+        duration_tolerance_above_percent => 10,
         output_mode => 'create_copy',
         output_name => '',
         output_name_generated => 0,
@@ -168,10 +171,15 @@ sub normalize {
             && !$capability->{fixed_gap_count_available};
     $options->{addition_amount_mode} = $input->{addition_amount_mode}
         if defined $input->{addition_amount_mode};
-    die "Chosen amount must be Add exactly N tracks, Reach final track count, or Double track count"
+    die "Chosen amount must be Add exactly N tracks, Reach final track count, Double track count, or Reach a target duration"
         unless $options->{addition_amount_mode} eq 'exact_count'
             || $options->{addition_amount_mode} eq 'target_count'
-            || $options->{addition_amount_mode} eq 'double_count';
+            || $options->{addition_amount_mode} eq 'double_count'
+            || $options->{addition_amount_mode} eq 'target_duration';
+    die 'Reach a target duration requires a compatible bliss-playlist-optimizer'
+        if $options->{addition_amount_mode} eq 'target_duration'
+            && $options->{addition_purpose} eq 'extend_playlist'
+            && !$capability->{duration_extension_available};
     if (!defined $input->{addition_purpose}) {
         if ($options->{extension_mode} eq 'exact_count'
             || $options->{extension_mode} eq 'target_count'
@@ -313,6 +321,13 @@ sub normalize {
         $input, 'target_track_count', 3, 500,
         $options->{target_track_count},
     );
+    $options->{target_duration_minutes} = _integer(
+        $input, 'target_duration_minutes', 1, 100000,
+        $options->{target_duration_minutes},
+    );
+    for my $name (qw(duration_tolerance_below_percent duration_tolerance_above_percent)) {
+        $options->{$name} = _integer($input, $name, 0, 100, $options->{$name});
+    }
     if ($legacy_fixed_source_extension_purpose) {
         $options->{bridge_target_track_count} = $options->{target_track_count};
         $options->{addition_purpose} = 'extend_playlist';

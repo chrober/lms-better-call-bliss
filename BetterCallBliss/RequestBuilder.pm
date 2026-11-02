@@ -12,6 +12,7 @@ use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
+use Plugins::BetterCallBliss::DurationTarget;
 use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
 use Plugins::BetterCallBliss::JobOptions;
 use Plugins::BetterCallBliss::RepeatIdentity;
@@ -166,6 +167,10 @@ sub normalize_request_types {
             additional_track_count target_track_count candidate_limit
             max_tracks_per_gap max_added_tracks shortlist_limit
         ),
+    );
+    _normalize_integers(
+        $request->{extension}->{duration_target},
+        qw(source_ms minimum_ms maximum_ms),
     );
     if (defined $request->{extension}->{trigger_percentile}) {
         $request->{extension}->{trigger_percentile} = _json_number(
@@ -635,7 +640,30 @@ sub _build_sequence_request {
         $options->{constraint_spacing} = 1;
     }
     if (($options->{addition_purpose} || '') eq 'extend_playlist') {
-        if (($options->{addition_amount_mode} || '') eq 'target_count') {
+        if (($options->{addition_amount_mode} || '') eq 'target_duration') {
+            die 'Reach a target duration requires a compatible bliss-playlist-optimizer' . chr(10)
+                unless $capability->{duration_extension_available};
+            $options->{duration_preflight} =
+                Plugins::BetterCallBliss::DurationTarget::preflight_lms_tracks(
+                    $tracks, $options->{target_duration_minutes},
+                    $options->{duration_tolerance_below_percent},
+                    $options->{duration_tolerance_above_percent},
+                );
+            my $source_ms = Plugins::BetterCallBliss::DurationTarget::lms_source_milliseconds($tracks);
+            my $target_ms = _json_integer($options->{target_duration_minutes}) * 60000;
+            my $minimum_ms = $target_ms * (100 - $options->{duration_tolerance_below_percent}) / 100;
+            my $maximum_ms = $target_ms * (100 + $options->{duration_tolerance_above_percent}) / 100;
+            die 'The source playlist is longer than the maximum permitted duration; '
+                . 'increase the target or tolerance, or choose a shorter source.' . chr(10)
+                if $source_ms > $maximum_ms;
+            $options->{duration_target} = {
+                source_ms => _json_integer($source_ms),
+                minimum_ms => _json_integer($minimum_ms),
+                maximum_ms => _json_integer($maximum_ms),
+            };
+            $options->{target_track_count} = $source_count + ($source_ms < $minimum_ms ? 1 : 0);
+            $options->{additional_track_count} = $options->{target_track_count} - $source_count;
+        } elsif (($options->{addition_amount_mode} || '') eq 'target_count') {
             die 'Target track count must exceed the source playlist size'
                 if $options->{bridge_target_track_count} <= $source_count;
             $options->{target_track_count} = $options->{bridge_target_track_count};
@@ -651,7 +679,8 @@ sub _build_sequence_request {
         die 'Extended playlist final size must not exceed 500 tracks'
             if $options->{target_track_count} > 500;
         die 'Extend playlist target must exceed the source playlist size'
-            if $options->{target_track_count} <= $source_count;
+            if $options->{target_track_count} <= $source_count
+                && ($options->{addition_amount_mode} || '') ne 'target_duration';
         $options->{extension_mode} = 'fixed_source_extension';
     }
     if ($options->{extension_mode} eq 'automatic') {
@@ -694,7 +723,8 @@ sub _build_sequence_request {
     }
     if ($options->{extension_mode} eq 'fixed_source_extension') {
         die 'Extend playlist target must exceed the source playlist size'
-            if $options->{target_track_count} <= $source_count;
+            if $options->{target_track_count} <= $source_count
+                && ($options->{addition_amount_mode} || '') ne 'target_duration';
         die 'Extend playlist target must not exceed 500 tracks'
             if $options->{target_track_count} > 500;
         my $minimum_repeat_safe_target = _minimum_repeat_safe_target(
@@ -706,7 +736,9 @@ sub _build_sequence_request {
                 $minimum_repeat_safe_target,
             )
             . chr(10)
-            if $options->{target_track_count} < $minimum_repeat_safe_target;
+            if $options->{target_track_count} < $minimum_repeat_safe_target
+                && !(($options->{addition_amount_mode} || '') eq 'target_duration'
+                    && $options->{additional_track_count} > 0);
     }
 
     my $artifacts = {
@@ -892,6 +924,9 @@ sub _build_sequence_request {
                 mode => 'fixed_source_extension',
                 shortlist_limit => _json_integer(256),
                 target_track_count => _json_integer($options->{target_track_count}),
+                (($options->{addition_amount_mode} || '') eq 'target_duration' ? (
+                    duration_target => $options->{duration_target},
+                ) : ()),
                 (($options->{constraint_spacing} || 0) ? (
                     max_added_tracks => _json_integer($options->{max_added_tracks}),
                 ) : ()),

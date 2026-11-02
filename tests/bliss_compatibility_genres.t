@@ -103,8 +103,9 @@ my $temporary = tempdir(CLEANUP => 1);
 $Slim::Utils::Prefs::directory = $temporary;
 my $database = File::Spec->catfile($temporary, 'bliss.db');
 my $matrix = File::Spec->catfile($temporary, 'learned_matrix.json');
-my $binary = File::Spec->catfile($temporary, 'bliss-playlist-optimizer');
-my $lastfm_guidance = File::Spec->catfile($temporary, 'bliss-guidance-lastfm');
+my $executable_suffix = $^O eq 'MSWin32' ? '.exe' : '';
+my $binary = File::Spec->catfile($temporary, 'bliss-playlist-optimizer' . $executable_suffix);
+my $lastfm_guidance = File::Spec->catfile($temporary, 'bliss-guidance-lastfm' . $executable_suffix);
 for my $path ($database, $matrix, $binary, $lastfm_guidance) {
     open my $fh, '>', $path or die "Cannot create $path: $!";
     close $fh;

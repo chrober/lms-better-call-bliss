@@ -18,6 +18,7 @@ use Plugins::BetterCallBliss::AlbumDestination;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::CandidateInventory;
 use Plugins::BetterCallBliss::CandidateLibrary;
+use Plugins::BetterCallBliss::DurationTarget;
 use Plugins::BetterCallBliss::GuidanceReporting;
 use Plugins::BlissGuidance::SettingsModel;
 use Plugins::BetterCallBliss::JobOptions;
@@ -187,7 +188,8 @@ sub _form_from_params {
         variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         gap_context_mode tracks_per_gap last_played_horizon_days library_age_horizon_days
-        max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count output_mode output_name
+        max_added_tracks trigger_percent additional_track_count bridge_target_track_count target_track_count
+        target_duration_minutes duration_tolerance_below_percent duration_tolerance_above_percent output_mode output_name
         queue_player_id queue_action queue_start_playback candidate_library_id
         preview_job_id
     )) {
@@ -592,6 +594,13 @@ sub _result_view {
                 if $job->{options}->{extension_mode} eq 'double_count';
             $view->{fixed_source_extension} = 1
                 if $job->{options}->{extension_mode} eq 'fixed_source_extension';
+            if (($job->{options}->{addition_amount_mode} || '') eq 'target_duration'
+                && ref($preview->{duration_result}) eq 'HASH') {
+                $view->{duration_extension} = 1;
+                $view->{duration_report} = Plugins::BetterCallBliss::DurationTarget::report_values(
+                    $job->{options}->{target_duration_minutes}, $preview->{duration_result},
+                );
+            }
             $view->{extend_playlist_extension} = 1
                 if $job->{options}->{extension_mode} eq 'fixed_source_extension'
                     && ($job->{options}->{addition_purpose} || '') ne 'satisfy_constraints';
