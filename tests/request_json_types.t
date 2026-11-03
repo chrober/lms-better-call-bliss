@@ -160,6 +160,7 @@ BEGIN {
 
     package Plugins::BetterCallBliss::JobOptions;
     our $extension_mode = 'exact_count';
+    our $ordering_policy = 'preserve_order';
     our $algorithm = 'adaptive';
     our $additional_track_count = '1';
     our $bridge_target_track_count = '25';
@@ -173,7 +174,7 @@ BEGIN {
     sub normalize {
         my $input = $_[1] || {};
         return {
-            ordering_policy => 'preserve_order',
+            ordering_policy => $ordering_policy,
             extension_mode => $extension_mode,
             addition_purpose => $addition_purpose,
             satisfy_repeat_windows => $satisfy_repeat_windows,
@@ -294,6 +295,23 @@ $Slim::Schema::playlist = TestPlaylist->new();
 use lib "$FindBin::Bin/..";
 require Plugins::BetterCallBliss::RequestBuilder;
 require Plugins::BetterCallBliss::RepeatIdentity;
+{
+    local $Plugins::BetterCallBliss::JobOptions::extension_mode = 'none';
+    local $Plugins::BetterCallBliss::JobOptions::ordering_policy = 'optimize_order';
+    ok(!eval { Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
+        7, 'preview-reorder-preflight', '/tmp/semantic-evidence.json', {}); 1 },
+        'impossible source fails through the actual reorder request builder');
+    like($@, qr/repeat constraints.*(?:reduce|disable)/i,
+        'reorder request reports repeat constraints and the available remedies');
+}
+my $impossible_reorder = [ map { { artist => 'Same artist', album => 'Same album' } } 1 .. 4 ];
+ok(!eval { Plugins::BetterCallBliss::RequestBuilder::_assert_reorder_repeat_feasibility(
+    $impossible_reorder, { artist_window => 5, album_window => 10, artist_repeat_mode => 'exact_bliss_credit' }); 1 },
+    'impossible reorder repeat windows are rejected before optimizer launch');
+like($@, qr/repeat.*(?:disable|reduce)|(?:disable|reduce).*repeat/i, 'preflight explains how to change repeat constraints');
+ok(eval { Plugins::BetterCallBliss::RequestBuilder::_assert_reorder_repeat_feasibility(
+    $impossible_reorder, { artist_window => 0, album_window => 0 }); 1 },
+    'reorder is permitted when repeat constraints are disabled');
 
 is(
     Plugins::BetterCallBliss::RepeatIdentity::contributor_artist_key(

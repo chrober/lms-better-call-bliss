@@ -12,7 +12,8 @@ BEGIN {
     sub INFOLOG () { 0 }
     package HistoryTestPrefs;
     our $cache;
-    sub get { $_[1] eq 'cachedir' ? $cache : undef }
+    our %values;
+    sub get { $_[1] eq 'cachedir' ? $cache : $values{$_[1]} }
     package Slim::Utils::Prefs;
     sub preferences { bless {}, 'HistoryTestPrefs' }
     sub import { no strict 'refs'; *{caller() . '::preferences'} = \&preferences }
@@ -254,6 +255,18 @@ $process->{alive} = 0;
 my $check = pop @Slim::Utils::Timers::callbacks;
 $check->();
 ok(!-d "$HistoryTestPrefs::cache/bettercallbliss/jobs/$active_id", 'old cancelled job is removed after its process exits');
+$HistoryTestPrefs::values{preview_history_size_mb} = 1;
+my ($large_id, $large_dir) = Plugins::BetterCallBliss::Jobs::_new_job_context('preview-4000-large');
+Plugins::BetterCallBliss::Jobs::_create_deferred_sequence_job(
+    $large_id, 'Large preview', 2, { artist_window => 4 }, { playlist_id => 42 },
+);
+open my $large_file, '>', "$large_dir/payload" or die $!;
+print {$large_file} 'x' x 1_100_000; close $large_file;
+Plugins::BetterCallBliss::Jobs::_fail_deferred_route_job($large_id, 'Example failure', 'TEST_ERROR');
+ok(!-d $large_dir, 'oversized preview files are removed to enforce storage limit');
+my $large_notice = Plugins::BetterCallBliss::Jobs::get($large_id);
+is($large_notice && $large_notice->{error_code}, 'PREVIEW_NOT_RETAINED', 'oversized preview returns an explicit notice');
+like($large_notice && $large_notice->{error}, qr/storage limit/i, 'oversized notice explains the storage limit');
 Plugins::BetterCallBliss::Jobs::shutdown();
 
 done_testing();

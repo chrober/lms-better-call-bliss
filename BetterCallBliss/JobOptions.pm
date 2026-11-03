@@ -49,6 +49,7 @@ sub defaults {
         algorithm => $default_algorithm,
         seed_limit => int($capability->{seed_limit}),
         learned_percent => int($capability->{learned_percent}),
+        repeat_constraints_enabled => 1,
         artist_window => int($capability->{artist_window}),
         artist_repeat_mode => $plugin_prefs->get('artist_repeat_mode') || 'shared_artist',
         album_window => int($capability->{album_window}),
@@ -268,6 +269,18 @@ sub normalize {
     $options->{track_window} = _integer(
         $input, 'track_window', 0, 10000, $options->{track_window},
     );
+    if (exists $input->{repeat_constraints_enabled_present}
+        || exists $input->{repeat_constraints_enabled}) {
+        $options->{repeat_constraints_enabled} = $input->{repeat_constraints_enabled} ? 1 : 0;
+    }
+    if (!$options->{repeat_constraints_enabled}) {
+        for my $name (qw(artist_window album_window track_window)) {
+            $options->{'saved_' . $name} = _integer(
+                $input, 'saved_' . $name, 0, 10000, $options->{$name},
+            );
+            $options->{$name} = 0;
+        }
+    }
     $options->{restart_count} = _integer(
         $input, 'restart_count', 0, 500, $options->{restart_count},
     );

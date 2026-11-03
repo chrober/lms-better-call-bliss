@@ -185,7 +185,7 @@ sub _form_from_params {
     my $form = {%$defaults};
     for my $name (qw(
         source_mode playlist_id source_player_id source_queue_scope route_player_id route_target_track_id route_target_album_id route_target_album_track_count route_source quick_route ordering_policy extension_mode addition_purpose addition_amount_mode algorithm seed_limit
-        learned_percent artist_window artist_repeat_mode album_window track_window restart_count
+        learned_percent artist_window artist_repeat_mode album_window track_window restart_count repeat_constraints_enabled
         variation_percent generation_seed playcount_influence last_played_influence library_age_influence
         route_length_policy route_direct_caution route_min_intermediates route_max_intermediates route_exact_intermediates
         gap_context_mode tracks_per_gap last_played_horizon_days library_age_horizon_days
@@ -203,6 +203,9 @@ sub _form_from_params {
             $form->{$goal} = $params->{$goal} ? 1 : 0;
             $form->{$goal . '_present'} = 1;
         }
+    }
+    if (exists $params->{repeat_constraints_enabled_present}) {
+        $form->{repeat_constraints_enabled} = $params->{repeat_constraints_enabled} ? 1 : 0;
     }
     for my $name (keys %$params) {
         next unless $name =~ /^guidance_provider_[a-z][a-z0-9-]{1,63}_[a-z][a-z0-9_]{1,63}$/;
@@ -277,6 +280,11 @@ sub _form_from_job {
     my ($job, $defaults) = @_;
     my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
     my %params = (%$options, playlist_id => $job->{playlist_id});
+    if (exists $options->{repeat_constraints_enabled} && !$options->{repeat_constraints_enabled}) {
+        for my $name (qw(artist_window album_window track_window)) {
+            $params{$name} = $options->{'saved_' . $name} if exists $options->{'saved_' . $name};
+        }
+    }
     for my $provider_id (keys %{ref($options->{guidance_provider_policies}) eq 'HASH'
         ? $options->{guidance_provider_policies} : {}}) {
         my $policy = $options->{guidance_provider_policies}->{$provider_id};
@@ -384,7 +392,8 @@ sub _job_lists {
     my @summaries = map { _job_summary($_) } Plugins::BetterCallBliss::Jobs::all();
     my @running = grep { ($_->{state} || '') eq 'running' } @summaries;
     my @recent = grep { ($_->{state} || '') ne 'running' } @summaries;
-    splice(@recent, 8) if @recent > 8;
+    my $limit = Plugins::BetterCallBliss::Jobs::history_limit();
+    splice(@recent, $limit) if defined($limit) && @recent > $limit;
     return (\@running, \@recent);
 }
 

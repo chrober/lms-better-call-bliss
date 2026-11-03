@@ -15,6 +15,9 @@ my %PREFERENCE_DEFAULTS = (
     output_suffix => 'Optimized',
     extended_suffix => 'Extended',
     restart_count => 50,
+    preview_history_limit => 8,
+    preview_history_size_mb => 250,
+    preview_history_days => '',
     variation_percent => 25,
     artist_repeat_mode => 'shared_artist',
     auto_bridge_budget => 8,
@@ -35,6 +38,7 @@ my %PREFERENCE_DEFAULTS = (
 my %EMPTY_VALUE_IS_MISSING = map { $_ => 1 } qw(
     preference_defaults_version
     restart_count
+    preview_history_size_mb
     variation_percent
     artist_repeat_mode
     auto_bridge_budget

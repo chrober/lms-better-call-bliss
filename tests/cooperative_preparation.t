@@ -104,7 +104,7 @@ like(
 );
 like(
     $jobs,
-    qr/sub get \{\s+my \$job_id = shift;\s+return \$jobs\{\$job_id\};\s+\}\s+sub all \{\s+return sort/s,
+    qr/sub get \{\s+my \$job_id = shift;\s+return \$jobs\{\$job_id\} \|\| \$retention_notices\{\$job_id\};\s+\}\s+sub all \{\s+return sort/s,
     'read-only job status requests rely on the single background poll timer',
 );
 like(

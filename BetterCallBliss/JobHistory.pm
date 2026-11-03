@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use File::Path qw(remove_tree);
 use File::Spec;
+use File::Find ();
 use Fcntl qw(O_RDONLY O_WRONLY O_CREAT O_EXCL :flock);
 use Errno qw(ENOENT);
 use JSON::XS;
@@ -98,20 +99,52 @@ sub result_in_use {
 }
 
 sub prune {
-    my ($self, $protected) = @_;
+    my ($self, $protected, $limit) = @_;
+    $self->{last_oversized} = {};
     $protected ||= {};
+    my $policy = ref($limit) eq 'HASH' ? $limit : {
+        count => defined($limit) && $limit =~ /\A\d+\z/ && $limit >= 1 ? $limit : 8,
+    };
     my @jobs = $self->load;
-    return () if @jobs <= 8;
-    splice(@jobs, 0, 8);
+    my $count = scalar grep { ($_->{state} || '') ne 'running' && !$protected->{$_->{id}} } @jobs;
+    my (%sizes, $total);
+    $total = 0;
+    if (defined $policy->{max_bytes}) {
+        for my $job (@jobs) {
+            next if ($job->{state} || '') eq 'running' || $protected->{$job->{id}};
+            my $dir = File::Spec->catdir($self->{root}, $job->{id});
+            my $bytes = 0;
+            File::Find::find({ no_chdir => 1, wanted => sub {
+                return if -l $_ || !-f _;
+                my @stat = lstat(_);
+                $bytes += $stat[7] if @stat;
+            } }, $dir);
+            $sizes{$job->{id}} = $bytes;
+            $total += $bytes;
+        }
+    }
     my @removed;
-    for my $job (@jobs) {
+    for my $job (reverse @jobs) {
+        my $expired = defined($policy->{days})
+            && $job->{started_at} < ($policy->{now} // time()) - $policy->{days} * 86400;
+        my $excess_count = defined($policy->{count}) && $count > $policy->{count};
+        my $excess_size = defined($policy->{max_bytes}) && $total > $policy->{max_bytes};
+        next unless $expired || $excess_count || $excess_size;
         next if ($job->{state} || '') eq 'running' || $protected->{$job->{id}};
         my $dir = File::Spec->catdir($self->{root}, $job->{id});
         next if -l $dir || !-d $dir;
         remove_tree($dir, { safe => 1 });
-        push @removed, $job->{id} unless -e $dir || -l $dir;
+        unless (-e $dir || -l $dir) {
+            push @removed, $job->{id};
+            $self->{last_oversized}{$job->{id}} = $sizes{$job->{id}}
+                if defined($policy->{max_bytes}) && ($sizes{$job->{id}} || 0) > $policy->{max_bytes};
+            $count--;
+            $total -= $sizes{$job->{id}} || 0;
+        }
     }
     return @removed;
 }
+
+sub last_oversized { return $_[0]->{last_oversized} || {} }
 
 1;

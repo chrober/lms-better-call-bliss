@@ -36,6 +36,9 @@ sub prefs {
         output_suffix
         extended_suffix
         restart_count
+        preview_history_limit
+        preview_history_size_mb
+        preview_history_days
         variation_percent
         artist_repeat_mode
         auto_bridge_budget
@@ -77,6 +80,18 @@ sub handler {
     my ($class, $client, $params) = @_;
     _apply_guidance_provider_settings($params);
     _clamp($params, 'pref_restart_count', 10, 500);
+    for my $spec ([preview_history_limit => 1, 8], [preview_history_days => 1, ''],
+                  [preview_history_size_mb => 0, 250]) {
+        my ($name, $optional, $fallback) = @$spec;
+        my $key = 'pref_' . $name;
+        next unless defined $params->{$key};
+        next if $optional && $params->{$key} eq '';
+        next if $params->{$key} =~ /\A\d+\z/ && $params->{$key} >= 1 && $params->{$key} <= 1000000000;
+        my $previous = $prefs->get($name);
+        $params->{$key} = defined($previous) && (($optional && $previous eq '')
+            || ($previous =~ /\A\d+\z/ && $previous >= 1 && $previous <= 1000000000))
+            ? $previous : $fallback;
+    }
     _clamp($params, 'pref_variation_percent', 0, 100);
     if (defined $params->{pref_artist_repeat_mode}
         && $params->{pref_artist_repeat_mode}
@@ -111,7 +126,12 @@ sub handler {
         && $params->{pref_route_direct_caution} ne 'cautious') {
         $params->{pref_route_direct_caution} = 'cautious';
     }
-    return $class->SUPER::handler($client, $params);
+    my $result = $class->SUPER::handler($client, $params);
+    if ($params->{saveSettings}) {
+        require Plugins::BetterCallBliss::Jobs;
+        Plugins::BetterCallBliss::Jobs::refresh_history_retention();
+    }
+    return $result;
 }
 
 sub _guidance_provider_sections {

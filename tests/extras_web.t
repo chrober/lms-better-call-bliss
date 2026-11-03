@@ -60,6 +60,9 @@ no warnings 'redefine';
 my $response = Plugins::BetterCallBliss::Web::handler(undef, {
     save_extras_defaults => 1, run_preview => 1, playlist_id => 42,
 });
+my $disabled_form = Plugins::BetterCallBliss::Web::_form_from_params(
+    {repeat_constraints_enabled_present => 1}, {repeat_constraints_enabled => 1});
+is($disabled_form->{repeat_constraints_enabled}, 0, 'unchecked repeat checkbox remains disabled in the form');
 is($Plugins::BetterCallBliss::Jobs::started, 0,
     'saving defaults never starts a preview even with a stale preview action');
 ok($TestWebPrefs::values{extras_defaults}, 'save persists the profile');
@@ -106,6 +109,13 @@ is($restored_form->{artist_window}, 4, 'reopening restored preview retains repea
 is($restored_form->{satisfy_repeat_windows}, 0, 'reopening restored preview retains disabled goal');
 is($restored_form->{smooth_transitions}, 1, 'reopening restored preview retains enabled goal');
 is($restored_form->{extras_weight_tempo}, 9, 'reopening restored preview retains captured weights');
+my $disabled_restored = Plugins::BetterCallBliss::Web::_form_from_job({
+    options => {repeat_constraints_enabled => 0, artist_window => 0, album_window => 0, track_window => 0,
+        saved_artist_window => 5, saved_album_window => 10, saved_track_window => 100},
+}, {repeat_constraints_enabled => 1});
+is($disabled_restored->{repeat_constraints_enabled}, 0, 'reopening restores unchecked repeat constraints');
+is_deeply([@{$disabled_restored}{qw(artist_window album_window track_window)}], [5, 10, 100],
+    'reopening restores the entered repeat windows rather than the disabled execution values');
 
 my $goals = Plugins::BetterCallBliss::Web::_form_from_params({
     addition_purpose => 'automatic_improvement',

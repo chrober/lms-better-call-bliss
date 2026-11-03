@@ -39,12 +39,15 @@ use Plugins::BetterCallBliss::UserNotification;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 my $server_prefs = preferences('server');
+my $plugin_prefs = preferences('plugin.bettercallbliss');
 my ($optimizer_binary, $job_root, $library_cache_root,
     $optimizer_supports_progress, $optimizer_supports_trusted_request);
 my %jobs;
+my %retention_notices;
 my %pre_start_cancels;
 my $job_history;
 my $history_recheck_scheduled = 0;
+my $history_expiry_generation = 0;
 my $serial = 0;
 my $last_web_activity = 0;
 my @pending_web_preparations;
@@ -139,9 +142,43 @@ sub _prune_history {
     my %protected = map { $_->{id} => 1 }
         grep { ($_->{state} || '') eq 'running' || $_->{_history_busy} || $_->{_history_orphaned}
             || ($_->{write_state} || '') eq 'running' } values %jobs;
-    my @removed = eval { $job_history->prune(\%protected) };
+    my @removed = eval { $job_history->prune(\%protected, history_policy()) };
     if ($@) { $log->warn('Could not prune preview history: ' . $@); return; }
-    delete $jobs{$_} for @removed;
+    my $oversized = $job_history->last_oversized;
+    for my $id (@removed) {
+        my $job = delete $jobs{$id};
+        $job->{_history_evicted} = 1 if $job;
+        next unless $job && $oversized->{$id};
+        $retention_notices{$id} = {
+            %$job, state => 'failed', stage => 'Not retained',
+            error_code => 'PREVIEW_NOT_RETAINED',
+            error => 'This preview exceeded the configured storage limit and was removed. Increase the limit and run it again.',
+            artifact => undef, final_track_ids => [],
+        };
+    }
+    my @notice_ids = sort { ($retention_notices{$b}{started_at} || 0) <=> ($retention_notices{$a}{started_at} || 0) } keys %retention_notices;
+    if (@notice_ids > 8) {
+        delete $retention_notices{$_} for @notice_ids[8 .. $#notice_ids];
+    }
+    my $expiry_generation = ++$history_expiry_generation;
+    my $policy = history_policy();
+    if (defined $policy->{days}) {
+        my $next;
+        for my $job (values %jobs) {
+            next if $protected{$job->{id}} || ($job->{state} || '') eq 'running';
+            my $when = ($job->{started_at} || 0) + $policy->{days} * 86400;
+            next if $when <= time();
+            $next = $when if !defined($next) || $when < $next;
+        }
+        if (defined $next) {
+            my $scheduled_history = $job_history;
+            Slim::Utils::Timers::setTimer(undef, $next + 1, sub {
+                return unless $job_history && $job_history eq $scheduled_history
+                    && $expiry_generation == $history_expiry_generation;
+                _prune_history();
+            });
+        }
+    }
     if (!$history_recheck_scheduled && !main::ISWINDOWS && grep {
         $_->{_history_orphaned}
             && ($_->{_history_owner_pid} || '') =~ /\A[1-9]\d*\z/
@@ -157,6 +194,24 @@ sub _prune_history {
     }
 }
 
+sub history_limit {
+    my $value = $plugin_prefs->get('preview_history_limit');
+    return 8 unless defined $value;
+    return undef if $value eq '';
+    return 8 unless $value =~ /\A\d+\z/ && $value >= 1;
+    return 0 + $value;
+}
+
+sub history_policy {
+    my $size = $plugin_prefs->get('preview_history_size_mb');
+    $size = 250 unless defined($size) && $size =~ /\A\d+\z/ && $size >= 1;
+    my $days = $plugin_prefs->get('preview_history_days');
+    $days = undef unless defined($days) && $days =~ /\A\d+\z/ && $days >= 1;
+    return { count => history_limit(), days => $days, max_bytes => $size * 1000000 };
+}
+
+sub refresh_history_retention { _prune_history() }
+
 sub _history_process_exited {
     my ($pid) = @_;
     return 0 if main::ISWINDOWS || !defined($pid) || $pid !~ /\A[1-9]\d*\z/;
@@ -168,7 +223,7 @@ sub _history_process_exited {
 sub _remember_terminal {
     my ($job) = @_;
     return unless $job_history && $job && ($job->{state} || '') =~ /\A(?:completed|failed|cancelled)\z/;
-    return if $job->{_history_orphaned};
+    return if $job->{_history_orphaned} || $job->{_history_evicted};
     if ($job->{_history_busy}) {
         $job->{_history_cleanup_pending} = 1;
     } else {
@@ -1968,7 +2023,7 @@ sub _poll {
 
 sub get {
     my $job_id = shift;
-    return $jobs{$job_id};
+    return $jobs{$job_id} || $retention_notices{$job_id};
 }
 
 sub all {
@@ -2320,8 +2375,10 @@ sub shutdown {
         _remember_terminal($job);
     }
     %jobs = ();
+    %retention_notices = ();
     $job_history = undef;
     $history_recheck_scheduled = 0;
+    $history_expiry_generation++;
     %pre_start_cancels = ();
     Plugins::BetterCallBliss::CandidateInventory::shutdown();
 }

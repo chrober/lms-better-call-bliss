@@ -490,6 +490,15 @@ sub _minimum_repeat_safe_target {
     return $minimum;
 }
 
+sub _assert_reorder_repeat_feasibility {
+    my ($source_tracks, $options) = @_;
+    my $minimum = _minimum_repeat_safe_target($source_tracks, $options);
+    my $count = scalar @$source_tracks;
+    die "The selected repeat constraints cannot be satisfied by reordering these $count tracks: at least $minimum tracks are needed. Reduce the repeat windows or disable repeat constraints for this preview.\n"
+        if $minimum > $count;
+    return 1;
+}
+
 sub _minimum_repeat_spacing_additions_for_order {
     my ($source_tracks, $options) = @_;
     return 0 unless ref($source_tracks) eq 'ARRAY' && @$source_tracks > 1;
@@ -607,6 +616,9 @@ sub _build_sequence_request {
     $labels = {%$history_labels, %$labels};
     $track_urls = {%$history_urls, %$track_urls};
     my $source_count = scalar @$source_tracks;
+    _assert_reorder_repeat_feasibility($source_tracks, $options)
+        if ($options->{extension_mode} || '') eq 'none'
+            && ($options->{ordering_policy} || '') eq 'optimize_order';
     my $internal_gap_count = $source_count - 1;
     my $endpoint_capacity = 2;
     if ($options->{extension_mode} eq 'fixed_gap_count') {

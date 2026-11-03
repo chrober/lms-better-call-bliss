@@ -1,0 +1,17 @@
+const assert = require('assert');
+const pagination = require('../BetterCallBliss/HTML/EN/plugins/BetterCallBliss/recent-pagination.js');
+const pager = pagination.create(8);
+const jobs = Array.from({length: 19}, (_, i) => ({id: 'job-' + i}));
+let page = pager.update(jobs);
+assert.deepStrictEqual(page.items.map(x => x.id), jobs.slice(0, 8).map(x => x.id));
+assert.strictEqual(page.pages, 3);
+page = pager.move(1);
+assert.strictEqual(page.items[0].id, 'job-8');
+page = pager.update([{id: 'new'}].concat(jobs));
+assert.strictEqual(page.index, 1, 'a live update does not jump to page one');
+page = pager.move(1);
+assert.strictEqual(page.index, 2);
+page = pager.update(jobs.slice(0, 4));
+assert.strictEqual(page.index, 0, 'page is clamped after retention removes results');
+assert.strictEqual(page.pages, 1);
+console.log('recent preview pagination: ok');

@@ -65,4 +65,48 @@ for my $n (11 .. 12) {
 $history->prune({ $pinned => 1 });
 ok(-d "$root/$pinned", 'an older directory still in use is protected');
 
+my $custom_root = tempdir(CLEANUP => 1);
+my $custom = Plugins::BetterCallBliss::JobHistory->new($custom_root);
+for my $n (1 .. 12) {
+    my $id = "preview-2000-$n";
+    make_path("$custom_root/$id");
+    $custom->save({ id => $id, state => 'failed', started_at => $n, options => {} });
+}
+$custom->prune({}, 10);
+my @custom_jobs = $custom->load;
+is(scalar(@custom_jobs), 10, 'configured retention keeps ten previews');
+$custom->prune({}, 3);
+@custom_jobs = $custom->load;
+is(scalar(@custom_jobs), 3, 'reducing retention removes the oldest excess previews');
+
+my $policy_root = tempdir(CLEANUP => 1);
+my $policy_history = Plugins::BetterCallBliss::JobHistory->new($policy_root);
+for my $n (1 .. 4) {
+    my $id = "preview-3000-$n";
+    make_path("$policy_root/$id");
+    $policy_history->save({id => $id, state => 'failed', started_at => 1000 + $n, options => {}});
+    open my $payload, '>', "$policy_root/$id/payload" or die $!;
+    print {$payload} 'x' x 1000; close $payload;
+}
+$policy_history->prune({}, { count => undef, max_bytes => 100000, days => undef, now => 1005 });
+my @policy_jobs = $policy_history->load;
+is(scalar @policy_jobs, 4, 'empty count and age limits do not remove entries');
+$policy_history->prune({}, { count => undef, max_bytes => 2500, days => undef, now => 1005 });
+@policy_jobs = $policy_history->load;
+is(scalar @policy_jobs, 2, 'byte limit removes oldest jobs until within budget');
+is($policy_jobs[0]{id}, 'preview-3000-4', 'byte cleanup keeps newest jobs');
+$policy_history->prune({}, { count => undef, max_bytes => 100000, days => 1, now => 1004 + 86401 });
+@policy_jobs = $policy_history->load;
+is(scalar @policy_jobs, 0, 'age limit removes expired jobs');
+
+my $oversize_root = tempdir(CLEANUP => 1);
+my $oversize_history = Plugins::BetterCallBliss::JobHistory->new($oversize_root);
+make_path("$oversize_root/preview-4000-large");
+$oversize_history->save({id => 'preview-4000-large', state => 'failed', started_at => 4000, options => {}});
+open my $large, '>', "$oversize_root/preview-4000-large/payload" or die $!;
+print {$large} 'x' x 2000; close $large;
+$oversize_history->prune({}, {count => undef, max_bytes => 1000});
+ok(!-d "$oversize_root/preview-4000-large", 'single oversized preview is removed to enforce the hard limit');
+ok($oversize_history->last_oversized->{'preview-4000-large'}, 'oversized removal is reported to the caller');
+
 done_testing();

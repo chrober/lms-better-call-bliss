@@ -51,6 +51,24 @@
   <br><hr style="opacity:0.4" class="sub-sep"><br>
   </div>
 
+  <b style="font-size:125%" id="preview-history-section-header" class="shown-section" onclick="toggleSection('preview-history-section')">[% "PLUGIN_BETTERCALLBLISS_HISTORY_SECTION" | string %]</b><br><br>
+  <div id="preview-history-section">
+    <p>[% "PLUGIN_BETTERCALLBLISS_HISTORY_SECTION_DESC" | string %]</p>
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT" desc="PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT_DESC" %]
+      <input type="number" min="1" step="1" class="stdedit" name="pref_preview_history_limit" id="preview_history_limit" value="[% prefs.preview_history_limit | html %]" placeholder="[% 'PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED' | string %]" size="8">
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_HISTORY_DAYS" desc="PLUGIN_BETTERCALLBLISS_HISTORY_DAYS_DESC" %]
+      <input type="number" min="1" step="1" class="stdedit" name="pref_preview_history_days" id="preview_history_days" value="[% prefs.preview_history_days | html %]" placeholder="[% 'PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED' | string %]" size="8">
+    [% END %]
+
+    [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_HISTORY_SIZE" desc="PLUGIN_BETTERCALLBLISS_HISTORY_SIZE_DESC" %]
+      <input type="number" min="1" required class="stdedit" name="pref_preview_history_size_mb" id="preview_history_size_mb" value="[% prefs.preview_history_size_mb | html %]" size="6">
+    [% END %]
+  </div>
+
+  <br><hr style="opacity:0.4" class="sub-sep"><br>
+
   <b style="font-size:125%" id="job-defaults-section-header" class="shown-section" onclick="toggleSection('job-defaults-section')">Job defaults</b><br><br>
   <div id="job-defaults-section">
     <p>
@@ -226,6 +244,7 @@
   window.addEventListener('load', function () {
     var defaults = {
       'compatibility-section': true,
+      'preview-history-section': true,
       'job-defaults-section': true,
       'route-section': false,
       'guidance-providers-section': false

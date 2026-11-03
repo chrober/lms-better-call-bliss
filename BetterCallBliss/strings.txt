@@ -356,3 +356,38 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET
 	EN	Use inherited default
+PLUGIN_BETTERCALLBLISS_HISTORY_SECTION
+	EN	Preview history
+	DE	Vorschauverlauf
+
+PLUGIN_BETTERCALLBLISS_HISTORY_SECTION_DESC
+	EN	All limits apply together: older previews are removed whenever necessary to satisfy any configured limit. Running previews are protected. Leave the number or age blank for no limit; the storage limit is required.
+	DE	Alle Grenzen gelten gemeinsam: Ältere Vorschauen werden bei Bedarf entfernt, damit keine konfigurierte Grenze überschritten wird. Laufende Vorschauen bleiben geschützt. Anzahl und Alter können für unbegrenzte Aufbewahrung leer bleiben; das Speicherlimit ist verpflichtend.
+
+PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT
+	EN	Number of retained previews
+	DE	Anzahl aufbewahrter Vorschauen
+
+PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT_DESC
+	EN	Maximum number of retained previews; leave blank for unlimited. Lowering a limit deletes older previews when settings are saved. Running jobs are protected.
+	DE	Maximale Anzahl aufbewahrter Vorschauen; leer bedeutet unbegrenzt. Beim Verringern eines Limits werden ältere Vorschauen beim Speichern gelöscht. Laufende Jobs bleiben geschützt.
+
+PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED
+	EN	Unlimited
+	DE	Unbegrenzt
+
+PLUGIN_BETTERCALLBLISS_HISTORY_SIZE
+	EN	Maximum preview storage (MB)
+	DE	Maximaler Speicherplatz für Vorschauen (MB)
+
+PLUGIN_BETTERCALLBLISS_HISTORY_SIZE_DESC
+	EN	Required storage limit for preview job files; shared caches are excluded. Previews typically use kilobytes to several megabytes but can be larger. If one preview exceeds this limit, it cannot be retained.
+	DE	Verbindliches Speicherlimit für Preview-Dateien; gemeinsame Caches zählen nicht dazu. Vorschauen benötigen meist Kilobyte bis mehrere Megabyte, im Einzelfall auch mehr. Ist eine Vorschau größer als das Limit, kann sie nicht aufbewahrt werden.
+
+PLUGIN_BETTERCALLBLISS_HISTORY_DAYS
+	EN	Maximum preview age (days)
+	DE	Maximales Alter der Vorschauen (Tage)
+
+PLUGIN_BETTERCALLBLISS_HISTORY_DAYS_DESC
+	EN	Delete previews older than this number of days, measured from their start. Leave blank for unlimited.
+	DE	Vorschauen nach dieser Anzahl von Tagen seit ihrem Start löschen. Leer bedeutet unbegrenzt.

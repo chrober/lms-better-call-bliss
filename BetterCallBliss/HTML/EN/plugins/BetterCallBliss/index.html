@@ -144,14 +144,15 @@
       <h4 id="bea-recent-jobs-heading"[% UNLESS bettercallbliss_recent_jobs.size %] class="bea-hidden"[% END %]>Recent</h4>
       <ul class="bea-job-list" id="bea-recent-jobs-list">
         [% FOREACH item = bettercallbliss_recent_jobs %]
-          <li>
-            <b>[% item.title | html %]</b> - [% item.mode | html %];
+          <li data-job-id="[% item.id | html %]">
+            <b>[% item.title | html %]</b> - [% item.started_text | html %]; [% item.mode | html %];
             [% item.status | html %]; duration [% item.duration_text | html %].
             <a href="[% webroot %]plugins/BetterCallBliss/index.html?job_id=[% item.id | html %]">Open</a>
           </li>
         [% END %]
       </ul>
-      <p class="bea-note[% UNLESS bettercallbliss_recent_jobs.size %] bea-hidden[% END %]" id="bea-recent-jobs-note">The eight most recent completed, failed, or cancelled previews are kept across LMS restarts.</p>
+      <p id="bea-recent-pagination" class="bea-hidden"><button type="button" id="bea-recent-prev">Previous</button> <span id="bea-recent-page"></span> <button type="button" id="bea-recent-next">Next</button></p>
+      <p class="bea-note[% UNLESS bettercallbliss_recent_jobs.size %] bea-hidden[% END %]" id="bea-recent-jobs-note">Recent previews are kept across LMS restarts, up to the configured limit.</p>
   </details>
 
 [% IF bettercallbliss_candidate_inventory.ready && bettercallbliss_candidate_inventory.unmatched_row_count %]
@@ -200,8 +201,8 @@
 <form id="bea-main-form" action="[% webroot %]plugins/BetterCallBliss/index.html" method="post"[% IF bettercallbliss_quick_route && bettercallbliss_job %] class="bea-hidden"[% END %]>
   <input type="hidden" name="queue_player_id" value="[% bettercallbliss_form.queue_player_id | html %]">
   [% UNLESS bettercallbliss_form.source_mode == 'route_to_track' %]
-  <fieldset class="bea-section" id="extras_defaults_fields">
-    <legend>Defaults for new previews</legend>
+  <details class="bea-section" id="extras_defaults_fields">
+    <summary>Defaults for new previews</summary>
     <p class="bea-note">Plugin defaults follow the current settings of Better Call Bliss, BlissMixer and installed guidance providers. Saved Extras defaults are independent.</p>
     [% IF bettercallbliss_extras_defaults.status %]<p class="bea-ok">[% bettercallbliss_extras_defaults.status | html %]</p>[% END %]
     [% FOREACH warning IN bettercallbliss_extras_defaults.warnings %]<p class="bea-warning">[% warning | html %]</p>[% END %]
@@ -215,14 +216,13 @@
     <span id="extras_defaults_selection_status" class="bea-note" role="status" aria-live="polite"></span>
     [% UNLESS bettercallbliss_extras_defaults.has_profile %]<p class="bea-note">Save your current settings to make Extras defaults available.</p>[% END %]
     <p class="bea-note">Changing the selection affects future new previews. Load selected defaults to apply it here. Running a preview does not save defaults; loading leaves the selected source and player unchanged.</p>
-  </fieldset>
+  </details>
   [% END %]
   [% IF bettercallbliss_form.extras_weight_tempo.defined %]
     <input type="hidden" name="extras_weight_tempo" value="[% bettercallbliss_form.extras_weight_tempo | html %]">
     <input type="hidden" name="extras_weight_timbre" value="[% bettercallbliss_form.extras_weight_timbre | html %]">
     <input type="hidden" name="extras_weight_loudness" value="[% bettercallbliss_form.extras_weight_loudness | html %]">
     <input type="hidden" name="extras_weight_chroma" value="[% bettercallbliss_form.extras_weight_chroma | html %]">
-    <p class="bea-note">Static scoring uses saved Extras weights: tempo [% bettercallbliss_form.extras_weight_tempo | html %], timbre [% bettercallbliss_form.extras_weight_timbre | html %], loudness [% bettercallbliss_form.extras_weight_loudness | html %], chroma [% bettercallbliss_form.extras_weight_chroma | html %].</p>
   [% END %]
   <fieldset class="bea-section">
     <legend>Source and behavior</legend>
@@ -524,6 +524,9 @@
         <option value="forest" disabled>Extended Isolation Forest [Planned]</option>
       </select>
     </div>
+    [% IF bettercallbliss_form.extras_weight_tempo.defined %]
+      <p class="bea-note">Saved Extras weights: tempo [% bettercallbliss_form.extras_weight_tempo | html %], timbre [% bettercallbliss_form.extras_weight_timbre | html %], loudness [% bettercallbliss_form.extras_weight_loudness | html %], chroma [% bettercallbliss_form.extras_weight_chroma | html %]. Used for Static scoring and, when applicable, Adaptive's static fallback.</p>
+    [% END %]
     <div class="bea-row">
       <label for="seed_limit">Musical context window (previous tracks)</label>
       <input type="number" min="1" max="50" class="stdedit sliderInput_1_50_1" name="seed_limit" id="seed_limit" value="[% bettercallbliss_form.seed_limit %]" required>
@@ -541,12 +544,15 @@
       [% END %]
     </div>
     <p class="bea-note">For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.</p>
-    <p class="bea-note">Current BlissMixer strategy: [% bettercallbliss_capability.algorithm | html %]. These values are passed to the optimizer request for this preview. Static uses four metric sliders expanded to the 23 Bliss audio features; saved Extras weights are shown above when selected. Adaptive can run without a learned matrix; in that case multi-track contexts use variance and one-track contexts fall back to the static weights.</p>
+    <p class="bea-note">Current BlissMixer strategy: [% bettercallbliss_capability.algorithm | html %]. These values are passed to the optimizer request for this preview. Static uses four metric sliders expanded to the 23 Bliss audio features. Adaptive can run without a learned matrix; in that case multi-track contexts use variance and one-track contexts fall back to the static weights.</p>
     [% IF bettercallbliss_capability.algorithm == 'forest' %]<p class="bea-warning">BlissMixer currently uses Extended Isolation Forest, but Better Call Bliss does not route playlists with Forest yet. Choose Adaptive or Static for now.</p>[% END %]
   </fieldset>
 
   <fieldset class="bea-section">
     <legend>Repeat constraints</legend>
+    <input type="hidden" name="repeat_constraints_enabled_present" value="1">
+    <label><input type="checkbox" name="repeat_constraints_enabled" value="1"[% IF bettercallbliss_form.repeat_constraints_enabled %] checked[% END %]> Enable for this preview</label>
+    <p class="bea-note">When unchecked, artist, album and track repeat windows are not applied to this preview. Your entered values are kept.</p>
     <p class="bea-note">Use 0 to disable a constraint. For a single-artist playlist, set Artist look-back to 0.</p>
     <div class="bea-row">
       <label for="artist_repeat_mode">Artist identity</label>
@@ -1648,9 +1654,14 @@
 
 
 
+<script src="[% webroot %]plugins/BetterCallBliss/recent-pagination.js"></script>
 <script>
   (function () {
     var jobId = '[% IF bettercallbliss_live_job %][% bettercallbliss_live_job.id | html %][% END %]';
+    var recentPager = window.BetterCallBlissRecentPagination
+      ? window.BetterCallBlissRecentPagination.create(8)
+      : { update: function (items) { return { index: 0, pages: 1, items: items }; },
+          move: function () { return { index: 0, pages: 1, items: [] }; } };
 
     var serverJsonUrl = '[% webroot %]jsonrpc.js';
     var pollTimer;
@@ -1749,6 +1760,7 @@
       var id = escapeHtml(job.id || '');
       var html = '<li>'
         + '<b>' + escapeHtml(job.title || 'Untitled source') + '</b> - '
+        + (!(includeCancel && job.state === 'running') ? escapeHtml(job.started_text || '') + '; ' : '')
         + escapeHtml(job.mode || '')
         + (includeCancel && job.state === 'running'
           ? '. ' + renderRunningStatusTable(job)
@@ -1814,14 +1826,27 @@
 
       var recentList = document.getElementById('bea-recent-jobs-list');
       if (recentList) {
-        recentList.innerHTML = recent.map(function (job) {
-          return renderJobItem(job, false);
-        }).join('');
+        renderRecentPage(recentPager.update(recent.map(function (job) {
+          return { id: job.id, html: renderJobItem(job, false) };
+        })));
       }
       setVisibleById('bea-recent-jobs-heading', recent.length > 0);
       setVisibleById('bea-recent-jobs-list', recent.length > 0);
       setVisibleById('bea-recent-jobs-note', recent.length > 0);
       bindCancelForms(overview);
+    }
+
+    function renderRecentPage(page) {
+      var list = document.getElementById('bea-recent-jobs-list');
+      if (list) list.innerHTML = page.items.map(function (item) { return item.html; }).join('');
+      var controls = document.getElementById('bea-recent-pagination');
+      if (controls) controls.classList.toggle('bea-hidden', page.pages <= 1);
+      var label = document.getElementById('bea-recent-page');
+      if (label) label.textContent = 'Page ' + (page.index + 1) + ' of ' + page.pages;
+      var prev = document.getElementById('bea-recent-prev');
+      var next = document.getElementById('bea-recent-next');
+      if (prev) prev.disabled = page.index === 0;
+      if (next) next.disabled = page.index >= page.pages - 1;
     }
 
     function requestJob(action, id) {
@@ -2124,6 +2149,17 @@
       }
     };
 
+    var recentList = document.getElementById('bea-recent-jobs-list');
+    if (recentList) {
+      var initialItems = Array.prototype.map.call(recentList.children || [], function (node) {
+        return { id: node.getAttribute('data-job-id'), html: node.outerHTML };
+      });
+      renderRecentPage(recentPager.update(initialItems));
+      var previous = document.getElementById('bea-recent-prev');
+      var following = document.getElementById('bea-recent-next');
+      if (previous) previous.addEventListener('click', function () { renderRecentPage(recentPager.move(-1)); });
+      if (following) following.addEventListener('click', function () { renderRecentPage(recentPager.move(1)); });
+    }
     bindCancelForms(document);
 
     if (jobId) startPolling();

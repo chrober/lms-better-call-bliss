@@ -364,7 +364,8 @@ sub _job_lists_payload {
     my @summaries = map { _job_payload($_) } Plugins::BetterCallBliss::Jobs::all();
     my @running = grep { ($_->{state} || '') eq 'running' } @summaries;
     my @recent = grep { ($_->{state} || '') ne 'running' } @summaries;
-    splice(@recent, 8) if @recent > 8;
+    my $limit = Plugins::BetterCallBliss::Jobs::history_limit();
+    splice(@recent, $limit) if defined($limit) && @recent > $limit;
     return (\@running, \@recent);
 }
 

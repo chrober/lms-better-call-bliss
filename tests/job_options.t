@@ -101,6 +101,17 @@ my $capability = {
 };
 
 my $automatic_capability = {%$capability, automatic_improvement_available => 1};
+my $repeat_disabled = Plugins::BetterCallBliss::JobOptions::normalize($capability, {
+    repeat_constraints_enabled_present => 1, artist_window => 5, album_window => 10, track_window => 100,
+});
+is($repeat_disabled->{repeat_constraints_enabled}, 0, 'unchecked repeat constraints are disabled for this preview');
+is_deeply([@{$repeat_disabled}{qw(artist_window album_window track_window)}], [0, 0, 0],
+    'disabled repeat constraints send zero windows to the optimizer');
+is_deeply([@{$repeat_disabled}{qw(saved_artist_window saved_album_window saved_track_window)}], [5, 10, 100],
+    'disabled preview retains entered windows for reopening');
+my $repeat_renormalized = Plugins::BetterCallBliss::JobOptions::normalize($capability, $repeat_disabled);
+is_deeply([@{$repeat_renormalized}{qw(saved_artist_window saved_album_window saved_track_window)}], [5, 10, 100],
+    're-normalizing a disabled preview preserves its original editable windows');
 for my $case (
     [1, 0, 'spacing only'],
     [0, 1, 'smoothing only'],
