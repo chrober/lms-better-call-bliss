@@ -16,6 +16,21 @@ BEGIN {
     $INC{'Slim/Utils/Prefs.pm'} = __FILE__;
     package Slim::Utils::Log;
     sub logger { bless {}, 'TestWebLog' }
+    package Slim::Utils::Strings;
+    our $language = 'EN';
+    sub string {
+        my ($token, @args) = @_;
+        my %values = (
+            PLUGIN_BETTERCALLBLISS_AUTO_IMPROVE => { EN => 'Improve playlist automatically', DE => 'Wiedergabeliste automatisch verbessern' },
+            PLUGIN_BETTERCALLBLISS_JOB_COMPLETED_ADDED => { EN => 'Completed - added %s', DE => 'Abgeschlossen – %s hinzugefügt' },
+            PLUGIN_BETTERCALLBLISS_RESULT_REASON_SPACING => { EN => 'Repeat-window spacing', DE => 'Abstand für Wiederholungsregeln' },
+            PLUGIN_BETTERCALLBLISS_RESULT_REASON_SMOOTHING => { EN => 'Transition smoothing', DE => 'Übergangsverbesserung' },
+        );
+        my $value = $values{$token}{$language} // $token;
+        return @args ? sprintf($value, @args) : $value;
+    }
+    sub import { no strict 'refs'; *{caller() . '::string'} = \&string }
+    $INC{'Slim/Utils/Strings.pm'} = __FILE__;
     package TestWebLog;
     sub warn {}
     package Slim::Web::HTTP;
@@ -30,6 +45,11 @@ BEGIN {
     sub note_web_activity {}
     sub finish_web_response {}
     sub start_reorder_preview { $started++; return undef }
+    sub status_detail { '' }
+    sub status_detail_lines { [] }
+    sub start_text { '' }
+    sub duration_text { '' }
+    sub compact_status { '' }
     package Plugins::BetterCallBliss::CandidateLibrary;
     sub active_id { '' }
     sub choices { [] }
@@ -146,5 +166,18 @@ is(Plugins::BetterCallBliss::Web::_addition_reason_label('smoothing'), 'Transiti
 is(Plugins::BetterCallBliss::Web::_job_mode_label({options => {
     extension_mode => 'automatic_improvement', addition_purpose => 'automatic_improvement',
 }}), 'Improve playlist automatically', 'running job identifies the combined workflow');
+
+$Slim::Utils::Strings::language = 'DE';
+is(Plugins::BetterCallBliss::Web::_addition_reason_label('spacing'), 'Abstand für Wiederholungsregeln',
+    'addition reason is localized');
+my $translated_summary = Plugins::BetterCallBliss::Web::_job_summary({
+    id => 'preview-test', state => 'completed', added_track_count => 3,
+    options => {addition_purpose => 'automatic_improvement', extension_mode => 'automatic_improvement'}
+});
+is($translated_summary->{mode}, 'Wiedergabeliste automatisch verbessern',
+    'recent preview mode is localized');
+is($translated_summary->{status}, 'Abgeschlossen – 3 hinzugefügt',
+    'recent preview completion and addition count are localized');
+$Slim::Utils::Strings::language = 'EN';
 
 done_testing();

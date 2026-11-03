@@ -7,7 +7,7 @@ const match = template.match(/<script>\s*(\(function \(\) \{\s*var jobId = '[\s\
 assert.ok(match, 'live-preview script exists');
 const script = match[1].replace(/\[%[\s\S]*?%\]/g, '');
 
-function setup() {
+function setup(language = 'EN') {
   const elements = {};
   function element(id) {
     return elements[id] ||= {
@@ -18,6 +18,13 @@ function setup() {
       querySelectorAll() { return []; },
       addEventListener(name, fn) { this[name] = fn; },
     };
+  }
+  const strings = fs.readFileSync('BetterCallBliss/strings.txt', 'utf8');
+  for (const match of template.matchAll(/<span id="bea-i18n-([^"]+)">\[% "(\w+)" \| string \| html %\]<\/span>/g)) {
+    const token = match[2];
+    const value = strings.match(new RegExp('^' + token + '\\n\\tEN\\t[^\\n]*\\n\\t' + language + '\\t([^\\n]*)', 'm'))
+      || (language === 'EN' ? strings.match(new RegExp('^' + token + '\\n\\tEN\\t([^\\n]*)', 'm')) : null);
+    if (value) element('bea-i18n-' + match[1]).textContent = value[1];
   }
   elements.title = { textContent: 'Optimization is running.' };
   for (const id of ['bea-live-status-banner', 'bea-live-status-text', 'bea-live-status-elapsed',
@@ -52,6 +59,14 @@ function setup() {
 }
 
 async function run() {
+  {
+    const t = setup('DE');
+    t.respond({ result: { job: { id: 'preview-123-webabcdef', state: 'running', status: 'Optimizing' }, running_jobs: [], recent_jobs: [] } });
+    t.window.BetterCallBlissPreviewStatus.follow('preview-123-webabcdef', true);
+    await t.flush();
+    assert.match(t.elements.title.textContent, /Optimierung läuft/, 'confirmed job uses German banner');
+    assert.equal(t.elements['bea-running-jobs-heading'].textContent, 'Laufend', 'confirmed job uses German running heading');
+  }
   {
     const t = setup();
     t.window.BetterCallBlissPreviewStatus.follow('preview-123-webabcdef', true);

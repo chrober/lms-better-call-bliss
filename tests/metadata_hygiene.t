@@ -83,7 +83,7 @@ my $extras = slurp(File::Spec->catfile(
 ));
 like(
     $extras,
-    qr/guidance_summary.*?Guidance provider activity/s,
+    qr/guidance_summary.*?PLUGIN_BETTERCALLBLISS_RESULT_GUIDANCE_ACTIVITY_LABEL/s,
     'Extras presents provider guidance separately from legacy semantic evidence',
 );
 like(
@@ -98,7 +98,7 @@ like(
 );
 like(
     $extras,
-    qr/id="bea-live-status-banner".*?id="bea-job-overview".*?function showStartingPreviewRow.*?sessionStorage\.setItem\('bettercallbliss_preview_started_ms'.*?bea-starting-duration.*?Preparing preview: capturing/s,
+    qr/id="bea-live-status-banner".*?id="bea-job-overview".*?function showStartingPreviewRow.*?sessionStorage\.setItem\('bettercallbliss_preview_started_ms'.*?bea-starting-duration.*?extrasText\('PREPARING'\)/s,
     'Extras shows immediate preparation feedback in the live banner and the same job overview used by running jobs',
 );
 like(
@@ -159,11 +159,11 @@ unlike(
 );
 like(
     $extras,
-    qr/value="satisfy_constraints".*?Add spacing tracks as needed/s,
+    qr/value="satisfy_constraints".*?PLUGIN_BETTERCALLBLISS_EXTRAS_OLD_SPACING/s,
     'Extras offers a dedicated spacing-track repair purpose',
 );
 like(
-    $extras,
+    $strings,
     qr/Optimize and freeze the source-only order first.*?minimum number of spacing tracks needed across its gaps.*?All gaps are planned together/s,
     'spacing-track repair copy distinguishes constraint repair from difficult-transition repair',
 );
@@ -202,7 +202,7 @@ like(
 );
 like(
     $extras,
-    qr/Artist repeat identity:.*?artist_repeat_mode_label/s,
+    qr/PLUGIN_BETTERCALLBLISS_RESULT_REPEAT_IDENTITY_LABEL.*?artist_repeat_mode_label/s,
     'completed previews report the artist repeat identity policy used',
 );
 like(
@@ -216,8 +216,8 @@ unlike(
     'settings identity fallback note is an unlabelled final paragraph',
 );
 like(
-    $extras,
-    qr/<b>Any shared credited artist:<\/b>.*?<br\/><br\/>.*?<b>Primary artist only:<\/b>.*?<br\/><br\/>.*?<b>Exact Bliss artist credit:<\/b>.*?<br\/><br\/>The first two options prefer MusicBrainz artist IDs/s,
+    $strings,
+    qr/PLUGIN_BETTERCALLBLISS_REPEAT_IDENTITY_EXPLANATION.*?<b>Any shared credited artist:<\/b>.*?<br\/><br\/>.*?<b>Primary artist only:<\/b>.*?<br\/><br\/>.*?<b>Exact Bliss artist credit:<\/b>.*?<br\/><br\/>The first two options prefer MusicBrainz artist IDs/s,
     'Extras explanation uses the same structured option-by-option format',
 );
 unlike(
@@ -690,7 +690,7 @@ like(
 );
 like(
     $extras,
-    qr/BlissMixer genre policy:.*?genre_filter_excluded.*?genre_filter_christmas_excluded/s,
+    qr/PLUGIN_BETTERCALLBLISS_RESULT_GENRE_POLICY_LABEL.*?genre_filter_excluded.*?genre_filter_christmas_excluded/s,
     'completed previews expose genre-filtering results',
 );
 like(
@@ -715,7 +715,7 @@ unlike(
 );
 like(
     $extras,
-    qr/route_best_effort.*?smoothest repeat-safe route/s,
+    qr/route_best_effort.*?PLUGIN_BETTERCALLBLISS_ROUTE_BEST_EFFORT/s,
     'Extras reports a quality-target miss as an explicit best-effort route',
 );
 my $web = slurp(File::Spec->catfile($plugin, 'Web.pm'));
@@ -812,7 +812,7 @@ like(
 );
 like(
     $extras,
-    qr/route_no_beneficial_bridge.*?retained the direct destination/s,
+    qr/route_no_beneficial_bridge.*?PLUGIN_BETTERCALLBLISS_ROUTE_CAUTIOUS_NO_BENEFIT/s,
     'Extras explains why an unhelpful bridge was not inserted',
 );
 like(
@@ -827,7 +827,7 @@ like(
 );
 like(
     $extras,
-    qr/Acoustic model check:.*?configured adaptive context.*?governed this route/s,
+    qr/route_adaptive_model_comparison.*?PLUGIN_BETTERCALLBLISS_ROUTE_ADAPTIVE_MODEL/s,
     'destination-route result explains that the configured adaptive context governed',
 );
 

@@ -116,23 +116,23 @@ PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT_DESC
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE
 	EN	Artist identity for repeat windows
-	DE	Künstleridentität für Wiederholungsfenster
+	DE	Interpretenidentität für Wiederholungsabstände
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE_DESC
-	EN	<b>Any shared credited artist:</b> Treats tracks as the same artist when any credited artist matches, including solo and collaboration credits.<br/><br/><b>Primary artist only:</b> Compares only each track's primary artist; guest artists do not create a conflict.<br/><br/><b>Exact Bliss artist credit:</b> Compares the complete artist text stored in bliss.db. This was the previous default behavior; differently written collaboration credits may count as different artists.<br/><br/>The first two options prefer MusicBrainz artist IDs, followed by Lyrion contributor IDs and normalized names.
-	DE	<b>Beliebiger gemeinsamer beteiligter Künstler:</b> Behandelt Titel als denselben Künstler, sobald irgendein beteiligter Künstler übereinstimmt, einschließlich Solo- und Kollaborations-Credits.<br/><br/><b>Nur Hauptkünstler:</b> Vergleicht nur den Hauptkünstler eines Titels; Gastkünstler erzeugen keinen Konflikt.<br/><br/><b>Exakter Bliss-Künstler-Credit:</b> Vergleicht den vollständigen in bliss.db gespeicherten Künstlertext. Dies war das bisherige Standardverhalten; unterschiedlich geschriebene Kollaborationen können als verschiedene Künstler gelten.<br/><br/>Die ersten beiden Optionen bevorzugen MusicBrainz-Künstler-IDs, danach Lyrion-Mitwirkenden-IDs und normalisierte Namen.
+	EN	<b>Any shared credited artist:</b> Tracks count as the same artist if any credited artist matches, including solo and collaboration credits.<br/><br/><b>Primary artist only:</b> Compares only each track's primary artist; guest artists do not create a conflict.<br/><br/><b>Exact Bliss artist credit:</b> Compares the complete artist credit stored in bliss.db. For example, a solo track by David Bowie and a collaboration credited to David Bowie &amp; Queen count as different artists.<br/><br/>The first two options prefer MusicBrainz artist IDs, followed by Lyrion contributor IDs and normalized names.
+	DE	<b>Jeder gemeinsame beteiligte Interpret:</b> Titel gelten als vom selben Interpreten, sobald ein beteiligter Interpret übereinstimmt – auch bei Solotiteln und Zusammenarbeiten.<br/><br/><b>Nur Hauptinterpret:</b> Vergleicht nur den Hauptinterpreten jedes Titels; Gastinterpreten verursachen keinen Konflikt.<br/><br/><b>Exakte Bliss-Interpretenangabe:</b> Vergleicht die vollständige, in bliss.db gespeicherte Interpretenangabe. Ein Solotitel von David Bowie und ein gemeinsamer Titel von David Bowie &amp; Queen gelten beispielsweise als Titel unterschiedlicher Interpreten.<br/><br/>Die ersten beiden Optionen bevorzugen MusicBrainz-Interpreten-IDs, danach Lyrion-Mitwirkenden-IDs und normalisierte Namen.
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_SHARED
 	EN	Any shared credited artist
-	DE	Beliebiger gemeinsamer beteiligter Künstler
+	DE	Jeder gemeinsame beteiligte Interpret
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_PRIMARY
 	EN	Primary artist only
-	DE	Nur Hauptkünstler
+	DE	Nur Hauptinterpret
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EXACT
 	EN	Exact Bliss artist credit
-	DE	Exakter Bliss-Künstler-Credit
+	DE	Exakte Bliss-Interpretenangabe
 
 PLUGIN_BETTERCALLBLISS_LAST_PLAYED_INFLUENCE
 	EN	Last-played influence
@@ -171,16 +171,16 @@ PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY
 	DE	Regel für Zwischentitel
 
 PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY_DESC
-	EN	Automatic searches complete adjacent paths and chooses the shortest one that meets the target, or the smoothest bounded best effort. Exact searches the configured count with the same adjacent objective.
-	DE	Automatisch durchsucht vollständige Pfade und wählt den kürzesten, der das Ziel für benachbarte Titel erreicht, oder den besten begrenzten Versuch. Exakt durchsucht die konfigurierte Anzahl mit demselben Ziel.
+	EN	<b>Choose automatically:</b> Searches complete adjacent paths and chooses the shortest one that meets the target, or the smoothest bounded best effort.<br/><br/><b>Use an exact count:</b> Searches for a route with the specified number of intermediate tracks using the same adjacent quality objective.
+	DE	<b>Automatisch auswählen:</b> Sucht vollständige Verbindungen und wählt die kürzeste, die das Ziel für benachbarte Titel erreicht, oder die beste gefundene Verbindung innerhalb des Budgets.<br/><br/><b>Genaue Anzahl verwenden:</b> Sucht mit demselben Qualitätsziel eine Verbindung mit genau der angegebenen Anzahl von Zwischentiteln.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION
 	EN	Automatic bridge caution
 	DE	Vorsicht bei automatischen Brücken
 
 PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION_DESC
-	EN	Normal accepts a direct transition whenever it meets the configured percentile. Cautious also searches for bridges when available acoustic models strongly disagree and judges candidate paths across those models.
-	DE	Normal akzeptiert einen direkten Übergang, sobald er das konfigurierte Perzentil erreicht. Vorsichtig sucht auch bei starker Uneinigkeit der verfügbaren Akustikmodelle nach Brücken und bewertet Kandidatenpfade mit diesen Modellen.
+	EN	<b>Normal:</b> Accepts a direct transition whenever it meets the configured percentile.<br/><br/><b>Cautious:</b> Also searches for bridges when available acoustic models strongly disagree and judges candidate paths across those models.
+	DE	<b>Normal:</b> Akzeptiert einen direkten Übergang, sobald er das eingestellte Perzentil erreicht.<br/><br/><b>Vorsichtig:</b> Sucht auch bei starker Uneinigkeit der verfügbaren akustischen Modelle nach Zwischentiteln und bewertet mögliche Verbindungen anhand dieser Modelle.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_CAUTION_NORMAL
 	EN	Normal
@@ -195,8 +195,8 @@ PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT
 	DE	Suchaufwand
 
 PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_EFFORT_DESC
-	EN	Fast searches a deliberately narrow candidate set. Balanced and Thorough progressively widen the search and may take longer; they do not relax the quality target or repeat rules.
-	DE	Schnell durchsucht bewusst eine begrenzte Kandidatenmenge. Ausgewogen und Gründlich erweitern die Suche schrittweise und können länger dauern; Qualitätsziel und Wiederholungsregeln bleiben unverändert.
+	EN	<b>Fast:</b> Searches a deliberately narrow candidate set.<br/><br/><b>Balanced:</b> Widens the search and may take longer.<br/><br/><b>Thorough:</b> Searches more broadly still and may take longer. None of these options relaxes the quality target or repeat rules.
+	DE	<b>Schnell:</b> Durchsucht bewusst eine begrenzte Kandidatenmenge.<br/><br/><b>Ausgewogen:</b> Erweitert die Suche und kann länger dauern.<br/><br/><b>Gründlich:</b> Sucht noch umfassender und kann länger dauern. Das Qualitätsziel und die Wiederholungsregeln bleiben bei allen Optionen unverändert.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_SEARCH_FAST
 	EN	Fast
@@ -308,54 +308,71 @@ PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS
 	EN	Optional guidance providers
+	DE	Optionale Gewichtungsanbieter
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_DESC
 	EN	Installed providers contribute bounded secondary guidance only after you enable them here. Bliss remains responsible for eligibility and acoustic ranking. Provider settings supply defaults; values changed here are Better Call Bliss overrides.
+	DE	Installierte Anbieter liefern erst nach ihrer Aktivierung hier eine begrenzte zusätzliche Gewichtung. Bliss bleibt für die Auswahl und akustische Rangfolge verantwortlich. Die Anbietereinstellungen liefern Standardwerte; hier geänderte Werte überschreiben diese für Better Call Bliss.
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_NONE
 	EN	No enabled Lyrion plugin currently publishes a compatible guidance-provider descriptor.
+	DE	Derzeit stellt kein aktiviertes Lyrion-Plugin einen kompatiblen Gewichtungsanbieter bereit.
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE
 	EN	Provider backend is available.
+	DE	Das Anbieter-Backend ist verfügbar.
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE
 	EN	Provider backend is unavailable: %s
+	DE	Das Anbieter-Backend ist nicht verfügbar: %s
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS
 	EN	Open %s settings
+	DE	%s-Einstellungen öffnen
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED
 	EN	Use this provider
+	DE	Diesen Anbieter verwenden
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC
 	EN	Providers are disabled in Better Call Bliss by default. Enabling one allows its bounded guidance to affect newly started jobs.
+	DE	Anbieter sind in Better Call Bliss standardmäßig deaktiviert. Nach der Aktivierung kann ihre begrenzte Gewichtung neu gestartete Aufträge beeinflussen.
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_DISABLED
 	EN	Disabled
+	DE	Deaktiviert
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_VALUE
 	EN	Enabled
+	DE	Aktiviert
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN
 	EN	Effective value source:
+	DE	Quelle des wirksamen Werts:
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST
 	EN	Better Call Bliss setting
+	DE	Better-Call-Bliss-Einstellung
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PROVIDER
 	EN	Provider setting
+	DE	Anbietereinstellung
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY
 	EN	Provider built-in default
+	DE	Eingebauter Standardwert des Anbieters
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_JOB
 	EN	Per-preview value
+	DE	Wert für diese Vorschau
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING
 	EN	(will apply when saved)
+	DE	(wird beim Speichern übernommen)
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET
 	EN	Use inherited default
+	DE	Übernommenen Standardwert verwenden
 PLUGIN_BETTERCALLBLISS_HISTORY_SECTION
 	EN	Preview history
 	DE	Vorschauverlauf
@@ -367,6 +384,1114 @@ PLUGIN_BETTERCALLBLISS_HISTORY_SECTION_DESC
 PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT
 	EN	Number of retained previews
 	DE	Anzahl aufbewahrter Vorschauen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RUNNING_BANNER
+	EN	Optimization is running.
+	DE	Optimierung läuft.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CHECK_AGAIN
+	EN	Check again
+	DE	Erneut prüfen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RERUN_PREVIEW
+	EN	Run preview again
+	DE	Vorschau erneut starten
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RUNNING
+	EN	Running
+	DE	Laufend
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RECENT
+	EN	Recent
+	DE	Zuletzt
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DURATION
+	EN	Duration:
+	DE	Dauer:
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OPEN
+	EN	Open
+	DE	Öffnen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIOUS
+	EN	Previous
+	DE	Zurück
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_NEXT
+	EN	Next
+	DE	Weiter
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_HEADER
+	EN	Defaults for new previews
+	DE	Standardwerte für neue Vorschauen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_SOURCE
+	EN	Defaults source
+	DE	Quelle der Standardwerte
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_LOAD_DEFAULTS
+	EN	Load selected defaults
+	DE	Ausgewählte Standardwerte laden
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SAVE_DEFAULTS
+	EN	Save current settings as Extras defaults
+	DE	Aktuelle Einstellungen als Extras-Standardwerte speichern
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_MID
+	EN	Intermediate tracks
+	DE	Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_AUTOMATIC
+	EN	Choose automatically
+	DE	Automatisch auswählen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT
+	EN	Use an exact count
+	DE	Genaue Anzahl verwenden
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CAUTION
+	EN	Automatic bridge caution
+	DE	Vorsicht bei automatischen Brücken
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CAUTIOUS
+	EN	Cautious
+	DE	Vorsichtig
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_MIN_INTERMEDIATE
+	EN	Minimum intermediate tracks
+	DE	Minimale Anzahl Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_MAX_INTERMEDIATE
+	EN	Maximum intermediate tracks
+	DE	Maximale Anzahl Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT_INTERMEDIATE
+	EN	Exact intermediate tracks
+	DE	Exakte Anzahl Zwischentitel
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_QUALITY_TARGET
+	EN	Transition quality target percentile (%)
+	DE	Zielperzentil für Übergangsqualität (%)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_AUTO_ADDITIONS
+	EN	Automatic additions
+	DE	Automatische Ergänzungen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_AUTO_GOAL_WARNING
+	EN	Select at least one improvement goal.
+	DE	Wähle mindestens ein Verbesserungsziel aus.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_MAX_ADDED
+	EN	Maximum additional tracks
+	DE	Maximale Anzahl zusätzlicher Titel
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_BRIDGE_TRIGGER
+	EN	Bridge trigger percentile (%)
+	DE	Perzentil für Brückensuche (%)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT_ADDITIONS
+	EN	Exact additions
+	DE	Genaue Anzahl zusätzlicher Titel
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT_ADDED_COUNT
+	EN	Exact number of additional tracks
+	DE	Genaue Anzahl zusätzlicher Titel
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_FIXED_GAPS
+	EN	Bridges in every gap
+	DE	Brücken in jeder Lücke
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_BRIDGE_PER_GAP
+	EN	Bridge tracks per gap
+	DE	Zwischentitel pro Lücke
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_GAP_CONTEXT
+	EN	Adaptive gap context
+	DE	Adaptiver Lückenkontext
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ROLLING_CONTEXT
+	EN	Follow the evolving route
+	DE	Dem Verlauf der Route folgen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_FROZEN_CONTEXT
+	EN	Freeze weights per source gap
+	DE	Gewichtung je Ausgangslücke festlegen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_TARGET_COUNT_HEADER
+	EN	Target track count
+	DE	Gewünschte Titelanzahl
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_FINAL_COUNT
+	EN	Final track count
+	DE	Endgültige Titelanzahl
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DOUBLE_COUNT_HEADER
+	EN	Double track count
+	DE	Titelanzahl verdoppeln
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_TARGET_DURATION_HEADER
+	EN	Target duration
+	DE	Zieldauer
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_FINAL_DURATION
+	EN	Final duration (minutes)
+	DE	Endgültige Dauer (Minuten)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_MAX_BELOW
+	EN	Maximum below target (%)
+	DE	Maximale Unterschreitung des Zielwerts (%)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_MAX_ABOVE
+	EN	Maximum above target (%)
+	DE	Maximale Überschreitung des Zielwerts (%)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_VARIATION
+	EN	Variation
+	DE	Variation
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_VARIATION_PCT
+	EN	Variation (%)
+	DE	Variation (%)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SEED
+	EN	Repeatable generation seed
+	DE	Seed für wiederholbare Ergebnisse
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_MIXING
+	EN	Mixing strategy
+	DE	Mischstrategie
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_STRATEGY
+	EN	Strategy
+	DE	Strategie
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ADAPTIVE
+	EN	Adaptive dynamic weighting
+	DE	Adaptive dynamische Gewichtung
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_STATIC
+	EN	Static BlissMixer weights
+	DE	Statische BlissMixer-Gewichtung
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CONTEXT_WINDOW
+	EN	Musical context window (previous tracks)
+	DE	Musikalisches Kontextfenster (vorherige Titel)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_LEARNED_BLEND
+	EN	Learned-matrix blend (%)
+	DE	Anteil der gelernten Matrix (%)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_CONSTRAINTS
+	EN	Repeat constraints
+	DE	Wiederholungsregeln
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ARTIST_ID
+	EN	Artist identity
+	DE	Interpretenvergleich
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ANY_CREDIT
+	EN	Any shared credited artist
+	DE	Jeder gemeinsame beteiligte Interpret
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_PRIMARY_ARTIST
+	EN	Primary artist only
+	DE	Nur Hauptinterpret
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT_CREDIT
+	EN	Exact Bliss artist credit
+	DE	Exakte Bliss-Interpretenangabe
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ARTIST_LOOKBACK
+	EN	Artist look-back (tracks)
+	DE	Interpretenabstand (Titel)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ALBUM_LOOKBACK
+	EN	Album look-back (tracks)
+	DE	Albumabstand (Titel)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_TRACK_LOOKBACK
+	EN	Track look-back (tracks)
+	DE	Titelabstand (Titel)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ADVANCED_SEARCH
+	EN	Advanced search effort
+	DE	Erweiterter Suchaufwand
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RESTARTS
+	EN	Additional route-search attempts
+	DE	Zusätzliche Routensuchversuche
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_ORDER_PRESERVE
+	EN	Preserve source order keeps every source track in its current order. When additions are enabled, they can only be placed around those fixed anchors.
+	DE	Die Reihenfolge der Ausgangstitel bleibt erhalten. Zusätzliche Titel können nur um diese festen Anker herum eingefügt werden.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_ORDER_OPTIMIZE
+	EN	Optimize source order may move source tracks. The source membership is still kept, but Better Call Bliss can search for a smoother route.
+	DE	Die Ausgangstitel können neu angeordnet werden. Alle Ausgangstitel bleiben erhalten; Better Call Bliss kann aber nach einer flüssigeren Route suchen.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_NONE_OPT
+	EN	Reorder only: Better Call Bliss uses exactly the source tracks and searches for a smoother order. No local tracks are added.
+	DE	Nur neu anordnen: Better Call Bliss verwendet ausschließlich die Ausgangstitel und sucht eine flüssigere Reihenfolge. Es werden keine lokalen Titel hinzugefügt.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_NONE_PRES
+	EN	This combination would leave the source unchanged: the order is preserved and no tracks are added. Choose a different addition mode or allow source-order optimization.
+	DE	Diese Kombination würde die Quelle unverändert lassen: Die Reihenfolge bleibt erhalten und es werden keine Titel hinzugefügt. Wähle einen anderen Ergänzungsmodus oder erlaube die Optimierung der Reihenfolge.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_AUTO_OPT
+	EN	Repair after reordering: first optimize the source-track order, then inspect the resulting handovers. A bridge is added only if it improves both sides of one specific gap. If the source set itself cannot satisfy the repeat windows, use Add spacing tracks as needed instead.
+	DE	Nach dem Neuordnen verbessern: Zuerst wird die Reihenfolge der Ausgangstitel optimiert, danach werden die Übergänge geprüft. Eine Brücke wird nur ergänzt, wenn sie beide Seiten einer konkreten Lücke verbessert. Falls die Ausgangstitel die Wiederholungsregeln nicht erfüllen können, verwende stattdessen Abstandstitel.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_AUTO_PRES
+	EN	Repair the current order: keep the source tracks where they are and inspect their existing handovers. A bridge is added only if it improves both sides of one specific gap. If the current source set itself cannot satisfy the repeat windows, use Add spacing tracks as needed instead.
+	DE	Aktuelle Reihenfolge verbessern: Die Ausgangstitel bleiben an ihrem Platz und ihre Übergänge werden geprüft. Eine Brücke wird nur ergänzt, wenn sie beide Seiten einer konkreten Lücke verbessert. Falls die Ausgangstitel die Wiederholungsregeln nicht erfüllen können, verwende stattdessen Abstandstitel.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_SPACE_OPT
+	EN	Optimize and freeze the source-only order first, then add the minimum number of spacing tracks needed across its gaps to satisfy the selected repeat windows. All gaps are planned together within the maximum-additions budget.
+	DE	Zuerst wird die Reihenfolge der Ausgangstitel optimiert und festgelegt. Danach wird die geringste Anzahl an Abstandstiteln eingefügt, die zur Einhaltung der Wiederholungsregeln nötig ist. Alle Lücken werden gemeinsam innerhalb der maximalen Anzahl zusätzlicher Titel geplant.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_SPACE_PRES
+	EN	Keep the current source order, then add the minimum number of spacing tracks needed across its fixed gaps to satisfy the selected repeat windows. All gaps are planned together within the maximum-additions budget.
+	DE	Die Reihenfolge der Ausgangstitel bleibt erhalten. Danach wird die geringste Anzahl an Abstandstiteln eingefügt, die zur Einhaltung der Wiederholungsregeln nötig ist. Alle Lücken werden gemeinsam innerhalb der maximalen Anzahl zusätzlicher Titel geplant.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_IMPROVE_OPT
+	EN	Optimize the source order first. If selected, add the minimum spacing needed for the repeat windows, then use the remaining budget to improve difficult transitions.
+	DE	Zuerst wird die Reihenfolge der Ausgangstitel optimiert. Wenn ausgewählt, werden zunächst die für die Wiederholungsregeln nötigen Abstandstitel ergänzt und danach schwierige Übergänge mit den verbleibenden zusätzlichen Titeln verbessert.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_IMPROVE_PRES
+	EN	Keep the source order. If selected, add the minimum spacing needed for the repeat windows, then use the remaining budget to improve difficult transitions.
+	DE	Die Reihenfolge der Ausgangstitel bleibt erhalten. Wenn ausgewählt, werden zunächst die für die Wiederholungsregeln nötigen Abstandstitel ergänzt und danach schwierige Übergänge mit den verbleibenden zusätzlichen Titeln verbessert.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_EXTEND_OPT
+	EN	Extend this playlist by the chosen amount. Additions are selected because they fit the complete original source set as a fixed reference; then originals and additions may be reordered together for flow. Use Reach final track count when the source is a short seed list and you want a fuller mix.
+	DE	Die Wiedergabeliste um die gewählte Anzahl verlängern. Die Ergänzungen werden anhand aller ursprünglichen Ausgangstitel als fester Referenz ausgewählt. Anschließend können Ausgangs- und zusätzliche Titel gemeinsam neu angeordnet werden. Bei einer kurzen Seed-Liste eignet sich die Vorgabe einer endgültigen Titelanzahl.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_EXTEND_PRES
+	EN	Extend this playlist by the chosen amount without moving the original tracks. Additions are selected because they fit the complete original source set as a fixed reference, then placed around the ordered anchors. This is not one bridge per gap.
+	DE	Die Wiedergabeliste um die gewählte Anzahl verlängern, ohne die Ausgangstitel zu verschieben. Die Ergänzungen werden anhand aller ursprünglichen Titel als fester Referenz ausgewählt und zwischen oder neben den Ausgangstiteln eingefügt. Es wird nicht für jede Lücke eine Brücke gesucht.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_FIXED_OPT
+	EN	Optimize the source order first, freeze that source-only order, then insert exactly N bridge tracks into every resulting gap. All gaps are planned together so a strong local choice cannot make a later gap impossible.
+	DE	Zuerst wird die Reihenfolge der Ausgangstitel optimiert und festgelegt. Danach werden genau N Zwischentitel in jede entstandene Lücke eingefügt. Alle Lücken werden gemeinsam geplant, damit eine lokale Wahl spätere Lücken nicht unmöglich macht.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_FIXED_PRES
+	EN	Keep the current source order and insert exactly N bridge tracks into every existing gap. All gaps are planned together and the preview fails without a partial result if the exact route cannot satisfy the constraints.
+	DE	Die Reihenfolge der Ausgangstitel bleibt erhalten und in jede Lücke werden genau N Zwischentitel eingefügt. Alle Lücken werden gemeinsam geplant. Können die Regeln nicht eingehalten werden, schlägt die Vorschau ohne Teilergebnis fehl.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_AMOUNT_EXACT
+	EN	Extend-only amount control: add exactly this many tracks to the source snapshot. This is a playlist-length request, not one bridge per existing gap.
+	DE	Anzahl für die Verlängerung: Genau so viele Titel werden zur Momentaufnahme hinzugefügt. Es geht um die Länge der Wiedergabeliste, nicht um eine Brücke pro Lücke.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_AMOUNT_TARGET
+	EN	Extend-only amount control: enter the desired final track count and Better Call Bliss calculates how many additions are needed.
+	DE	Anzahl für die Verlängerung: Gib die gewünschte endgültige Titelanzahl ein. Better Call Bliss berechnet die erforderliche Anzahl zusätzlicher Titel.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_AMOUNT_DOUBLE
+	EN	Extend-only amount control: add one track per source track, so the final result has exactly twice as many tracks. This is still full-playlist extension, not one bridge per existing transition.
+	DE	Anzahl für die Verlängerung: Pro Ausgangstitel wird ein Titel ergänzt, sodass das Ergebnis genau doppelt so viele Titel enthält. Die gesamte Wiedergabeliste wird verlängert; es wird nicht für jeden Übergang eine Brücke gesucht.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_AMOUNT_DURATION
+	EN	Extend the playlist to the chosen duration within the allowed tolerances.
+	DE	Die Wiedergabeliste innerhalb der erlaubten Toleranzen auf die gewünschte Dauer verlängern.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_ACTION_SPACE
+	EN	add the minimum spacing needed for the repeat windows
+	DE	die für die Wiederholungsregeln nötigen Abstandstitel ergänzen
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_ACTION_SMOOTH
+	EN	improve difficult transitions where useful
+	DE	schwierige Übergänge bei Bedarf verbessern
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_PREFIX_PRESERVE
+	EN	Keep the source order
+	DE	Reihenfolge der Ausgangstitel beibehalten
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_PREFIX_OPTIMIZE
+	EN	Optimize the source order first
+	DE	Zuerst die Reihenfolge der Ausgangstitel optimieren
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_JOIN_THEN
+	EN	then
+	DE	dann
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_JOIN_AND
+	EN	and
+	DE	und
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_NO_GOAL
+	EN	. Select at least one improvement goal.
+	DE	. Wähle mindestens ein Verbesserungsziel aus.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_GAP_ROLLING
+	EN	Follow the evolving route: after Better Call Bliss inserts a bridge track, Adaptive weighting may recalculate the next leg using that bridge as part of the listening context. This can make a multi-step gap feel more gradual, but every inserted step can influence the next one.
+	DE	Dem Verlauf der Route folgen: Nach einem eingefügten Zwischentitel kann die adaptive Gewichtung den nächsten Schritt unter Berücksichtigung dieses Titels neu berechnen. Dadurch kann der Übergang allmählicher wirken; jeder eingefügte Titel kann jedoch den nächsten Schritt beeinflussen.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_GAP_FROZEN
+	EN	Freeze weights per source gap: Adaptive weighting is calculated once for the original gap between the left and right source tracks, then reused for every inserted leg in that gap. Inserted songs still affect repeat checks and the route context, but not the feature-weight matrix for that gap.
+	DE	Gewichtung je Ausgangslücke festlegen: Die adaptive Gewichtung wird für die ursprüngliche Lücke einmal berechnet und für alle eingefügten Schritte dieser Lücke wiederverwendet. Eingefügte Titel beeinflussen weiterhin Wiederholungsprüfung und Routenkontext, aber nicht die Merkmalsgewichtung dieser Lücke.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CANDIDATE_NOTE
+	EN	Newly added tracks must belong to this Lyrion library view. Source tracks, listening history, the selected destination, and queue-rejoin anchors remain valid even when they are outside it. The initial selection follows the active Material Skin library when available, then the library assigned to the active player.
+	DE	Neu hinzugefügte Titel müssen zu dieser Lyrion-Mediotheksansicht gehören. Ausgangstitel, Wiedergabeverlauf, gewähltes Ziel und Anker für die Rückkehr zur Wiedergabeliste bleiben auch außerhalb dieser Ansicht gültig. Die Vorauswahl folgt der aktiven Material-Skin-Mediathek oder ersatzweise der dem aktiven Player zugewiesenen Mediathek.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_COMBO_WARNING
+	EN	Preserving the source order without allowing additions would leave the result unchanged. Choose transition improvements or Extend playlist with a non-zero target.
+	DE	Wenn die Reihenfolge erhalten bleibt und keine Titel ergänzt werden, bleibt das Ergebnis unverändert. Wähle eine Übergangsverbesserung oder eine Verlängerung mit einem Ziel größer als null.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT_NOTE
+	EN	The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.
+	DE	Alles oder nichts: Die Vorschau enthält entweder genau diese Anzahl unterschiedlicher zusätzlicher Titel oder schlägt ohne teilweise Wiedergabeliste fehl.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CHOOSE_LIMIT
+	EN	Choose a source to see the current limit.
+	DE	Wähle eine Quelle aus, um die aktuelle Grenze anzuzeigen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_FIXED_NOTE
+	EN	Every neighboring pair of source tracks receives exactly the chosen number of unique bridge tracks. Better Call Bliss plans all gaps together so repeat windows and track membership remain valid across the complete playlist.
+	DE	Zwischen jedem benachbarten Paar von Ausgangstiteln wird genau die gewählte Anzahl unterschiedlicher Zwischentitel eingefügt. Better Call Bliss plant alle Lücken gemeinsam, damit Wiederholungsregeln und Titelauswahl für die gesamte Wiedergabeliste gültig bleiben.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_FIXED_SUMMARY
+	EN	Choose a source to see the derived total.
+	DE	Wähle eine Quelle aus, um die berechnete Gesamtzahl anzuzeigen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_TARGET_COUNT_NOTE
+	EN	Enter the desired final number of tracks; Better Call Bliss calculates how many local additions are needed.
+	DE	Gib die gewünschte endgültige Titelanzahl ein. Better Call Bliss berechnet die erforderliche Anzahl lokaler zusätzlicher Titel.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CHOOSE_TARGET
+	EN	Choose a source to see the current target range.
+	DE	Wähle eine Quelle aus, um den möglichen Zielbereich anzuzeigen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DOUBLE_NOTE
+	EN	This preset asks for one added local track per source track, yielding exactly twice as many tracks.
+	DE	Diese Vorgabe ergänzt pro Ausgangstitel einen lokalen Titel und ergibt genau die doppelte Titelanzahl.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DOUBLE_SUMMARY
+	EN	Choose a source to see the calculated final size.
+	DE	Wähle eine Quelle aus, um die berechnete endgültige Anzahl anzuzeigen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DURATION_NOTE
+	EN	The final duration must be within the chosen tolerances. If the source is already within the range, no tracks are added.
+	DE	Die endgültige Dauer muss innerhalb der gewählten Toleranzen liegen. Liegt die Quelle bereits innerhalb dieses Bereichs, werden keine Titel hinzugefügt.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_VARIATION_NOTE
+	EN	Variation is applied after the selected similarity strategy, so it also applies to future Static and Forest strategies. Leave the seed blank for a new result on each run; enter a previous result seed to reproduce it.
+	DE	Die Variation wird nach der gewählten Ähnlichkeitsstrategie angewendet. Lass den Seed leer, um bei jedem Lauf ein neues Ergebnis zu erhalten, oder gib den Seed eines früheren Ergebnisses ein, um es zu reproduzieren.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DISABLED_PROVIDER
+	EN	Enable this provider on the Better Call Bliss settings page to apply its defaults or per-job overrides.
+	DE	Aktiviere diesen Anbieter in den Better-Call-Bliss-Einstellungen, um seine Standardwerte oder abweichende Werte für diesen Auftrag zu verwenden.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_UNCHECKED
+	EN	When unchecked, artist, album and track repeat windows are not applied to this preview. Your entered values are kept.
+	DE	Wenn diese Option deaktiviert ist, werden die Wiederholungsabstände für Interpreten, Alben und Titel für diese Vorschau nicht angewendet. Die eingegebenen Werte bleiben erhalten.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_ZERO
+	EN	Use 0 to disable a constraint. For a single-artist playlist, set Artist look-back to 0.
+	DE	Mit 0 wird die jeweilige Regel deaktiviert. Setze bei einer Wiedergabeliste mit nur einem Interpreten den Interpretenabstand auf 0.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SEARCH_HELP
+	EN	Used only when source tracks may be reordered. Each deterministic attempt starts from another candidate order and applies local improvements. More attempts may find a better route but increase processing time. Zero still evaluates the built-in fixed starts.
+	DE	Wird nur verwendet, wenn Ausgangstitel neu angeordnet werden dürfen. Jeder deterministische Versuch beginnt mit einer anderen Reihenfolge und verbessert diese schrittweise. Mehr Versuche können bessere Ergebnisse liefern, benötigen aber mehr Zeit. Bei null werden weiterhin die fest eingebauten Ausgangsvarianten geprüft.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_READ_ONLY_NOTE
+	EN	This only creates a read-only preview. After reviewing the result, choose whether to save a copy, overwrite the source when applicable, or send it to a player queue.
+	DE	Hier wird nur eine Vorschau erstellt. Nach der Prüfung kannst du eine Kopie speichern, gegebenenfalls die Quelle überschreiben oder das Ergebnis an die Wiedergabeliste eines Players senden.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_NO_PROFILE
+	EN	Save your current settings to make Extras defaults available.
+	DE	Speichere die aktuellen Einstellungen, um Extras-Standardwerte zu verwenden.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_NOTE
+	EN	<b>Use plugin defaults:</b> Uses the current settings of Better Call Bliss, BlissMixer and installed guidance providers.<br/><br/><b>Use saved Extras defaults:</b> Uses the independently saved Extras settings.
+	DE	<b>Plugin-Standardwerte verwenden:</b> Verwendet die aktuellen Einstellungen von Better Call Bliss, BlissMixer und den installierten Gewichtungsanbietern.<br/><br/><b>Gespeicherte Extras-Standardwerte verwenden:</b> Verwendet die unabhängig davon gespeicherten Extras-Einstellungen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_EXPLAIN
+	EN	Changing the selection affects future new previews. Load selected defaults to apply it here. Running a preview does not save defaults; loading leaves the selected source and player unchanged.
+	DE	Die Auswahl gilt für zukünftige Vorschauen. Lade die gewählten Standardwerte, um sie hier anzuwenden. Das Starten einer Vorschau speichert keine Standardwerte; beim Laden bleiben Quelle und Player unverändert.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RECENT_NOTE
+	EN	Recent previews are kept across LMS restarts, up to the configured limit.
+	DE	Letzte Vorschauen bleiben bis zu den konfigurierten Grenzen auch nach einem Lyrion-Neustart erhalten.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RESCAN_NOTE
+	EN	This page will check again automatically.
+	DE	Diese Seite prüft den Status automatisch erneut.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_WAIT
+	EN	Preview cancellation requested. Waiting for LMS to finish cancelling the startup work.
+	DE	Abbruch der Vorschau angefordert. Warten, bis Lyrion die Vorbereitung abgebrochen hat.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_START
+	EN	Cancelling preview startup...
+	DE	Vorbereitung der Vorschau wird abgebrochen ...
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_BEFORE
+	EN	Cancelling preview startup before the native optimizer starts.
+	DE	Die Vorbereitung der Vorschau wird vor dem Start des Optimizers abgebrochen.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_PREPARING
+	EN	Preparing preview: capturing the source and candidate library before native optimizer progress starts.
+	DE	Vorschau wird vorbereitet: Quelle und Kandidatenmediathek werden erfasst, bevor die Optimierung beginnt.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_NO_QUEUE
+	EN	Choose a player queue scope containing at least two local tracks.
+	DE	Wähle einen Bereich der Player-Wiedergabeliste mit mindestens zwei lokalen Titeln aus.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_NO_PLAYLIST
+	EN	Choose a saved playlist containing at least two local tracks.
+	DE	Wähle eine gespeicherte Wiedergabeliste mit mindestens zwei lokalen Titeln aus.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_CALCULATED_SIZE
+	EN	Choose a source to see the calculated final size.
+	DE	Wähle eine Quelle aus, um die berechnete endgültige Anzahl anzuzeigen.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_TOO_MANY
+	EN	This would exceed the current 500-track target limit.
+	DE	Dies würde die aktuelle Obergrenze von 500 Titeln überschreiten.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_RANGE_DEFAULT
+	EN	Choose a source to see the current target range.
+	DE	Wähle eine Quelle aus, um den möglichen Zielbereich anzuzeigen.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_FIXED_DEFAULT
+	EN	Choose a source to see the derived total.
+	DE	Wähle eine Quelle aus, um die berechnete Gesamtzahl anzuzeigen.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_FIXED_ERROR
+	EN	Choose between 1 and 8 bridges per gap and keep the derived final size at or below 500 tracks.
+	DE	Wähle zwischen 1 und 8 Zwischentitel pro Lücke und halte die endgültige Anzahl bei höchstens 500 Titeln.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVING
+	EN	Saving selection...
+	DE	Auswahl wird gespeichert ...
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVED
+	EN	Selection saved for new previews.
+	DE	Auswahl für neue Vorschauen gespeichert.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVE_ERROR
+	EN	Could not save selection. Please try again.
+	DE	Die Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT
+	EN	Preview result
+	DE	Vorschauergebnis
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT_NOTE
+	EN	This preview has not changed any playlist or player queue yet. Choose an output below after reviewing the result.
+	DE	Diese Vorschau hat noch keine Wiedergabeliste geändert. Wähle nach der Prüfung unten eine Ausgabe aus.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT_READ_ONLY
+	EN	Preview runs are read-only and do not change playlists or player queues.
+	DE	Vorschauläufe ändern keine Wiedergabelisten.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_CHECKS
+	EN	Verified acceptance checks
+	DE	Überprüfte Bedingungen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_CHECK_MIN
+	EN	The globally smallest feasible number of spacing tracks was selected.
+	DE	Die insgesamt kleinste mögliche Anzahl an Abstandstiteln wurde gewählt.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_CHECK_SOURCE
+	EN	Every source track was retained exactly once and in the selected order.
+	DE	Jeder Ausgangstitel ist genau einmal und in der gewählten Reihenfolge enthalten.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_CHECK_LOCAL
+	EN	Every addition resolved from the current local LMS candidate inventory.
+	DE	Jeder zusätzliche Titel wurde im aktuellen lokalen Lyrion-Kandidatenbestand gefunden.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_CHECK_WINDOWS
+	EN	Membership is unique and the final route satisfies the selected repeat windows.
+	DE	Jeder Titel ist eindeutig und die endgültige Route erfüllt die gewählten Wiederholungsregeln.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_DURATION
+	EN	Final duration is within the requested bounds.
+	DE	Die endgültige Dauer liegt innerhalb der gewünschten Grenzen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_COUNT
+	EN	Exact target size reached.
+	DE	Die genaue Zielanzahl wurde erreicht.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_ORIGINAL
+	EN	Every original source track retained exactly once.
+	DE	Jeder ursprüngliche Ausgangstitel ist genau einmal enthalten.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_UNIQUE
+	EN	Membership is unique, satisfying the track-repeat rule.
+	DE	Jeder Titel ist eindeutig; die Titelwiederholungsregel ist erfüllt.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_ALBUM
+	EN	Artist and album repeat windows are satisfied by the final route.
+	DE	Die endgültige Route erfüllt die Wiederholungsabstände für Interpreten und Alben.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT
+	EN	Accept this preview
+	DE	Diese Vorschau übernehmen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OUTPUT_NAME
+	EN	Copy name
+	DE	Name der Kopie
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_PLAYER
+	EN	Player
+	DE	Player
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_QUEUE_ACTION
+	EN	Queue action
+	DE	Aktion für die Wiedergabeliste
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_REPLACE_QUEUE
+	EN	Replace queue
+	DE	Wiedergabeliste ersetzen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_REPLACE_UPCOMING
+	EN	Replace upcoming tracks
+	DE	Folgende Titel ersetzen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_APPEND
+	EN	Append to queue
+	DE	An Wiedergabeliste anhängen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_PLAY_NEXT
+	EN	Play next
+	DE	Als Nächstes abspielen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_START_PLAYBACK
+	EN	Start playback
+	DE	Wiedergabe starten
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_NEED_PLAYER
+	EN	Choose a player before sending to a player queue.
+	DE	Wähle einen Player, bevor du das Ergebnis an dessen Wiedergabeliste sendest.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_TRANSITION_DECISIONS
+	EN	Transition decisions
+	DE	Entscheidungen zu Übergängen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_OPT_FIRST
+	EN	Source tracks were optimized before additions were selected.
+	DE	Die Ausgangstitel wurden optimiert, bevor zusätzliche Titel ausgewählt wurden.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_WAIT_RESULT
+	EN	Waiting for the preview result. This status updates in place; your scroll position is preserved.
+	DE	Warte auf das Vorschauergebnis. Der Status wird hier aktualisiert; die Scrollposition bleibt erhalten.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_LOAD_RESULT
+	EN	Load full result now
+	DE	Vollständiges Ergebnis jetzt laden
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OPEN_ADVANCED
+	EN	Open advanced options
+	DE	Erweiterte Optionen öffnen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_TRACK_CHOOSE_PLAYER
+	EN	Choose a player...
+	DE	Player auswählen ...
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_FIXED_GAP_OPTION
+	EN	Fill every gap with N bridge tracks
+	DE	Jede Lücke mit N Zwischentiteln füllen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OLD_SPACING
+	EN	Add spacing tracks as needed
+	DE	Bei Bedarf Abstandstitel hinzufügen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OLD_TRANSITION
+	EN	Improve difficult transitions when useful
+	DE	Schwierige Übergänge bei Bedarf verbessern
+
+PLUGIN_BETTERCALLBLISS_MORE_OP_FAILED
+	EN	Operation failed:
+	DE	Vorgang fehlgeschlagen:
+
+PLUGIN_BETTERCALLBLISS_MORE_SUCCESS
+	EN	Success.
+	DE	Erfolgreich.
+
+PLUGIN_BETTERCALLBLISS_MORE_PERSONALIZATION
+	EN	Optional personalization:
+	DE	Optionale Personalisierung:
+
+PLUGIN_BETTERCALLBLISS_MORE_QUICK_ROUTE
+	EN	Quick route:
+	DE	Schnellroute:
+
+PLUGIN_BETTERCALLBLISS_MORE_QUEUE_NOTE
+	EN	The selected queue is captured as a frozen source snapshot when the preview starts. Later queue changes do not affect the running job.
+	DE	Die gewählte Wiedergabeliste wird beim Start als feste Momentaufnahme erfasst. Spätere Änderungen beeinflussen den laufenden Auftrag nicht.
+
+PLUGIN_BETTERCALLBLISS_MORE_VARIATION_EXPLAIN
+	EN	0 = strict best match; higher values explore a wider top-quality pool.
+	DE	0 = ausschließlich beste Treffer; höhere Werte berücksichtigen einen größeren Pool besonders guter Kandidaten.
+
+PLUGIN_BETTERCALLBLISS_MORE_MATRIX_NOT_READY
+	EN	BlissMixerLab has not produced a readable learned matrix yet; this job uses 0%.
+	DE	BlissMixerLab hat noch keine lesbare gelernte Matrix erstellt; dieser Auftrag verwendet 0 %.
+
+PLUGIN_BETTERCALLBLISS_MORE_MATRIX_UNAVAILABLE
+	EN	Optional BlissMixerLab personalization is unavailable; this job uses 0%.
+	DE	Die optionale Personalisierung durch BlissMixerLab ist nicht verfügbar; dieser Auftrag verwendet 0 %.
+
+PLUGIN_BETTERCALLBLISS_MORE_PRESERVE_NOTE
+	EN	Source tracks stayed in their selected order. Additions were placed only inside source gaps; no opening or closing track was added.
+	DE	Die Ausgangstitel behielten ihre gewählte Reihenfolge. Zusätzliche Titel wurden nur in Lücken eingefügt; am Anfang oder Ende wurde kein Titel ergänzt.
+
+PLUGIN_BETTERCALLBLISS_MORE_REFERENCE_NOTE
+	EN	The original source set stayed fixed as the relevance reference. Added tracks affected only repeat-safe placement and transition flow.
+	DE	Die ursprünglichen Ausgangstitel blieben als feste Referenz für die Relevanz erhalten. Zusätzliche Titel beeinflussten nur die regelkonforme Platzierung und die Übergänge.
+
+PLUGIN_BETTERCALLBLISS_MORE_GLOBAL_NOTE
+	EN	The route was planned globally rather than one gap at a time. No opening or closing tracks were added, and an infeasible job would fail without a partial playlist.
+	DE	Die Route wurde insgesamt statt Lücke für Lücke geplant. Am Anfang oder Ende wurden keine Titel ergänzt. Falls die Aufgabe nicht lösbar ist, schlägt sie ohne unvollständige Wiedergabeliste fehl.
+
+PLUGIN_BETTERCALLBLISS_MORE_REORDER_NOTE
+	EN	The complete source-plus-addition membership was optimized together for transition flow.
+	DE	Alle Ausgangs- und zusätzlichen Titel wurden gemeinsam für flüssige Übergänge optimiert.
+
+PLUGIN_BETTERCALLBLISS_MORE_NO_BRIDGE
+	EN	No bridge met the trigger, acoustic-improvement, uniqueness, and repeat constraints. The optimized base order is still a valid result.
+	DE	Keine Brücke erfüllte gleichzeitig Auslösekriterium, akustische Verbesserung, Eindeutigkeit und Wiederholungsregeln. Die optimierte Grundreihenfolge ist dennoch ein gültiges Ergebnis.
+
+PLUGIN_BETTERCALLBLISS_MORE_REUSE_NOTE
+	EN	The generated order above is reusable. Pick the output target now; changing these fields does not rerun the optimizer.
+	DE	Die oben erzeugte Reihenfolge kann mehrfach verwendet werden. Wähle jetzt das Ausgabeziel; Änderungen an diesen Feldern starten den Optimizer nicht erneut.
+
+PLUGIN_BETTERCALLBLISS_MORE_COPY_NAME_NOTE
+	EN	Leave blank to generate a fresh name from the selected source when you create the copy. Existing names are never overwritten; an automatic name uses the next free suffix such as (2).
+	DE	Leer lassen, um beim Erstellen der Kopie einen neuen Namen aus der gewählten Quelle zu erzeugen. Bestehende Namen werden nicht überschrieben; ein automatischer Name erhält die nächste freie Endung, beispielsweise (2).
+
+PLUGIN_BETTERCALLBLISS_MORE_OVERWRITE_NOTE
+	EN	Requires explicit confirmation; the source playlist file and LMS catalog order are replaced.
+	DE	Erfordert eine ausdrückliche Bestätigung; die Datei der Ausgangswiedergabeliste und ihre Reihenfolge im Lyrion-Katalog werden ersetzt.
+
+PLUGIN_BETTERCALLBLISS_MORE_RESTORE_NOTE
+	EN	If publication fails mid-way, Better Call Bliss attempts to restore the original file.
+	DE	Falls das Speichern unterbrochen wird, versucht Better Call Bliss, die ursprüngliche Datei wiederherzustellen.
+
+PLUGIN_BETTERCALLBLISS_MORE_QUEUE_OUTPUT_NOTE
+	EN	Sends the accepted preview to a selected player instead of saving a playlist.
+	DE	Sendet die übernommene Vorschau an einen gewählten Player, anstatt eine Wiedergabeliste zu speichern.
+
+PLUGIN_BETTERCALLBLISS_MORE_QUEUE_ACTION_NOTE
+	EN	<b>Replace queue:</b> Clears the selected player's queue and adds the generated order. Playback starts only if the start-playback checkbox is checked.<br/><br/><b>Replace upcoming tracks:</b> Keeps the current track and playback state, replaces only later queue entries, and rechecks the queue when source and target are the same player. Already-played preview items are trimmed when the snapshot can still be recognized.<br/><br/><b>Append to queue:</b> Adds the result at the end.<br/><br/><b>Play next:</b> Inserts the result after the current track.
+	DE	<b>Wiedergabeliste ersetzen:</b> Leert die Liste des gewählten Players und fügt das Ergebnis hinzu. Die Wiedergabe startet nur, wenn das entsprechende Kontrollkästchen aktiviert ist.<br/><br/><b>Folgende Titel ersetzen:</b> Behält den aktuellen Titel und Wiedergabestatus bei und ersetzt nur spätere Einträge. Sind Quelle und Ziel derselbe Player, prüft Better Call Bliss die Liste erneut und entfernt bereits abgespielte Vorschautitel, sofern die Momentaufnahme noch erkannt wird.<br/><br/><b>An Wiedergabeliste anhängen:</b> Ergänzt das Ergebnis am Ende.<br/><br/><b>Als Nächstes abspielen:</b> Fügt das Ergebnis nach dem aktuellen Titel ein.
+
+PLUGIN_BETTERCALLBLISS_MORE_PERCENTILE
+	EN	The percentile is a distance rank, not percentage similarity; lower values are stricter and trigger more searches. Automatic searches complete destination paths between the configured minimum and maximum and chooses the shortest permitted path that meets the neighboring-leg target. If none does and zero intermediates are permitted, a bridge is used only when it improves the cautious direct result by at least one percentile point; otherwise the direct destination is retained and reported. Cautious also searches when available acoustic models strongly disagree. Exact uses the requested number with the same adjacent objective. Search effort controls breadth; Last.fm supplies optional supporting evidence.
+	DE	Das Perzentil ist ein Abstands-Rang und kein Ähnlichkeitsprozentsatz. Niedrigere Werte sind strenger und lösen mehr Suchvorgänge aus. „Automatisch“ sucht vollständige Wege mit einer Anzahl von Zwischentiteln zwischen dem eingestellten Minimum und Maximum und wählt den kürzesten erlaubten Weg, der das Ziel für benachbarte Übergänge erfüllt. Erfüllt kein Weg das Ziel und sind null Zwischentitel erlaubt, wird eine Brücke nur verwendet, wenn sie den vorsichtig bewerteten direkten Übergang um mindestens einen Perzentilpunkt verbessert. Andernfalls wird das direkte Ziel beibehalten und gemeldet. „Vorsichtig“ sucht auch bei starken Abweichungen zwischen verfügbaren Akustikmodellen. „Genau“ verwendet die angegebene Anzahl mit demselben Übergangsziel. Der Suchaufwand bestimmt die Suchbreite; Last.fm liefert optionale zusätzliche Hinweise.
+
+PLUGIN_BETTERCALLBLISS_MORE_TRIGGER_EXPLAIN
+	EN	This is a rank on the job's frozen source-playlist distance scale, not percentage similarity. Lower values are stricter and make more source transitions eligible for bridge search. Acoustic improvement and repeat constraints still have to pass. Optional Last.fm guidance can help rank eligible choices; ListenBrainz comes later.
+	DE	Dies ist ein Rang auf der für den Auftrag festgelegten Abstandsskala der Ausgangswiedergabeliste und kein Ähnlichkeitsprozentsatz. Niedrigere Werte sind strenger und veranlassen die Brückensuche für mehr Ausgangsübergänge. Akustische Verbesserung und Wiederholungsregeln müssen weiterhin erfüllt sein. Optionale Last.fm-Hinweise können die Rangfolge geeigneter Kandidaten beeinflussen; ListenBrainz ist später geplant.
+
+PLUGIN_BETTERCALLBLISS_MORE_CONTEXT_EXPLAIN
+	EN	For each directional transition, Adaptive scoring uses up to this many immediately preceding tracks. For a bridge C between A and B it evaluates history ending in A to C, then the updated history ending in C to B. A value of 1 reduces this to A to C and C to B; variance-based dynamic weighting starts once at least two context tracks are available.
+	DE	Für jeden gerichteten Übergang verwendet die adaptive Bewertung höchstens diese Anzahl unmittelbar vorhergehender Titel. Für einen Zwischentitel C zwischen A und B bewertet sie zunächst den Verlauf bis A nach C und anschließend den aktualisierten Verlauf bis C nach B. Bei 1 werden nur A nach C und C nach B betrachtet; die varianzbasierte dynamische Gewichtung beginnt ab mindestens zwei Kontexttiteln.
+
+PLUGIN_BETTERCALLBLISS_MORE_FOREST_WARNING
+	EN	BlissMixer currently uses Extended Isolation Forest, but Better Call Bliss does not route playlists with Forest yet. Choose Adaptive or Static for now.
+	DE	BlissMixer verwendet derzeit Extended Isolation Forest; Better Call Bliss unterstützt diese Strategie für Wiedergabelisten noch nicht. Wähle vorerst „Adaptiv“ oder „Statisch“.
+
+PLUGIN_BETTERCALLBLISS_RESULT_MIXING_LABEL
+	EN	Mixing:
+	DE	Mischstrategie:
+
+PLUGIN_BETTERCALLBLISS_RESULT_REPEAT_IDENTITY_LABEL
+	EN	Artist repeat identity:
+	DE	Interpretenvergleich bei Wiederholungen:
+
+PLUGIN_BETTERCALLBLISS_RESULT_GENRE_POLICY_LABEL
+	EN	BlissMixer genre policy:
+	DE	BlissMixer-Stilrichtungsregeln:
+
+PLUGIN_BETTERCALLBLISS_RESULT_SCORING_CONTEXT_LABEL
+	EN	Scoring context:
+	DE	Bewertungskontext:
+
+PLUGIN_BETTERCALLBLISS_RESULT_RELEVANCE_LABEL
+	EN	Fixed-source relevance:
+	DE	Relevanz zur festen Quelle:
+
+PLUGIN_BETTERCALLBLISS_RESULT_ROUTE_FLOW_LABEL
+	EN	Final route flow:
+	DE	Übergänge der endgültigen Route:
+
+PLUGIN_BETTERCALLBLISS_RESULT_GUIDANCE_ACTIVITY_LABEL
+	EN	Guidance provider activity:
+	DE	Aktivität der Gewichtungsanbieter:
+
+PLUGIN_BETTERCALLBLISS_RESULT_GUIDANCE_ADDITIONS_LABEL
+	EN	Optional guidance applied to additions:
+	DE	Optionale Gewichtung der zusätzlichen Titel:
+
+PLUGIN_BETTERCALLBLISS_RESULT_SOURCE_ORDER_PRESERVED
+	EN	Source order preserved.
+	DE	Reihenfolge der Ausgangstitel beibehalten.
+
+PLUGIN_BETTERCALLBLISS_SOURCE_BEHAVIOR
+	EN	Source and behavior
+	DE	Quelle und Verhalten
+
+PLUGIN_BETTERCALLBLISS_RESULT_REASON_SPACING
+	EN	Repeat-window spacing
+	DE	Abstand für Wiederholungsregeln
+
+PLUGIN_BETTERCALLBLISS_RESULT_REASON_SMOOTHING
+	EN	Transition smoothing
+	DE	Übergangsverbesserung
+
+PLUGIN_BETTERCALLBLISS_JOB_REORDER
+	EN	Reorder only
+	DE	Nur neu anordnen
+
+PLUGIN_BETTERCALLBLISS_JOB_DIFFICULT_TRANSITIONS
+	EN	Improve difficult transitions
+	DE	Schwierige Übergänge verbessern
+
+PLUGIN_BETTERCALLBLISS_JOB_STRICT_GAP
+	EN	Strict gap bridge placement
+	DE	Feste Zwischentitel je Lücke
+
+PLUGIN_BETTERCALLBLISS_JOB_COMPLETED
+	EN	Completed
+	DE	Abgeschlossen
+
+PLUGIN_BETTERCALLBLISS_JOB_COMPLETED_ADDED
+	EN	Completed - added %s
+	DE	Abgeschlossen – %s hinzugefügt
+
+PLUGIN_BETTERCALLBLISS_JOB_CANCELLED
+	EN	Cancelled
+	DE	Abgebrochen
+
+PLUGIN_BETTERCALLBLISS_JOB_FAILED
+	EN	Failed: %s
+	DE	Fehlgeschlagen: %s
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_INTRO
+	EN	Configure one optimization job. Values initially come from BlissMixer, but edits apply only to this job and never change BlissMixer's global settings.
+	DE	Konfiguriere einen Optimierungsauftrag. Die Werte stammen zunächst aus BlissMixer; Änderungen gelten aber nur für diesen Auftrag und ändern nicht die globalen BlissMixer-Einstellungen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_QUICK_INTRO
+	EN	Building a destination-locked route with the saved Bliss me there... defaults. The queue is changed only after the completed route passes its live-source check.
+	DE	Eine Route zum festen Ziel wird mit den gespeicherten Standardwerten für „Bliss me there...“ erstellt. Die Wiedergabeliste wird erst geändert, nachdem die fertige Route die Prüfung der aktuellen Quelle bestanden hat.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_SNAPSHOT_ONE
+	EN	The selected queue snapshot currently contains about %1 track. It is frozen when the preview starts; later queue changes do not affect the running job.
+	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start der Vorschau festgehalten; spätere Änderungen beeinflussen den laufenden Auftrag nicht.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_SNAPSHOT_MANY
+	EN	The selected queue snapshot currently contains about %1 tracks. It is frozen when the preview starts; later queue changes do not affect the running job.
+	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start der Vorschau festgehalten; spätere Änderungen beeinflussen den laufenden Auftrag nicht.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CONFIRM_LOAD_DEFAULTS
+	EN	Load these defaults and replace the current preview settings?
+	DE	Diese Standardwerte laden und die aktuellen Vorschau-Einstellungen ersetzen?
+
+PLUGIN_BETTERCALLBLISS_RESULT_CANDIDATE_LIBRARY
+	EN	Candidate library:
+	DE	Mediathek für Kandidaten:
+
+PLUGIN_BETTERCALLBLISS_RESULT_CANDIDATE_LIBRARY_NOTE
+	EN	Only newly generated tracks were restricted to this frozen Lyrion library membership.
+	DE	Nur neu erzeugte Titel wurden auf diese festgelegte Lyrion-Mediatheksansicht beschränkt.
+
+PLUGIN_BETTERCALLBLISS_RESULT_PRESERVED_NOTE
+	EN	Every original track remains in its original relative position; only added bridges occupy the gaps.
+	DE	Alle Ausgangstitel bleiben in ihrer ursprünglichen relativen Reihenfolge; nur zusätzliche Zwischentitel füllen die Lücken.
+
+PLUGIN_BETTERCALLBLISS_REPEAT_IDENTITY_EXPLANATION
+	EN	<b>Any shared credited artist:</b> Tracks count as the same artist if any credited artist matches, including solo and collaboration credits.<br/><br/><b>Primary artist only:</b> Compares only each track's primary artist; guest artists do not create a conflict.<br/><br/><b>Exact Bliss artist credit:</b> Compares the complete artist credit stored in bliss.db. For example, a solo track by David Bowie and a collaboration credited to David Bowie &amp; Queen count as different artists.<br/><br/>The first two options prefer MusicBrainz artist IDs, followed by Lyrion contributor IDs and normalized names.
+	DE	<b>Jeder gemeinsame beteiligte Interpret:</b> Titel gelten als vom selben Interpreten, sobald ein beteiligter Interpret übereinstimmt – auch bei Solotiteln und Zusammenarbeiten.<br/><br/><b>Nur Hauptinterpret:</b> Vergleicht nur den Hauptinterpreten jedes Titels; Gastinterpreten verursachen keinen Konflikt.<br/><br/><b>Exakte Bliss-Interpretenangabe:</b> Vergleicht die vollständige, in bliss.db gespeicherte Interpretenangabe. Ein Solotitel von David Bowie und ein gemeinsamer Titel von David Bowie &amp; Queen gelten beispielsweise als Titel unterschiedlicher Interpreten.<br/><br/>Die ersten beiden Optionen bevorzugen MusicBrainz-Interpreten-IDs, danach Lyrion-Mitwirkenden-IDs und normalisierte Namen.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_SUMMARY_ONE
+	EN	%s of %s addition used Last.fm guidance (%s similar-track, %s similar-artist); %s used play-count guidance; %s used last-played guidance; %s used library-age guidance; %s had no optional guidance adjustment.
+	DE	Bei %s von %s zusätzlichen Titeln wirkte die Last.fm-Gewichtung (%s ähnliche Titel, %s ähnliche Interpreten); bei %s der Wiedergabezähler; bei %s der Zeitpunkt der letzten Wiedergabe; bei %s das Mediatheksalter; bei %s wirkte keine optionale Gewichtung.
+
+PLUGIN_BETTERCALLBLISS_GUIDANCE_SUMMARY_MANY
+	EN	%s of %s additions used Last.fm guidance (%s similar-track, %s similar-artist); %s used play-count guidance; %s used last-played guidance; %s used library-age guidance; %s had no optional guidance adjustment.
+	DE	Bei %s von %s zusätzlichen Titeln wirkte die Last.fm-Gewichtung (%s ähnliche Titel, %s ähnliche Interpreten); bei %s der Wiedergabezähler; bei %s der Zeitpunkt der letzten Wiedergabe; bei %s das Mediatheksalter; bei %s wirkte keine optionale Gewichtung.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_FINAL_SIZE
+	EN	Final size: %1 source tracks + %2 additions = %3 tracks.
+	DE	Endgültige Anzahl: %1 Ausgangstitel + %2 zusätzliche Titel = %3 Titel.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_EXACT_RANGE
+	EN	Choose between 1 and %1 additional tracks.
+	DE	Wähle zwischen 1 und %1 zusätzlichen Titeln.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_TARGET_RANGE
+	EN	Target range: %1 to %2 tracks; current request adds %3.
+	DE	Zielbereich: %1 bis %2 Titel; aktuell werden %3 hinzugefügt.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_TARGET_ERROR
+	EN	Choose a final track count greater than %1 and no more than %2 for this playlist.
+	DE	Wähle für diese Wiedergabeliste eine endgültige Titelanzahl größer als %1 und höchstens %2.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_DOUBLE_SIZE
+	EN	%1 source tracks + %2 additions = %3 tracks.
+	DE	%1 Ausgangstitel + %2 zusätzliche Titel = %3 Titel.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_EXCEEDS_LIMIT
+	EN	This exceeds the current 500-track target limit.
+	DE	Dies überschreitet die aktuelle Obergrenze von 500 Titeln.
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_GAP_SUMMARY
+	EN	%1 source gaps x %2 bridges = %3 additions; final size %4.
+	DE	%1 Ausgangslücken × %2 Zwischentitel = %3 zusätzliche Titel; endgültige Anzahl %4.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_QUALITY_EXPLANATION
+	EN	The transition-quality threshold is a distance rank, not a similarity percentage. Lower values are stricter: they cause more direct transitions to be searched and require better neighboring legs in Automatic destination routes. At 30, for example, a leg is acceptable only when no more than about 30% of the relevant comparison population is acoustically closer. Cautious mode may search even below the threshold when acoustic models strongly disagree. If no route reaches the target, a bridge is used only when it improves the cautious direct result by at least one percentile point; otherwise the direct destination is retained and reported. Exact uses the same adjacent-path objective for its fixed count. Current BlissMixer scoring, context, and repeat settings plus the Last.fm settings below are captured when the action starts.
+	DE	Der Schwellenwert für die Übergangsqualität ist ein Abstands-Rang und kein Ähnlichkeitsprozentsatz. Niedrigere Werte sind strenger: Sie lösen häufiger eine Suche aus und verlangen bei automatischen Routen bessere benachbarte Übergänge. Bei 30 ist ein Übergang beispielsweise nur akzeptabel, wenn höchstens etwa 30 % der relevanten Vergleichstitel akustisch näher liegen. Im vorsichtigen Modus kann auch unterhalb des Schwellenwerts gesucht werden, wenn sich die Akustikmodelle stark widersprechen. Erreicht keine Route das Ziel, wird eine Brücke nur verwendet, wenn sie das vorsichtig bewertete direkte Ergebnis um mindestens einen Perzentilpunkt verbessert. Andernfalls wird das direkte Ziel beibehalten und gemeldet. Bei genauer Anzahl gilt dasselbe Ziel für benachbarte Übergänge. Die aktuellen BlissMixer-Einstellungen für Bewertung, Kontext und Wiederholung sowie die Last.fm-Einstellungen unten werden beim Start der Aktion übernommen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_FINISH_LOADING
+	EN	Preview completed. Loading the full result...
+	DE	Vorschau abgeschlossen. Das vollständige Ergebnis wird geladen ...
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CANCEL_LOADING
+	EN	Preview cancelled. Loading the final status...
+	DE	Vorschau abgebrochen. Der endgültige Status wird geladen ...
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_START_FAILED
+	EN	Preview could not be started.
+	DE	Die Vorschau konnte nicht gestartet werden.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CHECKING_STATUS
+	EN	Checking preview status.
+	DE	Vorschaustatus wird geprüft.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_UNCONFIRMED
+	EN	Unconfirmed preview
+	DE	Nicht bestätigte Vorschau
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OVERVIEW_UNCONFIRMED
+	EN	Running and recent previews (1 unconfirmed)
+	DE	Laufende und letzte Vorschauen (1 nicht bestätigt)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ATTEMPT
+	EN	Attempt:
+	DE	Versuch:
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CONNECTION_CHECK
+	EN	Connection interrupted. Checking whether the preview started...
+	DE	Verbindung unterbrochen. Es wird geprüft, ob die Vorschau gestartet wurde ...
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CANNOT_CONFIRM
+	EN	Could not confirm whether the preview started. Check again before starting another preview.
+	DE	Es konnte nicht festgestellt werden, ob die Vorschau gestartet wurde. Bitte prüfe dies erneut, bevor du eine weitere Vorschau startest.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_START_UNCONFIRMED
+	EN	Preview start unconfirmed.
+	DE	Start der Vorschau nicht bestätigt.
+
+PLUGIN_BETTERCALLBLISS_RESULT_DURATION
+	EN	Final duration: %s (%s from target). Added %s local tracks.
+	DE	Endgültige Dauer: %s (%s vom Zielwert). %s lokale Titel hinzugefügt.
+
+PLUGIN_BETTERCALLBLISS_RESULT_DURATION_BOUNDS
+	EN	Target: %s; allowed range: %s–%s.
+	DE	Ziel: %s; erlaubter Bereich: %s–%s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_FIXED_EXTENSION
+	EN	Extended %s source tracks to exactly %s tracks by adding %s local songs.
+	DE	%s Ausgangstitel wurden auf genau %s Titel verlängert; %s lokale Titel wurden hinzugefügt.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_JOB_OVERVIEW
+	EN	Running and recent previews
+	DE	Laufende und letzte Vorschauen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_JOB_RUNNING_COUNT
+	EN	%s running
+	DE	%s laufend
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_JOB_STARTING_COUNT
+	EN	%1 starting
+	DE	%1 wird gestartet
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_PAGE_OF
+	EN	Page %1 of %2
+	DE	Seite %1 von %2
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DURATION_WORD
+	EN	duration
+	DE	Dauer
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_UNTITLED
+	EN	Untitled source
+	DE	Unbenannte Quelle
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_CANCELLED
+	EN	Preview cancelled.
+	DE	Vorschau abgebrochen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_NO_PLAYLIST_CHANGED
+	EN	No playlist or player queue was changed.
+	DE	Es wurde keine Wiedergabeliste geändert.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_COMPLETED
+	EN	Preview completed successfully.
+	DE	Vorschau erfolgreich abgeschlossen.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_REVIEW_OUTPUT
+	EN	Review the result below, then accept the selected output if it looks right.
+	DE	Prüfe das Ergebnis unten und übernimm anschließend die gewünschte Ausgabe, wenn es passt.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OUTPUT_COPY
+	EN	Create optimized copy (recommended)
+	DE	Optimierte Kopie erstellen (empfohlen)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OUTPUT_OVERWRITE
+	EN	Overwrite existing playlist
+	DE	Bestehende Wiedergabeliste überschreiben
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OVERWRITE_CONFIRM
+	EN	I understand this will replace the existing saved playlist.
+	DE	Ich verstehe, dass dadurch die vorhandene gespeicherte Wiedergabeliste ersetzt wird.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_OUTPUT_QUEUE
+	EN	Send to player queue
+	DE	An die Wiedergabeliste des Players senden
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_SPACING_TRACKS
+	EN	Spacing tracks
+	DE	Abstandstitel
+
+PLUGIN_BETTERCALLBLISS_DYNAMIC_NOT_USED_PRESERVE
+	EN	Not used when source order is preserved.
+	DE	Wird nicht verwendet, wenn die Reihenfolge der Ausgangstitel beibehalten wird.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_ENABLE_PREVIEW
+	EN	Enable for this preview
+	DE	Für diese Vorschau aktivieren
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SPACING
+	EN	Satisfy repeat windows with spacing tracks
+	DE	Wiederholungsregeln durch Abstandstitel erfüllen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SMOOTH
+	EN	Improve difficult transitions when useful
+	DE	Schwierige Übergänge bei Bedarf verbessern
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_RUN_PREVIEW
+	EN	Run read-only preview
+	DE	Vorschau starten (ohne Änderungen)
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_CANCEL_PREVIEW
+	EN	Cancel preview
+	DE	Vorschau abbrechen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULT_PLUGIN
+	EN	Use plugin defaults
+	DE	Plugin-Standardwerte verwenden
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULT_SAVED
+	EN	Use saved Extras defaults
+	DE	Gespeicherte Extras-Standardwerte verwenden
+
+PLUGIN_BETTERCALLBLISS_JOB_DEFAULTS_SECTION
+	EN	Job defaults
+	DE	Standardwerte für Aufträge
+
+PLUGIN_BETTERCALLBLISS_JOB_DEFAULTS_SECTION_DESC
+	EN	Bliss scoring and repeat values are initialized from BlissMixer whenever the Extras job editor opens. They can then be overridden for one job without changing either plugin's global settings. The values below supply the defaults for new jobs.
+	DE	Beim Öffnen des Extras-Editors werden die Bliss-Gewichtung und die Wiederholungswerte aus BlissMixer übernommen. Sie können für einen einzelnen Auftrag geändert werden, ohne die globalen Einstellungen der Plugins zu verändern. Die folgenden Werte gelten als Standard für neue Aufträge.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_SECTION_DESC
+	EN	The track context action starts a destination-route job immediately. These defaults replace the full Extras editor for that quick action; every job still records the exact values it used.
+	DE	Die Kontextmenüaktion für einen Titel startet unmittelbar einen Auftrag zum Ziel. Für diese Schnellaktion gelten diese Standardwerte anstelle des vollständigen Extras-Editors. Jeder Auftrag speichert die tatsächlich verwendeten Werte.
+
+PLUGIN_BETTERCALLBLISS_INPUT_SOURCE
+	EN	Input source
+	DE	Eingabequelle
+
+PLUGIN_BETTERCALLBLISS_SAVED_PLAYLIST
+	EN	Saved playlist
+	DE	Gespeicherte Wiedergabeliste
+
+PLUGIN_BETTERCALLBLISS_CURRENT_PLAYER_QUEUE
+	EN	Current player queue
+	DE	Aktuelle Wiedergabeliste des Players
+
+PLUGIN_BETTERCALLBLISS_CHOOSE_PLAYLIST
+	EN	Choose a playlist...
+	DE	Wiedergabeliste auswählen ...
+
+PLUGIN_BETTERCALLBLISS_PLAYER_QUEUE
+	EN	Player queue
+	DE	Wiedergabeliste des Players
+
+PLUGIN_BETTERCALLBLISS_CHOOSE_PLAYER
+	EN	Choose a player...
+	DE	Player auswählen ...
+
+PLUGIN_BETTERCALLBLISS_QUEUE_SNAPSHOT
+	EN	Queue snapshot
+	DE	Momentaufnahme der Wiedergabeliste
+
+PLUGIN_BETTERCALLBLISS_QUEUE_FULL
+	EN	Use the full queue
+	DE	Gesamte Wiedergabeliste verwenden
+
+PLUGIN_BETTERCALLBLISS_QUEUE_CURRENT_UPCOMING
+	EN	Use now-playing and upcoming tracks
+	DE	Aktuellen und folgende Titel verwenden
+
+PLUGIN_BETTERCALLBLISS_QUEUE_UPCOMING
+	EN	Use only upcoming tracks
+	DE	Nur folgende Titel verwenden
+
+PLUGIN_BETTERCALLBLISS_SOURCE_ORDER
+	EN	Source-track order
+	DE	Reihenfolge der Ausgangstitel
+
+PLUGIN_BETTERCALLBLISS_OPTIMIZE_ORDER
+	EN	Optimize source order
+	DE	Reihenfolge der Ausgangstitel optimieren
+
+PLUGIN_BETTERCALLBLISS_PRESERVE_ORDER
+	EN	Preserve source order and fill gaps
+	DE	Reihenfolge der Ausgangstitel beibehalten und Lücken füllen
+
+PLUGIN_BETTERCALLBLISS_ADDITIONAL_TRACKS
+	EN	Additional tracks
+	DE	Zusätzliche Titel
+
+PLUGIN_BETTERCALLBLISS_NO_ADDITIONS
+	EN	No additions - only use the source tracks
+	DE	Keine Ergänzungen – nur Ausgangstitel verwenden
+
+PLUGIN_BETTERCALLBLISS_AUTO_IMPROVE
+	EN	Improve playlist automatically
+	DE	Wiedergabeliste automatisch verbessern
+
+PLUGIN_BETTERCALLBLISS_EXTEND_PLAYLIST
+	EN	Extend playlist
+	DE	Wiedergabeliste verlängern
+
+PLUGIN_BETTERCALLBLISS_CHOSEN_AMOUNT
+	EN	Chosen amount
+	DE	Gewählte Anzahl
+
+PLUGIN_BETTERCALLBLISS_EXACT_COUNT
+	EN	Add exactly N tracks
+	DE	Genau N Titel hinzufügen
+
+PLUGIN_BETTERCALLBLISS_TARGET_COUNT
+	EN	Reach a final track count
+	DE	Eine endgültige Titelanzahl erreichen
+
+PLUGIN_BETTERCALLBLISS_DOUBLE_COUNT
+	EN	Double the track count
+	DE	Titelanzahl verdoppeln
+
+PLUGIN_BETTERCALLBLISS_TARGET_DURATION
+	EN	Reach a target duration
+	DE	Eine Zieldauer erreichen
+
+PLUGIN_BETTERCALLBLISS_CANDIDATE_LIBRARY
+	EN	Candidate library
+	DE	Mediathek für Kandidaten
 
 PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT_DESC
 	EN	Maximum number of retained previews; leave blank for unlimited. Lowering a limit deletes older previews when settings are saved. Running jobs are protected.
@@ -391,3 +1516,299 @@ PLUGIN_BETTERCALLBLISS_HISTORY_DAYS
 PLUGIN_BETTERCALLBLISS_HISTORY_DAYS_DESC
 	EN	Delete previews older than this number of days, measured from their start. Leave blank for unlimited.
 	DE	Vorschauen nach dieser Anzahl von Tagen seit ihrem Start löschen. Leer bedeutet unbegrenzt.
+
+PLUGIN_BETTERCALLBLISS_RESULT_RETRY
+	EN	Run read-only preview again
+	DE	Schreibgeschützte Vorschau erneut starten
+
+PLUGIN_BETTERCALLBLISS_RESULT_SPACING
+	EN	Added the minimum feasible number of %s spacing tracks within the configured budget of %s. The complete route of %s tracks satisfies the selected repeat windows.
+	DE	Die kleinstmögliche Anzahl von %s Abstandstiteln wurde innerhalb des festgelegten Budgets von %s hinzugefügt. Die vollständige Folge mit %s Titeln erfüllt die ausgewählten Wiederholungsabstände.
+
+PLUGIN_BETTERCALLBLISS_RESULT_GUIDANCE_NOTE
+	EN	Providers only reorder Bliss-qualified candidates; the applied adjustment for each selected addition is shown below.
+	DE	Anbieter sortieren nur die von Bliss ausgewählten Kandidaten um; die angewendete Anpassung für jeden hinzugefügten Titel wird unten angezeigt.
+
+PLUGIN_BETTERCALLBLISS_RESULT_ADDED_SPACING
+	EN	[Added spacing]
+	DE	[Abstandstitel hinzugefügt]
+
+PLUGIN_BETTERCALLBLISS_RESULT_ADDED_EXTENSION
+	EN	[Added extension]
+	DE	[Ergänzung hinzugefügt]
+
+PLUGIN_BETTERCALLBLISS_RESULT_ADDED_BRIDGE
+	EN	[Added bridge]
+	DE	[Zwischentitel hinzugefügt]
+
+PLUGIN_BETTERCALLBLISS_RESULT_WAS_POSITION
+	EN	(was #%s)
+	DE	(vorher an Position %s)
+
+PLUGIN_BETTERCALLBLISS_RESULT_NO_ADDITIONS
+	EN	No tracks were added.
+	DE	Es wurden keine Titel hinzugefügt.
+
+PLUGIN_BETTERCALLBLISS_RESULT_WINDOWS_SATISFIED
+	EN	The source order already satisfies the repeat windows.
+	DE	Die ursprüngliche Reihenfolge erfüllt bereits die Wiederholungsabstände.
+
+PLUGIN_BETTERCALLBLISS_RESULT_NO_BENEFICIAL_BRIDGE
+	EN	No beneficial bridge was found within the selected settings.
+	DE	Mit den gewählten Einstellungen wurde kein vorteilhafter Übergang mit Zwischentiteln gefunden.
+
+PLUGIN_BETTERCALLBLISS_RESULT_ZERO_BUDGET
+	EN	The additions budget was zero, so no bridge could be added.
+	DE	Da keine zusätzlichen Titel erlaubt waren, konnte kein Zwischentitel eingefügt werden.
+
+PLUGIN_BETTERCALLBLISS_RESULT_SPACING_ADDITIONS
+	EN	Selected spacing additions
+	DE	Ausgewählte Abstandstitel
+
+PLUGIN_BETTERCALLBLISS_RESULT_EXTENSION_ADDITIONS
+	EN	Selected extension additions
+	DE	Ausgewählte Ergänzungen
+
+PLUGIN_BETTERCALLBLISS_RESULT_ADDITIONS_REASONS
+	EN	Additions and reasons
+	DE	Ergänzungen und Gründe
+
+PLUGIN_BETTERCALLBLISS_RESULT_CREATE_COPY
+	EN	Create optimized copy
+	DE	Optimierte Kopie erstellen
+
+PLUGIN_BETTERCALLBLISS_RESULT_OVERWRITE
+	EN	Overwrite existing playlist
+	DE	Bestehende Wiedergabeliste überschreiben
+
+PLUGIN_BETTERCALLBLISS_RESULT_INSERT_EXCURSION
+	EN	Insert excursion before upcoming queue
+	DE	Abstecher vor den nächsten Titeln einfügen
+
+PLUGIN_BETTERCALLBLISS_RESULT_REPLACE_UPCOMING
+	EN	Replace upcoming queue with route
+	DE	Nächste Titel durch die Folge ersetzen
+
+PLUGIN_BETTERCALLBLISS_RESULT_APPEND_ROUTE
+	EN	Append route to queue
+	DE	Folge an die Wiedergabeliste anhängen
+
+PLUGIN_BETTERCALLBLISS_RESULT_SEND_QUEUE
+	EN	Send to player queue
+	DE	An die Wiedergabeliste des Players senden
+
+PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_PRIMARY
+	EN	primary artist only
+	DE	nur Hauptinterpret
+
+PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_EXACT
+	EN	exact Bliss artist credit
+	DE	genau übereinstimmende Bliss-Interpretenangabe
+
+PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_SHARED
+	EN	any shared credited artist
+	DE	jeder gemeinsam genannte Interpret
+
+PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_BOUNDED
+	EN	bounded influence
+	DE	begrenzter Einfluss
+
+PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_TARGET
+	EN	target share
+	DE	Zielanteil
+
+PLUGIN_BETTERCALLBLISS_RESULT_IDENTITY_NOTE
+	EN	MusicBrainz artist IDs are preferred, with Lyrion contributor IDs and normalized names as fallbacks.
+	DE	MusicBrainz-Interpreten-IDs werden bevorzugt; andernfalls werden Lyrion-Mitwirkenden-IDs oder vereinheitlichte Namen verwendet.
+
+PLUGIN_BETTERCALLBLISS_RESULT_AUTOMATIC_ADDITIONS
+	EN	Added %s spacing tracks and %s transition-smoothing tracks.
+	DE	%s Abstandstitel und %s Titel zur Verbesserung der Übergänge hinzugefügt.
+
+PLUGIN_BETTERCALLBLISS_RESULT_DISTANCE
+	EN	fixed-source Adaptive distance
+	DE	adaptiver Abstand zur festen Ausgangsauswahl
+
+PLUGIN_BETTERCALLBLISS_RESULT_GUIDANCE
+	EN	guidance
+	DE	Einfluss
+
+PLUGIN_BETTERCALLBLISS_RESULT_BETWEEN
+	EN	between
+	DE	zwischen
+
+PLUGIN_BETTERCALLBLISS_RESULT_AND
+	EN	and
+	DE	und
+
+PLUGIN_BETTERCALLBLISS_RESULT_GAP_PERCENTILE
+	EN	direct gap at percentile %s
+	DE	direkter Übergang beim %s. Perzentil
+
+PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_PERCENT
+	EN	Direct transition: percentile %s.
+	DE	Direkter Übergang: %s. Perzentil.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_CAUTIOUS_TARGET_MET
+	EN	The measured direct transition already meets the adjacent quality target at percentile %s. Cautious mode still searched for bridge routes because the acoustic models disagreed, but no repeat-safe bridge improved the direct result by at least one percentile point, so Better Call Bliss retained the direct destination.
+	DE	Der direkte Übergang erfüllt bereits das Qualitätsziel für benachbarte Titel beim %s. Perzentil. Der vorsichtige Modus suchte trotzdem nach Zwischentiteln, weil die akustischen Modelle einander widersprachen. Keine Verbindung, die die Wiederholungsabstände einhält, verbesserte das direkte Ergebnis um mindestens einen Perzentilpunkt. Deshalb blieb der direkte Übergang zum Ziel erhalten.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_CAUTIOUS_NO_BENEFIT
+	EN	The adjacent quality target at percentile %s could not be reached. No repeat-safe bridge route improved the cautious direct-transition result by at least one percentile point, so Better Call Bliss retained the direct destination instead of inserting an unhelpful bridge. Its measured cautious result is at percentile %s.
+	DE	Das Qualitätsziel für benachbarte Titel beim %s. Perzentil wurde nicht erreicht. Keine Verbindung, die die Wiederholungsabstände einhält, verbesserte das vorsichtig bewertete direkte Ergebnis um mindestens einen Perzentilpunkt. Deshalb blieb der direkte Übergang zum Ziel erhalten, statt einen unnötigen Zwischentitel einzufügen. Das gemessene vorsichtige Ergebnis liegt beim %s. Perzentil.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_BEST_EFFORT
+	EN	The adjacent quality target at percentile %s could not be reached. Better Call Bliss selected the smoothest repeat-safe route found within the configured budget; its measured worst neighboring transition is at percentile %s.
+	DE	Das Qualitätsziel für benachbarte Titel beim %s. Perzentil wurde nicht erreicht. Better Call Bliss wählte die beste gefundene Verbindung innerhalb des vorgegebenen Budgets, die die Wiederholungsabstände einhält. Ihr schlechtester benachbarter Übergang liegt beim %s. Perzentil.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_BEST_ONE
+	EN	The route uses 1 intermediate track.
+	DE	Die Verbindung verwendet 1 Zwischentitel.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_BEST_MANY
+	EN	The route uses %s intermediate tracks.
+	DE	Die Verbindung verläuft mit %s Zwischentiteln.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_BEST_DIRECT
+	EN	The direct destination was selected.
+	DE	Der direkte Übergang zum Ziel wurde ausgewählt.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_SUCCESS_ONE
+	EN	The preview reaches the measured adjacent quality target with 1 intermediate track; its worst neighboring transition is at percentile %s.
+	DE	Die Vorschau erreicht das Qualitätsziel mit 1 Zwischentitel; ihr schlechtester benachbarter Übergang liegt beim %s. Perzentil.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_SUCCESS_MANY
+	EN	The preview reaches the measured adjacent quality target with %s intermediate tracks; its worst neighboring transition is at percentile %s.
+	DE	Die Vorschau erreicht das Qualitätsziel mit %s Zwischentiteln; ihr schlechtester benachbarter Übergang liegt beim %s. Perzentil.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_SUCCESS
+	EN	The measured direct transition already meets the adjacent quality target, so no intermediate is needed.
+	DE	Der direkte Übergang erfüllt bereits das festgelegte Qualitätsziel. Daher ist kein Zwischentitel erforderlich.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_ADAPTIVE_MODEL
+	EN	Acoustic model check: the configured adaptive context (%s) rated the direct jump at percentile %s and governed this route.
+	DE	Vergleich der akustischen Modelle: Der eingestellte adaptive Kontext (%s) bewertete den direkten Übergang mit dem %s. Perzentil und bestimmte diese Verbindung.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_STATIC_MODEL
+	EN	Current static BlissMixer weights rated it at percentile %s.
+	DE	Die aktuellen statischen BlissMixer-Gewichtungen bewerteten ihn mit dem %s. Perzentil.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_LEARNED_MODEL
+	EN	The learned matrix alone rated it at percentile %s.
+	DE	Die gelernte Matrix allein bewertete ihn mit dem %s. Perzentil.
+
+PLUGIN_BETTERCALLBLISS_ROUTE_MODEL_COMPARISON
+	EN	Acoustic safety check: static BlissMixer weights rated the direct jump at percentile %s; the learned matrix rated it at percentile %s. The %s view governed this route.
+	DE	Akustische Sicherheitsprüfung: Die statischen BlissMixer-Gewichtungen bewerteten den direkten Übergang mit dem %s. Perzentil, die gelernte Matrix mit dem %s. Perzentil. Die Ansicht %s bestimmte diese Verbindung.
+
+PLUGIN_BETTERCALLBLISS_RESULT_RELEVANCE_DETAIL
+	EN	Best %s, average %s, furthest %s Adaptive distance (lower is closer).
+	DE	Adaptiver Abstand: kleinster %s, durchschnittlicher %s, größter %s (kleiner bedeutet ähnlicher).
+
+PLUGIN_BETTERCALLBLISS_RESULT_FLOW_DETAIL
+	EN	%s; transition sum %s, worst transition %s, objective %s, arc error %s.
+	DE	%s; Summe der Übergänge %s, schlechtester Übergang %s, Zielfunktionswert %s, Verlaufsfehler %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_FIXED_GAPS
+	EN	Completed using %s. Filled each of %s source gaps with exactly %s bridge tracks; added %s tracks in total; final size %s.
+	DE	Mit %s abgeschlossen. In jede der %s Lücken der Ausgangsauswahl wurden genau %s Zwischentitel eingefügt; insgesamt %s zusätzliche Titel, endgültige Titelanzahl %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_DOUBLE_COUNT
+	EN	Completed using %s. Doubled %s source tracks to %s tracks by adding %s. Base-route objective %s.
+	DE	Mit %s abgeschlossen. Die Anzahl von %s Ausgangstiteln wurde auf %s verdoppelt, indem %s Titel hinzugefügt wurden. Zielfunktionswert der Ausgangsfolge: %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_TARGET_COUNT
+	EN	Completed using %s. Reached target size %s by adding exactly %s tracks. Base-route objective %s.
+	DE	Mit %s abgeschlossen. Die Zielanzahl %s wurde durch genau %s zusätzliche Titel erreicht. Zielfunktionswert der Ausgangsfolge: %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_EXACT_COUNT
+	EN	Completed using %s. Added exactly %s tracks; final size %s. Base-route objective %s.
+	DE	Mit %s abgeschlossen. Genau %s Titel hinzugefügt; endgültige Titelanzahl %s. Zielfunktionswert der Ausgangsfolge: %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_SEARCH_BOUND
+	EN	The bounded search found up to %s feasible additions; its structural upper bound was %s. Evidence mode: %s.
+	DE	Die begrenzte Suche fand bis zu %s mögliche Ergänzungen; ihre strukturelle Obergrenze war %s. Evidenzmodus: %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_AUTOMATIC
+	EN	Completed using %s. Added %s of at most %s tracks; final size %s. Base-route objective %s.
+	DE	Mit %s abgeschlossen. %s von höchstens %s Titeln hinzugefügt; endgültige Titelanzahl %s. Zielfunktionswert der Ausgangsfolge: %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_TRIGGER
+	EN	Trigger: above contextual percentile %s. Evidence mode: %s.
+	DE	Auslöser: oberhalb des kontextuellen %s. Perzentils. Evidenzmodus: %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_REORDER
+	EN	Completed using %s. Objective %s; worst transition %s.
+	DE	Mit %s abgeschlossen. Zielfunktionswert %s; schlechtester Übergang %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_GENRE_ACTIVE
+	EN	%s source-compatible genres were accepted; %s otherwise eligible candidates were excluded.
+	DE	%s zur Ausgangsauswahl passende Stilrichtungen wurden zugelassen; %s ansonsten geeignete Kandidaten wurden ausgeschlossen.
+
+PLUGIN_BETTERCALLBLISS_RESULT_GENRE_DISABLED
+	EN	Genre-group restriction was disabled.
+	DE	Die Einschränkung auf Stilrichtungsgruppen war deaktiviert.
+
+PLUGIN_BETTERCALLBLISS_RESULT_CHRISTMAS_EXCLUDED
+	EN	%s Christmas candidates were excluded.
+	DE	%s Weihnachtstitel wurden ausgeschlossen.
+
+PLUGIN_BETTERCALLBLISS_RESULT_CHRISTMAS_INACTIVE
+	EN	Christmas exclusion was inactive.
+	DE	Der Ausschluss von Weihnachtstiteln war nicht aktiv.
+
+PLUGIN_BETTERCALLBLISS_RESULT_SCORING_DETAIL
+	EN	%s. Seeds: %s. Configured learned share %s%%; effective base share %s%%.
+	DE	%s. Ausgangstitel: %s. Eingestellter Anteil der gelernten Matrix %s%%; tatsächlich verwendeter Basisanteil %s%%.
+
+PLUGIN_BETTERCALLBLISS_RESULT_VARIATION
+	EN	Variation %s%%; reproducible generation seed %s.
+	DE	Variation %s%%; reproduzierbarer Startwert %s.
+
+PLUGIN_BETTERCALLBLISS_RESULT_LOCAL_GUIDANCE_NONE
+	EN	Local-library guidance not applied (no additions).
+	DE	Der Einfluss lokaler Mediathekssignale wurde nicht angewendet (keine Ergänzungen).
+
+PLUGIN_BETTERCALLBLISS_RESULT_LOCAL_GUIDANCE
+	EN	Local-library guidance: play count %s, last played %s (horizon %s days), library age %s (horizon %s days).
+	DE	Einfluss lokaler Mediathekssignale: Wiedergabezähler %s, zuletzt gespielt %s (Horizont %s Tage), Mediatheksalter %s (Horizont %s Tage).
+
+PLUGIN_BETTERCALLBLISS_RESULT_LASTFM_DETAIL
+	EN	Last.fm: %s (similar tracks bounded %s%%, similar artists %s %s%%).
+	DE	Last.fm: %s (ähnliche Titel, begrenzter Einfluss %s%%; ähnliche Interpreten, %s %s%%).
+
+PLUGIN_BETTERCALLBLISS_RESULT_SENT_QUEUE
+	EN	Sent %s tracks to %s
+	DE	%s Titel an %s gesendet
+
+PLUGIN_BETTERCALLBLISS_RESULT_PLAYBACK_STARTED
+	EN	started playback
+	DE	Wiedergabe gestartet
+
+PLUGIN_BETTERCALLBLISS_RESULT_PLAYBACK_NOT_STARTED
+	EN	did not start playback
+	DE	Wiedergabe nicht gestartet
+
+PLUGIN_BETTERCALLBLISS_RESULT_OVERWRITE_DONE
+	EN	Overwritten and verified saved playlist %s (%s tracks, LMS ID %s).
+	DE	Gespeicherte Wiedergabeliste %s überschrieben und überprüft (%s Titel, LMS-ID %s).
+
+PLUGIN_BETTERCALLBLISS_RESULT_COPY_DONE
+	EN	Created and verified saved playlist %s (%s tracks, LMS ID %s).
+	DE	Gespeicherte Wiedergabeliste %s erstellt und überprüft (%s Titel, LMS-ID %s).
+
+PLUGIN_BETTERCALLBLISS_RESULT_QUEUE_RETRY
+	EN	The generated preview remains available; retry after checking the selected player.
+	DE	Die Vorschau bleibt verfügbar. Bitte den ausgewählten Player überprüfen und erneut versuchen.
+
+PLUGIN_BETTERCALLBLISS_RESULT_RESTORED
+	EN	The source playlist was restored if file replacement had already started.
+	DE	Falls das Ersetzen der Datei bereits begonnen hatte, wurde die ursprüngliche Wiedergabeliste wiederhergestellt.
+
+PLUGIN_BETTERCALLBLISS_RESULT_NO_INCOMPLETE
+	EN	No incomplete copy remains.
+	DE	Es verbleibt keine unvollständige Kopie.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SAVED_WEIGHTS
+	EN	Saved Extras weights: tempo %s, timbre %s, loudness %s, chroma %s. Used for Static scoring and, when applicable, Adaptive's static fallback.
+	DE	Gespeicherte Extras-Gewichtungen: Tempo %s, Klangfarbe %s, Lautstärke %s, Chroma %s. Sie werden für die statische Bewertung und gegebenenfalls für den statischen Rückgriff bei adaptiver Bewertung verwendet.

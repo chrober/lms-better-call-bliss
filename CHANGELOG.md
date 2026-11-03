@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.13
+
+- Add German translations for settings and Extras, including preview and route explanations.
+- Size optional preview-history fields to fit their localized placeholders and values.
+
 ## 0.22.12
 
 - Bundle optimizer 0.2.8, enabling combined automatic playlist improvement and

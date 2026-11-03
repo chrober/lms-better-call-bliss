@@ -12,6 +12,7 @@ use Slim::Utils::Log;
 use Slim::Utils::Prefs;
 use Slim::Utils::Misc;
 use Slim::Utils::Unicode;
+use Slim::Utils::Strings qw(string);
 use Slim::Web::HTTP;
 use Slim::Web::Pages;
 use Plugins::BetterCallBliss::AlbumDestination;
@@ -336,19 +337,19 @@ sub _job_mode_label {
     return Plugins::BetterCallBliss::RouteMode::action_name(
         $job->{route_source},
     ) if $job->{route_to_track};
-    return 'Reorder only' if ($options->{extension_mode} || 'none') eq 'none';
-    return 'Improve playlist automatically' if $purpose eq 'automatic_improvement'
+    return string('PLUGIN_BETTERCALLBLISS_JOB_REORDER') if ($options->{extension_mode} || 'none') eq 'none';
+    return string('PLUGIN_BETTERCALLBLISS_AUTO_IMPROVE') if $purpose eq 'automatic_improvement'
         || ($options->{extension_mode} || '') eq 'automatic_improvement';
-    return 'Improve difficult transitions' if $purpose eq 'automatic'
+    return string('PLUGIN_BETTERCALLBLISS_JOB_DIFFICULT_TRANSITIONS') if $purpose eq 'automatic'
         || ($options->{extension_mode} || '') eq 'automatic';
-    return 'Add spacing tracks as needed'
+    return string('PLUGIN_BETTERCALLBLISS_EXTRAS_OLD_SPACING')
         if $purpose eq 'satisfy_constraints';
-    return 'Extend playlist' if $purpose eq 'extend_playlist'
+    return string('PLUGIN_BETTERCALLBLISS_EXTEND_PLAYLIST') if $purpose eq 'extend_playlist'
         || ($options->{extension_mode} || '') eq 'fixed_source_extension';
-    return 'Fill every gap with N bridge tracks'
+    return string('PLUGIN_BETTERCALLBLISS_EXTRAS_FIXED_GAP_OPTION')
         if $purpose eq 'fixed_gap_count'
             || ($options->{extension_mode} || '') eq 'fixed_gap_count';
-    return 'Strict gap bridge placement';
+    return string('PLUGIN_BETTERCALLBLISS_JOB_STRICT_GAP');
 }
 
 sub _job_summary {
@@ -361,13 +362,13 @@ sub _job_summary {
     my $state = $job->{state} || 'unknown';
     my $status = $job->{stage} || $state;
     if ($state eq 'failed') {
-        $status = 'Failed: ' . ($job->{error_code} || 'UNKNOWN_FAILURE');
+        $status = string('PLUGIN_BETTERCALLBLISS_JOB_FAILED', $job->{error_code} || 'UNKNOWN_FAILURE');
     } elsif ($state eq 'completed') {
-        $status = 'Completed';
-        $status .= ' - added ' . (0 + ($job->{added_track_count} || 0))
-            if ($options->{extension_mode} || 'none') ne 'none';
+        $status = ($options->{extension_mode} || 'none') ne 'none'
+            ? string('PLUGIN_BETTERCALLBLISS_JOB_COMPLETED_ADDED', 0 + ($job->{added_track_count} || 0))
+            : string('PLUGIN_BETTERCALLBLISS_JOB_COMPLETED');
     } elsif ($state eq 'cancelled') {
-        $status = 'Cancelled';
+        $status = string('PLUGIN_BETTERCALLBLISS_JOB_CANCELLED');
     }
     return {
         id => $job->{id},
@@ -376,7 +377,7 @@ sub _job_summary {
         status => $status,
         status_detail => Plugins::BetterCallBliss::Jobs::status_detail($job),
         status_detail_lines => Plugins::BetterCallBliss::Jobs::status_detail_lines($job),
-        title => $job->{playlist_title} || 'Untitled source',
+        title => $job->{playlist_title} || string('PLUGIN_BETTERCALLBLISS_EXTRAS_UNTITLED'),
         mode => _job_mode_label($job),
         started_at => $started,
         started_text => Plugins::BetterCallBliss::Jobs::start_text($started),
@@ -480,8 +481,8 @@ sub _guidance_summary {
 
 sub _addition_reason_label {
     my $reason = shift || '';
-    return 'Repeat-window spacing' if $reason eq 'spacing';
-    return 'Transition smoothing' if $reason eq 'smoothing';
+    return string('PLUGIN_BETTERCALLBLISS_RESULT_REASON_SPACING') if $reason eq 'spacing';
+    return string('PLUGIN_BETTERCALLBLISS_RESULT_REASON_SMOOTHING') if $reason eq 'smoothing';
     return '';
 }
 
@@ -509,10 +510,10 @@ sub _result_view {
             || 'shared_artist',
         artist_repeat_mode_label =>
             ($job->{options}->{artist_repeat_mode} || 'shared_artist')
-                eq 'primary_artist' ? 'primary artist only'
+                eq 'primary_artist' ? string('PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_PRIMARY')
             : ($job->{options}->{artist_repeat_mode} || 'shared_artist')
-                eq 'exact_bliss_credit' ? 'exact Bliss artist credit'
-            : 'any shared credited artist',
+                eq 'exact_bliss_credit' ? string('PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_EXACT')
+            : string('PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_SHARED'),
         source_track_count => 0 + ($job->{track_count} || 0),
         variation_percent => $job->{options}->{variation_percent},
         generation_seed => $job->{options}->{generation_seed},
@@ -526,7 +527,7 @@ sub _result_view {
         lastfm_artist_mode => $job->{options}->{lastfm_artist_mode},
         lastfm_artist_mode_label =>
             ($job->{options}->{lastfm_artist_mode} || '') eq 'bounded_influence'
-                ? 'bounded influence' : 'target share',
+                ? string('PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_BOUNDED') : string('PLUGIN_BETTERCALLBLISS_RESULT_ARTIST_TARGET'),
         last_played_horizon_days => $job->{options}->{last_played_horizon_days},
         library_age_horizon_days => $job->{options}->{library_age_horizon_days},
         lastfm_state => $job->{lastfm_state},

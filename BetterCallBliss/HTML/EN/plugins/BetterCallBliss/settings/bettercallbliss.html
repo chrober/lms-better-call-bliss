@@ -55,11 +55,11 @@
   <div id="preview-history-section">
     <p>[% "PLUGIN_BETTERCALLBLISS_HISTORY_SECTION_DESC" | string %]</p>
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT" desc="PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT_DESC" %]
-      <input type="number" min="1" step="1" class="stdedit" name="pref_preview_history_limit" id="preview_history_limit" value="[% prefs.preview_history_limit | html %]" placeholder="[% 'PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED' | string %]" size="8">
+      <input type="number" min="1" step="1" class="stdedit optional-number-autosize" name="pref_preview_history_limit" id="preview_history_limit" value="[% prefs.preview_history_limit | html %]" placeholder="[% 'PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED' | string %]" size="8">
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_HISTORY_DAYS" desc="PLUGIN_BETTERCALLBLISS_HISTORY_DAYS_DESC" %]
-      <input type="number" min="1" step="1" class="stdedit" name="pref_preview_history_days" id="preview_history_days" value="[% prefs.preview_history_days | html %]" placeholder="[% 'PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED' | string %]" size="8">
+      <input type="number" min="1" step="1" class="stdedit optional-number-autosize" name="pref_preview_history_days" id="preview_history_days" value="[% prefs.preview_history_days | html %]" placeholder="[% 'PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED' | string %]" size="8">
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_HISTORY_SIZE" desc="PLUGIN_BETTERCALLBLISS_HISTORY_SIZE_DESC" %]
@@ -69,14 +69,9 @@
 
   <br><hr style="opacity:0.4" class="sub-sep"><br>
 
-  <b style="font-size:125%" id="job-defaults-section-header" class="shown-section" onclick="toggleSection('job-defaults-section')">Job defaults</b><br><br>
+  <b style="font-size:125%" id="job-defaults-section-header" class="shown-section" onclick="toggleSection('job-defaults-section')">[% "PLUGIN_BETTERCALLBLISS_JOB_DEFAULTS_SECTION" | string %]</b><br><br>
   <div id="job-defaults-section">
-    <p>
-      Bliss scoring and repeat values are initialized from BlissMixer whenever
-      the Extras job editor opens. They can then be overridden for one job without
-      changing either plugin's global settings. The values below supply the
-      defaults for new jobs.
-    </p>
+    <p>[% "PLUGIN_BETTERCALLBLISS_JOB_DEFAULTS_SECTION_DESC" | string %]</p>
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_RESTART_COUNT" desc="PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC" %]
       <input type="number" min="10" max="500" class="stdedit sliderInput_10_500_1" name="pref_restart_count" id="restart_count" value="[% prefs.restart_count %]" size="6">
@@ -115,12 +110,12 @@
 
   <b style="font-size:125%" id="route-section-header" class="hidden-section" onclick="toggleSection('route-section')">Bliss me there...</b><br><br>
   <div id="route-section" class="hidden">
-    <p>The track context action starts a destination-route job immediately. These defaults replace the full Extras editor for that quick action; every job still records the exact values it used.</p>
+    <p>[% "PLUGIN_BETTERCALLBLISS_ROUTE_SECTION_DESC" | string %]</p>
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY" desc="PLUGIN_BETTERCALLBLISS_ROUTE_LENGTH_POLICY_DESC" %]
       <select class="stdedit" name="pref_route_length_policy" id="route_length_policy" onchange="updateRouteLengthPolicy()">
-        <option value="automatic"[% IF prefs.route_length_policy == 'automatic' %] selected[% END %]>Choose automatically</option>
-        <option value="exact"[% IF prefs.route_length_policy == 'exact' %] selected[% END %]>Use an exact count</option>
+        <option value="automatic"[% IF prefs.route_length_policy == 'automatic' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_EXTRAS_AUTOMATIC" | string %]</option>
+        <option value="exact"[% IF prefs.route_length_policy == 'exact' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT" | string %]</option>
       </select>
     [% END %]
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION" desc="PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_CAUTION_DESC" %]
@@ -151,7 +146,7 @@
       <input type="number" min="0" max="8" class="stdedit sliderInput_0_8_1" name="pref_route_exact_intermediates" id="route_exact_intermediates" value="[% prefs.route_exact_intermediates %]" size="6"[% UNLESS prefs.route_length_policy == 'exact' %] disabled[% END %]>
     [% END %]
 
-    <p>The transition-quality threshold is a distance rank, not a similarity percentage. Lower values are stricter: they cause more direct transitions to be searched and require better neighboring legs in Automatic destination routes. At 30, for example, a leg is acceptable only when no more than about 30% of the relevant comparison population is acoustically closer. Cautious mode may search even below the threshold when acoustic models strongly disagree. If no route reaches the target, a bridge is used only when it improves the cautious direct result by at least one percentile point; otherwise the direct destination is retained and reported. Exact uses the same adjacent-path objective for its fixed count. Current BlissMixer scoring, context, and repeat settings plus the Last.fm settings below are captured when the action starts.</p>
+    <p>[% "PLUGIN_BETTERCALLBLISS_ROUTE_QUALITY_EXPLANATION" | string %]</p>
   </div>
 
   <br><hr style="opacity:0.4" class="sub-sep"><br>
@@ -181,6 +176,36 @@
 
 <script type="text/javascript">
   [% PROCESS "plugins/BlissGuidance/settings/guidance-provider-controls.js" %]
+
+  function sizeOptionalNumberFields() {
+    var inputs = document.querySelectorAll('input.optional-number-autosize');
+    var canvas = document.createElement('canvas');
+    var context = canvas.getContext('2d');
+    if (!context) return;
+    var updates = [];
+    Array.prototype.forEach.call(inputs, function (input) {
+      function update() {
+        var style = window.getComputedStyle(input);
+        var placeholderStyle = window.getComputedStyle(input, '::placeholder');
+        context.font = placeholderStyle.font || style.font;
+        var placeholderWidth = context.measureText(input.placeholder || '').width;
+        context.font = style.font;
+        var valueWidth = context.measureText(input.value || '').width;
+        var decoration = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0)
+          + (parseFloat(style.borderLeftWidth) || 0) + (parseFloat(style.borderRightWidth) || 0);
+        input.style.boxSizing = 'border-box';
+        input.style.minWidth = '0';
+        input.style.maxWidth = '100%';
+        input.style.width = Math.ceil(Math.max(placeholderWidth, valueWidth) + decoration + 32) + 'px';
+      }
+      input.addEventListener('input', update);
+      updates.push(update);
+      update();
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () { updates.forEach(function (update) { update(); }); });
+    }
+  }
 
   function toggleSection(id) {
     var section = document.getElementById(id);
@@ -242,6 +267,7 @@
   }
 
   window.addEventListener('load', function () {
+    sizeOptionalNumberFields();
     var defaults = {
       'compatibility-section': true,
       'preview-history-section': true,
