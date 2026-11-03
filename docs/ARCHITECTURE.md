@@ -149,11 +149,24 @@ scanner pattern: open private output handles, temporarily untie `STDERR`, fork
 with an argument array through `Proc::Background`, restore the tie immediately,
 and poll without blocking the server event loop.
 
-The Extras form is reconstructed from the in-memory job's normalized options on
+The Extras form is reconstructed from the selected job's normalized options on
 every polling, completion, failure, and copy-action request. Controls that are
 irrelevant to the selected mode are read-only rather than omitted from form
 submission. This preserves the user's full draft for adjustment and rerun while
 keeping the job artifact authoritative for the result being reviewed.
+
+### Preview history
+
+Managed preview jobs have private, sanitized history records alongside their
+artifacts. Terminal records are restored after an LMS restart; a job that was
+still running is displayed as interrupted/failed rather than resumed. Extras
+pages through the recent records and can restore a retained job's options for
+another preview. The user-configured count and age limits may be unlimited; a
+storage limit is mandatory. Cleanup applies the limits together, removing older
+eligible managed jobs first while protecting running or in-use jobs. Legacy
+directories without valid history records are not automatically removed.
+Searchable or downloadable reports and explicit disposal are separate future
+work.
 
 Every route and bridge job requests a structured native `performance` object.
 Completion logs include wall time, native time, and database-cache state at

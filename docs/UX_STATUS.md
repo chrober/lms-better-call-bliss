@@ -25,7 +25,7 @@ fall through to either working mode.
 | Track or album context > Bliss me there... | Working | Starts the destination-route search at the current song. Future queue entries are excluded from captured context. After validating that the same song is still current, the action preserves it and playback, removes only later entries, and appends the generated route suffix. An album is emitted completely in canonical disc/track order. A stale or failed route changes nothing. |
 | Track or album context > Bliss me there... and back again! | Working | Uses the current song as start, the selected track or complete ordered album as the required destination, and the first upcoming track as a locked rejoin. It inserts the complete excursion before the otherwise unchanged upcoming queue. One intermediate budget is shared by the destination's entry and exit boundaries; stale current or rejoin anchors prevent any queue command. |
 | Track or album context > Bliss me there... when we're through! | Working | Starts a destination route at the queue end in the background using saved defaults, without opening Extras or requiring an Accept button. It appends only the generated suffix and selected track or complete ordered album after validating that the captured queue end is unchanged. |
-| Full EN/DE menu localization | Not connected yet | The Extras shell is English-first; settings labels have EN/DE strings. |
+| EN/DE localization | Partial | Plugin settings and much of the Extras editor and result presentation have English and German text. Native optimizer messages remain English; complete coverage and client testing are still open. |
 
 ## Optimization wizard
 
@@ -42,7 +42,7 @@ fall through to either working mode.
 | Add exactly N tracks | Working under Extend playlist | Adds exactly the validated user-entered number of unique eligible local tracks or fails without returning a partial playlist. The visible Extend playlist path is not limited by `S - 1` gaps. |
 | Reach target track count | Working under Extend playlist | User enters the desired final track count. The plugin derives `N = T - S` and runs fixed-source membership selection. |
 | Fill every gap with N bridge tracks | Working | Accepts `N = 1..8`, derives `N * (S - 1)` additions, and globally plans exact anchored paths for all source gaps under shared uniqueness, repeat, guidance, and contextual scoring state. It adds no opening or closing tracks, fails without a partial result, reports per-gap progress, and verifies the native proof before output. |
-| Target duration | Implemented on main; requires compatible optimizer | Independent below/above tolerances default to 10%; valid Lyrion source durations are required. The bounded native search selects duration-compatible additions, enforces repeat rules, and fails without a partial result if none is found. A source already within bounds receives no additions. The preview verifies the final duration and displays target, bounds, result, and deviation. |
+| Target duration | Working | Independent below/above tolerances default to 10%; valid Lyrion source durations are required. The bounded native search selects duration-compatible additions, enforces enabled repeat rules, and fails without a partial result if none is found. A source already within bounds receives no additions. The preview verifies the final duration and displays target, bounds, result, and deviation. |
 | Double track count | Working under Extend playlist | Adds exactly `S` local tracks, yielding `2S` tracks, through fixed-source membership selection. |
 | Numeric editor for N/T | Working for Extend playlist and fixed-gap targets | Exact-addition input is validated as 1-100 and converted to final size `S + N`. Target track count is validated as 3-500 and must exceed `S`. Double count is disabled when `2S` would exceed the 500-track target limit. Fixed-gap input accepts 1-8 bridges per gap and shows the derived addition and final counts; every final size is capped at 500. |
 | Musical context window (previous tracks) | Working, per job | Rolling preceding-track count used for every directional Adaptive leg. A bridge C between A and B is scored as history-to-C and updated-history-with-C-to-B; variance-based weighting begins with two available context tracks. |
@@ -72,7 +72,7 @@ fall through to either working mode.
 
 | Screen or action | Status | Current behavior |
 | --- | --- | --- |
-| Active preview | Partial | Real running job, retained only in LMS process memory; the page polls JSON-RPC status in place, keeps a manual full-result link, and exposes Cancel while the native process is still running. When the job reaches a terminal state, the page performs one anchored server render to show the full result. |
+| Active preview | Partial | The page polls JSON-RPC status in place, keeps a manual full-result link, and exposes Cancel while the native process is still running. A recorded job interrupted by a server restart is shown as failed, rather than resumed. When a job reaches a terminal state, the page performs one anchored server render to show the full result. |
 | Result | Working | Recent completed, failed, cancelled, or interrupted previews can be reopened after an LMS restart. Retention combines a required storage limit (default 250 MB) with optional count (default eight) and age limits; earlier job formats are not automatically migrated. |
 | Recent preview navigation | Working | Recent previews show source, start time, mode and status in pages of eight within the existing panel. Running previews remain visible separately. |
 | Refresh result | Working | Automatically re-reads the selected in-memory job through `bettercallbliss job status` every 1.5 seconds while running without reloading or resetting scroll position. A manual full-result link remains available. |
@@ -85,14 +85,14 @@ fall through to either working mode.
 | Transition summary | Partial | Aggregate reorder diagnostics are real; difficult-transition, exact-count, and fixed-gap workflows show decisions for original gaps, while a general per-leg drill-down remains open. |
 | Warnings | Partial | Repeat validation, read-only safety, Last.fm provider fallback states, and a service-wide-error circuit breaker are real; a complete provider/cache dashboard remains open. |
 | Running and recent previews | Partial | Extras shows running previews and paginated retained previews. Newly recorded jobs are restored across LMS restarts; a job interrupted by a restart is shown as failed so its captured parameters can be reused. The oldest managed jobs are removed as needed to meet the configured limits, except while background work may still use them. Legacy directories without history records are not automatically removed. Search, export, and explicit result disposal remain future work. |
-| Full report | Partial | In-memory artifact identity is shown; durable report storage and download are not connected. |
+| Full report | Partial | Retained previews can be reopened with their saved details; a separate searchable or downloadable report is not connected. |
 | Non-LMS Bliss-row audit | Working | The audit is now diagnostic rather than part of the normal workflow: Extras shows it only when the current inventory has excluded rows. The private JSON ledger retains current/resolved state, reason, row identity, metadata, and first/last-seen observations across LMS restarts. Existing case-variant duplicates are identified separately and include the related exact LMS identity. |
 | Accept preview | Working | Completed previews expose the output target only after the result has been reviewed. Changing output fields does not rerun the optimizer, and failed accept attempts keep the same preview available for retry. |
 | Create optimized copy | Working | Separate post-Preview action writes and verifies a new LMS playlist. Blank names preserve Unicode from the decoded source filename and choose the next free numbered suffix; explicit collisions fail visibly and safely. |
 | Overwrite source | Working | Separate post-Preview action requires explicit confirmation, replaces the source playlist file and LMS catalog order, and attempts to restore the original file if publication fails. |
 | Send to player queue | Working | Separate post-Preview action sends the generated order to a selected player with Replace queue, Replace upcoming tracks, Append to queue, or Play next behavior, and optional playback start. Same-player Replace upcoming tracks rechecks the live queue and trims already-played preview items when the snapshot is still recognizable. |
-| Change options and rerun | Working for in-memory jobs | Polling, success, failure, and accept-action pages restore every normalized job value into the editor; users can adjust those values and start another Preview. Drafts do not survive an LMS restart. |
-| Discard result | Not connected yet | Managed results leave the history when superseded by newer completed jobs; explicit disposal is not yet available. |
+| Change options and rerun | Working for retained jobs | Polling, success, failure, and accept-action pages restore normalized job values into the editor; users can adjust them and start another Preview. Unsaved editor drafts do not survive an LMS restart. |
+| Discard result | Not connected yet | Managed results are removed when needed to meet the configured history limits; explicit disposal is not yet available. |
 
 ## Settings
 
@@ -113,7 +113,7 @@ Adaptive otherwise uses variance weighting for multi-track contexts plus Static
 BlissMixer weights for one-track contexts. Extended Isolation Forest remains
 disabled and labeled.
 
-**Additional route-search attempts**, automatic bridge budget, automatic trigger percentile, and enabled-provider values supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The obsolete unconnected settings section has been removed; ListenBrainz and persistent report retention remain future work.
+**Additional route-search attempts**, automatic bridge budget, automatic trigger percentile, and enabled-provider values supply defaults for new jobs. Bounded settings use the same slider-enhanced numeric input convention as BlissMixer where practical. Every value that affects optimization is copied into and may be overridden by the job. The obsolete unconnected settings section has been removed; ListenBrainz and dedicated report export remain future work.
 
 Last.fm is optional and is supplied by the separately installed Last.fm
 provider. It supports provider-owned acquisition through either LastMix or a

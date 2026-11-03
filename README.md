@@ -53,6 +53,7 @@ Use a snapshot of your player queue, work with the upcoming tracks, and send a n
 - **Multiple playlist strategies:** Reorder, preserve source order, add bridges, add exact counts, extend a list, or fill source gaps with an exact number of bridging tracks.
 - **Playlist and queue inputs:** Use saved playlists, full player queues, upcoming tracks only, or the current-plus-upcoming queue segment.
 - **Preview for editor jobs:** Inspect the proposed track order, additions, and diagnostic information before committing to a result. **Bliss me there...** shortcuts instead apply valid routes automatically after checking the live queue.
+- **Recent preview history:** Reopen saved previews after an LMS restart and reuse their settings. Configure count, age, and storage limits on the settings page; recent results are paginated in Extras.
 - **Flexible destinations:** Create a verified copy of a playlist, overwrite the source where available, or replace, append to, or insert tracks into a player's queue. Optional start playback is supported.
 - **Repeat rules remain hard constraints:** The optimizer checks track, artist, and album spacing rather than treating them as soft preferences.
 - **Configurable search:** Choose Fast, Balanced, or Thorough searches, plus Normal or Cautious automatic bridge handling.
