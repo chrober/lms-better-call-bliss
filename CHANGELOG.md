@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.22.14
+
+- Bundle optimizer 0.2.9 with earlier repeat-window feasibility checks and
+  improved preservation of queue anchors for destination round trips.
+- Report impossible repeat constraints before candidate preparation where
+  they can be proven, including destination albums and fixed-gap previews.
+- Localize scan-pause messages and report rejected destination actions through
+  the player's error notification.
+- Improve recent preview navigation layout.
+
 ## 0.22.13
 
 - Add German translations for settings and Extras, including preview and route explanations.
