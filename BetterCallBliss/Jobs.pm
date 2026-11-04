@@ -15,6 +15,7 @@ use Slim::Music::Import;
 use Slim::Utils::Log;
 use Slim::Utils::Misc;
 use Slim::Utils::Prefs;
+use Slim::Utils::Strings ();
 use Slim::Utils::Timers;
 use Slim::Utils::Unicode;
 use Slim::Player::Client;
@@ -976,6 +977,30 @@ sub _start_preview_from_built {
                 ),
                 'PRESERVED_ANCHOR_REPEAT_CONFLICT',
             );
+            return $jobs{$job_id};
+        }
+    }
+
+    if (($effective->{extension_mode} || '') eq 'destination_route'
+        && $built->{request}->{route}->{rejoin_track_id}) {
+        my $request = $built->{request};
+        my $windows = $request->{repeat_windows} || {};
+        my $minimum = Plugins::BetterCallBliss::RepeatConflicts::round_trip_minimum_intermediates(
+            $request->{source_tracks}, $windows->{artist} || 0,
+            $windows->{album} || 0, $windows->{track} || 0,
+            $windows->{artist_identity_mode},
+        );
+        my $extension = $request->{extension} || {};
+        my $budget = ($extension->{destination_mode} || '') eq 'exact'
+            ? ($extension->{additional_track_count} || 0)
+            : ($extension->{max_added_tracks} || 0);
+        if ($minimum > $budget) {
+            _fail_deferred_route_job($job_id,
+                Slim::Utils::Strings::string(
+                    'PLUGIN_BETTERCALLBLISS_ROUND_TRIP_REPEAT_BUDGET',
+                    $minimum, $budget,
+                ),
+                'DESTINATION_ROUTE_BUDGET_UNSATISFIABLE');
             return $jobs{$job_id};
         }
     }

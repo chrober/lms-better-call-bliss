@@ -25,6 +25,8 @@ BEGIN {
     package Slim::Utils::Timers;
     our @callbacks;
     sub setTimer { push @callbacks, $_[2] }
+    package Slim::Utils::Strings;
+    sub string { return shift }
     package HistoryTestProcess;
     sub alive { $_[0]->{alive} }
     sub die { 0 }
@@ -39,7 +41,7 @@ BEGIN {
     sub native_provider_state { undef }
     for my $module (qw(
         Proc/Background.pm Slim/Music/Import.pm Slim/Utils/Log.pm
-        Slim/Utils/Misc.pm Slim/Utils/Prefs.pm Slim/Utils/Timers.pm
+        Slim/Utils/Misc.pm Slim/Utils/Prefs.pm Slim/Utils/Timers.pm Slim/Utils/Strings.pm
         Slim/Utils/Unicode.pm Slim/Player/Client.pm Slim/Player/Playlist.pm
         Slim/Player/Source.pm Plugins/BetterCallBliss/BlissCompatibility.pm
         Plugins/BetterCallBliss/BridgeResolver.pm Plugins/BetterCallBliss/CandidateInventory.pm

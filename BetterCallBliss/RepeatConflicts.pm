@@ -77,4 +77,33 @@ sub preserved_order_conflict_message {
         . 'Choose Add spacing tracks as needed or Optimize source order.';
 }
 
+# Only count conflicts between fixed boundary anchors. This is a necessary
+# lower bound, not a claim that a route with this many candidates exists.
+sub round_trip_minimum_intermediates {
+    my ($tracks, $artist_window, $album_window, $track_window, $mode) = @_;
+    return 0 unless ref($tracks) eq 'ARRAY' && @$tracks >= 3;
+    my $required = 0;
+    for my $pair ([$tracks->[0], $tracks->[1]], [$tracks->[-2], $tracks->[-1]]) {
+        my ($left, $right) = @$pair;
+        return 0 unless ref($left) eq 'HASH' && ref($right) eq 'HASH';
+        my $minimum = 0;
+        if ($artist_window && Plugins::BetterCallBliss::RepeatIdentity::tracks_repeat_artist($left, $right, $mode)) {
+            $minimum = $artist_window;
+        }
+        my $album = _repeat_key($left->{album});
+        if ($album_window && length($album) && $album eq _repeat_key($right->{album})) {
+            $minimum = $album_window if $album_window > $minimum;
+        }
+        if ($track_window && (
+            (defined($left->{id}) && defined($right->{id}) && $left->{id} eq $right->{id})
+            || (defined($left->{database_file}) && defined($right->{database_file})
+                && $left->{database_file} eq $right->{database_file})
+        )) {
+            $minimum = $track_window if $track_window > $minimum;
+        }
+        $required += $minimum;
+    }
+    return $required;
+}
+
 1;
