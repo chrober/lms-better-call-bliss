@@ -40,7 +40,7 @@ The track and album context menus offer three shortcuts:
 - **Bliss me there... and back again!** — Take a detour to the selected track or album, then return to your original upcoming queue.
 - **Bliss me there... when we're through!** — Leave the current queue in place and append a route to your destination at the end.
 
-These shortcuts work in Material Skin; they are not currently clickable in Lyrion's Default Skin. The rest of Better Call Bliss, including the Extras editor, does not require Material Skin.
+These shortcuts work in [Material Skin](https://github.com/CDrummond/lms-material); they are not currently clickable in Lyrion's Default Skin. The rest of Better Call Bliss, including the Extras editor, does not require [Material Skin](https://github.com/CDrummond/lms-material).
 
 An album destination includes its local audio tracks in disc and track order. Unlike playlist and queue editor jobs, these shortcuts **do not ask you to accept a preview**: they apply the completed route automatically, but only after verifying that the captured player-queue anchors still match. If the route fails or the queue has changed in an incompatible way, no queue changes are made.
 
