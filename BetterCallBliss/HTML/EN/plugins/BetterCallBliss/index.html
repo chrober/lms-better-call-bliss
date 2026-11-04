@@ -103,7 +103,7 @@
 
 [% IF !bettercallbliss_capability.ready %]
   <div class="bea-warning">
-    <b>[% IF bettercallbliss_capability.scanning %]Preview temporarily paused.[% ELSE %]Preview unavailable.[% END %]</b>
+    <b>[% IF bettercallbliss_capability.scanning %][% 'PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_PAUSED' | string %][% ELSE %][% 'PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_UNAVAILABLE' | string %][% END %]</b>
     <ul>[% FOREACH problem = bettercallbliss_capability.problems %]<li>[% problem | html %]</li>[% END %]</ul>
     [% IF bettercallbliss_capability.scanning %]<p>[% "PLUGIN_BETTERCALLBLISS_EXTRAS_RESCAN_NOTE" | string %]</p>[% END %]
   </div>

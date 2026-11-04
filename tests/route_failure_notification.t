@@ -5,6 +5,10 @@ use Test::More;
 use lib "$FindBin::Bin/..";
 
 BEGIN {
+    package Slim::Utils::Timers;
+    our @timers;
+    sub setTimer { push @timers, [@_] }
+    $INC{'Slim/Utils/Timers.pm'} = __FILE__;
     package Slim::Control::Request;
     our @notifications;
     sub notifyFromArray { push @notifications, $_[1] }
@@ -12,6 +16,13 @@ BEGIN {
 }
 
 require "$FindBin::Bin/../BetterCallBliss/UserNotification.pm";
+
+Plugins::BetterCallBliss::UserNotification::scan_blocked('aa:bb:cc:dd:ee:ff', 'Scan in progress');
+is(scalar @Slim::Utils::Timers::timers, 1, 'scan rejection schedules the notification after the menu response');
+$Slim::Utils::Timers::timers[-1][2]->();
+is_deeply($Slim::Control::Request::notifications[-1], [
+    'material-skin', 'notification', 'error', 'Scan in progress', undef, 'aa:bb:cc:dd:ee:ff', 15,
+], 'scan rejection sends its readable message as a player-targeted error');
 
 my $quick_route = {
     quick_route => 1,
@@ -33,7 +44,7 @@ is_deeply(
         'Bliss me there failed: no valid route was found',
         undef, 'aa:bb:cc:dd:ee:ff', 15,
     ],
-    'the error snackbar is targeted to the route player and remains visible',
+    'the error notification is targeted to the route player and remains visible',
 );
 
 my $count = scalar @Slim::Control::Request::notifications;

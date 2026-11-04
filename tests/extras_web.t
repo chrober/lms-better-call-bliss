@@ -25,6 +25,7 @@ BEGIN {
             PLUGIN_BETTERCALLBLISS_JOB_COMPLETED_ADDED => { EN => 'Completed - added %s', DE => 'Abgeschlossen – %s hinzugefügt' },
             PLUGIN_BETTERCALLBLISS_RESULT_REASON_SPACING => { EN => 'Repeat-window spacing', DE => 'Abstand für Wiederholungsregeln' },
             PLUGIN_BETTERCALLBLISS_RESULT_REASON_SMOOTHING => { EN => 'Transition smoothing', DE => 'Übergangsverbesserung' },
+            PLUGIN_BETTERCALLBLISS_EXTRAS_SCAN_PROBLEM => { EN => 'The music library is being scanned; the preview will resume when the scan finishes.', DE => 'Die Musikbibliothek wird durchsucht; die Vorschau wird fortgesetzt, sobald der Suchlauf abgeschlossen ist.' },
         );
         my $value = $values{$token}{$language} // $token;
         return @args ? sprintf($value, @args) : $value;
@@ -168,6 +169,11 @@ is(Plugins::BetterCallBliss::Web::_job_mode_label({options => {
 }}), 'Improve playlist automatically', 'running job identifies the combined workflow');
 
 $Slim::Utils::Strings::language = 'DE';
+is_deeply(Plugins::BetterCallBliss::Web::_localized_capability_problems([
+    'an LMS library scan is updating the catalog; preview will resume when it finishes',
+    'another error',
+]), ['Die Musikbibliothek wird durchsucht; die Vorschau wird fortgesetzt, sobald der Suchlauf abgeschlossen ist.', 'another error'],
+    'scan capability message is localized without hiding other problems');
 is(Plugins::BetterCallBliss::Web::_addition_reason_label('spacing'), 'Abstand für Wiederholungsregeln',
     'addition reason is localized');
 my $translated_summary = Plugins::BetterCallBliss::Web::_job_summary({
@@ -179,5 +185,9 @@ is($translated_summary->{mode}, 'Wiedergabeliste automatisch verbessern',
 is($translated_summary->{status}, 'Abgeschlossen – 3 hinzugefügt',
     'recent preview completion and addition count are localized');
 $Slim::Utils::Strings::language = 'EN';
+is_deeply(Plugins::BetterCallBliss::Web::_localized_capability_problems([
+    'an LMS library scan is updating the catalog; preview will resume when it finishes',
+]), ['The music library is being scanned; the preview will resume when the scan finishes.'],
+    'scan capability message is also available in English');
 
 done_testing();

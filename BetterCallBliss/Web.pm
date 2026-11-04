@@ -873,11 +873,20 @@ sub _result_view {
     return $view;
 }
 
+sub _localized_capability_problems {
+    my ($problems) = @_;
+    return [map {
+        $_ eq 'an LMS library scan is updating the catalog; preview will resume when it finishes'
+            ? string('PLUGIN_BETTERCALLBLISS_EXTRAS_SCAN_PROBLEM') : $_
+    } @{ $problems || [] }];
+}
+
 sub handler {
     my ($client, $params) = @_;
     $params ||= {};
     Plugins::BetterCallBliss::Jobs::note_web_activity();
     my $capability = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+    $capability->{problems} = _localized_capability_problems($capability->{problems});
     my $selected_player_id = $client ? (eval { $client->id } || '') : '';
     my $defaults = Plugins::BetterCallBliss::JobOptions::defaults(
         $capability, $selected_player_id,

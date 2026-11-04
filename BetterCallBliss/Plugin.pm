@@ -25,6 +25,7 @@ use Plugins::BetterCallBliss::Defaults qw(
 );
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::RouteMode;
+use Plugins::BetterCallBliss::UserNotification;
 use Plugins::BetterCallBliss::Web;
 
 my $log = Slim::Utils::Log->addLogCategory({
@@ -425,6 +426,7 @@ sub routeToCommand {
         $request->addResult('error_code', 'LIBRARY_SCAN_IN_PROGRESS');
         $request->addResult('error', $message);
         $request->addResult('message', $message);
+        Plugins::BetterCallBliss::UserNotification::scan_blocked($client->id, $message);
         $request->addResult('offset', 0);
         $request->addResult('count', 1);
         $request->setResultLoopHash('item_loop', 0, {

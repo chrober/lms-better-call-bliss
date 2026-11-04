@@ -14,6 +14,18 @@ PLUGIN_BETTERCALLBLISS_LIBRARY_SCAN_IN_PROGRESS
 	EN	Better Call Bliss is temporarily unavailable while the music library is being scanned. Please try again when the scan has finished.
 	DE	Better Call Bliss ist während des Musikbibliotheks-Scans vorübergehend nicht verfügbar. Bitte versuche es erneut, sobald der Scan abgeschlossen ist.
 
+PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_PAUSED
+	EN	Preview temporarily paused.
+	DE	Vorschau vorübergehend pausiert.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_UNAVAILABLE
+	EN	Preview unavailable.
+	DE	Vorschau nicht verfügbar.
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SCAN_PROBLEM
+	EN	The music library is being scanned; the preview will resume when the scan finishes.
+	DE	Die Musikbibliothek wird durchsucht; die Vorschau wird fortgesetzt, sobald der Suchlauf abgeschlossen ist.
+
 DEBUG_PLUGIN_BETTERCALLBLISS
 	EN	Better Call Bliss
 	DE	Better Call Bliss
