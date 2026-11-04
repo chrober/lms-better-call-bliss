@@ -12,6 +12,7 @@ architecture, algorithms, or several repositories.
 
 | Improvement | Intended outcome | Size | Status | Authoritative source |
 | --- | --- | ---: | --- | --- |
+| Background candidate-library cache refresh after scans | Optionally warm previously used library scopes after a Lyrion scan and Bliss analysis, without delaying an interactive preview or route. | L | Proposed | [Post-scan cache refresh](docs/CANDIDATE_CACHE_REFRESH.md) |
 | Avoid skips and favor recent affinity | Use APC skip history as a one-way avoidance signal and positive DPSV as an optional recent-enjoyment boost. | L | Proposed | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
 | Player-specific history and ratings | Evaluate player affinity and explicit ratings only after a privacy, coverage, and source-policy design. | L | Deferred | [Local library guidance plan](https://github.com/chrober/bliss-similarity-design/blob/main/LOCAL_LIBRARY_GUIDANCE_PLAN.md) |
 | Playlist provenance and parameter restoration | Embed reproducible Better Call Bliss metadata in generated M3U files, then offer to restore those parameters when the playlist is reused as input. | M | Planned | [Product roadmap](https://github.com/chrober/bliss-similarity-design/blob/main/BLISS_PLAYLIST_OPTIMIZER_IMPLEMENTATION_PLAN.md) |
