@@ -845,10 +845,6 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_EXPLAIN
 	EN	Changing the selection affects future new previews. Load selected defaults to apply it here. Running a preview does not save defaults; loading leaves the selected source and player unchanged.
 	DE	Die Auswahl gilt für zukünftige Vorschauen. Lade die gewählten Standardwerte, um sie hier anzuwenden. Das Starten einer Vorschau speichert keine Standardwerte; beim Laden bleiben Quelle und Player unverändert.
 
-PLUGIN_BETTERCALLBLISS_EXTRAS_RECENT_NOTE
-	EN	Recent previews are kept across LMS restarts, up to the configured limit.
-	DE	Letzte Vorschauen bleiben bis zu den konfigurierten Grenzen auch nach einem Lyrion-Neustart erhalten.
-
 PLUGIN_BETTERCALLBLISS_EXTRAS_RESCAN_NOTE
 	EN	This page will check again automatically.
 	DE	Diese Seite prüft den Status automatisch erneut.

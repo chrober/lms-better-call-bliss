@@ -94,6 +94,22 @@ fall through to either working mode.
 | Change options and rerun | Working for retained jobs | Polling, success, failure, and accept-action pages restore normalized job values into the editor; users can adjust them and start another Preview. Unsaved editor drafts do not survive an LMS restart. |
 | Discard result | Not connected yet | Managed results are removed when needed to meet the configured history limits; explicit disposal is not yet available. |
 
+### Preview-history navigation ideas
+
+The current recent-preview list is paginated in the browser; the server still
+collects and sends the retained job summaries for status updates. For larger
+histories, consider:
+
+- Search by playlist or queue name and filter by completed, failed, or cancelled status.
+- Add first/last and direct-page navigation with the current page and result count.
+- Keep the viewed entries stable when new jobs finish, and indicate that newer results are available.
+- Page and filter on the server so updates transfer only the requested history page; keep running-job updates independent.
+- Keep list rows compact and load full preview details on demand.
+
+Navigation and filtering must not change retention settings or delete jobs. Whether
+these controls stay in the current panel or move to a dedicated history page is
+still an open UX decision.
+
 ## Settings
 
 The Extras editor can initialize reusable options either from current plugin

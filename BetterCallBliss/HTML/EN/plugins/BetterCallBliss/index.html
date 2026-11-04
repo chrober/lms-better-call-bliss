@@ -139,6 +139,7 @@
         [% END %]
       </ul>
       <h4 id="bea-recent-jobs-heading"[% UNLESS bettercallbliss_recent_jobs.size %] class="bea-hidden"[% END %]>[% "PLUGIN_BETTERCALLBLISS_EXTRAS_RECENT" | string %]</h4>
+      <p id="bea-recent-pagination" class="bea-hidden"><button type="button" id="bea-recent-prev">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIOUS" | string %]</button> <span id="bea-recent-page"></span> <button type="button" id="bea-recent-next">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_NEXT" | string %]</button></p>
       <ul class="bea-job-list" id="bea-recent-jobs-list">
         [% FOREACH item = bettercallbliss_recent_jobs %]
           <li data-job-id="[% item.id | html %]">
@@ -148,8 +149,6 @@
           </li>
         [% END %]
       </ul>
-      <p id="bea-recent-pagination" class="bea-hidden"><button type="button" id="bea-recent-prev">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIOUS" | string %]</button> <span id="bea-recent-page"></span> <button type="button" id="bea-recent-next">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_NEXT" | string %]</button></p>
-      <p class="bea-note[% UNLESS bettercallbliss_recent_jobs.size %] bea-hidden[% END %]" id="bea-recent-jobs-note">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_RECENT_NOTE" | string %]</p>
   </details>
 
 [% IF bettercallbliss_candidate_inventory.ready && bettercallbliss_candidate_inventory.unmatched_row_count %]
@@ -1919,7 +1918,6 @@
       }
       setVisibleById('bea-recent-jobs-heading', recent.length > 0);
       setVisibleById('bea-recent-jobs-list', recent.length > 0);
-      setVisibleById('bea-recent-jobs-note', recent.length > 0);
       bindCancelForms(overview);
     }
 
