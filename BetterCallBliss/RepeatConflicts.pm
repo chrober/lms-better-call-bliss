@@ -79,31 +79,62 @@ sub preserved_order_conflict_message {
 
 # Only count conflicts between fixed boundary anchors. This is a necessary
 # lower bound, not a claim that a route with this many candidates exists.
-sub round_trip_minimum_intermediates {
-    my ($tracks, $artist_window, $album_window, $track_window, $mode) = @_;
-    return 0 unless ref($tracks) eq 'ARRAY' && @$tracks >= 3;
-    my $required = 0;
-    for my $pair ([$tracks->[0], $tracks->[1]], [$tracks->[-2], $tracks->[-1]]) {
-        my ($left, $right) = @$pair;
-        return 0 unless ref($left) eq 'HASH' && ref($right) eq 'HASH';
-        my $minimum = 0;
-        if ($artist_window && Plugins::BetterCallBliss::RepeatIdentity::tracks_repeat_artist($left, $right, $mode)) {
-            $minimum = $artist_window;
-        }
-        my $album = _repeat_key($left->{album});
-        if ($album_window && length($album) && $album eq _repeat_key($right->{album})) {
-            $minimum = $album_window if $album_window > $minimum;
-        }
-        if ($track_window && (
-            (defined($left->{id}) && defined($right->{id}) && $left->{id} eq $right->{id})
-            || (defined($left->{database_file}) && defined($right->{database_file})
-                && $left->{database_file} eq $right->{database_file})
-        )) {
-            $minimum = $track_window if $track_window > $minimum;
-        }
-        $required += $minimum;
+sub _repeat_window_for_pair {
+    my ($left, $right, $artist, $album, $track, $mode) = @_;
+    my ($maximum, $kind) = (0, '');
+    if ($artist && Plugins::BetterCallBliss::RepeatIdentity::tracks_repeat_artist($left, $right, $mode)) {
+        ($maximum, $kind) = ($artist, 'artist');
     }
-    return $required;
+    my $album_key = _repeat_key($left->{album});
+    if ($album && length($album_key) && $album_key eq _repeat_key($right->{album}) && $album > $maximum) {
+        ($maximum, $kind) = ($album, 'album');
+    }
+    if ($track && $track > $maximum && (
+        (defined($left->{id}) && length($left->{id}) && defined($right->{id}) && $left->{id} eq $right->{id})
+        || (defined($left->{database_file}) && defined($right->{database_file})
+            && length($left->{database_file})
+            && $left->{database_file} eq $right->{database_file})
+    )) { ($maximum, $kind) = ($track, 'track') }
+    return ($maximum, $kind);
+}
+
+sub destination_minimum_intermediates {
+    my ($history, $tracks, $rejoin, $artist, $album, $track, $mode) = @_;
+    return 0 unless ref($tracks) eq 'ARRAY' && @$tracks >= ($rejoin ? 3 : 2);
+    my @prefix = (@{$history || []}, $tracks->[0]);
+    my $last = $#$tracks - ($rejoin ? 1 : 0);
+    my ($outward, $return) = (0, 0);
+    for my $i (1 .. $last) {
+        for my $p (0 .. $#prefix) {
+            my ($window) = _repeat_window_for_pair($prefix[$p], $tracks->[$i], $artist, $album, $track, $mode);
+            my $need = $window + 1 - (@prefix - $p + $i - 1);
+            $outward = $need if $need > $outward;
+        }
+        if ($rejoin) {
+            my ($window) = _repeat_window_for_pair($tracks->[$i], $tracks->[-1], $artist, $album, $track, $mode);
+            my $need = $window + 1 - ($last - $i + 1);
+            $return = $need if $need > $return;
+        }
+    }
+    return $outward + $return;
+}
+
+sub round_trip_minimum_intermediates {
+    my ($tracks, $artist, $album, $track, $mode) = @_;
+    return destination_minimum_intermediates([], $tracks, 1, $artist, $album, $track, $mode);
+}
+
+sub fixed_gap_repeat_conflict {
+    my ($tracks, $per_gap, $artist, $album, $track, $mode) = @_;
+    for my $right (1 .. $#$tracks) {
+        for my $left (0 .. $right - 1) {
+            my ($window, $kind) = _repeat_window_for_pair($tracks->[$left], $tracks->[$right], $artist, $album, $track, $mode);
+            my $distance = ($right - $left) * ($per_gap + 1);
+            return {kind => $kind, left => $left + 1, right => $right + 1, window => $window, distance => $distance}
+                if $window && $distance <= $window;
+        }
+    }
+    return;
 }
 
 1;

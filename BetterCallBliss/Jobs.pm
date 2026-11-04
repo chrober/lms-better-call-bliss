@@ -981,15 +981,22 @@ sub _start_preview_from_built {
         }
     }
 
-    if (($effective->{extension_mode} || '') eq 'destination_route'
-        && $built->{request}->{route}->{rejoin_track_id}) {
+    if (($effective->{extension_mode} || '') eq 'destination_route') {
         my $request = $built->{request};
         my $windows = $request->{repeat_windows} || {};
-        my $minimum = Plugins::BetterCallBliss::RepeatConflicts::round_trip_minimum_intermediates(
-            $request->{source_tracks}, $windows->{artist} || 0,
-            $windows->{album} || 0, $windows->{track} || 0,
-            $windows->{artist_identity_mode},
-        );
+        my $route = $request->{route} || {};
+        my $tracks = $request->{source_tracks} || [];
+        my ($start_index) = grep { ($tracks->[$_]->{id} || '') eq ($route->{start_track_id} || '') } 0 .. $#$tracks;
+        my $minimum = 0;
+        if (defined $start_index && $start_index < $#$tracks) {
+            my @history = (@{$request->{history_tracks} || []}, @$tracks[0 .. $start_index - 1]);
+            my @anchors = @$tracks[$start_index .. $#$tracks];
+            $minimum = Plugins::BetterCallBliss::RepeatConflicts::destination_minimum_intermediates(
+                \@history, \@anchors, $route->{rejoin_track_id} ? 1 : 0,
+                $windows->{artist} || 0, $windows->{album} || 0, $windows->{track} || 0,
+                $windows->{artist_identity_mode},
+            );
+        }
         my $extension = $request->{extension} || {};
         my $budget = ($extension->{destination_mode} || '') eq 'exact'
             ? ($extension->{additional_track_count} || 0)
@@ -997,10 +1004,38 @@ sub _start_preview_from_built {
         if ($minimum > $budget) {
             _fail_deferred_route_job($job_id,
                 Slim::Utils::Strings::string(
-                    'PLUGIN_BETTERCALLBLISS_ROUND_TRIP_REPEAT_BUDGET',
+                    'PLUGIN_BETTERCALLBLISS_DESTINATION_REPEAT_BUDGET',
                     $minimum, $budget,
                 ),
                 'DESTINATION_ROUTE_BUDGET_UNSATISFIABLE');
+            return $jobs{$job_id};
+        }
+    }
+
+    my $repeat_extension = $effective->{extension_mode} || '';
+    if (($repeat_extension eq 'fixed_gap_count' || $repeat_extension eq 'exact_count'
+            || $repeat_extension eq 'target_count' || $repeat_extension eq 'double_count')
+        && ($effective->{ordering_policy} || '') eq 'preserve_order') {
+        my $request = $built->{request};
+        my $windows = $request->{repeat_windows} || {};
+        my $conflict = Plugins::BetterCallBliss::RepeatConflicts::fixed_gap_repeat_conflict(
+            $request->{source_tracks}, $repeat_extension eq 'fixed_gap_count'
+                ? $request->{extension}->{tracks_per_gap}
+                : ($request->{extension}->{max_tracks_per_gap} || 1),
+            $windows->{artist} || 0, $windows->{album} || 0, $windows->{track} || 0,
+            $windows->{artist_identity_mode},
+        );
+        if ($conflict) {
+            _fail_deferred_route_job($job_id, Slim::Utils::Strings::string(
+                $repeat_extension eq 'fixed_gap_count'
+                    ? 'PLUGIN_BETTERCALLBLISS_FIXED_GAP_REPEAT_CONFLICT'
+                    : 'PLUGIN_BETTERCALLBLISS_EXACT_GAP_REPEAT_CONFLICT',
+                $conflict->{left}, $conflict->{right},
+                Slim::Utils::Strings::string('PLUGIN_BETTERCALLBLISS_REPEAT_KIND_' . uc($conflict->{kind})),
+                $conflict->{distance}, $conflict->{window},
+            ), $repeat_extension eq 'fixed_gap_count'
+                ? 'FIXED_GAP_SOURCE_REPEAT_CONFLICT'
+                : 'EXACT_COUNT_SOURCE_REPEAT_CONFLICT');
             return $jobs{$job_id};
         }
     }

@@ -35,6 +35,42 @@ my $return_to_album = [
 is(Plugins::BetterCallBliss::RepeatConflicts::round_trip_minimum_intermediates(
     $return_to_album, 5, 10, 0, 'exact_bliss_credit'), 0,
     'existing queue anchor pair does not require extra bridge tracks');
+my $history = [{id => 'history', artist => 'A', album => 'X'}];
+my $one_way_album = [
+    {id => 'start', artist => 'C', album => 'Z'},
+    {id => 'first', artist => 'B', album => 'Y'},
+    {id => 'second', artist => 'A', album => 'X'},
+];
+is(Plugins::BetterCallBliss::RepeatConflicts::destination_minimum_intermediates(
+    $history, $one_way_album, 0, 0, 5, 0, 'exact_bliss_credit'), 3,
+    'one-way album checks later destination tracks against listening history');
+my $one_way_track = [
+    {id => 'start', artist => 'A', album => 'X'},
+    {id => 'target', artist => 'A', album => 'X'},
+];
+is(Plugins::BetterCallBliss::RepeatConflicts::destination_minimum_intermediates(
+    [], $one_way_track, 0, 5, 10, 0, 'exact_bliss_credit'), 10,
+    'one-way track computes the strictest boundary requirement');
+is(Plugins::BetterCallBliss::RepeatConflicts::destination_minimum_intermediates(
+    [], $one_way_track, 0, 0, 0, 0, 'exact_bliss_credit'), 0,
+    'one-way track is feasible with repeat windows disabled');
+is(Plugins::BetterCallBliss::RepeatConflicts::destination_minimum_intermediates(
+    [], $return_to_album, 1, 5, 10, 0, 'exact_bliss_credit'), 0,
+    'round trip exempts the original queue anchors from each other');
+my $fixed = [
+    {id => 'a', artist => 'A', album => 'X', database_file => 'same'},
+    {id => 'b', artist => 'B', album => 'Y', database_file => 'same'},
+];
+is(Plugins::BetterCallBliss::RepeatConflicts::fixed_gap_repeat_conflict(
+    $fixed, 1, 0, 0, 2, 'exact_bliss_credit')->{kind}, 'track',
+    'fixed gaps detect two identifiers for the same track');
+ok(!Plugins::BetterCallBliss::RepeatConflicts::fixed_gap_repeat_conflict(
+    $fixed, 2, 0, 0, 2, 'exact_bliss_credit'),
+    'fixed gap with enough positions is feasible');
+my $empty_files = [ {id => 'one', database_file => ''}, {id => 'two', database_file => ''} ];
+ok(!Plugins::BetterCallBliss::RepeatConflicts::fixed_gap_repeat_conflict(
+    $empty_files, 1, 0, 0, 2, 'exact_bliss_credit'),
+    'empty database paths are not treated as identical track identities');
 my $album_destination = [
     { id => 'start', artist => 'A', album => 'X' },
     { id => 'first', artist => 'A', album => 'Y' },
@@ -63,4 +99,15 @@ my $aliased = [
 is(Plugins::BetterCallBliss::RepeatConflicts::round_trip_minimum_intermediates(
     $aliased, 0, 0, 100, 'exact_bliss_credit'), 100,
     'two identifiers for the same analyzed file satisfy the track-repeat test');
+open my $jobs_file, '<', "$FindBin::Bin/../BetterCallBliss/Jobs.pm" or die $!;
+local $/;
+my $jobs_source = <$jobs_file>;
+close $jobs_file;
+my $destination_check = index($jobs_source, 'RepeatConflicts::destination_minimum_intermediates(');
+my $fixed_check = index($jobs_source, 'RepeatConflicts::fixed_gap_repeat_conflict(');
+my $inventory = index($jobs_source, 'CandidateInventory::prepare_async(', $destination_check);
+ok($destination_check >= 0 && $inventory > $destination_check,
+    'destination preflight is positioned before asynchronous candidate inventory');
+ok($fixed_check >= 0 && $inventory > $fixed_check,
+    'fixed-gap preflight is positioned before asynchronous candidate inventory');
 done_testing();
