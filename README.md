@@ -40,6 +40,8 @@ The track and album context menus offer three shortcuts:
 - **Bliss me there... and back again!** — Take a detour to the selected track or album, then return to your original upcoming queue.
 - **Bliss me there... when we're through!** — Leave the current queue in place and append a route to your destination at the end.
 
+These shortcuts work in Material Skin; they are not currently clickable in Lyrion's Default Skin. The rest of Better Call Bliss, including the Extras editor, does not require Material Skin.
+
 An album destination includes its local audio tracks in disc and track order. Unlike playlist and queue editor jobs, these shortcuts **do not ask you to accept a preview**: they apply the completed route automatically, but only after verifying that the captured player-queue anchors still match. If the route fails or the queue has changed in an incompatible way, no queue changes are made.
 
 ### Improve what's coming up next
@@ -82,6 +84,7 @@ The separate **Bliss Guidance** plugins are passive providers: installing them a
 - A completed Bliss library analysis, with readable `bliss.db` in the LMS preferences directory.
 - A configured local music folder whose tracks match that analysis.
 - A compatible native `bliss-playlist-optimizer` binary. Official plugin-feed packages provide binaries for Windows, macOS, x86_64 Linux, ARM64 Linux, and ARMHF Linux.
+- **For the “Bliss me there...” shortcuts:** [Material Skin](https://github.com/CDrummond/lms-material); the shortcuts are not currently clickable in Lyrion's Default Skin.
 - **Optional:** Bliss Mixer Lab and/or compatible Bliss Guidance providers, installed separately.
 
 Without an enabled Bliss Mixer Lab and its valid learned matrix, Better Call Bliss can still operate: its Adaptive behavior falls back to Bliss Mixer-style use of variance for multi-track contexts and configured Static weights for one-track contexts. See [Is a learned matrix optional?](ALGORITHMS.md#is-a-learned-matrix-optional).
