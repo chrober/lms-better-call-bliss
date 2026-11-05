@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.22.15
+
+- Clarify run and result terminology in the Extras interface.
+- Disable the spacing goal when repeat rules are disabled, while retaining the
+  previous selection for later use and when reopening a run.
+
 ## 0.22.14
 
 - Bundle optimizer 0.2.9 with earlier repeat-window feasibility checks and
