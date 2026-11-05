@@ -101,6 +101,29 @@ my $capability = {
 };
 
 my $automatic_capability = {%$capability, automatic_improvement_available => 1};
+eval {
+    Plugins::BetterCallBliss::JobOptions::normalize($automatic_capability, {
+        addition_purpose => 'automatic_improvement',
+        satisfy_repeat_windows => 1, smooth_transitions => 0,
+        repeat_constraints_enabled_present => 1,
+    });
+};
+like($@, qr/Select at least one/, 'spacing alone is not effective when repeat rules are disabled');
+my $disabled_spacing = Plugins::BetterCallBliss::JobOptions::normalize($automatic_capability, {
+    addition_purpose => 'automatic_improvement',
+    satisfy_repeat_windows => 1, smooth_transitions => 1,
+    repeat_constraints_enabled_present => 1,
+});
+is($disabled_spacing->{satisfy_repeat_windows}, 0, 'disabled repeat rules do not request spacing');
+is($disabled_spacing->{saved_satisfy_repeat_windows}, 1, 'disabled spacing retains its selection for reopening');
+is($disabled_spacing->{smooth_transitions}, 1, 'smoothing remains active with repeat rules disabled');
+my $disabled_submitted_spacing = Plugins::BetterCallBliss::JobOptions::normalize($automatic_capability, {
+    addition_purpose => 'automatic_improvement', satisfy_repeat_windows_present => 1,
+    saved_satisfy_repeat_windows => 1, smooth_transitions => 1,
+    repeat_constraints_enabled_present => 1,
+});
+is($disabled_submitted_spacing->{saved_satisfy_repeat_windows}, 1,
+    'disabled HTML checkbox preserves its selection via the hidden field');
 my $repeat_disabled = Plugins::BetterCallBliss::JobOptions::normalize($capability, {
     repeat_constraints_enabled_present => 1, artist_window => 5, album_window => 10, track_window => 100,
 });

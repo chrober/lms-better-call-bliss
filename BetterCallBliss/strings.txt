@@ -4,11 +4,11 @@ PLUGIN_BETTERCALLBLISS_NAME
 
 PLUGIN_BETTERCALLBLISS_TAGLINE
 	EN	Playlist Breaking Bad? Better Call Bliss.
-	DE	Wiedergabeliste Breaking Bad? Better Call Bliss.
+	DE	Playlist Breaking Bad? Better Call Bliss.
 
 PLUGIN_BETTERCALLBLISS_DESC
 	EN	Playlist Breaking Bad? Better Call Bliss. Bliss-powered playlist optimization.
-	DE	Wiedergabeliste Breaking Bad? Better Call Bliss. Bliss-basierte Wiedergabelisten-Optimierung.
+	DE	Playlist Breaking Bad? Better Call Bliss. Bliss-basierte Wiedergabelisten-Optimierung.
 
 PLUGIN_BETTERCALLBLISS_LIBRARY_SCAN_IN_PROGRESS
 	EN	Better Call Bliss is temporarily unavailable while the music library is being scanned. Please try again when the scan has finished.
@@ -39,16 +39,16 @@ PLUGIN_BETTERCALLBLISS_REPEAT_KIND_TRACK
 	DE	Titel
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_PAUSED
-	EN	Preview temporarily paused.
-	DE	Vorschau vorübergehend pausiert.
+	EN	Run temporarily paused.
+	DE	Lauf vorübergehend pausiert.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_UNAVAILABLE
-	EN	Preview unavailable.
-	DE	Vorschau nicht verfügbar.
+	EN	Run unavailable.
+	DE	Lauf nicht verfügbar.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_SCAN_PROBLEM
-	EN	The music library is being scanned; the preview will resume when the scan finishes.
-	DE	Die Musikbibliothek wird durchsucht; die Vorschau wird fortgesetzt, sobald der Suchlauf abgeschlossen ist.
+	EN	The music library is being scanned; the run will resume when the scan finishes.
+	DE	Die Musikbibliothek wird durchsucht; der Lauf wird fortgesetzt, sobald der Suchlauf abgeschlossen ist.
 
 DEBUG_PLUGIN_BETTERCALLBLISS
 	EN	Better Call Bliss
@@ -107,24 +107,24 @@ PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX
 	DE	Standard-Suffix für optimierte Kopien
 
 PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC
-	EN	Initial suffix used when a reviewed preview is saved as a new playlist.
-	DE	Anfänglicher Suffix, der beim Speichern einer überprüften Vorschau als neue Wiedergabeliste verwendet wird.
+	EN	Initial suffix used when a reviewed result is saved as a new playlist.
+	DE	Anfänglicher Suffix, der beim Speichern eines überprüften Ergebnisses als neue Wiedergabeliste verwendet wird.
 
 PLUGIN_BETTERCALLBLISS_RESTART_COUNT
 	EN	Route search restarts
 	DE	Neustarts der Routensuche
 
 PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC
-	EN	Deterministic base-route search effort used by new previews; each job can override it.
-	DE	Deterministischer Suchaufwand für die Basisroute neuer Vorschauen; pro Vorgang änderbar.
+	EN	Deterministic base-route search effort used by new runs; each run can override it.
+	DE	Deterministischer Suchaufwand für die Basisroute neuer Läufe; pro Lauf änderbar.
 
 PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX
 	EN	Default extended-copy suffix
 	DE	Standard-Suffix für erweiterte Kopien
 
 PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX_DESC
-	EN	Initial suffix used when an automatic extension preview is saved.
-	DE	Anfänglicher Suffix, der beim Speichern einer automatisch erweiterten Vorschau verwendet wird.
+	EN	Initial suffix used when an automatically extended result is saved.
+	DE	Anfänglicher Suffix, der beim Speichern eines automatisch erweiterten Ergebnisses verwendet wird.
 
 PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET
 	EN	Default automatic bridge budget
@@ -147,8 +147,8 @@ PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT
 	DE	Standardvariation (%)
 
 PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT_DESC
-	EN	Bounded reproducible variation used by new Extras jobs and Bliss me there previews. Zero always chooses the strict best-ranked result.
-	DE	Begrenzte reproduzierbare Variation für neue Extras-Vorgänge und Bliss-me-there-Vorschauen. Null wählt immer das streng bestplatzierte Ergebnis.
+	EN	Bounded reproducible variation used by new Extras and Bliss me there runs. Zero always chooses the strict best-ranked result.
+	DE	Begrenzte reproduzierbare Variation für neue Extras- und Bliss-me-there-Läufe. Null wählt immer das streng bestplatzierte Ergebnis.
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE
 	EN	Artist identity for repeat windows
@@ -399,8 +399,8 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY
 	DE	Eingebauter Standardwert des Anbieters
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_JOB
-	EN	Per-preview value
-	DE	Wert für diese Vorschau
+	EN	Value for this run
+	DE	Wert für diesen Lauf
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING
 	EN	(will apply when saved)
@@ -410,16 +410,16 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET
 	EN	Use inherited default
 	DE	Übernommenen Standardwert verwenden
 PLUGIN_BETTERCALLBLISS_HISTORY_SECTION
-	EN	Preview history
-	DE	Vorschauverlauf
+	EN	Run history
+	DE	Laufverlauf
 
 PLUGIN_BETTERCALLBLISS_HISTORY_SECTION_DESC
-	EN	All limits apply together: older previews are removed whenever necessary to satisfy any configured limit. Running previews are protected. Leave the number or age blank for no limit; the storage limit is required.
-	DE	Alle Grenzen gelten gemeinsam: Ältere Vorschauen werden bei Bedarf entfernt, damit keine konfigurierte Grenze überschritten wird. Laufende Vorschauen bleiben geschützt. Anzahl und Alter können für unbegrenzte Aufbewahrung leer bleiben; das Speicherlimit ist verpflichtend.
+	EN	All limits apply together: older runs are removed whenever necessary to satisfy any configured limit. Running jobs are protected. Leave the number or age blank for no limit; the storage limit is required.
+	DE	Alle Grenzen gelten gemeinsam: Ältere Läufe werden bei Bedarf entfernt, damit keine konfigurierte Grenze überschritten wird. Laufende Aufträge bleiben geschützt. Anzahl und Alter können für unbegrenzte Aufbewahrung leer bleiben; das Speicherlimit ist verpflichtend.
 
 PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT
-	EN	Number of retained previews
-	DE	Anzahl aufbewahrter Vorschauen
+	EN	Number of retained runs
+	DE	Anzahl aufbewahrter Läufe
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RUNNING_BANNER
 	EN	Optimization is running.
@@ -430,8 +430,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_CHECK_AGAIN
 	DE	Erneut prüfen
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RERUN_PREVIEW
-	EN	Run preview again
-	DE	Vorschau erneut starten
+	EN	Run again
+	DE	Erneut ausführen
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RUNNING
 	EN	Running
@@ -446,8 +446,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_DURATION
 	DE	Dauer:
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_OPEN
-	EN	Open
-	DE	Öffnen
+	EN	Open result
+	DE	Ergebnis öffnen
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIOUS
 	EN	Previous
@@ -458,8 +458,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_NEXT
 	DE	Weiter
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_HEADER
-	EN	Defaults for new previews
-	DE	Standardwerte für neue Vorschauen
+	EN	Defaults for new runs
+	DE	Standardwerte für neue Läufe
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_SOURCE
 	EN	Defaults source
@@ -710,8 +710,8 @@ PLUGIN_BETTERCALLBLISS_DYNAMIC_FIXED_OPT
 	DE	Zuerst wird die Reihenfolge der Ausgangstitel optimiert und festgelegt. Danach werden genau N Zwischentitel in jede entstandene Lücke eingefügt. Alle Lücken werden gemeinsam geplant, damit eine lokale Wahl spätere Lücken nicht unmöglich macht.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_FIXED_PRES
-	EN	Keep the current source order and insert exactly N bridge tracks into every existing gap. All gaps are planned together and the preview fails without a partial result if the exact route cannot satisfy the constraints.
-	DE	Die Reihenfolge der Ausgangstitel bleibt erhalten und in jede Lücke werden genau N Zwischentitel eingefügt. Alle Lücken werden gemeinsam geplant. Können die Regeln nicht eingehalten werden, schlägt die Vorschau ohne Teilergebnis fehl.
+	EN	Keep the current source order and insert exactly N bridge tracks into every existing gap. All gaps are planned together and the run fails without a partial result if the exact route cannot satisfy the constraints.
+	DE	Die Reihenfolge der Ausgangstitel bleibt erhalten und in jede Lücke werden genau N Zwischentitel eingefügt. Alle Lücken werden gemeinsam geplant. Können die Regeln nicht eingehalten werden, schlägt der Lauf ohne Teilergebnis fehl.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_AMOUNT_EXACT
 	EN	Extend-only amount control: add exactly this many tracks to the source snapshot. This is a playlist-length request, not one bridge per existing gap.
@@ -774,8 +774,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_COMBO_WARNING
 	DE	Wenn die Reihenfolge erhalten bleibt und keine Titel ergänzt werden, bleibt das Ergebnis unverändert. Wähle eine Übergangsverbesserung oder eine Verlängerung mit einem Ziel größer als null.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT_NOTE
-	EN	The result is all-or-nothing: the preview succeeds with exactly this many unique additions or fails without offering a partial playlist.
-	DE	Alles oder nichts: Die Vorschau enthält entweder genau diese Anzahl unterschiedlicher zusätzlicher Titel oder schlägt ohne teilweise Wiedergabeliste fehl.
+	EN	The result is all-or-nothing: the run succeeds with exactly this many unique additions or fails without offering a partial playlist.
+	DE	Alles oder nichts: Das Ergebnis enthält entweder genau diese Anzahl unterschiedlicher zusätzlicher Titel oder der Lauf schlägt ohne teilweise Wiedergabeliste fehl.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CHOOSE_LIMIT
 	EN	Choose a source to see the current limit.
@@ -818,8 +818,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_DISABLED_PROVIDER
 	DE	Aktiviere diesen Anbieter in den Better-Call-Bliss-Einstellungen, um seine Standardwerte oder abweichende Werte für diesen Auftrag zu verwenden.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_UNCHECKED
-	EN	When unchecked, artist, album and track repeat windows are not applied to this preview. Your entered values are kept.
-	DE	Wenn diese Option deaktiviert ist, werden die Wiederholungsabstände für Interpreten, Alben und Titel für diese Vorschau nicht angewendet. Die eingegebenen Werte bleiben erhalten.
+	EN	When unchecked, artist, album and track repeat windows are not applied to this run. Your entered values are kept.
+	DE	Wenn diese Option deaktiviert ist, werden die Wiederholungsabstände für Interpreten, Alben und Titel für diesen Lauf nicht angewendet. Die eingegebenen Werte bleiben erhalten.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_ZERO
 	EN	Use 0 to disable a constraint. For a single-artist playlist, set Artist look-back to 0.
@@ -830,8 +830,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_SEARCH_HELP
 	DE	Wird nur verwendet, wenn Ausgangstitel neu angeordnet werden dürfen. Jeder deterministische Versuch beginnt mit einer anderen Reihenfolge und verbessert diese schrittweise. Mehr Versuche können bessere Ergebnisse liefern, benötigen aber mehr Zeit. Bei null werden weiterhin die fest eingebauten Ausgangsvarianten geprüft.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_READ_ONLY_NOTE
-	EN	This only creates a read-only preview. After reviewing the result, choose whether to save a copy, overwrite the source when applicable, or send it to a player queue.
-	DE	Hier wird nur eine Vorschau erstellt. Nach der Prüfung kannst du eine Kopie speichern, gegebenenfalls die Quelle überschreiben oder das Ergebnis an die Wiedergabeliste eines Players senden.
+	EN	This run does not change any playlist or player queue. After reviewing the result, choose whether to save a copy, overwrite the source when applicable, or send it to a player queue.
+	DE	Dieser Lauf ändert keine Wiedergabeliste. Nach der Prüfung kannst du eine Kopie speichern, gegebenenfalls die Quelle überschreiben oder das Ergebnis an die Wiedergabeliste eines Players senden.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_NO_PROFILE
 	EN	Save your current settings to make Extras defaults available.
@@ -842,28 +842,28 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_NOTE
 	DE	<b>Plugin-Standardwerte verwenden:</b> Verwendet die aktuellen Einstellungen von Better Call Bliss, BlissMixer und den installierten Gewichtungsanbietern.<br/><br/><b>Gespeicherte Extras-Standardwerte verwenden:</b> Verwendet die unabhängig davon gespeicherten Extras-Einstellungen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_EXPLAIN
-	EN	Changing the selection affects future new previews. Load selected defaults to apply it here. Running a preview does not save defaults; loading leaves the selected source and player unchanged.
-	DE	Die Auswahl gilt für zukünftige Vorschauen. Lade die gewählten Standardwerte, um sie hier anzuwenden. Das Starten einer Vorschau speichert keine Standardwerte; beim Laden bleiben Quelle und Player unverändert.
+	EN	Changing the selection affects future new runs. Load selected defaults to apply it here. Starting a run does not save defaults; loading leaves the selected source and player unchanged.
+	DE	Die Auswahl gilt für zukünftige Läufe. Lade die gewählten Standardwerte, um sie hier anzuwenden. Das Starten eines Laufs speichert keine Standardwerte; beim Laden bleiben Quelle und Player unverändert.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RESCAN_NOTE
 	EN	This page will check again automatically.
 	DE	Diese Seite prüft den Status automatisch erneut.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_WAIT
-	EN	Preview cancellation requested. Waiting for LMS to finish cancelling the startup work.
-	DE	Abbruch der Vorschau angefordert. Warten, bis Lyrion die Vorbereitung abgebrochen hat.
+	EN	Run cancellation requested. Waiting for LMS to finish cancelling the startup work.
+	DE	Abbruch des Laufs angefordert. Warten, bis Lyrion die Vorbereitung abgebrochen hat.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_START
-	EN	Cancelling preview startup...
-	DE	Vorbereitung der Vorschau wird abgebrochen ...
+	EN	Cancelling run startup...
+	DE	Vorbereitung des Laufs wird abgebrochen ...
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_BEFORE
-	EN	Cancelling preview startup before the native optimizer starts.
-	DE	Die Vorbereitung der Vorschau wird vor dem Start des Optimizers abgebrochen.
+	EN	Cancelling run startup before the native optimizer starts.
+	DE	Die Vorbereitung des Laufs wird vor dem Start des Optimizers abgebrochen.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_PREPARING
-	EN	Preparing preview: capturing the source and candidate library before native optimizer progress starts.
-	DE	Vorschau wird vorbereitet: Quelle und Kandidatenmediathek werden erfasst, bevor die Optimierung beginnt.
+	EN	Preparing run: capturing the source and candidate library before native optimizer progress starts.
+	DE	Lauf wird vorbereitet: Quelle und Kandidatenmediathek werden erfasst, bevor die Optimierung beginnt.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_NO_QUEUE
 	EN	Choose a player queue scope containing at least two local tracks.
@@ -898,24 +898,24 @@ PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVING
 	DE	Auswahl wird gespeichert ...
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVED
-	EN	Selection saved for new previews.
-	DE	Auswahl für neue Vorschauen gespeichert.
+	EN	Selection saved for new runs.
+	DE	Auswahl für neue Läufe gespeichert.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVE_ERROR
 	EN	Could not save selection. Please try again.
 	DE	Die Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT
-	EN	Preview result
-	DE	Vorschauergebnis
+	EN	Result
+	DE	Ergebnis
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT_NOTE
-	EN	This preview has not changed any playlist or player queue yet. Choose an output below after reviewing the result.
-	DE	Diese Vorschau hat noch keine Wiedergabeliste geändert. Wähle nach der Prüfung unten eine Ausgabe aus.
+	EN	This run has not changed any playlist or player queue. Choose an output below after reviewing the result.
+	DE	Dieser Lauf hat keine Wiedergabeliste geändert. Wähle nach der Prüfung unten eine Ausgabe aus.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT_READ_ONLY
-	EN	Preview runs are read-only and do not change playlists or player queues.
-	DE	Vorschauläufe ändern keine Wiedergabelisten.
+	EN	Runs do not change playlists or player queues until you apply the result.
+	DE	Läufe ändern keine Wiedergabelisten, solange du das Ergebnis nicht übernimmst.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_CHECKS
 	EN	Verified acceptance checks
@@ -958,8 +958,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_ALBUM
 	DE	Die endgültige Route erfüllt die Wiederholungsabstände für Interpreten und Alben.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT
-	EN	Accept this preview
-	DE	Diese Vorschau übernehmen
+	EN	Apply this result
+	DE	Dieses Ergebnis übernehmen
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_OUTPUT_NAME
 	EN	Copy name
@@ -1006,8 +1006,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_OPT_FIRST
 	DE	Die Ausgangstitel wurden optimiert, bevor zusätzliche Titel ausgewählt wurden.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_WAIT_RESULT
-	EN	Waiting for the preview result. This status updates in place; your scroll position is preserved.
-	DE	Warte auf das Vorschauergebnis. Der Status wird hier aktualisiert; die Scrollposition bleibt erhalten.
+	EN	Waiting for the result. This status updates in place; your scroll position is preserved.
+	DE	Warte auf das Ergebnis. Der Status wird hier aktualisiert; die Scrollposition bleibt erhalten.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_LOAD_RESULT
 	EN	Load full result now
@@ -1050,7 +1050,7 @@ PLUGIN_BETTERCALLBLISS_MORE_QUICK_ROUTE
 	DE	Schnellroute:
 
 PLUGIN_BETTERCALLBLISS_MORE_QUEUE_NOTE
-	EN	The selected queue is captured as a frozen source snapshot when the preview starts. Later queue changes do not affect the running job.
+	EN	The selected queue is captured as a frozen source snapshot when the run starts. Later queue changes do not affect the running job.
 	DE	Die gewählte Wiedergabeliste wird beim Start als feste Momentaufnahme erfasst. Spätere Änderungen beeinflussen den laufenden Auftrag nicht.
 
 PLUGIN_BETTERCALLBLISS_MORE_VARIATION_EXPLAIN
@@ -1102,8 +1102,8 @@ PLUGIN_BETTERCALLBLISS_MORE_RESTORE_NOTE
 	DE	Falls das Speichern unterbrochen wird, versucht Better Call Bliss, die ursprüngliche Datei wiederherzustellen.
 
 PLUGIN_BETTERCALLBLISS_MORE_QUEUE_OUTPUT_NOTE
-	EN	Sends the accepted preview to a selected player instead of saving a playlist.
-	DE	Sendet die übernommene Vorschau an einen gewählten Player, anstatt eine Wiedergabeliste zu speichern.
+	EN	Sends the accepted result to a selected player instead of saving a playlist.
+	DE	Sendet das übernommene Ergebnis an einen gewählten Player, anstatt eine Wiedergabeliste zu speichern.
 
 PLUGIN_BETTERCALLBLISS_MORE_QUEUE_ACTION_NOTE
 	EN	<b>Replace queue:</b> Clears the selected player's queue and adds the generated order. Playback starts only if the start-playback checkbox is checked.<br/><br/><b>Replace upcoming tracks:</b> Keeps the current track and playback state, replaces only later queue entries, and rechecks the queue when source and target are the same player. Already-played preview items are trimmed when the snapshot can still be recognized.<br/><br/><b>Append to queue:</b> Adds the result at the end.<br/><br/><b>Play next:</b> Inserts the result after the current track.
@@ -1210,16 +1210,16 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_QUICK_INTRO
 	DE	Eine Route zum festen Ziel wird mit den gespeicherten Standardwerten für „Bliss me there...“ erstellt. Die Wiedergabeliste wird erst geändert, nachdem die fertige Route die Prüfung der aktuellen Quelle bestanden hat.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_SNAPSHOT_ONE
-	EN	The selected queue snapshot currently contains about %1 track. It is frozen when the preview starts; later queue changes do not affect the running job.
-	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start der Vorschau festgehalten; spätere Änderungen beeinflussen den laufenden Auftrag nicht.
+	EN	The selected queue snapshot currently contains about %1 track. It is frozen when the run starts; later queue changes do not affect the running job.
+	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start des Laufs festgehalten; spätere Änderungen beeinflussen den laufenden Auftrag nicht.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_SNAPSHOT_MANY
-	EN	The selected queue snapshot currently contains about %1 tracks. It is frozen when the preview starts; later queue changes do not affect the running job.
-	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start der Vorschau festgehalten; spätere Änderungen beeinflussen den laufenden Auftrag nicht.
+	EN	The selected queue snapshot currently contains about %1 tracks. It is frozen when the run starts; later queue changes do not affect the running job.
+	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start des Laufs festgehalten; spätere Änderungen beeinflussen den laufenden Auftrag nicht.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CONFIRM_LOAD_DEFAULTS
-	EN	Load these defaults and replace the current preview settings?
-	DE	Diese Standardwerte laden und die aktuellen Vorschau-Einstellungen ersetzen?
+	EN	Load these defaults and replace the current run settings?
+	DE	Diese Standardwerte laden und die aktuellen Einstellungen für den Lauf ersetzen?
 
 PLUGIN_BETTERCALLBLISS_RESULT_CANDIDATE_LIBRARY
 	EN	Candidate library:
@@ -1278,44 +1278,44 @@ PLUGIN_BETTERCALLBLISS_ROUTE_QUALITY_EXPLANATION
 	DE	Der Schwellenwert für die Übergangsqualität ist ein Abstands-Rang und kein Ähnlichkeitsprozentsatz. Niedrigere Werte sind strenger: Sie lösen häufiger eine Suche aus und verlangen bei automatischen Routen bessere benachbarte Übergänge. Bei 30 ist ein Übergang beispielsweise nur akzeptabel, wenn höchstens etwa 30 % der relevanten Vergleichstitel akustisch näher liegen. Im vorsichtigen Modus kann auch unterhalb des Schwellenwerts gesucht werden, wenn sich die Akustikmodelle stark widersprechen. Erreicht keine Route das Ziel, wird eine Brücke nur verwendet, wenn sie das vorsichtig bewertete direkte Ergebnis um mindestens einen Perzentilpunkt verbessert. Andernfalls wird das direkte Ziel beibehalten und gemeldet. Bei genauer Anzahl gilt dasselbe Ziel für benachbarte Übergänge. Die aktuellen BlissMixer-Einstellungen für Bewertung, Kontext und Wiederholung sowie die Last.fm-Einstellungen unten werden beim Start der Aktion übernommen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_FINISH_LOADING
-	EN	Preview completed. Loading the full result...
-	DE	Vorschau abgeschlossen. Das vollständige Ergebnis wird geladen ...
+	EN	Run completed. Loading the full result...
+	DE	Lauf abgeschlossen. Das vollständige Ergebnis wird geladen ...
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CANCEL_LOADING
-	EN	Preview cancelled. Loading the final status...
-	DE	Vorschau abgebrochen. Der endgültige Status wird geladen ...
+	EN	Run cancelled. Loading the final status...
+	DE	Lauf abgebrochen. Der endgültige Status wird geladen ...
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_START_FAILED
-	EN	Preview could not be started.
-	DE	Die Vorschau konnte nicht gestartet werden.
+	EN	Run could not be started.
+	DE	Der Lauf konnte nicht gestartet werden.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CHECKING_STATUS
-	EN	Checking preview status.
-	DE	Vorschaustatus wird geprüft.
+	EN	Checking run status.
+	DE	Status des Laufs wird geprüft.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_UNCONFIRMED
-	EN	Unconfirmed preview
-	DE	Nicht bestätigte Vorschau
+	EN	Unconfirmed run
+	DE	Nicht bestätigter Lauf
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_OVERVIEW_UNCONFIRMED
-	EN	Running and recent previews (1 unconfirmed)
-	DE	Laufende und letzte Vorschauen (1 nicht bestätigt)
+	EN	Running and recent runs (1 unconfirmed)
+	DE	Laufende und letzte Läufe (1 nicht bestätigt)
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_ATTEMPT
 	EN	Attempt:
 	DE	Versuch:
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CONNECTION_CHECK
-	EN	Connection interrupted. Checking whether the preview started...
-	DE	Verbindung unterbrochen. Es wird geprüft, ob die Vorschau gestartet wurde ...
+	EN	Connection interrupted. Checking whether the run started...
+	DE	Verbindung unterbrochen. Es wird geprüft, ob der Lauf gestartet wurde ...
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CANNOT_CONFIRM
-	EN	Could not confirm whether the preview started. Check again before starting another preview.
-	DE	Es konnte nicht festgestellt werden, ob die Vorschau gestartet wurde. Bitte prüfe dies erneut, bevor du eine weitere Vorschau startest.
+	EN	Could not confirm whether the run started. Check again before starting another run.
+	DE	Es konnte nicht festgestellt werden, ob der Lauf gestartet wurde. Bitte prüfe dies erneut, bevor du einen weiteren Lauf startest.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_START_UNCONFIRMED
-	EN	Preview start unconfirmed.
-	DE	Start der Vorschau nicht bestätigt.
+	EN	Run start unconfirmed.
+	DE	Start des Laufs nicht bestätigt.
 
 PLUGIN_BETTERCALLBLISS_RESULT_DURATION
 	EN	Final duration: %s (%s from target). Added %s local tracks.
@@ -1330,8 +1330,8 @@ PLUGIN_BETTERCALLBLISS_RESULT_FIXED_EXTENSION
 	DE	%s Ausgangstitel wurden auf genau %s Titel verlängert; %s lokale Titel wurden hinzugefügt.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_JOB_OVERVIEW
-	EN	Running and recent previews
-	DE	Laufende und letzte Vorschauen
+	EN	Running and recent runs
+	DE	Laufende und letzte Läufe
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_JOB_RUNNING_COUNT
 	EN	%s running
@@ -1354,16 +1354,16 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_UNTITLED
 	DE	Unbenannte Quelle
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_CANCELLED
-	EN	Preview cancelled.
-	DE	Vorschau abgebrochen.
+	EN	Run cancelled.
+	DE	Lauf abgebrochen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_NO_PLAYLIST_CHANGED
 	EN	No playlist or player queue was changed.
 	DE	Es wurde keine Wiedergabeliste geändert.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_COMPLETED
-	EN	Preview completed successfully.
-	DE	Vorschau erfolgreich abgeschlossen.
+	EN	Run completed successfully.
+	DE	Lauf erfolgreich abgeschlossen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_REVIEW_OUTPUT
 	EN	Review the result below, then accept the selected output if it looks right.
@@ -1394,24 +1394,28 @@ PLUGIN_BETTERCALLBLISS_DYNAMIC_NOT_USED_PRESERVE
 	DE	Wird nicht verwendet, wenn die Reihenfolge der Ausgangstitel beibehalten wird.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_ENABLE_PREVIEW
-	EN	Enable for this preview
-	DE	Für diese Vorschau aktivieren
+	EN	Enable for this run
+	DE	Für diesen Lauf aktivieren
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SPACING
 	EN	Satisfy repeat windows with spacing tracks
 	DE	Wiederholungsregeln durch Abstandstitel erfüllen
+
+PLUGIN_BETTERCALLBLISS_EXTRAS_SPACING_REQUIRES_REPEAT
+	EN	Requires repeat rules to be enabled for this run.
+	DE	Erfordert aktivierte Wiederholungsregeln für diesen Lauf.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SMOOTH
 	EN	Improve difficult transitions when useful
 	DE	Schwierige Übergänge bei Bedarf verbessern
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RUN_PREVIEW
-	EN	Run read-only preview
-	DE	Vorschau starten (ohne Änderungen)
+	EN	Run optimization
+	DE	Optimierung starten
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CANCEL_PREVIEW
-	EN	Cancel preview
-	DE	Vorschau abbrechen
+	EN	Cancel run
+	DE	Lauf abbrechen
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULT_PLUGIN
 	EN	Use plugin defaults
@@ -1526,32 +1530,32 @@ PLUGIN_BETTERCALLBLISS_CANDIDATE_LIBRARY
 	DE	Mediathek für Kandidaten
 
 PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT_DESC
-	EN	Maximum number of retained previews; leave blank for unlimited. Lowering a limit deletes older previews when settings are saved. Running jobs are protected.
-	DE	Maximale Anzahl aufbewahrter Vorschauen; leer bedeutet unbegrenzt. Beim Verringern eines Limits werden ältere Vorschauen beim Speichern gelöscht. Laufende Jobs bleiben geschützt.
+	EN	Maximum number of retained runs; leave blank for unlimited. Lowering a limit deletes older runs when settings are saved. Running jobs are protected.
+	DE	Maximale Anzahl aufbewahrter Läufe; leer bedeutet unbegrenzt. Beim Verringern eines Limits werden ältere Läufe beim Speichern gelöscht. Laufende Aufträge bleiben geschützt.
 
 PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED
 	EN	Unlimited
 	DE	Unbegrenzt
 
 PLUGIN_BETTERCALLBLISS_HISTORY_SIZE
-	EN	Maximum preview storage (MB)
-	DE	Maximaler Speicherplatz für Vorschauen (MB)
+	EN	Maximum run history storage (MB)
+	DE	Maximaler Speicherplatz für Läufe (MB)
 
 PLUGIN_BETTERCALLBLISS_HISTORY_SIZE_DESC
-	EN	Required storage limit for preview job files; shared caches are excluded. Previews typically use kilobytes to several megabytes but can be larger. If one preview exceeds this limit, it cannot be retained.
-	DE	Verbindliches Speicherlimit für Preview-Dateien; gemeinsame Caches zählen nicht dazu. Vorschauen benötigen meist Kilobyte bis mehrere Megabyte, im Einzelfall auch mehr. Ist eine Vorschau größer als das Limit, kann sie nicht aufbewahrt werden.
+	EN	Required storage limit for run files; shared caches are excluded. Runs typically use kilobytes to several megabytes but can be larger. If one run exceeds this limit, it cannot be retained.
+	DE	Verbindliches Speicherlimit für Laufdateien; gemeinsame Caches zählen nicht dazu. Läufe benötigen meist Kilobyte bis mehrere Megabyte, im Einzelfall auch mehr. Ist ein Lauf größer als das Limit, kann er nicht aufbewahrt werden.
 
 PLUGIN_BETTERCALLBLISS_HISTORY_DAYS
-	EN	Maximum preview age (days)
-	DE	Maximales Alter der Vorschauen (Tage)
+	EN	Maximum run age (days)
+	DE	Maximales Alter der Läufe (Tage)
 
 PLUGIN_BETTERCALLBLISS_HISTORY_DAYS_DESC
-	EN	Delete previews older than this number of days, measured from their start. Leave blank for unlimited.
-	DE	Vorschauen nach dieser Anzahl von Tagen seit ihrem Start löschen. Leer bedeutet unbegrenzt.
+	EN	Delete runs older than this number of days, measured from their start. Leave blank for unlimited.
+	DE	Läufe nach dieser Anzahl von Tagen seit ihrem Start löschen. Leer bedeutet unbegrenzt.
 
 PLUGIN_BETTERCALLBLISS_RESULT_RETRY
-	EN	Run read-only preview again
-	DE	Schreibgeschützte Vorschau erneut starten
+	EN	Run again
+	DE	Erneut ausführen
 
 PLUGIN_BETTERCALLBLISS_RESULT_SPACING
 	EN	Added the minimum feasible number of %s spacing tracks within the configured budget of %s. The complete route of %s tracks satisfies the selected repeat windows.
@@ -1706,12 +1710,12 @@ PLUGIN_BETTERCALLBLISS_ROUTE_BEST_DIRECT
 	DE	Der direkte Übergang zum Ziel wurde ausgewählt.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_SUCCESS_ONE
-	EN	The preview reaches the measured adjacent quality target with 1 intermediate track; its worst neighboring transition is at percentile %s.
-	DE	Die Vorschau erreicht das Qualitätsziel mit 1 Zwischentitel; ihr schlechtester benachbarter Übergang liegt beim %s. Perzentil.
+	EN	The result reaches the measured adjacent quality target with 1 intermediate track; its worst neighboring transition is at percentile %s.
+	DE	Das Ergebnis erreicht das Qualitätsziel mit 1 Zwischentitel; sein schlechtester benachbarter Übergang liegt beim %s. Perzentil.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_SUCCESS_MANY
-	EN	The preview reaches the measured adjacent quality target with %s intermediate tracks; its worst neighboring transition is at percentile %s.
-	DE	Die Vorschau erreicht das Qualitätsziel mit %s Zwischentiteln; ihr schlechtester benachbarter Übergang liegt beim %s. Perzentil.
+	EN	The result reaches the measured adjacent quality target with %s intermediate tracks; its worst neighboring transition is at percentile %s.
+	DE	Das Ergebnis erreicht das Qualitätsziel mit %s Zwischentiteln; sein schlechtester benachbarter Übergang liegt beim %s. Perzentil.
 
 PLUGIN_BETTERCALLBLISS_ROUTE_DIRECT_SUCCESS
 	EN	The measured direct transition already meets the adjacent quality target, so no intermediate is needed.
@@ -1830,8 +1834,8 @@ PLUGIN_BETTERCALLBLISS_RESULT_COPY_DONE
 	DE	Gespeicherte Wiedergabeliste %s erstellt und überprüft (%s Titel, LMS-ID %s).
 
 PLUGIN_BETTERCALLBLISS_RESULT_QUEUE_RETRY
-	EN	The generated preview remains available; retry after checking the selected player.
-	DE	Die Vorschau bleibt verfügbar. Bitte den ausgewählten Player überprüfen und erneut versuchen.
+	EN	The result remains available; retry after checking the selected player.
+	DE	Das Ergebnis bleibt verfügbar. Bitte den ausgewählten Player überprüfen und erneut versuchen.
 
 PLUGIN_BETTERCALLBLISS_RESULT_RESTORED
 	EN	The source playlist was restored if file replacement had already started.

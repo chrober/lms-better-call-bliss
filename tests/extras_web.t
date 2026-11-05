@@ -137,6 +137,18 @@ my $disabled_restored = Plugins::BetterCallBliss::Web::_form_from_job({
 is($disabled_restored->{repeat_constraints_enabled}, 0, 'reopening restores unchecked repeat constraints');
 is_deeply([@{$disabled_restored}{qw(artist_window album_window track_window)}], [5, 10, 100],
     'reopening restores the entered repeat windows rather than the disabled execution values');
+my $restored_disabled_spacing = Plugins::BetterCallBliss::Web::_form_from_job({
+    options => {repeat_constraints_enabled => 0, satisfy_repeat_windows => 0,
+        saved_satisfy_repeat_windows => 1, smooth_transitions => 1},
+}, {repeat_constraints_enabled => 1, satisfy_repeat_windows => 0});
+is($restored_disabled_spacing->{satisfy_repeat_windows}, 1,
+    'reopening retains the spacing selection while repeat rules are disabled');
+my $submitted_disabled_spacing = Plugins::BetterCallBliss::Web::_form_from_params({
+    repeat_constraints_enabled_present => 1, satisfy_repeat_windows_present => 1,
+    saved_satisfy_repeat_windows => 1,
+}, {repeat_constraints_enabled => 1, satisfy_repeat_windows => 1});
+is($submitted_disabled_spacing->{satisfy_repeat_windows}, 1,
+    'form processing retains the disabled spacing selection');
 
 my $goals = Plugins::BetterCallBliss::Web::_form_from_params({
     addition_purpose => 'automatic_improvement',

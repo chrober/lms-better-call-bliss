@@ -228,8 +228,6 @@ sub normalize {
             $options->{$goal} = $input->{$goal} ? 1 : 0
                 if exists $input->{$goal} || exists $input->{$goal . '_present'};
         }
-        die 'Select at least one automatic improvement goal'
-            unless $options->{satisfy_repeat_windows} || $options->{smooth_transitions};
     } elsif ($options->{addition_purpose} eq 'automatic') {
         $options->{satisfy_repeat_windows} = 0;
         $options->{smooth_transitions} = 1;
@@ -280,7 +278,16 @@ sub normalize {
             );
             $options->{$name} = 0;
         }
+        if ($options->{addition_purpose} eq 'automatic_improvement') {
+            $options->{saved_satisfy_repeat_windows} = exists $input->{saved_satisfy_repeat_windows}
+                ? ($input->{saved_satisfy_repeat_windows} ? 1 : 0)
+                : $options->{satisfy_repeat_windows};
+            $options->{satisfy_repeat_windows} = 0;
+        }
     }
+    die 'Select at least one automatic improvement goal'
+        if $options->{addition_purpose} eq 'automatic_improvement'
+            && !$options->{satisfy_repeat_windows} && !$options->{smooth_transitions};
     $options->{restart_count} = _integer(
         $input, 'restart_count', 0, 500, $options->{restart_count},
     );

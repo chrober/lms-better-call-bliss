@@ -375,10 +375,12 @@
     <p class="bea-note" id="automatic_extension_note"></p>
     <div id="automatic_improvement_goals" class="bea-row">
       <input type="hidden" name="satisfy_repeat_windows_present" value="1">
-      <label><input type="checkbox" name="satisfy_repeat_windows" id="satisfy_repeat_windows" value="1"[% IF bettercallbliss_form.satisfy_repeat_windows %] checked[% END %]> [% 'PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SPACING' | string %]</label>
+      <input type="hidden" name="saved_satisfy_repeat_windows" id="saved_satisfy_repeat_windows" value="[% IF bettercallbliss_form.satisfy_repeat_windows %]1[% ELSE %]0[% END %]">
+      <label id="spacing_goal_label"><input type="checkbox" name="satisfy_repeat_windows" id="satisfy_repeat_windows" value="1"[% IF bettercallbliss_form.satisfy_repeat_windows %] checked[% END %]> [% 'PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SPACING' | string %]</label>
       <input type="hidden" name="smooth_transitions_present" value="1">
       <label><input type="checkbox" name="smooth_transitions" id="smooth_transitions" value="1"[% IF bettercallbliss_form.smooth_transitions %] checked[% END %]> [% 'PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SMOOTH' | string %]</label>
     </div>
+    <p class="bea-note bea-hidden" id="spacing_goal_requires_repeat">[% 'PLUGIN_BETTERCALLBLISS_EXTRAS_SPACING_REQUIRES_REPEAT' | string %]</p>
     <p class="bea-warning bea-hidden" id="automatic_improvement_warning">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_AUTO_GOAL_WARNING" | string %]</p>
     <div class="bea-row">
       <label for="max_added_tracks">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_MAX_ADDED" | string %]</label>
@@ -547,7 +549,7 @@
   <fieldset class="bea-section">
     <legend>[% "PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_CONSTRAINTS" | string %]</legend>
     <input type="hidden" name="repeat_constraints_enabled_present" value="1">
-    <label><input type="checkbox" name="repeat_constraints_enabled" value="1"[% IF bettercallbliss_form.repeat_constraints_enabled %] checked[% END %]> [% 'PLUGIN_BETTERCALLBLISS_EXTRAS_ENABLE_PREVIEW' | string %]</label>
+    <label><input type="checkbox" name="repeat_constraints_enabled" id="repeat_constraints_enabled" value="1"[% IF bettercallbliss_form.repeat_constraints_enabled %] checked[% END %]> [% 'PLUGIN_BETTERCALLBLISS_EXTRAS_ENABLE_PREVIEW' | string %]</label>
     <p class="bea-note">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_UNCHECKED" | string %]</p>
     <p class="bea-note">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_ZERO" | string %]</p>
     <div class="bea-row">
@@ -732,6 +734,10 @@
     var automaticFields = document.getElementById('automatic_extension_fields');
     var automaticGoals = document.getElementById('automatic_improvement_goals');
     var spacingGoal = document.getElementById('satisfy_repeat_windows');
+    var savedSpacingGoal = document.getElementById('saved_satisfy_repeat_windows');
+    var spacingGoalLabel = document.getElementById('spacing_goal_label');
+    var spacingGoalHelp = document.getElementById('spacing_goal_requires_repeat');
+    var repeatConstraints = document.getElementById('repeat_constraints_enabled');
     var smoothingGoal = document.getElementById('smooth_transitions');
     var automaticGoalWarning = document.getElementById('automatic_improvement_warning');
     var automaticLegend = document.getElementById('automatic_extension_legend');
@@ -1166,8 +1172,23 @@
     initializeAdditionControls();
     selectMaterialCandidateLibrary(0);
 
-    function automaticImprovementState(enabled, spacing, smoothing) {
-      return {showThreshold: enabled && smoothing, invalid: enabled && !spacing && !smoothing};
+    function automaticImprovementState(enabled, spacing, smoothing, repeatEnabled) {
+      var effectiveSpacing = spacing && repeatEnabled !== false;
+      return {showThreshold: enabled && smoothing, invalid: enabled && !effectiveSpacing && !smoothing};
+    }
+
+    function updateSpacingGoal(control, saved, label, repeatEnabled) {
+      if (!control) return;
+      if (!repeatEnabled) {
+        if (!control._repeatRulesDisabled && saved) saved.value = control.checked ? '1' : '0';
+        control.checked = false;
+      } else {
+        if (control._repeatRulesDisabled && saved) control.checked = saved.value === '1';
+        if (saved) saved.value = control.checked ? '1' : '0';
+      }
+      control._repeatRulesDisabled = !repeatEnabled;
+      control.disabled = !repeatEnabled;
+      if (label) label.classList.toggle('bea-disabled', control.disabled);
     }
 
     function synchronizeControls() {
@@ -1209,8 +1230,11 @@
       var noAdditions = extension.value === 'none';
       var automatic = extension.value === 'automatic';
       var combinedAutomatic = extension.value === 'automatic_improvement';
+      updateSpacingGoal(spacingGoal, savedSpacingGoal, spacingGoalLabel,
+        !repeatConstraints || repeatConstraints.checked);
       var goalState = automaticImprovementState(combinedAutomatic,
-        spacingGoal && spacingGoal.checked, smoothingGoal && smoothingGoal.checked);
+        spacingGoal && spacingGoal.checked, smoothingGoal && smoothingGoal.checked,
+        !repeatConstraints || repeatConstraints.checked);
       var spacingOnly = additionPurpose && additionPurpose.value === 'satisfy_constraints';
       var extendPlaylist = additionPurpose && additionPurpose.value === 'extend_playlist';
       var fixedGapCount = additionPurpose && additionPurpose.value === 'fixed_gap_count';
@@ -1329,6 +1353,11 @@
           : extrasText('AUTO_ADDITIONS');
       }
       setInputsReadOnly(automaticInputs, !(automatic || spacingOnly || combinedAutomatic));
+      if (spacingGoal) {
+        updateSpacingGoal(spacingGoal, savedSpacingGoal, spacingGoalLabel,
+          !repeatConstraints || repeatConstraints.checked);
+        setVisible(spacingGoalHelp, combinedAutomatic && spacingGoal.disabled);
+      }
       setVisible(exactFields, exact);
       setInputsReadOnly(exactInputs, !exact);
       setVisible(targetFields, targetCount);
@@ -1364,6 +1393,7 @@
     if (sourceQueueScope) sourceQueueScope.addEventListener('change', synchronizeControls);
     if (additionPurpose) additionPurpose.addEventListener('change', synchronizeControls);
     if (spacingGoal) spacingGoal.addEventListener('change', synchronizeControls);
+    if (repeatConstraints) repeatConstraints.addEventListener('change', synchronizeControls);
     if (smoothingGoal) smoothingGoal.addEventListener('change', synchronizeControls);
     if (additionAmountMode) additionAmountMode.addEventListener('change', synchronizeControls);
     algorithm.addEventListener('change', synchronizeControls);

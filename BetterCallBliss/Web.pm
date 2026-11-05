@@ -208,6 +208,9 @@ sub _form_from_params {
     if (exists $params->{repeat_constraints_enabled_present}) {
         $form->{repeat_constraints_enabled} = $params->{repeat_constraints_enabled} ? 1 : 0;
     }
+    if (!$form->{repeat_constraints_enabled} && exists $params->{saved_satisfy_repeat_windows}) {
+        $form->{satisfy_repeat_windows} = $params->{saved_satisfy_repeat_windows} ? 1 : 0;
+    }
     for my $name (keys %$params) {
         next unless $name =~ /^guidance_provider_[a-z][a-z0-9-]{1,63}_[a-z][a-z0-9_]{1,63}$/;
         $form->{$name} = $params->{$name};
@@ -282,6 +285,8 @@ sub _form_from_job {
     my $options = ref($job->{options}) eq 'HASH' ? $job->{options} : {};
     my %params = (%$options, playlist_id => $job->{playlist_id});
     if (exists $options->{repeat_constraints_enabled} && !$options->{repeat_constraints_enabled}) {
+        $params{satisfy_repeat_windows} = $options->{saved_satisfy_repeat_windows}
+            if exists $options->{saved_satisfy_repeat_windows};
         for my $name (qw(artist_window album_window track_window)) {
             $params{$name} = $options->{'saved_' . $name} if exists $options->{'saved_' . $name};
         }
