@@ -559,7 +559,7 @@
         <option value="primary_artist"[% IF bettercallbliss_form.artist_repeat_mode == 'primary_artist' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_EXTRAS_PRIMARY_ARTIST" | string %]</option>
         <option value="exact_bliss_credit"[% IF bettercallbliss_form.artist_repeat_mode == 'exact_bliss_credit' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT_CREDIT" | string %]</option>
       </select>
-      <span class="bea-disabled">Plugin default: [% bettercallbliss_defaults.artist_repeat_mode %]</span>
+      <span class="bea-disabled">[% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EFFECTIVE_DEFAULT' | string %]: [% IF bettercallbliss_defaults.artist_repeat_mode == 'primary_artist' %][% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_PRIMARY' | string %][% ELSIF bettercallbliss_defaults.artist_repeat_mode == 'exact_bliss_credit' %][% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EXACT' | string %][% ELSE %][% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_SHARED' | string %][% END %]</span>
     </div>
     <p class="bea-note">[% "PLUGIN_BETTERCALLBLISS_REPEAT_IDENTITY_EXPLANATION" | string %]</p>
     <div class="bea-row">

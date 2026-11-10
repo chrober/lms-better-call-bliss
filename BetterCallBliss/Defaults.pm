@@ -6,6 +6,7 @@ use Exporter qw(import);
 our @EXPORT_OK = qw(
     ensure_preference_defaults
     ensure_guidance_provider_state
+    migrate_artist_identity
     preference_defaults
     preference_names
 );
@@ -19,7 +20,7 @@ my %PREFERENCE_DEFAULTS = (
     preview_history_size_mb => 250,
     preview_history_days => '',
     variation_percent => 25,
-    artist_repeat_mode => 'shared_artist',
+    artist_repeat_mode => 'follow_lab',
     auto_bridge_budget => 8,
     auto_trigger_percent => 70,
     route_length_policy => 'automatic',
@@ -58,6 +59,14 @@ my %EMPTY_VALUE_IS_MISSING = map { $_ => 1 } qw(
 
 sub preference_defaults {
     return { %PREFERENCE_DEFAULTS };
+}
+
+sub migrate_artist_identity {
+    my $prefs = shift;
+    return unless $prefs;
+    return if $prefs->get('artist_identity_follow_lab_migrated');
+    $prefs->set('artist_repeat_mode', 'follow_lab');
+    $prefs->set('artist_identity_follow_lab_migrated', 1);
 }
 
 sub ensure_guidance_provider_state {

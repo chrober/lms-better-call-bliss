@@ -22,6 +22,7 @@ use Plugins::BetterCallBliss::Defaults qw(
     preference_defaults
     ensure_preference_defaults
     ensure_guidance_provider_state
+    migrate_artist_identity
 );
 use Plugins::BetterCallBliss::Jobs;
 use Plugins::BetterCallBliss::RouteMode;
@@ -52,6 +53,7 @@ sub initPlugin {
 
     my $preference_defaults_version =
         $prefs->get('preference_defaults_version') || 0;
+    migrate_artist_identity($prefs);
     $prefs->init(preference_defaults());
     ensure_preference_defaults($prefs);
     ensure_guidance_provider_state($prefs);

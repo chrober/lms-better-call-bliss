@@ -38,6 +38,13 @@ sub defaults {
     my $route_direct_caution = $plugin_prefs->get('route_direct_caution') || 'cautious';
     $route_direct_caution = 'cautious'
         unless $route_direct_caution =~ /^(?:normal|cautious)$/;
+    my $artist_repeat_mode = $plugin_prefs->get('artist_repeat_mode') || 'follow_lab';
+    if ($artist_repeat_mode eq 'follow_lab') {
+        $artist_repeat_mode = $capability->{blissmixerlab_enabled}
+            ? ($capability->{blissmixerlab_artist_repeat_mode} || '') : '';
+    }
+    $artist_repeat_mode = 'shared_artist'
+        unless $artist_repeat_mode =~ /^(?:shared_artist|primary_artist|exact_bliss_credit)$/;
 
     return {
         ordering_policy => 'optimize_order',
@@ -51,7 +58,7 @@ sub defaults {
         learned_percent => int($capability->{learned_percent}),
         repeat_constraints_enabled => 1,
         artist_window => int($capability->{artist_window}),
-        artist_repeat_mode => $plugin_prefs->get('artist_repeat_mode') || 'shared_artist',
+        artist_repeat_mode => $artist_repeat_mode,
         album_window => int($capability->{album_window}),
         track_window => int($capability->{track_window}),
         restart_count => int($plugin_prefs->get('restart_count') || 50),

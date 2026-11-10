@@ -36,7 +36,7 @@ BEGIN {
     sub get { return $values{$_[1]} }
 
     package TestBlissExtPrefs;
-    our %values = (learned_blend => 20);
+    our %values = (learned_blend => 20, artist_repeat_mode => 'primary_artist');
     sub get { return $values{$_[1]} }
 
     package TestServerPrefs;
@@ -133,6 +133,8 @@ ok($snapshot->{bliss_compatible}, 'original BlissMixer satisfies the required ba
 ok($snapshot->{blissmixerlab_compatible}, 'BlissMixerLab is detected independently');
 is($snapshot->{matrix_provider}, 'BlissMixerLab', 'BlissMixerLab owns the learned matrix capability');
 is($snapshot->{learned_percent}, 20, 'learned blend is read from BlissMixerLab');
+is($snapshot->{blissmixerlab_artist_repeat_mode}, 'primary_artist',
+    'Lab artist repeat identity is captured for inheriting jobs');
 ok($snapshot->{filter_genres}, 'genre restriction is captured');
 ok($snapshot->{filter_xmas}, 'configured Christmas preference is captured');
 is($snapshot->{exclude_christmas}, (localtime())[4] == 11 ? 0 : 1,
@@ -168,6 +170,8 @@ is($without_matrix->{learned_percent}, 0,
 
 $Slim::Utils::PluginManager::enabled{'Plugins::BlissMixerLab::Plugin'} = 0;
 my $without_extension = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+ok(!defined $without_extension->{blissmixerlab_artist_repeat_mode},
+    'disabled Lab does not supply an identity mode from stale preferences');
 ok($without_extension->{ready}, 'the optional extension does not gate base readiness');
 is($without_extension->{personalization_state}, 'extension_not_enabled',
     'the missing optional extension is reported explicitly');

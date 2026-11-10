@@ -155,12 +155,28 @@ PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE
 	DE	Interpretenidentität für Wiederholungsabstände
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE_DESC
-	EN	<b>Any shared credited artist:</b> Tracks count as the same artist if any credited artist matches, including solo and collaboration credits.<br/><br/><b>Primary artist only:</b> Compares only each track's primary artist; guest artists do not create a conflict.<br/><br/><b>Exact Bliss artist credit:</b> Compares the complete artist credit stored in bliss.db. For example, a solo track by David Bowie and a collaboration credited to David Bowie &amp; Queen count as different artists.<br/><br/>The first two options prefer MusicBrainz artist IDs, followed by Lyrion contributor IDs and normalized names.
-	DE	<b>Jeder gemeinsame beteiligte Interpret:</b> Titel gelten als vom selben Interpreten, sobald ein beteiligter Interpret übereinstimmt – auch bei Solotiteln und Zusammenarbeiten.<br/><br/><b>Nur Hauptinterpret:</b> Vergleicht nur den Hauptinterpreten jedes Titels; Gastinterpreten verursachen keinen Konflikt.<br/><br/><b>Exakte Bliss-Interpretenangabe:</b> Vergleicht die vollständige, in bliss.db gespeicherte Interpretenangabe. Ein Solotitel von David Bowie und ein gemeinsamer Titel von David Bowie &amp; Queen gelten beispielsweise als Titel unterschiedlicher Interpreten.<br/><br/>Die ersten beiden Optionen bevorzugen MusicBrainz-Interpreten-IDs, danach Lyrion-Mitwirkenden-IDs und normalisierte Namen.
+	EN	<b>Follow Bliss Mixer Lab:</b> Uses the current Lab setting. If Lab is unavailable, any shared credited artist is used.<br/><br/><b>Any shared credited artist:</b> Tracks count as the same artist if any credited artist matches, including solo and collaboration credits.<br/><br/><b>Primary artist only:</b> Compares only each track's primary artist; guest artists do not create a conflict.<br/><br/><b>Exact Bliss artist credit:</b> Compares the complete artist credit stored in bliss.db. For example, a solo track by David Bowie and a collaboration credited to David Bowie &amp; Queen count as different artists.<br/><br/>The shared and primary artist options prefer MusicBrainz artist IDs, followed by Lyrion contributor IDs and normalized names.
+	DE	<b>Einstellung von Bliss Mixer Lab übernehmen:</b> Verwendet die aktuelle Lab-Einstellung. Ist Lab nicht verfügbar, wird jeder gemeinsame beteiligte Interpret berücksichtigt.<br/><br/><b>Jeder gemeinsame beteiligte Interpret:</b> Titel gelten als vom selben Interpreten, sobald ein beteiligter Interpret übereinstimmt – auch bei Solotiteln und Zusammenarbeiten.<br/><br/><b>Nur Hauptinterpret:</b> Vergleicht nur den Hauptinterpreten jedes Titels; Gastinterpreten verursachen keinen Konflikt.<br/><br/><b>Exakte Bliss-Interpretenangabe:</b> Vergleicht die vollständige, in bliss.db gespeicherte Interpretenangabe. Ein Solotitel von David Bowie und ein gemeinsamer Titel von David Bowie &amp; Queen gelten beispielsweise als Titel unterschiedlicher Interpreten.<br/><br/>Die Optionen für gemeinsame Interpreten und Hauptinterpreten bevorzugen MusicBrainz-Interpreten-IDs, danach Lyrion-Mitwirkenden-IDs und normalisierte Namen.
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_SHARED
 	EN	Any shared credited artist
 	DE	Jeder gemeinsame beteiligte Interpret
+
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_FOLLOW_LAB
+	EN	Follow Bliss Mixer Lab
+	DE	Einstellung von Bliss Mixer Lab übernehmen
+
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EFFECTIVE_DEFAULT
+	EN	Current default
+	DE	Aktueller Standardwert
+
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_LAB_CURRENT
+	EN	Current Bliss Mixer Lab setting
+	DE	Aktuelle Einstellung von Bliss Mixer Lab
+
+PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_LAB_UNAVAILABLE
+	EN	Bliss Mixer Lab is unavailable; the fallback is Any shared credited artist.
+	DE	Bliss Mixer Lab ist nicht verfügbar; stattdessen gilt Jeder gemeinsame beteiligte Interpret.
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_PRIMARY
 	EN	Primary artist only

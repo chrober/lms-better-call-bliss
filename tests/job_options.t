@@ -213,6 +213,33 @@ is($defaults->{variation_percent}, 35,
     'variation default is read from plugin preferences');
 is($defaults->{artist_repeat_mode}, 'primary_artist',
     'artist repeat identity default is read from plugin preferences');
+$TestPrefs::values{artist_repeat_mode} = 'follow_lab';
+is(Plugins::BetterCallBliss::JobOptions::defaults({
+        %$capability, blissmixerlab_enabled => 1,
+        blissmixerlab_artist_repeat_mode => 'exact_bliss_credit',
+    })->{artist_repeat_mode}, 'exact_bliss_credit',
+    'following Lab captures its current artist identity mode');
+is(Plugins::BetterCallBliss::JobOptions::defaults({
+        %$capability, blissmixerlab_enabled => 1,
+        blissmixerlab_artist_repeat_mode => 'primary_artist',
+    })->{artist_repeat_mode}, 'primary_artist',
+    'later runs follow a changed Lab identity mode');
+is(Plugins::BetterCallBliss::JobOptions::defaults({
+        %$capability, blissmixerlab_enabled => 0,
+        blissmixerlab_artist_repeat_mode => 'primary_artist',
+    })->{artist_repeat_mode}, 'shared_artist',
+    'following disabled Lab falls back to shared artist');
+is(Plugins::BetterCallBliss::JobOptions::defaults({
+        %$capability, blissmixerlab_enabled => 1,
+        blissmixerlab_artist_repeat_mode => 'invalid',
+    })->{artist_repeat_mode}, 'shared_artist',
+    'invalid Lab mode falls back to shared artist');
+is(Plugins::BetterCallBliss::JobOptions::normalize({
+        %$capability, blissmixerlab_enabled => 1,
+        blissmixerlab_artist_repeat_mode => 'primary_artist',
+    }, {artist_repeat_mode => 'shared_artist'})->{artist_repeat_mode},
+    'shared_artist', 'per-run artist mode overrides inherited Lab mode');
+$TestPrefs::values{artist_repeat_mode} = 'primary_artist';
 is(Plugins::BetterCallBliss::JobOptions::normalize(
         $capability, {artist_repeat_mode => 'shared_artist'},
     )->{artist_repeat_mode}, 'shared_artist',

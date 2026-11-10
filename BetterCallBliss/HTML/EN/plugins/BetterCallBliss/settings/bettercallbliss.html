@@ -83,10 +83,12 @@
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE" desc="PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE_DESC" %]
       <select class="stdedit" name="pref_artist_repeat_mode" id="artist_repeat_mode">
+        <option value="follow_lab"[% IF prefs.artist_repeat_mode == 'follow_lab' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_FOLLOW_LAB" | string %]</option>
         <option value="shared_artist"[% IF prefs.artist_repeat_mode == 'shared_artist' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_SHARED" | string %]</option>
         <option value="primary_artist"[% IF prefs.artist_repeat_mode == 'primary_artist' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_PRIMARY" | string %]</option>
         <option value="exact_bliss_credit"[% IF prefs.artist_repeat_mode == 'exact_bliss_credit' %] selected[% END %]>[% "PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EXACT" | string %]</option>
       </select>
+      <br><span class="prefDesc">[% IF bliss_compatibility.blissmixerlab_enabled %][% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_LAB_CURRENT' | string %]: [% IF bliss_compatibility.blissmixerlab_artist_repeat_mode == 'primary_artist' %][% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_PRIMARY' | string %][% ELSIF bliss_compatibility.blissmixerlab_artist_repeat_mode == 'exact_bliss_credit' %][% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_EXACT' | string %][% ELSE %][% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_SHARED' | string %][% END %][% ELSE %][% 'PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_LAB_UNAVAILABLE' | string %][% END %]</span>
     [% END %]
 
     [% WRAPPER settingGroup title="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX" desc="PLUGIN_BETTERCALLBLISS_OUTPUT_SUFFIX_DESC" %]

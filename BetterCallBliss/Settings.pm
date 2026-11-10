@@ -95,8 +95,8 @@ sub handler {
     _clamp($params, 'pref_variation_percent', 0, 100);
     if (defined $params->{pref_artist_repeat_mode}
         && $params->{pref_artist_repeat_mode}
-            !~ /^(?:shared_artist|primary_artist|exact_bliss_credit)$/) {
-        $params->{pref_artist_repeat_mode} = 'shared_artist';
+            !~ /^(?:follow_lab|shared_artist|primary_artist|exact_bliss_credit)$/) {
+        $params->{pref_artist_repeat_mode} = 'follow_lab';
     }
     _clamp($params, 'pref_auto_bridge_budget', 0, 100);
     _clamp($params, 'pref_auto_trigger_percent', 0, 100);

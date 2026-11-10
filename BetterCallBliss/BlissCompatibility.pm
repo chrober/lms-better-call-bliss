@@ -233,6 +233,8 @@ sub snapshot {
         bliss_version     => $bliss->{version},
         bliss_compatible  => $bliss->{compatible},
         blissmixerlab_enabled => $bliss_ext->{enabled},
+        blissmixerlab_artist_repeat_mode => $bliss_ext->{enabled}
+            ? $bliss_ext_prefs->get('artist_repeat_mode') : undef,
         blissmixerlab_version => $bliss_ext->{version},
         blissmixerlab_compatible => $bliss_ext->{compatible},
         personalization_state => $personalization_state,
