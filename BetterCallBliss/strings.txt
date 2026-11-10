@@ -360,23 +360,23 @@ PLUGIN_BETTERCALLBLISS_REPORT_RETENTION_DAYS_DESC
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS
 	EN	Optional guidance providers
-	DE	Optionale Gewichtungsanbieter
+	DE	Optionale Gewichtungs-Plugins
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_DESC
 	EN	Installed providers contribute bounded secondary guidance only after you enable them here. Bliss remains responsible for eligibility and acoustic ranking. Provider settings supply defaults; values changed here are Better Call Bliss overrides.
-	DE	Installierte Anbieter liefern erst nach ihrer Aktivierung hier eine begrenzte zusätzliche Gewichtung. Bliss bleibt für die Auswahl und akustische Rangfolge verantwortlich. Die Anbietereinstellungen liefern Standardwerte; hier geänderte Werte überschreiben diese für Better Call Bliss.
+	DE	Installierte Gewichtungs-Plugins liefern erst nach ihrer Aktivierung hier eine begrenzte zusätzliche Gewichtung. Bliss bleibt für die Auswahl und akustische Rangfolge verantwortlich. Die Einstellungen der Gewichtungs-Plugins liefern Standardwerte; hier geänderte Werte überschreiben diese für Better Call Bliss.
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDERS_NONE
 	EN	No enabled Lyrion plugin currently publishes a compatible guidance-provider descriptor.
-	DE	Derzeit stellt kein aktiviertes Lyrion-Plugin einen kompatiblen Gewichtungsanbieter bereit.
+	DE	Derzeit ist kein kompatibles Gewichtungs-Plugin aktiviert.
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_AVAILABLE
 	EN	Provider backend is available.
-	DE	Das Anbieter-Backend ist verfügbar.
+	DE	Das Gewichtungs-Plugin ist verfügbar.
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_UNAVAILABLE
 	EN	Provider backend is unavailable: %s
-	DE	Das Anbieter-Backend ist nicht verfügbar: %s
+	DE	Das Gewichtungs-Plugin ist nicht verfügbar: %s
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS
 	EN	Open %s settings
@@ -384,11 +384,11 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_SETTINGS
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED
 	EN	Use this provider
-	DE	Diesen Anbieter verwenden
+	DE	Dieses Gewichtungs-Plugin verwenden
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_DESC
 	EN	Providers are disabled in Better Call Bliss by default. Enabling one allows its bounded guidance to affect newly started jobs.
-	DE	Anbieter sind in Better Call Bliss standardmäßig deaktiviert. Nach der Aktivierung kann ihre begrenzte Gewichtung neu gestartete Aufträge beeinflussen.
+	DE	Gewichtungs-Plugins sind in Better Call Bliss standardmäßig deaktiviert. Nach der Aktivierung kann ihre begrenzte Gewichtung neu gestartete Aufträge beeinflussen.
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_DISABLED
 	EN	Disabled
@@ -400,7 +400,7 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ENABLED_VALUE
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN
 	EN	Effective value source:
-	DE	Quelle des wirksamen Werts:
+	DE	Wirksamer Wert:
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST
 	EN	Better Call Bliss setting
@@ -408,11 +408,11 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_HOST
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PROVIDER
 	EN	Provider setting
-	DE	Anbietereinstellung
+	DE	Einstellung des Gewichtungs-Plugins
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY
 	EN	Provider built-in default
-	DE	Eingebauter Standardwert des Anbieters
+	DE	Eingebauter Standardwert des Gewichtungs-Plugins
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_JOB
 	EN	Value for this job
@@ -424,7 +424,7 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET
 	EN	Use inherited default
-	DE	Übernommenen Standardwert verwenden
+	DE	Einstellung des Gewichtungs-Plugins verwenden
 PLUGIN_BETTERCALLBLISS_HISTORY_SECTION
 	EN	Job history
 	DE	Auftragsverlauf
@@ -831,7 +831,7 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_VARIATION_NOTE
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DISABLED_PROVIDER
 	EN	Enable this provider on the Better Call Bliss settings page to apply its defaults or per-job overrides.
-	DE	Aktiviere diesen Anbieter in den Better-Call-Bliss-Einstellungen, um seine Standardwerte oder abweichende Werte für diesen Auftrag zu verwenden.
+	DE	Aktiviere dieses Gewichtungs-Plugin in den Better-Call-Bliss-Einstellungen, um seine Standardwerte oder abweichende Werte für diesen Auftrag zu verwenden.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_UNCHECKED
 	EN	When unchecked, artist, album and track repeat windows are not applied to this job. Your entered values are kept.
@@ -855,7 +855,7 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_NO_PROFILE
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_NOTE
 	EN	<b>Use plugin defaults:</b> Uses the current settings of Better Call Bliss, BlissMixer and installed guidance providers.<br/><br/><b>Use saved Extras defaults:</b> Uses the independently saved Extras settings.
-	DE	<b>Plugin-Standardwerte verwenden:</b> Verwendet die aktuellen Einstellungen von Better Call Bliss, BlissMixer und den installierten Gewichtungsanbietern.<br/><br/><b>Gespeicherte Extras-Standardwerte verwenden:</b> Verwendet die unabhängig davon gespeicherten Extras-Einstellungen.
+	DE	<b>Plugin-Standardwerte verwenden:</b> Verwendet die aktuellen Einstellungen von Better Call Bliss, BlissMixer und den installierten Gewichtungs-Plugins.<br/><br/><b>Gespeicherte Extras-Standardwerte verwenden:</b> Verwendet die unabhängig davon gespeicherten Extras-Einstellungen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_EXPLAIN
 	EN	Changing the selection affects future new jobs. Load selected defaults to apply it here. Starting a job does not save defaults; loading leaves the selected source and player unchanged.
@@ -1167,7 +1167,7 @@ PLUGIN_BETTERCALLBLISS_RESULT_ROUTE_FLOW_LABEL
 
 PLUGIN_BETTERCALLBLISS_RESULT_GUIDANCE_ACTIVITY_LABEL
 	EN	Guidance provider activity:
-	DE	Aktivität der Gewichtungsanbieter:
+	DE	Aktivität der Gewichtungs-Plugins:
 
 PLUGIN_BETTERCALLBLISS_RESULT_GUIDANCE_ADDITIONS_LABEL
 	EN	Optional guidance applied to additions:
@@ -1615,7 +1615,7 @@ PLUGIN_BETTERCALLBLISS_RESULT_SPACING
 
 PLUGIN_BETTERCALLBLISS_RESULT_GUIDANCE_NOTE
 	EN	Providers only reorder Bliss-qualified candidates; the applied adjustment for each selected addition is shown below.
-	DE	Anbieter sortieren nur die von Bliss ausgewählten Kandidaten um; die angewendete Anpassung für jeden hinzugefügten Titel wird unten angezeigt.
+	DE	Gewichtungs-Plugins sortieren nur die von Bliss ausgewählten Kandidaten um; die angewendete Anpassung für jeden hinzugefügten Titel wird unten angezeigt.
 
 PLUGIN_BETTERCALLBLISS_RESULT_ADDED_SPACING
 	EN	[Added spacing]
