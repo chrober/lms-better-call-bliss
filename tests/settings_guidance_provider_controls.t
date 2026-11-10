@@ -193,4 +193,18 @@ my $sections = Plugins::BetterCallBliss::Settings::_guidance_provider_sections([
 is($sections->[0]->{controls}->[0]->{inherited}, -40,
     'rendered control exposes the provider default for client-side copy');
 
+my $owned_source = {
+    %$provider,
+    defaults => {%{$provider->{defaults}}, source => 'api_key'},
+    descriptor => {controls => [
+        {key => 'source', type => 'enum', values => [qw(lastmix api_key)],
+            factory_default => 'lastmix', host_overridable => 0},
+        {key => 'level', type => 'integer', minimum => 0, maximum => 100,
+            factory_default => 25, host_overridable => 1},
+    ]},
+};
+my $owned_sections = Plugins::BetterCallBliss::Settings::_guidance_provider_sections([$owned_source]);
+is_deeply([map { $_->{key} } @{$owned_sections->[0]{controls}}], ['level'],
+    'provider-owned acquisition source is absent from host settings');
+
 done_testing;

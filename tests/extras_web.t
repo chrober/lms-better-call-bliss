@@ -197,6 +197,19 @@ is($translated_summary->{mode}, 'Wiedergabeliste automatisch verbessern',
 is($translated_summary->{status}, 'Abgeschlossen – 3 hinzugefügt',
     'recent preview completion and addition count are localized');
 $Slim::Utils::Strings::language = 'EN';
+{
+    local *Plugins::BlissGuidance::SettingsModel::enum_options = sub { [] };
+    my $sections = Plugins::BetterCallBliss::Web::_guidance_provider_sections({
+        discovered_guidance_providers => [{provider_id => 'lastfm', available => 1,
+            descriptor => {controls => [
+                {key => 'source', type => 'enum', host_overridable => 0},
+                {key => 'level', type => 'integer', host_overridable => 1},
+            ]}, host_policy => {enabled => 1, valid => 1,
+                effective => {source => 'api_key', level => 25}}}],
+    }, {});
+    is_deeply([map { $_->{key} } @{$sections->[0]{controls}}], ['level'],
+        'Extras omits the provider-owned Last.fm source');
+}
 is_deeply(Plugins::BetterCallBliss::Web::_localized_capability_problems([
     'an LMS library scan is updating the catalog; preview will resume when it finishes',
 ]), ['The music library is being scanned; the preview will resume when the scan finishes.'],

@@ -7,9 +7,9 @@ use Test::More;
 my $root = "$FindBin::Bin/..";
 my %canonical = (
     'BetterCallBliss/Plugins/BlissGuidance/SettingsModel.pm'
-        => '83f9442e379b2707afe7a693eef02988093067e5aa3ad8a14a5cec40230d4952',
+        => 'ac1e18af0834e4feaa2443a57e8f8317b9f9b752564c2a26674ff0d71f04f5e8',
     'BetterCallBliss/Plugins/BlissGuidance/Policy.pm'
-        => 'f25caefbea85a538ccfa05c851e78d10bfb7a4f8dbb0f9a01347931adffaf461',
+        => '911a5f869fe60d9c7e50b7961e64332865057ffa1daee761f1d8d0f6d9ae4a5f',
     'BetterCallBliss/HTML/EN/plugins/BlissGuidance/settings/guidance-provider-controls.html'
         => 'd0b3dd3a4e03fe3f164de7b9e0a754d98a972a620d33ded045d6da481a0ca347',
     'BetterCallBliss/HTML/EN/plugins/BlissGuidance/settings/guidance-provider-controls.js'
