@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.22.16
+
+- Use consistent job terminology throughout the interface.
+- Follow Bliss Mixer Lab's artist repeat identity by default when available.
+- Respect provider-owned controls in guidance settings.
+
 ## 0.22.15
 
 - Clarify run and result terminology in the Extras interface.
