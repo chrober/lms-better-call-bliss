@@ -586,7 +586,7 @@ sub _result_view {
 
     if ($job->{state} eq 'failed') {
         $view->{error_code} = $job->{error_code};
-        $view->{error} = $job->{error};
+        $view->{error} = _localized_job_error($job->{error});
     } elsif ($job->{state} eq 'completed') {
         my $artifact = $job->{artifact};
         if (ref($artifact->{genre_filter}) eq 'HASH') {
@@ -886,6 +886,32 @@ sub _localized_capability_problems {
     } @{ $problems || [] }];
 }
 
+sub _localized_job_error {
+    my $error = shift;
+    return $error unless defined $error;
+    return string('PLUGIN_BETTERCALLBLISS_JOB_NOT_FOUND')
+        if $error =~ /^Preview job is no longer available(?:\s+at\s.*)?\s*$/;
+    return string('PLUGIN_BETTERCALLBLISS_JOB_INTERRUPTED')
+        if $error eq 'Lyrion stopped before the preview finished. Adjust the settings and run the preview again.';
+    return string('PLUGIN_BETTERCALLBLISS_JOB_TOO_LARGE')
+        if $error eq 'This preview exceeded the configured storage limit and was removed. Increase the limit and run it again.';
+    return $error;
+}
+
+sub _localized_defaults_warnings {
+    my $warnings = shift;
+    return [map {
+        if (/^These preview settings use current plugin defaults: (.*)$/) {
+            my $details = $1;
+            string('PLUGIN_BETTERCALLBLISS_DEFAULTS_NEW_JOB_SETTINGS') . ' ' . $details;
+        } elsif ($_ eq 'Saved preview settings are no longer valid; current plugin defaults will be used.') {
+            string('PLUGIN_BETTERCALLBLISS_DEFAULTS_INVALID_JOB');
+        } else {
+            $_;
+        }
+    } @{ $warnings || [] }];
+}
+
 sub handler {
     my ($client, $params) = @_;
     $params ||= {};
@@ -1029,6 +1055,7 @@ sub handler {
         $error = 'Preview job is no longer available' unless $job;
     }
 
+    $error = _localized_job_error($error) if $error;
     if ($params->{ajax_preview}
         && ($params->{run_preview} || $params->{run_route_to_track_preview})) {
         Plugins::BetterCallBliss::Jobs::finish_web_response();
@@ -1062,6 +1089,9 @@ sub handler {
     $params->{bettercallbliss_material_library_autoselect} =
         $candidate_library_was_explicit ? 0 : 1;
     $params->{bettercallbliss_form} = $form;
+    if (ref($defaults_view) eq 'HASH' && ref($defaults_view->{warnings}) eq 'ARRAY') {
+        $defaults_view->{warnings} = _localized_defaults_warnings($defaults_view->{warnings});
+    }
     $params->{bettercallbliss_extras_defaults} = $defaults_view || {};
     $params->{bettercallbliss_guidance_provider_sections} =
         _guidance_provider_sections($capability, $form);

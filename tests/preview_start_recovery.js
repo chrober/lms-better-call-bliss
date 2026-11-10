@@ -64,8 +64,8 @@ async function run() {
     t.respond({ result: { job: { id: 'preview-123-webabcdef', state: 'running', status: 'Optimizing' }, running_jobs: [], recent_jobs: [] } });
     t.window.BetterCallBlissPreviewStatus.follow('preview-123-webabcdef', true);
     await t.flush();
-    assert.match(t.elements.title.textContent, /Optimierung läuft/, 'confirmed job uses German banner');
-    assert.equal(t.elements['bea-running-jobs-heading'].textContent, 'Laufend', 'confirmed job uses German running heading');
+    assert.match(t.elements.title.textContent, /Auftrag wird ausgeführt/, 'confirmed job uses German banner');
+    assert.equal(t.elements['bea-running-jobs-heading'].textContent, 'In Bearbeitung', 'confirmed job uses German running heading');
   }
   {
     const t = setup();
@@ -80,8 +80,8 @@ async function run() {
     assert.equal(t.elements['bea-live-status-text'].textContent, 'Optimizing', 'registered job resumes live tracking');
     assert.ok(t.requests.every(request => request.body.params[1][3] === 'job_id:preview-123-webabcdef'), 'reconciliation checks the original job ID');
     assert.ok(t.requests.every(request => request.body.params[1][2] === 'status'), 'reconciliation never sends a second start command');
-    assert.match(t.elements.title.textContent, /running/i, 'confirmed job restores running banner');
-    assert.equal(t.elements['bea-running-jobs-heading'].textContent, 'Running', 'confirmed jobs restore the running section title');
+    assert.match(t.elements.title.textContent, /in progress/i, 'confirmed job restores running banner');
+    assert.equal(t.elements['bea-running-jobs-heading'].textContent, 'In progress', 'confirmed jobs restore the running section title');
   }
   {
     const t = setup();
@@ -134,7 +134,7 @@ async function run() {
     t.window.BetterCallBlissPreviewStatus.submissionFailed('preview-123-webabcdef', 'NetworkError');
     t.fire(15000);
     t.window.BetterCallBlissPreviewStatus.follow('preview-124-webabcdef', true);
-    assert.match(t.elements.title.textContent, /running/i, 'a new preview restores the normal banner');
+    assert.match(t.elements.title.textContent, /in progress/i, 'a new preview restores the normal banner');
   }
   console.log('preview start recovery behavior: ok');
 }

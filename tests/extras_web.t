@@ -26,6 +26,11 @@ BEGIN {
             PLUGIN_BETTERCALLBLISS_RESULT_REASON_SPACING => { EN => 'Repeat-window spacing', DE => 'Abstand für Wiederholungsregeln' },
             PLUGIN_BETTERCALLBLISS_RESULT_REASON_SMOOTHING => { EN => 'Transition smoothing', DE => 'Übergangsverbesserung' },
             PLUGIN_BETTERCALLBLISS_EXTRAS_SCAN_PROBLEM => { EN => 'The music library is being scanned; the preview will resume when the scan finishes.', DE => 'Die Musikbibliothek wird durchsucht; die Vorschau wird fortgesetzt, sobald der Suchlauf abgeschlossen ist.' },
+            PLUGIN_BETTERCALLBLISS_JOB_NOT_FOUND => { EN => 'This job is no longer available.', DE => 'Dieser Auftrag ist nicht mehr verfügbar.' },
+            PLUGIN_BETTERCALLBLISS_JOB_INTERRUPTED => { EN => 'Lyrion stopped before the job finished.', DE => 'Lyrion wurde vor Abschluss des Auftrags beendet.' },
+            PLUGIN_BETTERCALLBLISS_JOB_TOO_LARGE => { EN => 'This job exceeded the storage limit.', DE => 'Dieser Auftrag überschritt das Speicherlimit.' },
+            PLUGIN_BETTERCALLBLISS_DEFAULTS_INVALID_JOB => { EN => 'Saved job settings are no longer valid.', DE => 'Gespeicherte Auftragseinstellungen sind nicht mehr gültig.' },
+            PLUGIN_BETTERCALLBLISS_DEFAULTS_NEW_JOB_SETTINGS => { EN => 'These job settings use current plugin defaults:', DE => 'Diese Auftragseinstellungen verwenden die aktuellen Plugin-Standardwerte:' },
         );
         my $value = $values{$token}{$language} // $token;
         return @args ? sprintf($value, @args) : $value;
@@ -196,6 +201,25 @@ is($translated_summary->{mode}, 'Wiedergabeliste automatisch verbessern',
     'recent preview mode is localized');
 is($translated_summary->{status}, 'Abgeschlossen – 3 hinzugefügt',
     'recent preview completion and addition count are localized');
+$Slim::Utils::Strings::language = 'EN';
+is(eval { Plugins::BetterCallBliss::Web::_localized_job_error('Preview job is no longer available') },
+    'This job is no longer available.', 'missing-job fallback is localized for English');
+$Slim::Utils::Strings::language = 'DE';
+is(eval { Plugins::BetterCallBliss::Web::_localized_job_error('Preview job is no longer available') },
+    'Dieser Auftrag ist nicht mehr verfügbar.', 'missing-job fallback is localized for German');
+is(Plugins::BetterCallBliss::Web::_localized_job_error('Lyrion stopped before the preview finished. Adjust the settings and run the preview again.'),
+    'Lyrion wurde vor Abschluss des Auftrags beendet.', 'interrupted stored jobs use localized terminology');
+is(Plugins::BetterCallBliss::Web::_localized_job_error('This preview exceeded the configured storage limit and was removed. Increase the limit and run it again.'),
+    'Dieser Auftrag überschritt das Speicherlimit.', 'oversized stored jobs use localized terminology');
+is(Plugins::BetterCallBliss::Web::_localized_job_error('Native optimizer diagnostic'),
+    'Native optimizer diagnostic', 'native diagnostics remain unchanged');
+my $localized_warnings = eval { Plugins::BetterCallBliss::Web::_localized_defaults_warnings([
+    'These preview settings use current plugin defaults: artist window.',
+    'Saved preview settings are no longer valid; current plugin defaults will be used.',
+]) };
+is_deeply($localized_warnings, ['Diese Auftragseinstellungen verwenden die aktuellen Plugin-Standardwerte: artist window.',
+    'Gespeicherte Auftragseinstellungen sind nicht mehr gültig.'],
+    'saved-default warnings use localized job terminology');
 $Slim::Utils::Strings::language = 'EN';
 {
     local *Plugins::BlissGuidance::SettingsModel::enum_options = sub { [] };

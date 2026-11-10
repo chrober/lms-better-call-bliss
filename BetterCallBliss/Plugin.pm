@@ -353,7 +353,7 @@ sub _job_payload {
         live_status => Plugins::BetterCallBliss::Jobs::compact_status($job),
         can_cancel => $state eq 'running' ? 1 : 0,
         error_code => $job->{error_code} || '',
-        error => $job->{error} || '',
+        error => Plugins::BetterCallBliss::Web::_localized_job_error($job->{error} || ''),
         write_state => $job->{write_state} || '',
         write_error_code => $job->{write_error_code} || '',
         write_error => $job->{write_error} || '',
@@ -528,7 +528,7 @@ sub jobCommand {
     } elsif (!$job) {
         $request->addResult('state', 'not_found');
         $request->addResult('error_code', 'JOB_NOT_FOUND');
-        $request->addResult('error', 'Preview job is no longer available');
+        $request->addResult('error', Slim::Utils::Strings::string('PLUGIN_BETTERCALLBLISS_JOB_NOT_FOUND'));
     } else {
         $request->addResult('job', _job_payload($job));
     }

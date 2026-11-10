@@ -474,7 +474,7 @@
     </div>
     <div class="bea-row">
       <label for="generation_seed">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_SEED" | string %]</label>
-      <input type="number" min="0" max="4294967295" name="generation_seed" id="generation_seed" value="[% bettercallbliss_form.generation_seed %]" placeholder="new seed each run">
+      <input type="number" min="0" max="4294967295" name="generation_seed" id="generation_seed" value="[% bettercallbliss_form.generation_seed %]" placeholder="[% 'PLUGIN_BETTERCALLBLISS_JOB_SEED_PLACEHOLDER' | string | html %]">
     </div>
     <p class="bea-note">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_VARIATION_NOTE" | string %]</p>
   </fieldset>
@@ -626,6 +626,8 @@
   <span id="bea-i18n-CANCEL_START">[% "PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_START" | string | html %]</span>
   <span id="bea-i18n-CANCEL_BEFORE">[% "PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_BEFORE" | string | html %]</span>
   <span id="bea-i18n-PREPARING">[% "PLUGIN_BETTERCALLBLISS_DYNAMIC_PREPARING" | string | html %]</span>
+  <span id="bea-i18n-JOB_PREPARING_SHORT">[% "PLUGIN_BETTERCALLBLISS_JOB_PREPARING_SHORT" | string | html %]</span>
+  <span id="bea-i18n-JOB_CANCELLING_SHORT">[% "PLUGIN_BETTERCALLBLISS_JOB_CANCELLING_SHORT" | string | html %]</span>
   <span id="bea-i18n-NO_QUEUE">[% "PLUGIN_BETTERCALLBLISS_DYNAMIC_NO_QUEUE" | string | html %]</span>
   <span id="bea-i18n-NO_PLAYLIST">[% "PLUGIN_BETTERCALLBLISS_DYNAMIC_NO_PLAYLIST" | string | html %]</span>
   <span id="bea-i18n-CALCULATED_SIZE">[% "PLUGIN_BETTERCALLBLISS_DYNAMIC_CALCULATED_SIZE" | string | html %]</span>
@@ -922,7 +924,7 @@
       if (statusCell) {
         statusCell.textContent = extrasText('CANCEL_BEFORE');
       }
-      setPreviewStartButtons(true, 'Cancelling preview...');
+      setPreviewStartButtons(true, extrasText('JOB_CANCELLING_SHORT'));
       requestStartupCancel(startupJobId, 0);
     }
 
@@ -1468,7 +1470,7 @@
         if (window.BetterCallBlissPreviewStatus) {
           window.BetterCallBlissPreviewStatus.follow(previewJobId, true, actionName);
         }
-        setPreviewStartButtons(true, 'Preparing preview...');
+        setPreviewStartButtons(true, extrasText('JOB_PREPARING_SHORT'));
         var formData = new FormData(mainForm);
         var encoded = new URLSearchParams();
         formData.forEach(function (value, name) {
@@ -1506,7 +1508,7 @@
   <fieldset class="bea-section" id="bea-preview-result">
     <legend>[% "PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT" | string %]</legend>
     <p><b>[% bettercallbliss_job.playlist_title | html %]</b> - <span id="bea-preview-stage">[% bettercallbliss_job.stage | html %]</span><span id="bea-preview-elapsed"></span></p>
-    <p>Job ID: [% bettercallbliss_job.id | html %]</p>
+    <p>[% 'PLUGIN_BETTERCALLBLISS_JOB_ID' | string | html %]: [% bettercallbliss_job.id | html %]</p>
     [% IF bettercallbliss_job.state == 'completed' %]
       <p class="bea-note">[% "PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT_NOTE" | string %]</p>
     [% ELSE %]
@@ -2068,7 +2070,7 @@
             updateCurrentJob(response.result.job);
           } else if (response.result.state === 'not_found' && !waitingForRegistration && !startupUncertain) {
             updateJobLists(response.result);
-            showStartupFailure(startupError || response.result.error || 'Preview job could not be started');
+            showStartupFailure(startupError || response.result.error || extrasText('START_FAILED'));
           } else if (response.result.state !== 'not_found') {
             updateJobLists(response.result);
           }

@@ -103,7 +103,7 @@ like(
 );
 like(
     $extras,
-    qr/mainForm\.addEventListener\('submit'.*?hidden\.name = submitter\.name.*?setPreviewStartButtons\(true, 'Preparing preview\.\.\.'\)/s,
+    qr/mainForm\.addEventListener\('submit'.*?hidden\.name = submitter\.name.*?setPreviewStartButtons\(true, extrasText\('JOB_PREPARING_SHORT'\)\)/s,
     'submit handler preserves the clicked preview action before disabling the button',
 );
 like(

@@ -39,16 +39,16 @@ PLUGIN_BETTERCALLBLISS_REPEAT_KIND_TRACK
 	DE	Titel
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_PAUSED
-	EN	Run temporarily paused.
-	DE	Lauf vorübergehend pausiert.
+	EN	Job temporarily paused.
+	DE	Auftrag vorübergehend pausiert.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_UNAVAILABLE
-	EN	Run unavailable.
-	DE	Lauf nicht verfügbar.
+	EN	Job unavailable.
+	DE	Auftrag nicht verfügbar.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_SCAN_PROBLEM
-	EN	The music library is being scanned; the run will resume when the scan finishes.
-	DE	Die Musikbibliothek wird durchsucht; der Lauf wird fortgesetzt, sobald der Suchlauf abgeschlossen ist.
+	EN	The music library is being scanned; the job will resume when the scan finishes.
+	DE	Die Musikbibliothek wird durchsucht; der Auftrag wird fortgesetzt, sobald der Suchlauf abgeschlossen ist.
 
 DEBUG_PLUGIN_BETTERCALLBLISS
 	EN	Better Call Bliss
@@ -115,8 +115,8 @@ PLUGIN_BETTERCALLBLISS_RESTART_COUNT
 	DE	Neustarts der Routensuche
 
 PLUGIN_BETTERCALLBLISS_RESTART_COUNT_DESC
-	EN	Deterministic base-route search effort used by new runs; each run can override it.
-	DE	Deterministischer Suchaufwand für die Basisroute neuer Läufe; pro Lauf änderbar.
+	EN	Deterministic base-route search effort used by new jobs; each job can override it.
+	DE	Deterministischer Suchaufwand für die Basisroute neuer Aufträge; für jeden Auftrag änderbar.
 
 PLUGIN_BETTERCALLBLISS_EXTENDED_SUFFIX
 	EN	Default extended-copy suffix
@@ -132,7 +132,7 @@ PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET
 
 PLUGIN_BETTERCALLBLISS_AUTO_BRIDGE_BUDGET_DESC
 	EN	Maximum additions proposed by Extend automatically; each job can override it.
-	DE	Maximale Anzahl zusätzlicher Titel für die automatische Erweiterung; pro Vorgang änderbar.
+	DE	Maximale Anzahl zusätzlicher Titel für die automatische Erweiterung; für jeden Auftrag änderbar.
 
 PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT
 	EN	Default transition-quality threshold (percentile)
@@ -140,15 +140,15 @@ PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT
 
 PLUGIN_BETTERCALLBLISS_AUTO_TRIGGER_PERCENT_DESC
 	EN	A distance rank within the job's comparison population, not a similarity percentage. Lower values are stricter and cause more searches. Difficult-transition repair uses it as a gap trigger on the frozen source-playlist scale; automatic destination routing uses it as the neighboring-leg target against the local analyzed library. It does not control reordering, full-playlist extension, or exact-count destination routing. Each applicable job can override it.
-	DE	Ein Distanzrang innerhalb der Vergleichsmenge des Vorgangs, keine Ähnlichkeit in Prozent. Niedrigere Werte sind strenger und lösen mehr Suchen aus. Die Reparatur schwieriger Übergänge verwendet ihn als Lücken-Auslöser auf der eingefrorenen Skala der Quell-Playlist; die automatische Zielrouten-Suche verwendet ihn als Zielwert für benachbarte Titel gegenüber der lokal analysierten Bibliothek. Er steuert weder die Neuordnung noch die Erweiterung der gesamten Playlist noch Zielrouten mit einer exakten Titelanzahl. Jeder zutreffende Vorgang kann ihn überschreiben.
+	DE	Ein Distanzrang innerhalb der Vergleichsmenge des Auftrags, keine Ähnlichkeit in Prozent. Niedrigere Werte sind strenger und lösen mehr Suchen aus. Die Reparatur schwieriger Übergänge verwendet ihn als Lücken-Auslöser auf der eingefrorenen Skala der Quell-Playlist; die automatische Zielrouten-Suche verwendet ihn als Zielwert für benachbarte Titel gegenüber der lokal analysierten Bibliothek. Er steuert weder die Neuordnung noch die Erweiterung der gesamten Playlist noch Zielrouten mit einer exakten Titelanzahl. Er kann für jeden passenden Auftrag geändert werden.
 
 PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT
 	EN	Default variation (%)
 	DE	Standardvariation (%)
 
 PLUGIN_BETTERCALLBLISS_VARIATION_PERCENT_DESC
-	EN	Bounded reproducible variation used by new Extras and Bliss me there runs. Zero always chooses the strict best-ranked result.
-	DE	Begrenzte reproduzierbare Variation für neue Extras- und Bliss-me-there-Läufe. Null wählt immer das streng bestplatzierte Ergebnis.
+	EN	Bounded reproducible variation used by new Extras and Bliss me there jobs. Zero always chooses the strict best-ranked result.
+	DE	Begrenzte reproduzierbare Variation für neue Extras- und Bliss-me-there-Aufträge. Null wählt immer das streng bestplatzierte Ergebnis.
 
 PLUGIN_BETTERCALLBLISS_ARTIST_REPEAT_MODE
 	EN	Artist identity for repeat windows
@@ -415,8 +415,8 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_FACTORY
 	DE	Eingebauter Standardwert des Anbieters
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_JOB
-	EN	Value for this run
-	DE	Wert für diesen Lauf
+	EN	Value for this job
+	DE	Wert für diesen Auftrag
 
 PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_ORIGIN_PENDING
 	EN	(will apply when saved)
@@ -426,20 +426,20 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_PROVIDER_RESET
 	EN	Use inherited default
 	DE	Übernommenen Standardwert verwenden
 PLUGIN_BETTERCALLBLISS_HISTORY_SECTION
-	EN	Run history
-	DE	Laufverlauf
+	EN	Job history
+	DE	Auftragsverlauf
 
 PLUGIN_BETTERCALLBLISS_HISTORY_SECTION_DESC
-	EN	All limits apply together: older runs are removed whenever necessary to satisfy any configured limit. Running jobs are protected. Leave the number or age blank for no limit; the storage limit is required.
-	DE	Alle Grenzen gelten gemeinsam: Ältere Läufe werden bei Bedarf entfernt, damit keine konfigurierte Grenze überschritten wird. Laufende Aufträge bleiben geschützt. Anzahl und Alter können für unbegrenzte Aufbewahrung leer bleiben; das Speicherlimit ist verpflichtend.
+	EN	All limits apply together: older jobs are removed whenever necessary to satisfy any configured limit. Jobs in progress are protected. Leave the number or age blank for no limit; the storage limit is required.
+	DE	Alle Grenzen gelten gemeinsam: Ältere Aufträge werden bei Bedarf entfernt, damit keine konfigurierte Grenze überschritten wird. Aufträge in Bearbeitung bleiben geschützt. Anzahl und Alter können für unbegrenzte Aufbewahrung leer bleiben; das Speicherlimit ist verpflichtend.
 
 PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT
-	EN	Number of retained runs
-	DE	Anzahl aufbewahrter Läufe
+	EN	Number of retained jobs
+	DE	Anzahl aufbewahrter Aufträge
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RUNNING_BANNER
-	EN	Optimization is running.
-	DE	Optimierung läuft.
+	EN	Job in progress.
+	DE	Auftrag wird ausgeführt.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CHECK_AGAIN
 	EN	Check again
@@ -450,8 +450,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_RERUN_PREVIEW
 	DE	Erneut ausführen
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RUNNING
-	EN	Running
-	DE	Laufend
+	EN	In progress
+	DE	In Bearbeitung
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RECENT
 	EN	Recent
@@ -474,8 +474,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_NEXT
 	DE	Weiter
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_HEADER
-	EN	Defaults for new runs
-	DE	Standardwerte für neue Läufe
+	EN	Defaults for new jobs
+	DE	Standardwerte für neue Aufträge
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_SOURCE
 	EN	Defaults source
@@ -726,8 +726,8 @@ PLUGIN_BETTERCALLBLISS_DYNAMIC_FIXED_OPT
 	DE	Zuerst wird die Reihenfolge der Ausgangstitel optimiert und festgelegt. Danach werden genau N Zwischentitel in jede entstandene Lücke eingefügt. Alle Lücken werden gemeinsam geplant, damit eine lokale Wahl spätere Lücken nicht unmöglich macht.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_FIXED_PRES
-	EN	Keep the current source order and insert exactly N bridge tracks into every existing gap. All gaps are planned together and the run fails without a partial result if the exact route cannot satisfy the constraints.
-	DE	Die Reihenfolge der Ausgangstitel bleibt erhalten und in jede Lücke werden genau N Zwischentitel eingefügt. Alle Lücken werden gemeinsam geplant. Können die Regeln nicht eingehalten werden, schlägt der Lauf ohne Teilergebnis fehl.
+	EN	Keep the current source order and insert exactly N bridge tracks into every existing gap. All gaps are planned together and the job fails without a partial result if the exact route cannot satisfy the constraints.
+	DE	Die Reihenfolge der Ausgangstitel bleibt erhalten und in jede Lücke werden genau N Zwischentitel eingefügt. Alle Lücken werden gemeinsam geplant. Können die Regeln nicht eingehalten werden, schlägt der Auftrag ohne Teilergebnis fehl.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_AMOUNT_EXACT
 	EN	Extend-only amount control: add exactly this many tracks to the source snapshot. This is a playlist-length request, not one bridge per existing gap.
@@ -790,8 +790,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_COMBO_WARNING
 	DE	Wenn die Reihenfolge erhalten bleibt und keine Titel ergänzt werden, bleibt das Ergebnis unverändert. Wähle eine Übergangsverbesserung oder eine Verlängerung mit einem Ziel größer als null.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_EXACT_NOTE
-	EN	The result is all-or-nothing: the run succeeds with exactly this many unique additions or fails without offering a partial playlist.
-	DE	Alles oder nichts: Das Ergebnis enthält entweder genau diese Anzahl unterschiedlicher zusätzlicher Titel oder der Lauf schlägt ohne teilweise Wiedergabeliste fehl.
+	EN	The result is all-or-nothing: the job succeeds with exactly this many unique additions or fails without offering a partial playlist.
+	DE	Alles oder nichts: Das Ergebnis enthält entweder genau diese Anzahl unterschiedlicher zusätzlicher Titel oder der Auftrag schlägt ohne unvollständige Wiedergabeliste fehl.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CHOOSE_LIMIT
 	EN	Choose a source to see the current limit.
@@ -826,16 +826,16 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_DURATION_NOTE
 	DE	Die endgültige Dauer muss innerhalb der gewählten Toleranzen liegen. Liegt die Quelle bereits innerhalb dieses Bereichs, werden keine Titel hinzugefügt.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_VARIATION_NOTE
-	EN	Variation is applied after the selected similarity strategy, so it also applies to future Static and Forest strategies. Leave the seed blank for a new result on each run; enter a previous result seed to reproduce it.
-	DE	Die Variation wird nach der gewählten Ähnlichkeitsstrategie angewendet. Lass den Seed leer, um bei jedem Lauf ein neues Ergebnis zu erhalten, oder gib den Seed eines früheren Ergebnisses ein, um es zu reproduzieren.
+	EN	Variation is applied after the selected similarity strategy, so it also applies to future Static and Forest strategies. Leave the seed blank for a new result for each job; enter a previous result seed to reproduce it.
+	DE	Die Variation wird nach der gewählten Ähnlichkeitsstrategie angewendet. Lass den Seed leer, um für jeden Auftrag ein neues Ergebnis zu erhalten, oder gib den Seed eines früheren Ergebnisses ein, um es zu reproduzieren.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DISABLED_PROVIDER
 	EN	Enable this provider on the Better Call Bliss settings page to apply its defaults or per-job overrides.
 	DE	Aktiviere diesen Anbieter in den Better-Call-Bliss-Einstellungen, um seine Standardwerte oder abweichende Werte für diesen Auftrag zu verwenden.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_UNCHECKED
-	EN	When unchecked, artist, album and track repeat windows are not applied to this run. Your entered values are kept.
-	DE	Wenn diese Option deaktiviert ist, werden die Wiederholungsabstände für Interpreten, Alben und Titel für diesen Lauf nicht angewendet. Die eingegebenen Werte bleiben erhalten.
+	EN	When unchecked, artist, album and track repeat windows are not applied to this job. Your entered values are kept.
+	DE	Wenn diese Option deaktiviert ist, werden die Wiederholungsabstände für Interpreten, Alben und Titel für diesen Auftrag nicht angewendet. Die eingegebenen Werte bleiben erhalten.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_REPEAT_ZERO
 	EN	Use 0 to disable a constraint. For a single-artist playlist, set Artist look-back to 0.
@@ -846,8 +846,8 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_SEARCH_HELP
 	DE	Wird nur verwendet, wenn Ausgangstitel neu angeordnet werden dürfen. Jeder deterministische Versuch beginnt mit einer anderen Reihenfolge und verbessert diese schrittweise. Mehr Versuche können bessere Ergebnisse liefern, benötigen aber mehr Zeit. Bei null werden weiterhin die fest eingebauten Ausgangsvarianten geprüft.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_READ_ONLY_NOTE
-	EN	This run does not change any playlist or player queue. After reviewing the result, choose whether to save a copy, overwrite the source when applicable, or send it to a player queue.
-	DE	Dieser Lauf ändert keine Wiedergabeliste. Nach der Prüfung kannst du eine Kopie speichern, gegebenenfalls die Quelle überschreiben oder das Ergebnis an die Wiedergabeliste eines Players senden.
+	EN	This job does not change any playlist or player queue. After reviewing the result, choose whether to save a copy, overwrite the source when applicable, or send it to a player queue.
+	DE	Dieser Auftrag ändert keine Wiedergabeliste. Nach der Prüfung kannst du eine Kopie speichern, gegebenenfalls die Quelle überschreiben oder das Ergebnis an die Wiedergabeliste eines Players senden.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_NO_PROFILE
 	EN	Save your current settings to make Extras defaults available.
@@ -858,28 +858,28 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_NOTE
 	DE	<b>Plugin-Standardwerte verwenden:</b> Verwendet die aktuellen Einstellungen von Better Call Bliss, BlissMixer und den installierten Gewichtungsanbietern.<br/><br/><b>Gespeicherte Extras-Standardwerte verwenden:</b> Verwendet die unabhängig davon gespeicherten Extras-Einstellungen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULTS_EXPLAIN
-	EN	Changing the selection affects future new runs. Load selected defaults to apply it here. Starting a run does not save defaults; loading leaves the selected source and player unchanged.
-	DE	Die Auswahl gilt für zukünftige Läufe. Lade die gewählten Standardwerte, um sie hier anzuwenden. Das Starten eines Laufs speichert keine Standardwerte; beim Laden bleiben Quelle und Player unverändert.
+	EN	Changing the selection affects future new jobs. Load selected defaults to apply it here. Starting a job does not save defaults; loading leaves the selected source and player unchanged.
+	DE	Die Auswahl gilt für neue Aufträge. Lade die gewählten Standardwerte, um sie hier anzuwenden. Das Starten eines Auftrags speichert keine Standardwerte; beim Laden bleiben Quelle und Player unverändert.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RESCAN_NOTE
 	EN	This page will check again automatically.
 	DE	Diese Seite prüft den Status automatisch erneut.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_WAIT
-	EN	Run cancellation requested. Waiting for LMS to finish cancelling the startup work.
-	DE	Abbruch des Laufs angefordert. Warten, bis Lyrion die Vorbereitung abgebrochen hat.
+	EN	Cancellation requested. Waiting for Lyrion to stop preparation.
+	DE	Abbruch angefordert. Warten, bis Lyrion die Vorbereitung abgebrochen hat.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_START
-	EN	Cancelling run startup...
-	DE	Vorbereitung des Laufs wird abgebrochen ...
+	EN	Cancelling preparation...
+	DE	Vorbereitung wird abgebrochen ...
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_CANCEL_BEFORE
-	EN	Cancelling run startup before the native optimizer starts.
-	DE	Die Vorbereitung des Laufs wird vor dem Start des Optimizers abgebrochen.
+	EN	Cancelling preparation before the native optimizer starts.
+	DE	Die Vorbereitung wird vor dem Start des Optimierers abgebrochen.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_PREPARING
-	EN	Preparing run: capturing the source and candidate library before native optimizer progress starts.
-	DE	Lauf wird vorbereitet: Quelle und Kandidatenmediathek werden erfasst, bevor die Optimierung beginnt.
+	EN	Preparing job: capturing the source and candidate library before native optimizer progress starts.
+	DE	Auftrag wird vorbereitet: Quelle und Kandidatenmediathek werden erfasst, bevor die Optimierung beginnt.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_NO_QUEUE
 	EN	Choose a player queue scope containing at least two local tracks.
@@ -914,8 +914,8 @@ PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVING
 	DE	Auswahl wird gespeichert ...
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVED
-	EN	Selection saved for new runs.
-	DE	Auswahl für neue Läufe gespeichert.
+	EN	Selection saved for new jobs.
+	DE	Auswahl für neue Aufträge gespeichert.
 
 PLUGIN_BETTERCALLBLISS_DYNAMIC_SAVE_ERROR
 	EN	Could not save selection. Please try again.
@@ -926,12 +926,12 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT
 	DE	Ergebnis
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT_NOTE
-	EN	This run has not changed any playlist or player queue. Choose an output below after reviewing the result.
-	DE	Dieser Lauf hat keine Wiedergabeliste geändert. Wähle nach der Prüfung unten eine Ausgabe aus.
+	EN	This job has not changed any playlist or player queue. Choose an output below after reviewing the result.
+	DE	Dieser Auftrag hat keine Wiedergabeliste geändert. Wähle nach der Prüfung unten eine Ausgabe aus.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RESULT_READ_ONLY
-	EN	Runs do not change playlists or player queues until you apply the result.
-	DE	Läufe ändern keine Wiedergabelisten, solange du das Ergebnis nicht übernimmst.
+	EN	Jobs do not change playlists or player queues until you apply the result.
+	DE	Aufträge ändern keine Wiedergabelisten, solange du das Ergebnis nicht übernimmst.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_ACCEPT_CHECKS
 	EN	Verified acceptance checks
@@ -1066,7 +1066,7 @@ PLUGIN_BETTERCALLBLISS_MORE_QUICK_ROUTE
 	DE	Schnellroute:
 
 PLUGIN_BETTERCALLBLISS_MORE_QUEUE_NOTE
-	EN	The selected queue is captured as a frozen source snapshot when the run starts. Later queue changes do not affect the running job.
+	EN	The selected queue is captured as a frozen source snapshot when the job starts. Later queue changes do not affect the job in progress.
 	DE	Die gewählte Wiedergabeliste wird beim Start als feste Momentaufnahme erfasst. Spätere Änderungen beeinflussen den laufenden Auftrag nicht.
 
 PLUGIN_BETTERCALLBLISS_MORE_VARIATION_EXPLAIN
@@ -1226,16 +1226,16 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_QUICK_INTRO
 	DE	Eine Route zum festen Ziel wird mit den gespeicherten Standardwerten für „Bliss me there...“ erstellt. Die Wiedergabeliste wird erst geändert, nachdem die fertige Route die Prüfung der aktuellen Quelle bestanden hat.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_SNAPSHOT_ONE
-	EN	The selected queue snapshot currently contains about %1 track. It is frozen when the run starts; later queue changes do not affect the running job.
-	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start des Laufs festgehalten; spätere Änderungen beeinflussen den laufenden Auftrag nicht.
+	EN	The selected queue snapshot currently contains about %1 track. It is frozen when the job starts; later queue changes do not affect the job in progress.
+	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start des Auftrags festgehalten; spätere Änderungen beeinflussen den Auftrag nicht.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_SOURCE_SNAPSHOT_MANY
-	EN	The selected queue snapshot currently contains about %1 tracks. It is frozen when the run starts; later queue changes do not affect the running job.
-	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start des Laufs festgehalten; spätere Änderungen beeinflussen den laufenden Auftrag nicht.
+	EN	The selected queue snapshot currently contains about %1 tracks. It is frozen when the job starts; later queue changes do not affect the job in progress.
+	DE	Die gewählte Momentaufnahme der Wiedergabeliste enthält derzeit etwa %1 Titel. Sie wird beim Start des Auftrags festgehalten; spätere Änderungen beeinflussen den Auftrag nicht.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CONFIRM_LOAD_DEFAULTS
-	EN	Load these defaults and replace the current run settings?
-	DE	Diese Standardwerte laden und die aktuellen Einstellungen für den Lauf ersetzen?
+	EN	Load these defaults and replace the current job settings?
+	DE	Diese Standardwerte laden und die aktuellen Auftragseinstellungen ersetzen?
 
 PLUGIN_BETTERCALLBLISS_RESULT_CANDIDATE_LIBRARY
 	EN	Candidate library:
@@ -1294,44 +1294,44 @@ PLUGIN_BETTERCALLBLISS_ROUTE_QUALITY_EXPLANATION
 	DE	Der Schwellenwert für die Übergangsqualität ist ein Abstands-Rang und kein Ähnlichkeitsprozentsatz. Niedrigere Werte sind strenger: Sie lösen häufiger eine Suche aus und verlangen bei automatischen Routen bessere benachbarte Übergänge. Bei 30 ist ein Übergang beispielsweise nur akzeptabel, wenn höchstens etwa 30 % der relevanten Vergleichstitel akustisch näher liegen. Im vorsichtigen Modus kann auch unterhalb des Schwellenwerts gesucht werden, wenn sich die Akustikmodelle stark widersprechen. Erreicht keine Route das Ziel, wird eine Brücke nur verwendet, wenn sie das vorsichtig bewertete direkte Ergebnis um mindestens einen Perzentilpunkt verbessert. Andernfalls wird das direkte Ziel beibehalten und gemeldet. Bei genauer Anzahl gilt dasselbe Ziel für benachbarte Übergänge. Die aktuellen BlissMixer-Einstellungen für Bewertung, Kontext und Wiederholung sowie die Last.fm-Einstellungen unten werden beim Start der Aktion übernommen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_FINISH_LOADING
-	EN	Run completed. Loading the full result...
-	DE	Lauf abgeschlossen. Das vollständige Ergebnis wird geladen ...
+	EN	Job completed. Loading the full result...
+	DE	Auftrag abgeschlossen. Das vollständige Ergebnis wird geladen ...
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CANCEL_LOADING
-	EN	Run cancelled. Loading the final status...
-	DE	Lauf abgebrochen. Der endgültige Status wird geladen ...
+	EN	Job cancelled. Loading the final status...
+	DE	Auftrag abgebrochen. Der endgültige Status wird geladen ...
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_START_FAILED
-	EN	Run could not be started.
-	DE	Der Lauf konnte nicht gestartet werden.
+	EN	The job could not be started.
+	DE	Der Auftrag konnte nicht gestartet werden.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CHECKING_STATUS
-	EN	Checking run status.
-	DE	Status des Laufs wird geprüft.
+	EN	Checking job status.
+	DE	Auftragsstatus wird geprüft.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_UNCONFIRMED
-	EN	Unconfirmed run
-	DE	Nicht bestätigter Lauf
+	EN	Start unconfirmed
+	DE	Start nicht bestätigt
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_OVERVIEW_UNCONFIRMED
-	EN	Running and recent runs (1 unconfirmed)
-	DE	Laufende und letzte Läufe (1 nicht bestätigt)
+	EN	Current and recent jobs (1 start unconfirmed)
+	DE	Aktuelle und letzte Aufträge (1 Start nicht bestätigt)
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_ATTEMPT
 	EN	Attempt:
 	DE	Versuch:
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CONNECTION_CHECK
-	EN	Connection interrupted. Checking whether the run started...
-	DE	Verbindung unterbrochen. Es wird geprüft, ob der Lauf gestartet wurde ...
+	EN	Connection interrupted. Checking whether the job started...
+	DE	Verbindung unterbrochen. Es wird geprüft, ob der Auftrag gestartet wurde ...
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CANNOT_CONFIRM
-	EN	Could not confirm whether the run started. Check again before starting another run.
-	DE	Es konnte nicht festgestellt werden, ob der Lauf gestartet wurde. Bitte prüfe dies erneut, bevor du einen weiteren Lauf startest.
+	EN	Could not confirm whether the job started. Check again before starting another job.
+	DE	Es konnte nicht festgestellt werden, ob der Auftrag gestartet wurde. Bitte prüfe dies erneut, bevor du einen weiteren Auftrag startest.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_START_UNCONFIRMED
-	EN	Run start unconfirmed.
-	DE	Start des Laufs nicht bestätigt.
+	EN	Job start unconfirmed.
+	DE	Start des Auftrags nicht bestätigt.
 
 PLUGIN_BETTERCALLBLISS_RESULT_DURATION
 	EN	Final duration: %s (%s from target). Added %s local tracks.
@@ -1346,12 +1346,48 @@ PLUGIN_BETTERCALLBLISS_RESULT_FIXED_EXTENSION
 	DE	%s Ausgangstitel wurden auf genau %s Titel verlängert; %s lokale Titel wurden hinzugefügt.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_JOB_OVERVIEW
-	EN	Running and recent runs
-	DE	Laufende und letzte Läufe
+	EN	Current and recent jobs
+	DE	Aktuelle und letzte Aufträge
+
+PLUGIN_BETTERCALLBLISS_JOB_ID
+	EN	Job ID
+	DE	Auftrags-ID
+
+PLUGIN_BETTERCALLBLISS_JOB_NOT_FOUND
+	EN	This job is no longer available.
+	DE	Dieser Auftrag ist nicht mehr verfügbar.
+
+PLUGIN_BETTERCALLBLISS_JOB_INTERRUPTED
+	EN	Lyrion stopped before the job finished. Adjust the settings and run it again.
+	DE	Lyrion wurde beendet, bevor der Auftrag abgeschlossen war. Passe die Einstellungen an und führe den Auftrag erneut aus.
+
+PLUGIN_BETTERCALLBLISS_JOB_TOO_LARGE
+	EN	This job exceeded the configured storage limit and was removed. Increase the limit and run it again.
+	DE	Dieser Auftrag überschritt das konfigurierte Speicherlimit und wurde entfernt. Erhöhe das Limit und führe den Auftrag erneut aus.
+
+PLUGIN_BETTERCALLBLISS_DEFAULTS_NEW_JOB_SETTINGS
+	EN	These job settings use current plugin defaults:
+	DE	Diese Auftragseinstellungen verwenden die aktuellen Plugin-Standardwerte:
+
+PLUGIN_BETTERCALLBLISS_DEFAULTS_INVALID_JOB
+	EN	Saved job settings are no longer valid; current plugin defaults will be used.
+	DE	Gespeicherte Auftragseinstellungen sind nicht mehr gültig; die aktuellen Plugin-Standardwerte werden verwendet.
+
+PLUGIN_BETTERCALLBLISS_JOB_SEED_PLACEHOLDER
+	EN	New seed for each job
+	DE	Neuer Seed für jeden Auftrag
+
+PLUGIN_BETTERCALLBLISS_JOB_PREPARING_SHORT
+	EN	Preparing job...
+	DE	Auftrag wird vorbereitet ...
+
+PLUGIN_BETTERCALLBLISS_JOB_CANCELLING_SHORT
+	EN	Cancelling job...
+	DE	Auftrag wird abgebrochen ...
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_JOB_RUNNING_COUNT
-	EN	%s running
-	DE	%s laufend
+	EN	%s in progress
+	DE	%s in Bearbeitung
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_JOB_STARTING_COUNT
 	EN	%1 starting
@@ -1370,16 +1406,16 @@ PLUGIN_BETTERCALLBLISS_EXTRAS_UNTITLED
 	DE	Unbenannte Quelle
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_CANCELLED
-	EN	Run cancelled.
-	DE	Lauf abgebrochen.
+	EN	Job cancelled.
+	DE	Auftrag abgebrochen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_NO_PLAYLIST_CHANGED
 	EN	No playlist or player queue was changed.
 	DE	Es wurde keine Wiedergabeliste geändert.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_PREVIEW_COMPLETED
-	EN	Run completed successfully.
-	DE	Lauf erfolgreich abgeschlossen.
+	EN	Job completed successfully.
+	DE	Auftrag erfolgreich abgeschlossen.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_REVIEW_OUTPUT
 	EN	Review the result below, then accept the selected output if it looks right.
@@ -1410,28 +1446,28 @@ PLUGIN_BETTERCALLBLISS_DYNAMIC_NOT_USED_PRESERVE
 	DE	Wird nicht verwendet, wenn die Reihenfolge der Ausgangstitel beibehalten wird.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_ENABLE_PREVIEW
-	EN	Enable for this run
-	DE	Für diesen Lauf aktivieren
+	EN	Enable for this job
+	DE	Für diesen Auftrag aktivieren
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SPACING
 	EN	Satisfy repeat windows with spacing tracks
 	DE	Wiederholungsregeln durch Abstandstitel erfüllen
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_SPACING_REQUIRES_REPEAT
-	EN	Requires repeat rules to be enabled for this run.
-	DE	Erfordert aktivierte Wiederholungsregeln für diesen Lauf.
+	EN	Requires repeat rules to be enabled for this job.
+	DE	Erfordert aktivierte Wiederholungsregeln für diesen Auftrag.
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_GOAL_SMOOTH
 	EN	Improve difficult transitions when useful
 	DE	Schwierige Übergänge bei Bedarf verbessern
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_RUN_PREVIEW
-	EN	Run optimization
-	DE	Optimierung starten
+	EN	Start job
+	DE	Auftrag starten
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_CANCEL_PREVIEW
-	EN	Cancel run
-	DE	Lauf abbrechen
+	EN	Cancel job
+	DE	Auftrag abbrechen
 
 PLUGIN_BETTERCALLBLISS_EXTRAS_DEFAULT_PLUGIN
 	EN	Use plugin defaults
@@ -1546,28 +1582,28 @@ PLUGIN_BETTERCALLBLISS_CANDIDATE_LIBRARY
 	DE	Mediathek für Kandidaten
 
 PLUGIN_BETTERCALLBLISS_HISTORY_LIMIT_DESC
-	EN	Maximum number of retained runs; leave blank for unlimited. Lowering a limit deletes older runs when settings are saved. Running jobs are protected.
-	DE	Maximale Anzahl aufbewahrter Läufe; leer bedeutet unbegrenzt. Beim Verringern eines Limits werden ältere Läufe beim Speichern gelöscht. Laufende Aufträge bleiben geschützt.
+	EN	Maximum number of retained jobs; leave blank for unlimited. Lowering a limit deletes older jobs when settings are saved. Jobs in progress are protected.
+	DE	Maximale Anzahl aufbewahrter Aufträge; leer bedeutet unbegrenzt. Beim Verringern eines Limits werden ältere Aufträge beim Speichern gelöscht. Aufträge in Bearbeitung bleiben geschützt.
 
 PLUGIN_BETTERCALLBLISS_HISTORY_UNLIMITED
 	EN	Unlimited
 	DE	Unbegrenzt
 
 PLUGIN_BETTERCALLBLISS_HISTORY_SIZE
-	EN	Maximum run history storage (MB)
-	DE	Maximaler Speicherplatz für Läufe (MB)
+	EN	Maximum job history storage (MB)
+	DE	Maximaler Speicherplatz für Aufträge (MB)
 
 PLUGIN_BETTERCALLBLISS_HISTORY_SIZE_DESC
-	EN	Required storage limit for run files; shared caches are excluded. Runs typically use kilobytes to several megabytes but can be larger. If one run exceeds this limit, it cannot be retained.
-	DE	Verbindliches Speicherlimit für Laufdateien; gemeinsame Caches zählen nicht dazu. Läufe benötigen meist Kilobyte bis mehrere Megabyte, im Einzelfall auch mehr. Ist ein Lauf größer als das Limit, kann er nicht aufbewahrt werden.
+	EN	Required storage limit for job files; shared caches are excluded. Jobs typically use kilobytes to several megabytes but can be larger. If one job exceeds this limit, it cannot be retained.
+	DE	Verbindliches Speicherlimit für Auftragsdateien; gemeinsame Caches zählen nicht dazu. Aufträge benötigen meist Kilobyte bis mehrere Megabyte, im Einzelfall auch mehr. Ist ein Auftrag größer als das Limit, kann er nicht aufbewahrt werden.
 
 PLUGIN_BETTERCALLBLISS_HISTORY_DAYS
-	EN	Maximum run age (days)
-	DE	Maximales Alter der Läufe (Tage)
+	EN	Maximum job age (days)
+	DE	Maximales Alter der Aufträge (Tage)
 
 PLUGIN_BETTERCALLBLISS_HISTORY_DAYS_DESC
-	EN	Delete runs older than this number of days, measured from their start. Leave blank for unlimited.
-	DE	Läufe nach dieser Anzahl von Tagen seit ihrem Start löschen. Leer bedeutet unbegrenzt.
+	EN	Delete jobs older than this number of days, measured from their start. Leave blank for unlimited.
+	DE	Aufträge nach dieser Anzahl von Tagen seit ihrem Start löschen. Leer bedeutet unbegrenzt.
 
 PLUGIN_BETTERCALLBLISS_RESULT_RETRY
 	EN	Run again
