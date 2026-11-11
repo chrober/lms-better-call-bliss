@@ -2,6 +2,7 @@ use strict;
 use warnings;
 use Test::More;
 use lib '.';
+use lib 'BetterCallBliss';
 
 require 'BetterCallBliss/GuidanceProviderPolicy.pm';
 
@@ -56,5 +57,20 @@ my $invalid = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve(
 );
 ok(!$invalid->{valid}, 'invalid host override is rejected');
 like($invalid->{diagnostic}, qr/last_played_horizon_days/, 'invalid control reports its key');
+
+my $fallback_provider = {
+    descriptor => { controls => [{ key => 'mode', type => 'enum', values => [qw(shared primary)],
+        unavailable_value_fallbacks => { follow => 'shared' }, factory_default => 'shared', host_overridable => 1 }] },
+    defaults => { mode => 'shared' },
+};
+my $stored = { enabled => 1, overrides => { mode => 'follow' } };
+my $fallback = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve($fallback_provider, $stored, {});
+ok($fallback->{valid}, 'unavailable saved mode uses a valid provider-declared fallback');
+is($fallback->{effective}{mode}, 'shared', 'fallback matches the shared host resolver');
+is($stored->{overrides}{mode}, 'follow', 'resolving fallback leaves the stored override untouched');
+
+my $owned = { descriptor => { controls => [{key => 'source', type => 'enum', values => [qw(a b)], factory_default => 'a', host_overridable => 0}] }, defaults => {source => 'b'} };
+my $owned_result = Plugins::BetterCallBliss::GuidanceProviderPolicy::resolve($owned, { enabled => 1, overrides => { source => 'a' } }, {});
+is($owned_result->{effective}{source}, 'b', 'provider-owned controls ignore stale host overrides');
 
 done_testing;

@@ -78,6 +78,16 @@ BEGIN {
 
 use lib "$FindBin::Bin/..";
 require Plugins::BetterCallBliss::Web;
+my $aggregate_stats = Plugins::BetterCallBliss::Web::_guidance_stats([
+    { guidance_contributions => [ {provider_id => 'library-signals-guidance', channel => 'album_playcount'} ] },
+    { guidance_contributions => [ {provider_id => 'library-signals-guidance', channel => 'artist_last_played'} ] },
+    { guidance_contributions => [] },
+]);
+is($aggregate_stats->{album_playcount}, 1, 'album play-count guidance is counted');
+is($aggregate_stats->{artist_last_played}, 1, 'artist last-played guidance is counted');
+is($aggregate_stats->{playcount}, 1, 'album play-count contributes to the play-count family summary');
+is($aggregate_stats->{last_played}, 1, 'artist last-played contributes to the last-played family summary');
+is($aggregate_stats->{none}, 1, 'aggregate-supported additions are not reported as unguided');
 no warnings 'redefine';
 *Plugins::BetterCallBliss::Web::_playlists = sub { [] };
 *Plugins::BetterCallBliss::Web::_players = sub { [] };
@@ -233,6 +243,25 @@ $Slim::Utils::Strings::language = 'EN';
     }, {});
     is_deeply([map { $_->{key} } @{$sections->[0]{controls}}], ['level'],
         'Extras omits the provider-owned Last.fm source');
+    my $fallback = Plugins::BetterCallBliss::Web::_guidance_provider_sections({
+        discovered_guidance_providers => [{provider_id => 'example', available => 1,
+            descriptor => {controls => [{key => 'identity', type => 'enum', host_overridable => 1,
+                unavailable_value_fallback_tokens => {follow => 'EXAMPLE_FOLLOW_UNAVAILABLE'}}]},
+            host_policy => {enabled => 1, valid => 1, effective => {identity => 'shared'},
+                fallbacks => {identity => 'follow'}}}],
+    }, {});
+    is($fallback->[0]{controls}[0]{fallback_note_token}, 'EXAMPLE_FOLLOW_UNAVAILABLE',
+        'Extras exposes a provider-defined explanation for a temporary policy fallback');
+    my $default_fallback = Plugins::BetterCallBliss::Web::_guidance_provider_sections({
+        discovered_guidance_providers => [{provider_id => 'example', available => 1,
+            descriptor => {controls => [{key => 'identity', type => 'enum', host_overridable => 1,
+                unavailable_value_fallback_tokens => {follow => 'EXAMPLE_FOLLOW_UNAVAILABLE'}}]},
+            status => {effective_default_fallbacks => {identity => 'follow'}},
+            host_policy => {enabled => 1, valid => 1, effective => {identity => 'shared'},
+                origins => {identity => 'provider_default'}}}],
+    }, {});
+    is($default_fallback->[0]{controls}[0]{fallback_note_token}, 'EXAMPLE_FOLLOW_UNAVAILABLE',
+        'Extras explains a fallback inherited from the provider default');
 }
 is_deeply(Plugins::BetterCallBliss::Web::_localized_capability_problems([
     'an LMS library scan is updating the catalog; preview will resume when it finishes',

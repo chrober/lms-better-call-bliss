@@ -123,8 +123,8 @@ sub _guidance_counts {
             my $channel = $contribution->{channel} || '';
             $has_track = 1 if $provider eq 'lastfm-guidance' && $channel eq 'lastfm_track';
             $has_artist = 1 if $provider eq 'lastfm-guidance' && $channel eq 'lastfm_artist';
-            $has_playcount = 1 if $provider eq 'library-signals-guidance' && $channel eq 'playcount';
-            $has_last_played = 1 if $provider eq 'library-signals-guidance' && $channel eq 'last_played';
+            $has_playcount = 1 if $provider eq 'library-signals-guidance' && $channel =~ /^(?:(?:album|artist)_)?playcount$/;
+            $has_last_played = 1 if $provider eq 'library-signals-guidance' && $channel =~ /^(?:(?:album|artist)_)?last_played$/;
             $has_library_age = 1 if $provider eq 'library-signals-guidance' && $channel eq 'library_age';
         }
         $track++ if $has_track;

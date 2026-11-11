@@ -94,6 +94,8 @@ sub initPlugin {
         _optimizerSupportsDurationExtension($optimizer_binary);
     $optimizer_supports_automatic_improvement =
         _optimizerSupportsAutomaticImprovement($optimizer_binary);
+    my $optimizer_supports_bounded_signal_families =
+        _optimizerSupportsBoundedSignalFamilies($optimizer_binary);
     Plugins::BetterCallBliss::BlissCompatibility::init(
         $optimizer_binary,
         $optimizer_supports_genre_policy,
@@ -103,6 +105,7 @@ sub initPlugin {
         $optimizer_supports_repeat_window_repair,
         $optimizer_supports_duration_extension,
         $optimizer_supports_automatic_improvement,
+        $optimizer_supports_bounded_signal_families,
     );
     Plugins::BetterCallBliss::Jobs::init(
         $optimizer_binary,
@@ -222,6 +225,12 @@ sub _optimizerSupportsAutomaticImprovement {
     my $binary = shift;
     my $output = _binaryVersionOutput($binary);
     return $output =~ /"automatic_improvement_v1"\s*:\s*true/ ? 1 : 0;
+}
+
+sub _optimizerSupportsBoundedSignalFamilies {
+    my $binary = shift;
+    my $output = _binaryVersionOutput($binary);
+    return $output =~ /"bounded_signal_families_v1"\s*:\s*true/ ? 1 : 0;
 }
 
 sub _binaryVersionOutput {

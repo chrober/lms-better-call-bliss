@@ -437,4 +437,11 @@ like(
     'information log explicitly explains a direct best-effort fallback',
 );
 
+my @aggregate_counts = Plugins::BetterCallBliss::LogDiagnostics::_guidance_counts({ additions => [
+    { guidance_contributions => [ {provider_id => 'library-signals-guidance', channel => 'album_playcount'} ] },
+    { guidance_contributions => [ {provider_id => 'library-signals-guidance', channel => 'artist_last_played'} ] },
+] });
+is($aggregate_counts[2], 1, 'album play-count counts in the established play-count log field');
+is($aggregate_counts[3], 1, 'artist last-played counts in the established last-played log field');
+is($aggregate_counts[5], 0, 'aggregate-guided additions are not logged as unguided');
 done_testing();

@@ -13,6 +13,10 @@ sub summary {
         my $channel = $item->{channel} || '';
         my $label = $channel eq 'playcount' ? 'play-count'
             : $channel eq 'last_played' ? 'last-played'
+            : $channel eq 'album_playcount' ? 'album play-count'
+            : $channel eq 'artist_playcount' ? 'artist play-count'
+            : $channel eq 'album_last_played' ? 'album last-played'
+            : $channel eq 'artist_last_played' ? 'artist last-played'
             : $channel eq 'library_age' ? 'library-age'
             : $channel eq 'lastfm_track' ? 'Last.fm similar-track'
             : $channel eq 'lastfm_artist' ? 'Last.fm similar-artist'

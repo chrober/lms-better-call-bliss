@@ -116,6 +116,13 @@ chmod 0755, $lastfm_guidance;
 Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, {});
 my $snapshot = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
 
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 1, 1, 1, 1, 1);
+ok(Plugins::BetterCallBliss::BlissCompatibility::snapshot()->{bounded_signal_families_v1},
+    'bounded signal families are exposed only when the optimizer supports them');
+Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 1, 1, 1, 1, 0);
+ok(!Plugins::BetterCallBliss::BlissCompatibility::snapshot()->{bounded_signal_families_v1},
+    'old optimizers do not advertise bounded signal families');
+
 Plugins::BetterCallBliss::BlissCompatibility::init($binary, 1, 1, 1, 1, 1, 0, 1);
 ok(Plugins::BetterCallBliss::BlissCompatibility::snapshot()->{automatic_improvement_available},
     'combined improvement is available when the optimizer advertises its capability');

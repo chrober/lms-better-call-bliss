@@ -23,6 +23,7 @@ my $optimizer_supports_fixed_gap_count;
 my $optimizer_supports_repeat_window_repair;
 my $optimizer_supports_duration_extension;
 my $optimizer_supports_automatic_improvement;
+my $optimizer_supports_bounded_signal_families;
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 
 use constant MIN_BLISSMIXER_VERSION => '0.10.0';
@@ -37,6 +38,7 @@ sub init {
     $optimizer_supports_repeat_window_repair = shift ? 1 : 0;
     $optimizer_supports_duration_extension = shift ? 1 : 0;
     $optimizer_supports_automatic_improvement = shift ? 1 : 0;
+    $optimizer_supports_bounded_signal_families = shift ? 1 : 0;
 }
 
 sub _int_pref {
@@ -250,6 +252,7 @@ sub snapshot {
         duration_extension_available => $optimizer_supports_duration_extension ? 1 : 0,
         automatic_improvement_available =>
             $optimizer_supports_automatic_improvement ? 1 : 0,
+        bounded_signal_families_v1 => $optimizer_supports_bounded_signal_families ? 1 : 0,
         scanning          => $scanning,
         music_root        => $music_root,
         music_roots       => $music_roots,

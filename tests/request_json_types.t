@@ -114,8 +114,10 @@ BEGIN {
     $INC{'Plugins/BetterCallBliss/CandidateLibrary.pm'} = __FILE__;
 
     package Plugins::BetterCallBliss::GuidanceProviderDiscovery;
+    our $last_context;
     sub native_spi_config {
         my ($provider, $policy, $context) = @_;
+        $last_context = $context;
         if ($provider->{provider_id} eq 'lastfm') {
             return {
                 id => 'lastfm-guidance',
@@ -377,6 +379,14 @@ ok(!eval { Plugins::BetterCallBliss::RequestBuilder::build_reorder_request(
             target_duration_minutes => 4, artist_window => 0, album_window => 0, track_window => 0,
         }); 1 }, 'duration request rejects a source with missing track durations');
 }
+$built->{capability}->{bounded_signal_families_v1} = 1;
+{
+    open my $jobs_fh, '<', 'BetterCallBliss/Jobs.pm' or die $!;
+    local $/;
+    my $jobs_source = <$jobs_fh>;
+    like($jobs_source, qr/track_identities\s*=>\s*\$built->\{request\}->\{artifacts\}\s*->\{track_identities\}/s,
+        'optimizer launch forwards the trusted identity artifact to guidance configuration');
+}
 Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
     $built->{request},
     $built->{capability},
@@ -389,6 +399,7 @@ Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
             path => '/private/cache/candidate-identities.json',
             sha256 => 'b' x 64,
         },
+        track_identities => { path => '/private/cache/track-identities.sqlite', sha256 => 'c' x 64 },
         provider_policies => $built->{options}->{guidance_provider_policies},
         provider_artifacts => {
             lastfm => {
@@ -401,6 +412,12 @@ Plugins::BetterCallBliss::RequestBuilder::configure_guidance_addons(
         },
     },
 );
+is($Plugins::BetterCallBliss::GuidanceProviderDiscovery::last_context->{bounded_signal_families_v1}, 1,
+    'native provider receives the negotiated bounded-family capability');
+is($Plugins::BetterCallBliss::GuidanceProviderDiscovery::last_context->{track_identity_snapshot},
+    '/private/cache/track-identities.sqlite', 'provider receives the trusted frozen track identity snapshot');
+is($Plugins::BetterCallBliss::GuidanceProviderDiscovery::last_context->{track_identity_snapshot_sha256},
+    'c' x 64, 'provider receives the frozen snapshot integrity hash');
 my $logged_shortlist = "$built->{request}->{extension}->{shortlist_limit}";
 $built->{request}->{extension}->{allow_opening_track} = 0;
 Plugins::BetterCallBliss::RequestBuilder::normalize_request_types(

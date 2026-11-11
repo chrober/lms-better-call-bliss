@@ -394,6 +394,11 @@ sub configure_guidance_addons {
             Plugins::BetterCallBliss::GuidanceProviderDiscovery::native_spi_config(
                 $provider, $resolved->{effective}, {
                     candidate_identity_artifact => $artifacts->{candidate_identities},
+                    track_identity_snapshot => ref($artifacts->{track_identities}) eq 'HASH'
+                        ? $artifacts->{track_identities}->{path} : undef,
+                    track_identity_snapshot_sha256 => ref($artifacts->{track_identities}) eq 'HASH'
+                        ? $artifacts->{track_identities}->{sha256} : undef,
+                    bounded_signal_families_v1 => $capability->{bounded_signal_families_v1} ? 1 : 0,
                     as_of_unix_seconds => _json_integer(
                         $selection->{guidance_as_of_unix_seconds},
                         'guidance_as_of_unix_seconds',

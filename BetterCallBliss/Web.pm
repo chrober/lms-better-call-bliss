@@ -253,11 +253,22 @@ sub _guidance_provider_sections {
                 && $control->{host_overridable};
             my $field = 'guidance_provider_' . $provider->{provider_id}
                 . '_' . $control->{key};
+            my $fallbacks = ref($policy->{fallbacks}) eq 'HASH' ? $policy->{fallbacks} : {};
+            my $fallback = $fallbacks->{$control->{key}};
+            $fallback = $provider->{status}->{effective_default_fallbacks}->{$control->{key}}
+                if !defined($fallback)
+                    && (($policy->{origins} || {})->{$control->{key}} || '') eq 'provider_default'
+                    && ref($provider->{status}) eq 'HASH'
+                    && ref($provider->{status}->{effective_default_fallbacks}) eq 'HASH';
+            my $tokens = ref($control->{unavailable_value_fallback_tokens}) eq 'HASH'
+                ? $control->{unavailable_value_fallback_tokens} : {};
             push @controls, {
                 %$control,
                 field_name => $field,
                 value => exists $form->{$field}
                     ? $form->{$field} : $effective->{$control->{key}},
+                fallback_note_token => !exists($form->{$field}) && defined($fallback)
+                    ? $tokens->{$fallback} : undef,
                 enum_options => Plugins::BlissGuidance::SettingsModel::enum_options($control),
                 render_as => $control->{render_as}
                     || ($control->{type} eq 'integer' ? 'slider' : ''),
@@ -412,6 +423,10 @@ sub _guidance_stats {
         lastfm_track => 0,
         playcount => 0,
         last_played => 0,
+        album_playcount => 0,
+        artist_playcount => 0,
+        album_last_played => 0,
+        artist_last_played => 0,
         library_age => 0,
         none => 0,
     );
@@ -419,6 +434,7 @@ sub _guidance_stats {
         next unless ref($addition) eq 'HASH';
         $stats{total}++;
         my ($lastfm_any, $lastfm_artist, $lastfm_track, $playcount, $last_played, $library_age) = (0, 0, 0, 0, 0, 0);
+        my %aggregate;
         for my $contribution (@{$addition->{guidance_contributions} || []}) {
             next unless ref($contribution) eq 'HASH';
             my $provider = lc($contribution->{provider_id} || '');
@@ -437,6 +453,12 @@ sub _guidance_stats {
                 && $channel eq 'last_played';
             $library_age = 1 if $provider eq 'library-signals-guidance'
                 && $channel eq 'library_age';
+            if ($provider eq 'library-signals-guidance'
+                && $channel =~ /^(?:album|artist)_(?:playcount|last_played)$/) {
+                $aggregate{$channel} = 1;
+                $playcount = 1 if $channel =~ /_playcount$/;
+                $last_played = 1 if $channel =~ /_last_played$/;
+            }
         }
         $stats{lastfm_any}++ if $lastfm_any;
         $stats{lastfm_artist}++ if $lastfm_artist;
@@ -444,6 +466,7 @@ sub _guidance_stats {
         $stats{playcount}++ if $playcount;
         $stats{last_played}++ if $last_played;
         $stats{library_age}++ if $library_age;
+        $stats{$_}++ for keys %aggregate;
         $stats{none}++ unless $lastfm_any || $playcount || $last_played || $library_age;
     }
     return \%stats;

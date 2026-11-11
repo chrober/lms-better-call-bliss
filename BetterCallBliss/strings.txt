@@ -1261,6 +1261,10 @@ PLUGIN_BETTERCALLBLISS_GUIDANCE_SUMMARY_MANY
 	EN	%s of %s additions used Last.fm guidance (%s similar-track, %s similar-artist); %s used play-count guidance; %s used last-played guidance; %s used library-age guidance; %s had no optional guidance adjustment.
 	DE	Bei %s von %s zusätzlichen Titeln wirkte die Last.fm-Gewichtung (%s ähnliche Titel, %s ähnliche Interpreten); bei %s der Wiedergabezähler; bei %s der Zeitpunkt der letzten Wiedergabe; bei %s das Mediatheksalter; bei %s wirkte keine optionale Gewichtung.
 
+PLUGIN_BETTERCALLBLISS_GUIDANCE_AGGREGATE_SUMMARY
+	EN	Of these additions, album play counts influenced %s, artist play counts %s, album last-played dates %s, and artist last-played dates %s.
+	DE	Davon wurden %s durch Album-Wiedergabezähler, %s durch Interpreten-Wiedergabezähler, %s durch die letzte Albumwiedergabe und %s durch die letzte Interpretenwiedergabe beeinflusst.
+
 PLUGIN_BETTERCALLBLISS_DYNAMIC_FINAL_SIZE
 	EN	Final size: %1 source tracks + %2 additions = %3 tracks.
 	DE	Endgültige Anzahl: %1 Ausgangstitel + %2 zusätzliche Titel = %3 Titel.
