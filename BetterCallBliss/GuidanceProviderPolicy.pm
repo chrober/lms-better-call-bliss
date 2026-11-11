@@ -2,6 +2,8 @@ package Plugins::BetterCallBliss::GuidanceProviderPolicy;
 
 use strict;
 use warnings;
+use File::Basename qw(dirname);
+use lib dirname(__FILE__);
 use Plugins::BlissGuidance::Policy ();
 
 # Keep the existing Better Call Bliss entry points while using the shared
