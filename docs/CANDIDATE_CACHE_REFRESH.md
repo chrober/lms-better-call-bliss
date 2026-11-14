@@ -23,6 +23,10 @@ Because Bliss analysis can continue after a Lyrion scan, every foreground use
 must still check the current source generation. Windows, real-library resource
 use, installed-plugin packaging, and live playback/preview behavior remain
 verification gates.
+The cross-host shared candidate-inventory plan now supersedes the host-specific
+ownership and settings proposal below. Its server-wide policy and UI location
+remain to be decided; do not add a Better Call Bliss-only switch independently.
+The scan/analyser coordination and acceptance cases here remain relevant.
 
 ## Motivation
 
