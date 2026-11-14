@@ -13,8 +13,10 @@ BEGIN {
     sub ISWINDOWS () { 0 }
 
     package TestLog;
-    our @info;
+    our (@info, @debug);
     sub info { push @info, $_[1] }
+    sub debug { push @debug, $_[1] }
+    sub is_debug { 1 }
     sub warn { }
 
     package Slim::Control::Request;
@@ -177,6 +179,8 @@ my ($shared_again, $fingerprint_passes);
     ) };
 }
 is($shared_again && $shared_again->{state}, 'cached', 'Better Call Bliss reuses the shared inventory');
+like(join("\n", @TestLog::debug), qr/shared inventory: scope=4d2ba37f state=cached key=[0-9a-f]{64}/,
+    'debug output identifies the shared inventory cache hit and its key');
 is($fingerprint_passes, 4, 'one preview worker fingerprints each database only once per validation session');
 my $missing_shared = eval { Plugins::BetterCallBliss::CandidateInventory::_shared_candidate_rows(
     $capability, $library, $shared_dir, sub { 0 },
@@ -224,8 +228,11 @@ ok(-r $first->{identity_artifact}->{path},
     'the provider-facing identity artifact is persisted separately from the allowlist');
 open my $inventory_fh, '<:raw', $first->{artifact}->{path}
     or die "Cannot read $first->{artifact}->{path}: $!";
-my $inventory_payload = JSON::XS->new->decode(do { local $/; <$inventory_fh> });
+my $inventory_json = do { local $/; <$inventory_fh> };
+my $inventory_payload = JSON::XS->new->decode($inventory_json);
 close $inventory_fh;
+like($inventory_json, qr/"allowed_row_ids"\s*:\s*\[\s*1\s*\]/,
+    'optimizer inventory serializes shared row IDs as JSON numbers, not strings');
 ok(!exists $inventory_payload->{candidate_identities},
     'the native allowlist stays compact and excludes the plugin-private identity index');
 ok(-r $first->{identity_lookup_path},
@@ -660,6 +667,29 @@ if ($nested_result) {
         Plugins::BlissLibrary::SourceIdentity::database_fingerprint($lms_path),
     );
     ok(!$reused, 'incomplete artist identities are not reused to construct another scope');
+}
+{
+    my ($result, $error, $done);
+    Plugins::BetterCallBliss::CandidateInventory::prepare_async($nested_capability, 'bliss-json-number-regression', $library,
+        sub { $result = shift; $done = 1 }, sub { $error = shift; $done = 1 });
+    my $until = Time::HiRes::time() + 30;
+    while (!$done && Time::HiRes::time() < $until) {
+        my $timer = shift @Slim::Utils::Timers::pending;
+        $timer->() if $timer;
+        Time::HiRes::sleep(0.02);
+    }
+    ok($result && !$error, 'background shared-inventory build completes for numeric JSON test');
+    if ($result) {
+        open my $fh, '<:raw', $result->{artifact}->{path} or die $!;
+        my $json = do { local $/; <$fh> };
+        close $fh;
+        like($json, qr/"allowed_row_ids"\s*:\s*\[\s*1\s*,\s*2\s*,\s*4\s*,\s*5\s*\]/,
+            'background shared-inventory build emits numeric IDs in the optimizer JSON artifact');
+        like($json, qr/"generated_at"\s*:\s*\d+\s*[,}]/,
+            'optimizer artifact generation timestamp is a JSON integer');
+        like($json, qr/"lms_scan_time"\s*:\s*12345\s*[,}]/,
+            'optimizer artifact scan timestamp is a JSON integer');
+    }
 }
 $Slim::Schema::dbh->do(q{INSERT INTO tracks (id, url, tracknum, remote, audio) VALUES (102, 'file:///music/child.flac', 0, 0, 1)});
 ($nested_result, $nested_error, $nested_done) = (undef, undef, 0);

@@ -23,7 +23,7 @@ use Plugins::BetterCallBliss::CandidateIdentity;
 use Plugins::BetterCallBliss::RepeatIdentity;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
-use constant BUILDER_REVISION => 10;
+use constant BUILDER_REVISION => 11;
 my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
@@ -572,6 +572,10 @@ sub _shared_candidate_rows {
             },
             build => sub { Plugins::BlissLibrary::Builder::build_verified(%build) });
         if ($result->{state} ne 'busy') {
+            $log->debug('shared inventory: scope=' . (length($id) ? $id : 'all')
+                . ' state=' . $result->{state} . ' key='
+                . Plugins::BlissLibrary::CandidateInventory::cache_key(scope => $scope, source => $source))
+                if $log->is_debug;
             $result->{host_membership_sha256} = length($id) ? $membership_digest->hexdigest : 'all-local-tracks';
             $result->{host_membership_count} = $membership_count;
             return $result;
@@ -941,7 +945,7 @@ sub prepare {
 
     if ($shared_inventory) {
         _assert_shared_rows($shared_inventory, \@allowed);
-        @allowed = @{$shared_inventory->{row_ids}};
+        @allowed = map { 0 + $_ } @{$shared_inventory->{row_ids}};
     }
 
     _worker_progress('Rebuilding candidate library: publishing stable identities');
@@ -959,9 +963,9 @@ sub prepare {
     my $inventory = {
         schema_version => 1,
         schema_identity => 'lms-local-candidate-inventory-v1',
-        generated_at => $now,
+        generated_at => int($now),
         database_cache_identity => $database_identity,
-        lms_scan_time => $scan_time,
+        lms_scan_time => 0 + $scan_time,
         lms_local_track_count => $lms_track_count,
         usable_bliss_row_count => $usable_count,
         allowed_row_ids => \@allowed,
@@ -969,7 +973,9 @@ sub prepare {
     my $bytes = _json()->encode($inventory);
     my $sha256 = sha256_hex($bytes);
     my $path = $inventory_root . '/inventory-' . $sha256 . '.json';
-    _write_atomic($path, $bytes) unless -r $path;
+    my $existing_inventory = -r $path ? eval { read_file($path, binmode => ':raw') } : undef;
+    _write_atomic($path, $bytes)
+        unless defined($existing_inventory) && sha256_hex($existing_inventory) eq $sha256;
     my $identity_index = {
         schema_version => 1,
         schema_identity => 'eligible-candidate-identities-v1',
