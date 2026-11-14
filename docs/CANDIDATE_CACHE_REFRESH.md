@@ -1,8 +1,28 @@
 # Post-scan candidate-library cache refresh
 
-**Status: proposed, not implemented.** This document records the intended
-behavior and the investigation so far. It does not describe an existing
-automatic refresh or promise that a particular coordination mechanism works.
+**Status: experimental development branch.** A shared, bundled candidate
+inventory and a post-scan refresher are integrated in the development
+branches of Better Call Bliss and Bliss Mixer Lab. Isolated Pi fixtures cover
+both hosts, shared reuse, scan refresh and cancellation. They have not been
+deployed or verified with an installed Lyrion server. The following sections
+record the original motivation and design; they describe the released behavior
+unless explicitly marked as experimental.
+
+The shared refresher remembers scopes that have actually been requested and
+serially updates those scopes after a scan in a low-priority worker. It does
+not prebuild every virtual library. Better Call Bliss still keeps its own
+identity and audit artifacts, and validates the shared rows against them.
+Its background worker derives the existing host membership checksum while the
+shared component reads membership; a warm hit does not repeat that host scan
+on the Lyrion event loop. Subsequent unchanged requests in the same server
+process can reuse the last verified scope without a new shared membership scan;
+they revalidate source observers and the cached artifact. A cold host identity
+build still performs additional work, and the first shared source capture in a
+process still scans membership and hashes databases.
+Because Bliss analysis can continue after a Lyrion scan, every foreground use
+must still check the current source generation. Windows, real-library resource
+use, installed-plugin packaging, and live playback/preview behavior remain
+verification gates.
 
 ## Motivation
 

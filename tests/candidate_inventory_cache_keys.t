@@ -13,7 +13,7 @@ BEGIN {
     package JSON::XS; use JSON::PP (); sub new { JSON::PP->new } sub true () { 1 } sub false () { 0 } $INC{'JSON/XS.pm'} = __FILE__;
     package Slim::Music::Import; sub lastScanTime { 123 } $INC{'Slim/Music/Import.pm'} = __FILE__;
     package Slim::Schema; $INC{'Slim/Schema.pm'} = __FILE__;
-    package TestLog; sub info { }
+    package TestLog; sub info { } sub warn { }
     package Slim::Utils::Log; sub logger { bless {}, 'TestLog' } $INC{'Slim/Utils/Log.pm'} = __FILE__;
     package Slim::Utils::Misc; $INC{'Slim/Utils/Misc.pm'} = __FILE__;
     package Slim::Utils::Timers; $INC{'Slim/Utils/Timers.pm'} = __FILE__;
@@ -77,6 +77,7 @@ for my $case (
 {
     no warnings 'redefine';
     my @seen;
+    local *Plugins::BetterCallBliss::CandidateInventory::_lyrion_database_identity = sub { 'lyrion-identity' };
     local *Plugins::BetterCallBliss::CandidateInventory::_candidate_library_membership = sub { return ({2 => 1, 3 => 1}, 'membership-b', 2) };
     local *Plugins::BetterCallBliss::CandidateInventory::_load_cached_inventory = sub {
         push @seen, $_[4];

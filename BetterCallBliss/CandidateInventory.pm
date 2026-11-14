@@ -4,7 +4,9 @@ use strict;
 use DBI;
 use Digest::SHA qw(sha256_hex);
 use Encode qw(decode encode_utf8 FB_CROAK);
+use File::Basename qw(dirname);
 use File::Path qw(make_path);
+use File::Spec;
 use File::Slurp qw(read_file write_file);
 use File::Spec::Functions qw(catfile);
 use JSON::XS;
@@ -16,19 +18,19 @@ use Slim::Utils::Misc;
 use Slim::Utils::Timers;
 use Slim::Utils::Unicode;
 use Time::HiRes qw(time);
-use URI::Escape qw(uri_unescape);
 use Unicode::Normalize qw(NFKC);
 use Plugins::BetterCallBliss::CandidateIdentity;
 use Plugins::BetterCallBliss::RepeatIdentity;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
-use constant BUILDER_REVISION => 7;
+use constant BUILDER_REVISION => 10;
 my (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
 );
-my ($lms_dbh_override, $worker_child, $worker_progress_path);
+my ($lms_dbh_override, $worker_child, $worker_progress_path, $worker_membership_count);
 my (@async_prepare_queue, $async_prepare_worker);
+my ($fast_memo, $async_generation);
 
 use constant ASYNC_CHUNK_ROWS => 250;
 use constant ASYNC_RESUME_DELAY => 0.02;
@@ -80,7 +82,11 @@ sub init {
     $audit_path = $cache_root . '/non-lms-bliss-rows.json';
     $state_path = $inventory_root . '/current.json';
     ($cached_key, $cached_result, $last_status) = (undef, undef, undef);
+    $fast_memo = undef;
+    $async_generation++;
     make_path($inventory_root) unless -d $inventory_root;
+    eval { _init_shared_refresh() };
+    $log->warn("Could not initialize shared candidate refresh: $@") if $@;
 }
 
 sub _json {
@@ -167,12 +173,14 @@ sub _new_repeat_identity_snapshot {
 }
 
 sub _publish_repeat_identity_snapshot {
-    my ($snapshot, $scan_time, $database_identity, $media_roots_identity) = @_;
+    my ($snapshot, $scan_time, $database_identity, $media_roots_identity, $lyrion_identity, $incomplete_aliases) = @_;
     my $dbh = $snapshot->{dbh};
     my $metadata = $dbh->prepare('INSERT INTO metadata VALUES (?, ?)');
     $metadata->execute('lms_scan_time', int($scan_time));
     $metadata->execute('database_cache_identity', $database_identity);
     $metadata->execute('media_roots_identity', $media_roots_identity);
+    $metadata->execute('lyrion_identity', $lyrion_identity);
+    $metadata->execute('incomplete_aliases', $incomplete_aliases ? 1 : 0);
     $dbh->do('CREATE INDEX track_artist_file_idx ON track_artist_identity(database_file)');
     $dbh->commit;
     $dbh->disconnect;
@@ -192,12 +200,13 @@ sub _publish_repeat_identity_snapshot {
 }
 
 sub _open_shared_repeat_identity_snapshot {
-    my ($scan_time, $database_identity, $media_roots_identity) = @_;
+    my ($scan_time, $database_identity, $media_roots_identity, $lyrion_identity) = @_;
     return unless $state_path && -r $state_path;
     my ($dbh, $result);
     eval {
         my $state = _json()->decode(scalar read_file($state_path, binmode => ':raw'));
         die 'invalid shared snapshot state' unless ref($state) eq 'HASH';
+        die 'shared snapshot builder changed' unless ($state->{builder_revision} || 0) == BUILDER_REVISION;
         my $path = $state->{track_identity_path} || '';
         my ($digest) = $path =~ /^\Q$inventory_root\E\/track-identities-([0-9a-f]{64})\.sqlite$/;
         die 'invalid shared snapshot path' unless $digest && -r $path
@@ -212,6 +221,8 @@ sub _open_shared_repeat_identity_snapshot {
         die 'shared snapshot identity changed'
             unless ($metadata{schema_identity} || '') eq 'lyrion-track-identities-v1'
                 && ($metadata{database_cache_identity} || '') eq $database_identity
+                && ($metadata{lyrion_identity} || '') eq $lyrion_identity
+                && !($metadata{incomplete_aliases} || 0)
                 && 0 + ($metadata{lms_scan_time} || 0) == $scan_time
                 && ($metadata{media_roots_identity} || '') eq $media_roots_identity;
         $result = {dbh => $dbh, path => $path, sha256 => $digest};
@@ -247,37 +258,6 @@ sub database_file_for_track {
     );
 }
 
-sub _database_file_for_url {
-    my ($url, $tracknum, $root_descriptors, $roots) = @_;
-    return unless $url && $url =~ /^file:/i;
-    my $file_url = $url;
-    $file_url =~ s/#.*$//;
-    for my $descriptor (@$root_descriptors) {
-        my $prefix = $descriptor->{url_prefix};
-        next unless index($file_url, $prefix . '/') == 0;
-        my $relative = substr($file_url, length($prefix) + 1);
-        $relative = uri_unescape($relative);
-        $relative = _database_text($relative);
-        $relative .= '.CUE_TRACK.' . $tracknum
-            if $url =~ /#/ && $tracknum;
-        return $relative;
-    }
-    return _relative_database_file(
-        Slim::Utils::Misc::pathFromFileURL($url), $url, $tracknum, $roots,
-    );
-}
-
-sub _root_descriptors {
-    my $roots = shift;
-    my @descriptors;
-    for my $root (@$roots) {
-        my $prefix = Slim::Utils::Misc::fileURLFromPath($root);
-        $prefix =~ s{/+$}{};
-        push @descriptors, {url_prefix => $prefix};
-    }
-    return \@descriptors;
-}
-
 sub _unmatched_reason {
     my ($database_file, $roots) = @_;
     my $path = $database_file;
@@ -300,9 +280,19 @@ sub _load_ledger {
         ? $ledger : {schema_version => 1, rows => []};
 }
 
+sub _log_cache_hit {
+    my ($status) = @_;
+    $log->info(
+        'candidate_inventory stage=CacheHit'
+        . ' allowed=' . $status->{allowed_row_count}
+        . ' unmatched=' . $status->{unmatched_row_count}
+        . " audit=$audit_path"
+    );
+}
+
 sub _load_cached_inventory {
     my ($key, $database_identity, $scan_time, $candidate_library,
-        $membership_sha256, $membership_count) = @_;
+        $membership_sha256, $membership_count, $no_repair) = @_;
     my $miss = sub {
         my $reason = shift;
         $log->info("candidate_inventory stage=CacheMiss reason=$reason");
@@ -342,7 +332,7 @@ sub _load_cached_inventory {
             eq ($candidate_library->{id} || '');
     return $miss->('candidate_library_count_changed')
         if defined $membership_count
-            && 0 + ($state->{candidate_library_track_count} || 0)
+            && 0 + ($state->{membership_track_count} // $state->{candidate_library_track_count} // 0)
                 != $membership_count;
     return $miss->('candidate_library_membership_changed')
         if defined $membership_sha256
@@ -371,6 +361,7 @@ sub _load_cached_inventory {
     if ($identity_lookup_path
         !~ /^\Q$inventory_root\E\/identities-[0-9a-f]{64}\.sqlite$/
         || !-r $identity_lookup_path) {
+        return $miss->('identity_lookup_unavailable') if $no_repair;
         my $identity_bytes = eval {
             read_file($identity_path, binmode => ':raw')
         };
@@ -525,6 +516,89 @@ sub _candidate_library_membership {
     return (\%members, $digest->hexdigest, scalar keys %members);
 }
 
+sub _register_shared_bundle {
+    my $bundle = File::Spec->catdir(dirname(__FILE__), 'SharedInventory');
+    local @INC = (File::Spec->catdir($bundle, 'lib'), @INC);
+    require Plugins::BlissLibrary::BundleGuard;
+    Plugins::BlissLibrary::BundleGuard::register($bundle);
+    return $bundle;
+}
+
+sub _init_shared_refresh {
+    my $bundle = _register_shared_bundle();
+    local @INC = (File::Spec->catdir($bundle, 'lib'), @INC);
+    require Plugins::BlissLibrary::LyrionRefresh;
+    Plugins::BlissLibrary::BundleGuard::register($bundle);
+    return Plugins::BlissLibrary::LyrionRefresh::init($bundle);
+}
+
+sub _shared_candidate_rows {
+    my ($capability, $candidate_library, $shared_dir, $library_exists) = @_;
+    my $bundle = _register_shared_bundle();
+    local @INC = (File::Spec->catdir($bundle, 'lib'), @INC);
+    require Plugins::BlissLibrary::Builder;
+    require Plugins::BlissLibrary::CachedBuild;
+    require Plugins::BlissLibrary::FileIdentity;
+    require Plugins::BlissLibrary::SourceIdentity;
+    Plugins::BlissLibrary::BundleGuard::register($bundle);
+    my $id = $candidate_library->{id} || '';
+    my $scope = length($id) ? {kind => 'library', id => "$id"} : {kind => 'all'};
+    my $roots = $capability->{music_roots} || [];
+    my $scan = '' . (Slim::Music::Import->lastScanTime() || 0);
+    my $lms_path = _lms_database_path();
+    my $bliss_path = $capability->{database};
+    local $Plugins::BlissLibrary::SourceIdentity::session =
+        Plugins::BlissLibrary::SourceIdentity::begin_session([$lms_path, $bliss_path]);
+    my $roots_identity = Plugins::BlissLibrary::SourceIdentity::media_roots_fingerprint($roots);
+    my %build = (lyrion_path => $lms_path, bliss_path => $bliss_path, scope => $scope,
+        source => {scan_generation => $scan, media_roots => $roots_identity},
+        library_exists => $library_exists,
+        file_for_track => Plugins::BlissLibrary::FileIdentity::make_alias_mapper($roots));
+    my ($membership_count, $membership_digest);
+    my %capture = %build;
+    if (length $id) {
+        $membership_count = 0;
+        $membership_digest = Digest::SHA->new(256);
+        $membership_digest->add(encode_utf8($id), "\n");
+        $capture{on_member} = sub { $membership_count++; $membership_digest->add("$_[0]\n") };
+    }
+    my $source = Plugins::BlissLibrary::Builder::capture_source_verified(%capture);
+    for my $attempt (1..31) {
+        my $result = Plugins::BlissLibrary::CachedBuild::run(dir => $shared_dir, scope => $scope, source => $source,
+            fresh => sub {
+                return 0 unless '' . (Slim::Music::Import->lastScanTime() || 0) eq $scan;
+                return $source->{lyrion_database} eq Plugins::BlissLibrary::SourceIdentity::database_fingerprint($lms_path)
+                    && $source->{bliss_database} eq Plugins::BlissLibrary::SourceIdentity::database_fingerprint($bliss_path);
+            },
+            build => sub { Plugins::BlissLibrary::Builder::build_verified(%build) });
+        if ($result->{state} ne 'busy') {
+            $result->{host_membership_sha256} = length($id) ? $membership_digest->hexdigest : 'all-local-tracks';
+            $result->{host_membership_count} = $membership_count;
+            return $result;
+        }
+        _worker_progress('Waiting for shared candidate library');
+        Time::HiRes::sleep(2) if $attempt < 31;
+    }
+    die 'Shared candidate inventory remained busy';
+}
+
+sub _assert_shared_rows {
+    my ($shared, $rows) = @_;
+    die 'Shared candidate inventory is invalid' unless ref($shared) eq 'HASH'
+        && ref($shared->{row_ids}) eq 'ARRAY' && ref($rows) eq 'ARRAY';
+    die 'Shared candidate inventory disagrees with host identities' unless
+        join(',', @{$shared->{row_ids}}) eq join(',', @$rows);
+    return 1;
+}
+
+sub _assert_shared_artifact {
+    my ($shared, $path) = @_;
+    my $bytes = read_file($path, binmode => ':raw');
+    my $value = _json()->decode($bytes);
+    die 'Host candidate artifact is invalid' unless ref($value) eq 'HASH';
+    return _assert_shared_rows($shared, $value->{allowed_row_ids});
+}
+
 sub _update_audit {
     my ($unmatched, $summary, $now) = @_;
     my $ledger = _load_ledger();
@@ -579,6 +653,13 @@ sub _update_audit {
     _write_atomic($audit_path, _json()->encode($ledger));
 }
 
+sub _lyrion_database_identity {
+    my $bundle = _register_shared_bundle();
+    local @INC = (File::Spec->catdir($bundle, 'lib'), @INC);
+    require Plugins::BlissLibrary::SourceIdentity;
+    return Plugins::BlissLibrary::SourceIdentity::database_fingerprint(_lms_database_path());
+}
+
 sub prepare {
     my ($capability, $database_identity, $candidate_library) = @_;
     die "Candidate inventory cache is not initialized" unless $inventory_root;
@@ -587,15 +668,43 @@ sub prepare {
     my $scan_time = int($scan_time_value);
     my $roots = $capability->{music_roots} || [];
     my $media_roots_identity = _media_roots_identity($roots);
-    my ($library_members, $membership_sha256, $membership_count) =
-        _candidate_library_membership($candidate_library);
+    my ($library_members, $membership_sha256, $membership_count);
+    my $shared_inventory;
+    if ($worker_child) {
+        require Slim::Utils::Prefs;
+        require Slim::Music::VirtualLibraries;
+        my $cache = Slim::Utils::Prefs::preferences('server')->get('cachedir');
+        die 'Lyrion cache directory is unavailable' unless defined($cache) && -d $cache;
+        my $shared_dir = File::Spec->catdir($cache, 'bliss-library', 'candidate-inventory');
+        make_path($shared_dir) unless -d $shared_dir;
+        _worker_progress('Rebuilding candidate library: resolving shared membership');
+        my $shared = _shared_candidate_rows($capability, $candidate_library, $shared_dir, sub {
+            my $real = Slim::Music::VirtualLibraries->getRealId($_[0]);
+            return defined($real) && $real eq $_[0];
+        });
+        $shared_inventory = $shared->{inventory};
+        $membership_sha256 = $shared->{host_membership_sha256};
+        $membership_count = $shared->{host_membership_count};
+    } else {
+        ($library_members, $membership_sha256, $membership_count) =
+            _candidate_library_membership($candidate_library);
+    }
+    my $lyrion_identity;
+    if ($shared_inventory) {
+        $lyrion_identity = $shared_inventory->{source}->{lyrion_database};
+    } else {
+        $lyrion_identity = _lyrion_database_identity();
+    }
+    die 'Lyrion database identity is unavailable' unless defined($lyrion_identity) && length($lyrion_identity);
+    $worker_membership_count = $membership_count if $worker_child;
     my $key = join('|', $database_identity, $scan_time,
-        $media_roots_identity,
+        $media_roots_identity, $lyrion_identity,
         $candidate_library->{id} || '', defined $membership_count
             ? $membership_count : 'all');
     if ($cached_result && ($cached_key || '') eq $key
         && ($cached_result->{status}->{candidate_library_membership_sha256} || '')
             eq ($membership_sha256 || '')) {
+        _assert_shared_artifact($shared_inventory, $cached_result->{artifact}->{path}) if $shared_inventory;
         $cached_result->{status}->{cache_state} = 'memory';
         return $cached_result;
     }
@@ -603,25 +712,34 @@ sub prepare {
         $key, $database_identity, $scan_time, $candidate_library,
         $membership_sha256, $membership_count,
     )) {
+        _assert_shared_artifact($shared_inventory, $disk->{artifact}->{path}) if $shared_inventory;
         $cached_key = $key;
         $cached_result = $disk;
         $last_status = $disk->{status};
-        $log->info(
-            'candidate_inventory stage=CacheHit'
-            . ' allowed=' . $last_status->{allowed_row_count}
-            . ' unmatched=' . $last_status->{unmatched_row_count}
-            . " audit=$audit_path"
-        );
+        _log_cache_hit($last_status);
         return $cached_result;
+    }
+
+    if ($shared_inventory) {
+        my ($members, $digest, $count) = _candidate_library_membership($candidate_library);
+        die 'Candidate library changed while preparing host identities'
+            unless $digest eq $membership_sha256
+                && (!defined($count) && !defined($membership_count)
+                    || defined($count) && defined($membership_count) && $count == $membership_count);
+        $library_members = $members;
     }
 
     my (%lms_files, %candidate_files, %lms_files_folded, %ambiguous_folded,
         %lms_identity_for);
+    my (%file_owner, %ambiguous_files, %counted_tracks, %counted_candidates);
     my $lms_track_count = 0;
     my $candidate_library_track_count = 0;
-    my $root_descriptors = _root_descriptors($roots);
+    my $bundle = _register_shared_bundle();
+    local @INC = (File::Spec->catdir($bundle, 'lib'), @INC);
+    require Plugins::BlissLibrary::FileIdentity;
+    my $alias_mapper = Plugins::BlissLibrary::FileIdentity::make_alias_mapper($roots);
     my $shared_snapshot = _open_shared_repeat_identity_snapshot(
-        $scan_time, $database_identity, $media_roots_identity,
+        $scan_time, $database_identity, $media_roots_identity, $lyrion_identity,
     );
     my $repeat_snapshot = $shared_snapshot ? undef : _new_repeat_identity_snapshot();
     _worker_progress('Rebuilding candidate library: scanning local LMS tracks');
@@ -652,47 +770,57 @@ sub prepare {
     while (my @row = $lms_sth->fetchrow_array) {
         my ($track_id, $database_file, $urlmd5, $recording_mbid, $seconds,
             $primary_contributor_id, $artist_mbid, $artist_name);
+        my @database_files;
         if ($shared_snapshot) {
             ($track_id, $database_file, $urlmd5, $recording_mbid,
                 $primary_contributor_id, $artist_mbid, $artist_name) = @row;
             $seconds = $duration_seconds{$track_id};
+            @database_files = ($database_file);
         } else {
             my ($url, $tracknum);
             ($track_id, $url, $tracknum, $urlmd5, $recording_mbid, $seconds,
                 $primary_contributor_id, $artist_mbid, $artist_name) = @row;
-            $database_file = _database_file_for_url($url, $tracknum, $root_descriptors, $roots);
+            @database_files = @{$alias_mapper->($url, $tracknum)};
         }
-        next unless defined $database_file && length $database_file;
-        $repeat_snapshot->{insert_track}->execute(
-            $database_file, 0 + $track_id, $urlmd5, $recording_mbid,
-            $primary_contributor_id, $artist_mbid, $artist_name,
-            defined $artist_name ? $artist_name : '',
-        ) if $repeat_snapshot;
-        $lms_files{$database_file} = 1;
-        if (!length($candidate_library->{id} || '')
-            || $library_members->{0 + $track_id}) {
-            $candidate_files{$database_file} = 1;
-            $lms_identity_for{$database_file} = {
-                lms_track_id => 0 + $track_id,
-                defined $seconds && $seconds > 0
-                    ? (duration_ms => int($seconds * 1000 + 0.5)) : (),
-                defined $urlmd5 && length $urlmd5
-                    ? (lms_urlmd5 => "$urlmd5") : (),
-                defined $recording_mbid && length $recording_mbid
-                    ? (recording_mbid => "$recording_mbid") : (),
-                defined $artist_mbid && length $artist_mbid
-                    ? (artist_mbid => "$artist_mbid") : (),
-            };
-            $candidate_library_track_count++;
+        @database_files = grep { defined($_) && length($_) } @database_files;
+        next unless @database_files;
+        $lms_track_count++ unless $counted_tracks{$track_id}++;
+        my $is_candidate = !length($candidate_library->{id} || '') || $library_members->{0 + $track_id};
+        $candidate_library_track_count++ if $is_candidate && !$counted_candidates{$track_id}++;
+        for my $database_file (@database_files) {
+            if (exists($file_owner{$database_file}) && $file_owner{$database_file} != $track_id) {
+                $ambiguous_files{$database_file} = [$file_owner{$database_file}, $track_id];
+                next;
+            }
+            $file_owner{$database_file} = $track_id;
+            $repeat_snapshot->{insert_track}->execute(
+                $database_file, 0 + $track_id, $urlmd5, $recording_mbid,
+                $primary_contributor_id, $artist_mbid, $artist_name,
+                defined $artist_name ? $artist_name : '',
+            ) if $repeat_snapshot;
+            $lms_files{$database_file} = 1;
+            if ($is_candidate) {
+                $candidate_files{$database_file} = 1;
+                $lms_identity_for{$database_file} = {
+                    lms_track_id => 0 + $track_id,
+                    defined $seconds && $seconds > 0
+                        ? (duration_ms => int($seconds * 1000 + 0.5)) : (),
+                    defined $urlmd5 && length $urlmd5
+                        ? (lms_urlmd5 => "$urlmd5") : (),
+                    defined $recording_mbid && length $recording_mbid
+                        ? (recording_mbid => "$recording_mbid") : (),
+                    defined $artist_mbid && length $artist_mbid
+                        ? (artist_mbid => "$artist_mbid") : (),
+                };
+            }
+            my $folded = lc($database_file);
+            if (exists $lms_files_folded{$folded}
+                && $lms_files_folded{$folded} ne $database_file) {
+                $ambiguous_folded{$folded} = 1;
+            } else {
+                $lms_files_folded{$folded} = $database_file;
+            }
         }
-        my $folded = lc($database_file);
-        if (exists $lms_files_folded{$folded}
-            && $lms_files_folded{$folded} ne $database_file) {
-            $ambiguous_folded{$folded} = 1;
-        } else {
-            $lms_files_folded{$folded} = $database_file;
-        }
-        $lms_track_count++;
         _yield_to_lms_if_due(\$lms_last_yield);
     }
     $lms_sth->finish;
@@ -714,19 +842,19 @@ sub prepare {
     my $artist_last_yield = time();
     while (my ($url, $tracknum, $role, $contributor_id, $artist_mbid, $artist_name)
         = $artist_sth->fetchrow_array) {
-        my $database_file = _database_file_for_url(
-            $url, $tracknum, $root_descriptors, $roots,
-        );
-        next unless defined $database_file && $lms_files{$database_file};
+        my @database_files = @{$alias_mapper->($url, $tracknum)};
         my $canonical_key = Plugins::BetterCallBliss::RepeatIdentity::canonical_artist_key(
             $artist_mbid, $contributor_id, $artist_name,
         );
         next unless defined $canonical_key;
-        $repeat_snapshot->{insert_artist}->execute(
-            $database_file, int($role) == 6 ? 'TRACKARTIST' : 'ARTIST',
-            $canonical_key, $contributor_id, $artist_mbid,
-            defined $artist_name ? $artist_name : '',
-        );
+        for my $database_file (@database_files) {
+            next unless defined $database_file && $lms_files{$database_file};
+            $repeat_snapshot->{insert_artist}->execute(
+                $database_file, int($role) == 6 ? 'TRACKARTIST' : 'ARTIST',
+                $canonical_key, $contributor_id, $artist_mbid,
+                defined $artist_name ? $artist_name : '',
+            );
+        }
         _yield_to_lms_if_due(\$artist_last_yield);
     }
     $artist_sth->finish;
@@ -745,17 +873,19 @@ sub prepare {
     );
     die "Could not open bliss.db read-only" unless $dbh;
     my $sth = $dbh->prepare(
-        'SELECT rowid, File, Title, Artist, Album FROM TracksV2 '
-        . 'WHERE Ignore IS NOT 1 ORDER BY rowid'
+        'SELECT rowid, File, Title, Artist, Album, Ignore IS NOT 1 FROM TracksV2 ORDER BY rowid'
     );
     $sth->execute;
     my (@allowed, @candidate_identities, @unmatched);
     my $usable_count = 0;
     my $virtual_library_excluded_bliss_row_count = 0;
     my $bliss_last_yield = time();
-    while (my ($row_id, $file, $title, $artist, $album) = $sth->fetchrow_array) {
-        $usable_count++;
+    while (my ($row_id, $file, $title, $artist, $album, $eligible) = $sth->fetchrow_array) {
         my $database_file = _database_text($file);
+        die "Ambiguous media-root identity '$database_file' maps to local tracks $ambiguous_files{$database_file}[0] and $ambiguous_files{$database_file}[1]"
+            if defined($database_file) && exists($ambiguous_files{$database_file});
+        next unless $eligible;
+        $usable_count++;
         $repeat_snapshot->{update_credit}->execute(
             defined $artist ? $artist : '', $database_file,
         ) if $repeat_snapshot && defined $database_file && $lms_files{$database_file};
@@ -809,6 +939,11 @@ sub prepare {
     $sth->finish;
     $dbh->disconnect;
 
+    if ($shared_inventory) {
+        _assert_shared_rows($shared_inventory, \@allowed);
+        @allowed = @{$shared_inventory->{row_ids}};
+    }
+
     _worker_progress('Rebuilding candidate library: publishing stable identities');
     my ($track_identity_artifact, $track_identity_path, $track_identity_sha256) =
         $shared_snapshot ? ({
@@ -816,7 +951,7 @@ sub prepare {
             schema_identity => 'lyrion-track-identities-v1',
         }, $shared_snapshot->{path}, $shared_snapshot->{sha256}) : _publish_repeat_identity_snapshot(
             $repeat_snapshot, $scan_time, $database_identity,
-            $media_roots_identity,
+            $media_roots_identity, $lyrion_identity, scalar(keys %ambiguous_files),
         );
 
     _worker_progress('Rebuilding candidate library: publishing candidate artifacts');
@@ -904,6 +1039,7 @@ sub prepare {
         candidate_library_id => $candidate_library->{id} || '',
         candidate_library_membership_sha256 => $membership_sha256,
         candidate_library_track_count => $candidate_library_track_count,
+        membership_track_count => $membership_count,
         virtual_library_excluded_lms_track_count =>
             $lms_track_count - $candidate_library_track_count,
         virtual_library_excluded_bliss_row_count =>
@@ -942,6 +1078,42 @@ sub _lms_database_path {
     die "Could not resolve the Lyrion database path";
 }
 
+sub _parent_source_state {
+    my ($capability, $lms_path) = @_;
+    my $bliss = $capability->{database};
+    die 'Bliss database is unavailable' unless defined($bliss) && length($bliss);
+    my @files;
+    for my $item ([$lms_path, 0], ["$lms_path-wal", 1], [$bliss, 0], ["$bliss-wal", 1]) {
+        my ($path, $optional) = @$item;
+        my @stat = stat($path);
+        die 'Candidate database is unavailable' if !@stat && !$optional;
+        push @files, @stat ? [@stat[0, 1, 7, 9, 10]] : undef;
+    }
+    my ($data_version) = _lms_dbh()->selectrow_array('PRAGMA data_version');
+    return JSON::XS->new->utf8->canonical->encode({files => \@files,
+        roots => $capability->{music_roots} || [], current_roots => Slim::Utils::Misc::getMediaDirs('audio') || [],
+        data_version => 0 + ($data_version || 0),
+        scan => 0 + (Slim::Music::Import->lastScanTime() || 0)});
+}
+
+sub _fast_memo_key {
+    my ($capability, $database_identity, $library) = @_;
+    return JSON::XS->new->utf8->canonical->encode({
+        database => $capability->{database}, roots => $capability->{music_roots} || [],
+        database_identity => $database_identity, library => ($library->{id} || ''),
+    });
+}
+
+sub _check_fast_library {
+    my ($library) = @_;
+    my $id = $library->{id} || '';
+    return 1 unless length $id;
+    require Slim::Music::VirtualLibraries;
+    my $real = Slim::Music::VirtualLibraries->getRealId($id);
+    die 'Selected virtual library is unavailable' unless defined($real) && $real eq $id;
+    return 1;
+}
+
 sub _schedule_async_poll {
     Slim::Utils::Timers::setTimer(
         undef, time() + 0.25, \&_poll_async_prepare,
@@ -970,6 +1142,23 @@ sub _start_next_async_prepare {
     my $lms_database_path = eval { _lms_database_path() };
     if (!$lms_database_path) {
         $task->{on_error}->($@ || 'Could not resolve the Lyrion database path');
+        _start_next_async_prepare();
+        return;
+    }
+    my $initial_source = eval { _parent_source_state($task->{capability}, $lms_database_path) };
+    unless (defined $initial_source) {
+        $task->{on_error}->($@ || 'Could not capture candidate library source state');
+        _start_next_async_prepare();
+        return;
+    }
+    my $observer = eval {
+        my $bundle = _register_shared_bundle();
+        local @INC = (File::Spec->catdir($bundle, 'lib'), @INC);
+        require Plugins::BlissLibrary::SourceIdentity;
+        Plugins::BlissLibrary::SourceIdentity::begin_session([$lms_database_path, $task->{capability}->{database}]);
+    };
+    unless ($observer) {
+        $task->{on_error}->($@ || 'Could not observe candidate library source changes');
         _start_next_async_prepare();
         return;
     }
@@ -1006,11 +1195,14 @@ sub _start_next_async_prepare {
             die "Could not open the Lyrion database read-only"
                 unless $lms_dbh_override;
             ($cached_key, $cached_result, $last_status) = (undef, undef, undef);
-            prepare(
+            my $prepared = prepare(
                 @{$task}{qw(capability database_identity candidate_library)},
             );
             _write_atomic(
-                $result_path, _json()->encode({ok => JSON::XS::true}),
+                $result_path, _json()->encode({ok => JSON::XS::true, cache_key => $cached_key,
+                    membership_sha256 => $prepared->{status}->{candidate_library_membership_sha256},
+                    membership_count => $worker_membership_count,
+                    scan_time => $prepared->{status}->{lms_scan_time}}),
             );
             1;
         };
@@ -1038,6 +1230,9 @@ sub _start_next_async_prepare {
         progress_path => $progress_path,
         last_progress => '',
         started_at => time(),
+        lms_database_path => $lms_database_path,
+        initial_source => $initial_source,
+        source_observer => $observer,
     };
     $log->info(
         "candidate_inventory stage=BackgroundRebuildStarted pid=$pid"
@@ -1092,9 +1287,32 @@ sub _poll_async_prepare {
     } else {
         my ($result, $error);
         eval {
-            $result = prepare(
-                @{$task}{qw(capability database_identity candidate_library)},
-            );
+            local $Plugins::BlissLibrary::SourceIdentity::session = $worker->{source_observer};
+            Plugins::BlissLibrary::SourceIdentity::_check_session($worker->{lms_database_path});
+            Plugins::BlissLibrary::SourceIdentity::_check_session($task->{capability}->{database});
+            die 'Candidate library changed while the worker was running'
+                unless _parent_source_state($task->{capability}, $worker->{lms_database_path}) eq $worker->{initial_source};
+            my $library = $task->{candidate_library} || {id => '', name => 'All tracks'};
+            _check_fast_library($library);
+            $result = _load_cached_inventory($outcome->{cache_key}, $task->{database_identity},
+                $outcome->{scan_time}, $library, $outcome->{membership_sha256}, $outcome->{membership_count}, 1);
+            die 'Could not load the verified candidate inventory' unless $result;
+            Plugins::BlissLibrary::SourceIdentity::_check_session($worker->{lms_database_path});
+            Plugins::BlissLibrary::SourceIdentity::_check_session($task->{capability}->{database});
+            die 'Candidate library changed while the worker was running'
+                unless _parent_source_state($task->{capability}, $worker->{lms_database_path}) eq $worker->{initial_source};
+            _check_fast_library($library);
+            $cached_key = $outcome->{cache_key};
+            $cached_result = $result;
+            $last_status = $result->{status};
+            $fast_memo = {
+                key => _fast_memo_key($task->{capability}, $task->{database_identity}, $library),
+                observer => $worker->{source_observer}, source => $worker->{initial_source},
+                lms_path => $worker->{lms_database_path}, cache_key => $outcome->{cache_key},
+                scan_time => $outcome->{scan_time}, membership_sha256 => $outcome->{membership_sha256},
+                membership_count => $outcome->{membership_count},
+            };
+            _log_cache_hit($last_status);
             1;
         } or $error = $@ || 'Could not load the rebuilt candidate library';
         $error ? $task->{on_error}->($error) : $task->{on_done}->($result);
@@ -1109,18 +1327,79 @@ sub prepare_async {
         unless ref($on_done) eq 'CODE';
     die "Candidate inventory error callback is required"
         unless ref($on_error) eq 'CODE';
-    push @async_prepare_queue, {
+    my $bundle_ok = eval { _register_shared_bundle(); 1 };
+    unless ($bundle_ok) {
+        $on_error->($@ || 'Shared inventory bundle is incompatible');
+        return;
+    }
+    my $task = {
         capability => $capability,
         database_identity => $database_identity,
         candidate_library => $candidate_library,
-        on_done => $on_done,
+        on_done => sub {
+            my $result = shift;
+            my $id = $candidate_library->{id} || '';
+            my $scope = length($id) ? {kind => 'library', id => "$id"} : {kind => 'all'};
+            eval { _init_shared_refresh(); Plugins::BlissLibrary::LyrionRefresh::remember($scope) };
+            $log->warn("Could not remember candidate refresh scope: $@") if $@;
+            $on_done->($result);
+        },
         on_error => $on_error,
         on_progress => $on_progress,
     };
+    my $library = $candidate_library || {id => '', name => 'All tracks'};
+    my $memo = $fast_memo;
+    if ($memo && !$async_prepare_worker && !@async_prepare_queue
+        && $memo->{key} eq _fast_memo_key($capability, $database_identity, $library)) {
+        my $generation = $async_generation;
+        Slim::Utils::Timers::setTimer(undef, time() + 0.01, sub {
+            return if $generation != $async_generation;
+            if ($async_prepare_worker || @async_prepare_queue) {
+                push @async_prepare_queue, $task;
+                _start_next_async_prepare();
+                return;
+            }
+            my $result = eval {
+                _check_fast_library($library);
+                local $Plugins::BlissLibrary::SourceIdentity::session = $memo->{observer};
+                Plugins::BlissLibrary::SourceIdentity::_check_session($memo->{lms_path});
+                Plugins::BlissLibrary::SourceIdentity::_check_session($capability->{database});
+                die 'Candidate source changed' unless _parent_source_state($capability, $memo->{lms_path}) eq $memo->{source};
+                my $value = _load_cached_inventory($memo->{cache_key}, $database_identity, $memo->{scan_time},
+                    $library, $memo->{membership_sha256}, $memo->{membership_count}, 1);
+                die 'Cached candidate inventory is unavailable' unless $value;
+                Plugins::BlissLibrary::SourceIdentity::_check_session($memo->{lms_path});
+                Plugins::BlissLibrary::SourceIdentity::_check_session($capability->{database});
+                die 'Candidate source changed' unless _parent_source_state($capability, $memo->{lms_path}) eq $memo->{source};
+                _check_fast_library($library);
+                $value;
+            };
+            if ($result) {
+                $result->{status}->{cache_state} = 'memory';
+                $cached_key = $memo->{cache_key};
+                $cached_result = $result;
+                $last_status = $result->{status};
+                _log_cache_hit($last_status);
+                $task->{on_done}->($result);
+                return;
+            }
+            $fast_memo = undef if $fast_memo && $fast_memo == $memo;
+            push @async_prepare_queue, $task;
+            _start_next_async_prepare();
+        });
+        return;
+    }
+    push @async_prepare_queue, $task;
     _start_next_async_prepare();
 }
 
 sub shutdown {
+    $async_generation++;
+    $fast_memo = undef;
+    if ($INC{'Plugins/BlissLibrary/LyrionRefresh.pm'}) {
+        my $bundle = File::Spec->catdir(dirname(__FILE__), 'SharedInventory');
+        eval { Plugins::BlissLibrary::LyrionRefresh::release($bundle) };
+    }
     @async_prepare_queue = ();
     if ($async_prepare_worker) {
         kill 'TERM', $async_prepare_worker->{pid};
