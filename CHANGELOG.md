@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.17
+
+- Share candidate-library snapshots with Bliss Mixer Lab and refresh previously used scopes after library scans.
+- Add debug logging for shared snapshot refreshes.
+
 ## 0.22.16
 
 - Use consistent job terminology throughout the interface.
