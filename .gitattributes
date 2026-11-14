@@ -1,3 +1,4 @@
 BetterCallBliss/strings.txt text eol=lf
 BetterCallBliss/HTML/EN/plugins/BlissGuidance/settings/* text eol=lf
 BetterCallBliss/Plugins/BlissGuidance/*.pm text eol=lf
+BetterCallBliss/SharedInventory/** text eol=lf
