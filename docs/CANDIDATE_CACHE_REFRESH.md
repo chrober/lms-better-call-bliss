@@ -3,6 +3,10 @@
 **Status: proposed, not implemented.** This document records the intended
 behavior and the investigation so far. It does not describe an existing
 automatic refresh or promise that a particular coordination mechanism works.
+The cross-host shared candidate-inventory plan now supersedes the host-specific
+ownership and settings proposal below. Its server-wide policy and UI location
+remain to be decided; do not add a Better Call Bliss-only switch independently.
+The scan/analyser coordination and acceptance cases here remain relevant.
 
 ## Motivation
 
