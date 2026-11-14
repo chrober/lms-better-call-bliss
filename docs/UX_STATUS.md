@@ -139,6 +139,41 @@ malformed responses, rate limits, and missing Internet access degrade to local
 Bliss evidence rather than fail optimization.
 ListenBrainz remains optional and is deliberately deferred.
 
+### Christmas selection policy
+
+Revisit how Better Call Bliss applies BlissMixer's Christmas exclusion. The
+current compatibility snapshot makes the exclusion depend on the current
+month: when the BlissMixer filter is enabled, Christmas tracks are excluded
+outside December. This applies to playlist jobs and destination routes; the
+snapshot is captured for the job. Lab DSTM separately supports exceptions for
+selected virtual libraries, which Better Call Bliss does not currently apply.
+
+A development-branch Pi test selected the Christmas library for a playlist
+extension in November. Better Call Bliss captured the correct candidate library
+but still applied Christmas exclusion, and the optimizer found no eligible
+additions. Lab DSTM, in contrast, applied its configured Christmas-library
+exception and added tracks. The optimizer result did not report a per-filter
+breakdown, so the Christmas filter's contribution to the empty pool was not
+independently proven.
+
+Questions to resolve before implementation:
+
+- Should a live **Bliss me there...** route follow a seasonal default while
+  playlist generation remains independent of the month? Should either mode
+  inherit the current BlissMixer policy by default?
+- How can users explicitly include or exclude Christmas tracks for a playlist
+  job, including playlists prepared for a future season? Consider clear
+  inheritance and per-job controls, and how settings apply to quick actions.
+- Should selecting a configured Christmas virtual library override the global
+  exclusion, as in Lab DSTM? Define precedence among explicit user choice,
+  library exceptions, global policy, and seasonal defaults.
+- Freeze and display the effective policy for a job so results are explainable
+  and repeatable. Candidate restrictions apply to additions, not immutable
+  source tracks. Test November and December, library and all-tracks scopes,
+  preview and route paths, and explain empty eligible pools clearly.
+
+These are open design questions, not a decision to change seasonal behavior.
+
 ## Safety boundary
 
 The current implementation keeps Preview read-only. Its Settings page reports the live enabled versions and compatibility of both BlissMixer and optional BlissMixerLab, plus the availability of `bliss.db` and the optional `learned_matrix.json`; the complete compatibility section is foldable. Completed previews are accepted through explicit post-Preview actions: create a verified copy, overwrite the source playlist with confirmation, or send the result to a player queue. Create optimized copy uses Lyrion's core M3U serializer, verifies the same-directory temporary file, exclusively claims the final path without overwrite semantics, copies the verified bytes, creates the LMS catalog object, and compares both catalog and final-file order with the optimizer result. It rejects an explicit existing name without touching it, automatically chooses a free numbered name only when the field was left blank, and removes only artifacts created by the failed attempt. Overwrite source verifies the generated M3U and attempts to restore the original file if publication fails. Queue output does not write a saved playlist; it resolves the preview to LMS URLs and applies the chosen player queue action. Same-player Replace upcoming tracks validates the live queue against the preview snapshot and trims the accepted result after the current item when playback has advanced predictably.
