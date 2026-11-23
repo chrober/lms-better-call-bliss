@@ -60,6 +60,15 @@ The same inventory pass updates `<LMS cache>/bettercallbliss/non-lms-bliss-rows.
 
 The content-addressed allowlist is reused across LMS restarts through a checksum-verified current-state record only while both the `bliss.db` file identity and LMS last-scan timestamp remain unchanged. A library scan, Bliss database replacement, missing artifact, checksum failure, or generator revision change causes a cold rebuild. This keeps repeated jobs and routine LMS restarts fast without weakening membership freshness.
 
+On Unix-like systems, jobs started during a library scan instead use private
+SQLite backup snapshots of the Lyrion and Bliss databases. The backups are taken
+sequentially, not as one atomic transaction; the candidate inventory, optimizer
+and row resolution use the resulting job-owned inputs, and additions are
+revalidated against the live library before publication. Large temporary inputs
+are removed after the job finishes. A job started against live databases that is
+overtaken by a scan fails safely and must be retried. Windows continues to block
+scan-time jobs until non-blocking inventory preparation is supported there.
+
 For connected addition jobs, the plugin also passes a conservative internal-gap
 shortlist limit of 256. The native process reserves endpoint-local semantic
 evidence before filling the remainder with a deterministic acoustic proxy that

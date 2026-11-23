@@ -105,9 +105,13 @@ my $jobs_source = <$jobs_file>;
 close $jobs_file;
 my $destination_check = index($jobs_source, 'RepeatConflicts::destination_minimum_intermediates(');
 my $fixed_check = index($jobs_source, 'RepeatConflicts::fixed_gap_repeat_conflict(');
-my $inventory = index($jobs_source, 'CandidateInventory::prepare_async(', $destination_check);
+my $inventory = index($jobs_source, 'CandidateInventory::prepare_async', $destination_check);
 ok($destination_check >= 0 && $inventory > $destination_check,
     'destination preflight is positioned before asynchronous candidate inventory');
 ok($fixed_check >= 0 && $inventory > $fixed_check,
     'fixed-gap preflight is positioned before asynchronous candidate inventory');
+my $preview_start = index($jobs_source, 'sub _start_preview_from_built');
+my $snapshot_start = index($jobs_source, '_start_scan_snapshot_phase(', $preview_start);
+ok($snapshot_start > $destination_check && $snapshot_start > $fixed_check,
+    'repeat-window preflight runs before expensive scan snapshot capture');
 done_testing();

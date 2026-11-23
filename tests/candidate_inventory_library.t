@@ -153,6 +153,165 @@ my $library = {
     name => 'All Music without Audiobooks',
     virtual => 1,
 };
+SKIP: {
+    skip 'requires fork', 5 if $^O eq 'MSWin32';
+    my $shared_lib = File::Spec->catdir($FindBin::Bin, '..', 'BetterCallBliss', 'SharedInventory', 'lib');
+    local @INC = ($shared_lib, @INC);
+    require Plugins::BetterCallBliss::ScanSnapshotProcess;
+    my $process = Plugins::BetterCallBliss::ScanSnapshotProcess->start(
+        parent_dir => $root, lyrion_path => $lms_path, bliss_path => $bliss_path, timeout_seconds => 20,
+    );
+    my $deadline = Time::HiRes::time() + 30;
+    my $state = $process->poll;
+    while ($state->{state} eq 'running' && Time::HiRes::time() < $deadline) {
+        Time::HiRes::sleep(0.02);
+        $state = $process->poll;
+    }
+    is($state->{state}, 'completed', 'real background process captures both SQLite databases')
+        or diag($state->{error} || 'no completion');
+    my ($result, $error, $done);
+    if ($state->{state} eq 'completed') {
+        Plugins::BetterCallBliss::CandidateInventory::prepare_snapshots_async(
+            {%$capability, database => $state->{snapshots}->{bliss}}, 'pipeline-frozen-v1',
+            $library, $state->{snapshots}->{lyrion}, $state->{directory},
+            sub { $result = shift; $done = 1 }, sub { $error = shift; $done = 1 },
+        );
+        $deadline = Time::HiRes::time() + 30;
+        while (!$done && Time::HiRes::time() < $deadline) {
+            my $timer = shift @Slim::Utils::Timers::pending;
+            $timer->() if $timer;
+            Time::HiRes::sleep(0.02);
+        }
+    }
+    ok($done && !$error && $result, 'real candidate worker consumes the captured databases') or diag($error || 'no result');
+    is($result && $result->{status}->{allowed_row_count}, 1, 'end-to-end preparation preserves the selected library');
+    my $artifact = $result && $result->{artifact}->{path};
+    ok($artifact && -f $artifact, 'end-to-end preparation produces an optimizer inventory');
+    $process->cleanup if $state->{state} eq 'completed' && $done;
+    ok($artifact && -f $artifact && !-e ($state->{snapshots}->{bliss} || ''),
+        'database cleanup retains the optimizer inventory');
+}
+SKIP: {
+    skip 'requires fork', 5 if $^O eq 'MSWin32';
+    require Plugins::BetterCallBliss::ScanDatabaseSnapshot;
+    my $job = File::Spec->catdir($root, 'async-scan-job');
+    mkdir $job or die $!;
+    my $snapshots = Plugins::BetterCallBliss::ScanDatabaseSnapshot::capture_pair($lms_path, $bliss_path, $job);
+    my ($result, $error, $done, $worker_pid);
+    my $started = eval {
+        Plugins::BetterCallBliss::CandidateInventory::prepare_snapshots_async(
+            {%$capability, database => $snapshots->{bliss}}, 'frozen-bliss-async',
+            $library, $snapshots->{lyrion}, $job,
+            sub { $result = shift; $done = 1 }, sub { $error = shift; $done = 1 },
+            undef, sub { $worker_pid = shift },
+        );
+        1;
+    };
+    my $start_error = $@;
+    ok($started && !$done, 'snapshot preparation starts asynchronously') or diag($start_error);
+    ok($worker_pid && $worker_pid =~ /^\d+$/, 'snapshot inventory worker reports its process identity');
+    my $deadline = Time::HiRes::time() + 30;
+    while ($started && !$done && Time::HiRes::time() < $deadline) {
+        my $timer = shift @Slim::Utils::Timers::pending;
+        $timer->() if $timer;
+        Time::HiRes::sleep(0.02);
+    }
+    ok($done && !$error && $result, 'snapshot worker returns an inventory') or diag($error || 'no result');
+    is($result && $result->{status}->{allowed_row_count}, 1, 'async snapshot honors library membership');
+    like($result && $result->{artifact}->{path} || '', qr/\Q$job\E/, 'async snapshot keeps artifacts job-local');
+}
+SKIP: {
+    skip 'requires fork', 3 if $^O eq 'MSWin32';
+    my ($handle, $done, $error);
+    {
+        no warnings 'redefine';
+        local *Plugins::BetterCallBliss::CandidateInventory::_start_next_async_prepare = sub {};
+        $handle = Plugins::BetterCallBliss::CandidateInventory::prepare_snapshots_async(
+            $capability, 'cancelled-snapshot', $library, $lms_path, $root,
+            sub { $done = 1 }, sub { $error = shift },
+        );
+        eval { Plugins::BetterCallBliss::CandidateInventory::cancel_snapshot_preparation($handle) };
+        like($error || '', qr/cancell?ed/i, 'cancelling queued snapshot preparation completes immediately');
+    }
+    Plugins::BetterCallBliss::CandidateInventory::_start_next_async_prepare();
+    like($error || '', qr/cancell?ed/i, 'a queued snapshot worker reports cancellation');
+    ok(!$done, 'cancelled snapshot preparation does not produce a result');
+}
+SKIP: {
+    skip 'requires fork', 2 if $^O eq 'MSWin32';
+    require Plugins::BetterCallBliss::ScanDatabaseSnapshot;
+    my $job = File::Spec->catdir($root, 'cancel-active-scan-job');
+    mkdir $job or die $!;
+    my $snapshots = Plugins::BetterCallBliss::ScanDatabaseSnapshot::capture_pair($lms_path, $bliss_path, $job);
+    my ($done, $error);
+    my $handle = Plugins::BetterCallBliss::CandidateInventory::prepare_snapshots_async(
+        {%$capability, database => $snapshots->{bliss}}, 'cancel-active', $library,
+        $snapshots->{lyrion}, $job, sub { $done = 1 }, sub { $error = shift },
+    );
+    Plugins::BetterCallBliss::CandidateInventory::cancel_snapshot_preparation($handle);
+    my $deadline = Time::HiRes::time() + 30;
+    while (!$error && Time::HiRes::time() < $deadline) {
+        my $timer = shift @Slim::Utils::Timers::pending;
+        $timer->() if $timer;
+        Time::HiRes::sleep(0.02);
+    }
+    like($error || '', qr/cancell?ed/i, 'an active snapshot worker reports cancellation');
+    ok(!$done, 'cancelled active snapshot preparation does not return a result');
+}
+SKIP: {
+    skip 'requires fork', 8 if $^O eq 'MSWin32';
+    require Plugins::BetterCallBliss::ScanDatabaseSnapshot;
+    my $job = File::Spec->catdir($root, 'scan-job');
+    mkdir $job or die $!;
+    my $snapshots = Plugins::BetterCallBliss::ScanDatabaseSnapshot::capture_pair($lms_path, $bliss_path, $job);
+    my $result_path = File::Spec->catfile($job, 'result.json');
+    $Slim::Schema::dbh->do(q{DELETE FROM library_track WHERE library='4d2ba37f' AND track=1});
+    my $pid = fork();
+    die 'fork failed' unless defined $pid;
+    unless ($pid) {
+        $Slim::Schema::dbh->{InactiveDestroy} = 1;
+        my $unsafe_accepted = eval {
+            Plugins::BetterCallBliss::CandidateInventory::prepare_from_snapshots(
+                $capability, 'live-bliss-v1', $library, $lms_path, $job,
+            );
+            1;
+        } ? 1 : 0;
+        my $result = eval {
+            Plugins::BetterCallBliss::CandidateInventory::prepare_from_snapshots(
+                {%$capability, database => $snapshots->{bliss}}, 'frozen-bliss-v1',
+                $library, $snapshots->{lyrion}, $job,
+            )
+        };
+        my $error = $@;
+        my $all = !$error ? eval {
+            Plugins::BetterCallBliss::CandidateInventory::prepare_from_snapshots(
+                {%$capability, database => $snapshots->{bliss}}, 'frozen-bliss-v1',
+                {id => '', name => 'All tracks'}, $snapshots->{lyrion}, $job,
+            )
+        } : undef;
+        $error ||= $@;
+        open my $out, '>:raw', $result_path or POSIX::_exit(2);
+        print {$out} JSON::XS->new->utf8->encode({result => $result, all => $all, error => "$error", unsafe_accepted => $unsafe_accepted});
+        close $out;
+        POSIX::_exit($error ? 1 : 0);
+    }
+    waitpid($pid, 0);
+    my $exit = $?;
+    $Slim::Schema::dbh->do(q{INSERT INTO library_track VALUES ('4d2ba37f', 1)});
+    open my $in, '<:raw', $result_path or die $!;
+    my $outcome = JSON::XS->new->utf8->decode(do { local $/; <$in> });
+    close $in;
+    is($exit, 0, 'scan-time snapshot inventory builds successfully') or diag($outcome->{error});
+    my $result = $outcome->{result} || {};
+    is($result->{status}->{allowed_row_count}, 1, 'snapshot inventory honors the selected virtual library');
+    like($result->{artifact}->{path} || '', qr/\Q$job\E/, 'scan-time artifacts are job-owned');
+    ok(!-e File::Spec->catfile($root, 'candidate-inventory', 'current.json'),
+        'scan-time preparation does not publish to the normal inventory cache');
+    is($outcome->{all}->{status}->{allowed_row_count}, 2, 'unrestricted snapshot includes both local Bliss tracks');
+    is($result->{status}->{cache_state}, 'job_snapshot', 'scan-time result identifies its job snapshot');
+    ok(-f $result->{track_identity_artifact}->{path}, 'snapshot includes the optimizer track-identity artifact');
+    ok(!$outcome->{unsafe_accepted}, 'scan-time preparation rejects live databases instead of job-owned snapshots');
+}
 {
     no warnings 'redefine';
     my $error;

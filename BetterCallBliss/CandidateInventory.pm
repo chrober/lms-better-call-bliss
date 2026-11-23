@@ -24,11 +24,11 @@ use Plugins::BetterCallBliss::RepeatIdentity;
 
 my $log = Slim::Utils::Log::logger('plugin.bettercallbliss');
 use constant BUILDER_REVISION => 11;
-my (
+our (
     $inventory_root, $audit_path, $state_path,
     $cached_key, $cached_result, $last_status,
 );
-my ($lms_dbh_override, $worker_child, $worker_progress_path, $worker_membership_count);
+our ($lms_dbh_override, $worker_child, $worker_progress_path, $worker_membership_count, $snapshot_mode);
 my (@async_prepare_queue, $async_prepare_worker);
 my ($fast_memo, $async_generation);
 
@@ -664,6 +664,41 @@ sub _lyrion_database_identity {
     return Plugins::BlissLibrary::SourceIdentity::database_fingerprint(_lms_database_path());
 }
 
+sub prepare_from_snapshots {
+    my ($capability, $database_identity, $candidate_library, $lms_path, $job_dir) = @_;
+    die 'Snapshot job directory is unavailable' unless defined($job_dir) && -d $job_dir && !-l $job_dir;
+    die 'Snapshot capability is unavailable' unless ref($capability) eq 'HASH';
+    for my $entry ([$lms_path, 'lyrion-snapshot.db'], [$capability->{database}, 'bliss-snapshot.db']) {
+        my ($path, $name) = @$entry;
+        die 'Job-owned database snapshot is unavailable' unless defined($path) && !ref($path)
+            && File::Spec->rel2abs($path) eq File::Spec->rel2abs(File::Spec->catfile($job_dir, $name))
+            && -f $path && !-l $path;
+    }
+    my $dbh = DBI->connect('dbi:SQLite:dbname=' . $lms_path, '', '', {
+        RaiseError => 1, PrintError => 0, AutoCommit => 1,
+        sqlite_unicode => 1, sqlite_open_flags => 1,
+    }) or die 'Could not open Lyrion snapshot read-only';
+    local $lms_dbh_override = $dbh;
+    local $worker_child = 1;
+    local $worker_membership_count;
+    local $snapshot_mode = 1;
+    local $inventory_root = File::Spec->catdir($job_dir, 'candidate-inventory');
+    local $audit_path = File::Spec->catfile($job_dir, 'non-lms-bliss-rows.json');
+    local $state_path = File::Spec->catfile($inventory_root, 'current.json');
+    local ($cached_key, $cached_result, $last_status);
+    make_path($inventory_root) unless -d $inventory_root;
+    my $result = eval {
+        _check_fast_library($candidate_library || {});
+        my $value = prepare($capability, $database_identity, $candidate_library);
+        $value->{status}->{cache_state} = 'job_snapshot';
+        $value;
+    };
+    my $error = $@;
+    $dbh->disconnect;
+    die $error if $error;
+    return $result;
+}
+
 sub prepare {
     my ($capability, $database_identity, $candidate_library) = @_;
     die "Candidate inventory cache is not initialized" unless $inventory_root;
@@ -674,7 +709,7 @@ sub prepare {
     my $media_roots_identity = _media_roots_identity($roots);
     my ($library_members, $membership_sha256, $membership_count);
     my $shared_inventory;
-    if ($worker_child) {
+    if ($worker_child && !$snapshot_mode) {
         require Slim::Utils::Prefs;
         require Slim::Music::VirtualLibraries;
         my $cache = Slim::Utils::Prefs::preferences('server')->get('cachedir');
@@ -1129,8 +1164,20 @@ sub _schedule_async_poll {
 sub _start_next_async_prepare {
     return if $async_prepare_worker || !@async_prepare_queue;
     my $task = shift @async_prepare_queue;
+    if ($task->{snapshot_cancelled}) {
+        $task->{snapshot_finished} = 1;
+        $task->{on_error}->('Snapshot inventory preparation cancelled');
+        _start_next_async_prepare();
+        return;
+    }
 
     if (main::ISWINDOWS) {
+        if ($task->{snapshot_dir}) {
+            $task->{snapshot_finished} = 1;
+            $task->{on_error}->('Scan-time snapshot inventory preparation is not yet supported on Windows');
+            _start_next_async_prepare();
+            return;
+        }
         Slim::Utils::Timers::setTimer(undef, time() + 0.01, sub {
             my ($result, $error);
             eval {
@@ -1145,32 +1192,33 @@ sub _start_next_async_prepare {
         return;
     }
 
-    my $lms_database_path = eval { _lms_database_path() };
+    my $lms_database_path = $task->{snapshot_dir} ? $task->{snapshot_lms_path} : eval { _lms_database_path() };
     if (!$lms_database_path) {
         $task->{on_error}->($@ || 'Could not resolve the Lyrion database path');
         _start_next_async_prepare();
         return;
     }
-    my $initial_source = eval { _parent_source_state($task->{capability}, $lms_database_path) };
-    unless (defined $initial_source) {
+    my $initial_source = $task->{snapshot_dir} ? undef : eval { _parent_source_state($task->{capability}, $lms_database_path) };
+    if (!$task->{snapshot_dir} && !defined $initial_source) {
         $task->{on_error}->($@ || 'Could not capture candidate library source state');
         _start_next_async_prepare();
         return;
     }
-    my $observer = eval {
+    my $observer = $task->{snapshot_dir} ? undef : eval {
         my $bundle = _register_shared_bundle();
         local @INC = (File::Spec->catdir($bundle, 'lib'), @INC);
         require Plugins::BlissLibrary::SourceIdentity;
         Plugins::BlissLibrary::SourceIdentity::begin_session([$lms_database_path, $task->{capability}->{database}]);
     };
-    unless ($observer) {
+    if (!$task->{snapshot_dir} && !$observer) {
         $task->{on_error}->($@ || 'Could not observe candidate library source changes');
         _start_next_async_prepare();
         return;
     }
     my $token = $$ . '-' . int(time() * 1000) . '-' . int(rand(1_000_000));
-    my $result_path = $inventory_root . '/prepare-' . $token . '.json';
-    my $progress_path = $inventory_root . '/prepare-' . $token . '-progress.json';
+    my $worker_dir = $task->{snapshot_dir} || $inventory_root;
+    my $result_path = $worker_dir . '/prepare-' . $token . '.json';
+    my $progress_path = $worker_dir . '/prepare-' . $token . '-progress.json';
     my $pid = fork();
     if (!defined $pid) {
         $task->{on_error}->("Could not start candidate-library worker: $!");
@@ -1201,15 +1249,20 @@ sub _start_next_async_prepare {
             die "Could not open the Lyrion database read-only"
                 unless $lms_dbh_override;
             ($cached_key, $cached_result, $last_status) = (undef, undef, undef);
-            my $prepared = prepare(
-                @{$task}{qw(capability database_identity candidate_library)},
-            );
-            _write_atomic(
-                $result_path, _json()->encode({ok => JSON::XS::true, cache_key => $cached_key,
-                    membership_sha256 => $prepared->{status}->{candidate_library_membership_sha256},
-                    membership_count => $worker_membership_count,
-                    scan_time => $prepared->{status}->{lms_scan_time}}),
-            );
+            my $prepared = $task->{snapshot_dir}
+                ? prepare_from_snapshots(@{$task}{qw(capability database_identity candidate_library snapshot_lms_path snapshot_dir)})
+                : prepare(@{$task}{qw(capability database_identity candidate_library)});
+            if ($task->{snapshot_dir}) {
+                delete $prepared->{identities};
+                _write_atomic($result_path, _json()->encode({ok => JSON::XS::true, snapshot_result => $prepared}));
+            } else {
+                _write_atomic(
+                    $result_path, _json()->encode({ok => JSON::XS::true, cache_key => $cached_key,
+                        membership_sha256 => $prepared->{status}->{candidate_library_membership_sha256},
+                        membership_count => $worker_membership_count,
+                        scan_time => $prepared->{status}->{lms_scan_time}}),
+                );
+            }
             1;
         };
         if (!$ok) {
@@ -1240,6 +1293,10 @@ sub _start_next_async_prepare {
         initial_source => $initial_source,
         source_observer => $observer,
     };
+    if ($task->{snapshot_dir} && ref($task->{on_worker}) eq 'CODE') {
+        eval { $task->{on_worker}->($pid) };
+        $log->warn('Could not record snapshot inventory worker: ' . $@) if $@;
+    }
     $log->info(
         "candidate_inventory stage=BackgroundRebuildStarted pid=$pid"
         . ' nice=10 io_priority=idle',
@@ -1284,12 +1341,42 @@ sub _poll_async_prepare {
         ref($outcome) eq 'HASH' && $outcome->{ok} ? 'success' : 'failed',
     ));
 
-    if (ref($outcome) ne 'HASH' || !$outcome->{ok}) {
+    if ($task->{snapshot_cancelled}) {
+        $task->{snapshot_finished} = 1;
+        $task->{on_error}->('Snapshot inventory preparation cancelled');
+    } elsif (ref($outcome) ne 'HASH' || !$outcome->{ok}) {
+        $task->{snapshot_finished} = 1 if $task->{snapshot_dir};
         $task->{on_error}->(
             ref($outcome) eq 'HASH' && $outcome->{error}
                 ? $outcome->{error}
                 : 'Candidate-library worker exited without a valid result',
         );
+    } elsif ($task->{snapshot_dir}) {
+        my ($result, $error);
+        eval {
+            _check_fast_library($task->{candidate_library} || {});
+            $result = $outcome->{snapshot_result};
+            die 'Invalid snapshot inventory result' unless ref($result) eq 'HASH'
+                && ref($result->{status}) eq 'HASH' && ($result->{status}->{cache_state} || '') eq 'job_snapshot'
+                && ($result->{status}->{candidate_library_id} || '') eq ($task->{candidate_library}->{id} || '')
+                && ref($result->{artifact}) eq 'HASH' && ref($result->{identity_artifact}) eq 'HASH'
+                && ref($result->{track_identity_artifact}) eq 'HASH';
+            my $root = File::Spec->catdir($task->{snapshot_dir}, 'candidate-inventory');
+            for my $entry ($result->{artifact}, $result->{identity_artifact}, $result->{track_identity_artifact}) {
+                my $path = $entry->{path} || '';
+                my $hash = $entry->{sha256} || '';
+                die 'Invalid job snapshot artifact' unless $hash =~ /\A[0-9a-f]{64}\z/
+                    && $path =~ /^\Q$root\E\/(?:inventory|identities|track-identities)-\Q$hash\E\.(?:json|sqlite)$/
+                    && -f $path && !-l $path && _sha256_file($path) eq $hash;
+            }
+            my $lookup = $result->{identity_lookup_path} || '';
+            die 'Invalid job snapshot identity lookup' unless $lookup =~ /^\Q$root\E\/identities-[0-9a-f]{64}\.sqlite$/
+                && -f $lookup && !-l $lookup;
+            $result->{identities} = [];
+            1;
+        } or $error = $@ || 'Could not validate job snapshot inventory';
+        $task->{snapshot_finished} = 1;
+        $error ? $task->{on_error}->($error) : $task->{on_done}->($result);
     } else {
         my ($result, $error);
         eval {
@@ -1324,6 +1411,46 @@ sub _poll_async_prepare {
         $error ? $task->{on_error}->($error) : $task->{on_done}->($result);
     }
     _start_next_async_prepare();
+}
+
+sub prepare_snapshots_async {
+    my ($capability, $database_identity, $candidate_library, $lms_path, $job_dir,
+        $on_done, $on_error, $on_progress, $on_worker) = @_;
+    die 'Candidate inventory completion callback is required' unless ref($on_done) eq 'CODE';
+    die 'Candidate inventory error callback is required' unless ref($on_error) eq 'CODE';
+    die 'Candidate library is required' unless ref($candidate_library) eq 'HASH';
+    die 'Snapshot job directory is unavailable' unless defined($job_dir) && -d $job_dir && !-l $job_dir;
+    my $bundle_ok = eval { _register_shared_bundle(); 1 };
+    unless ($bundle_ok) { $on_error->($@ || 'Shared inventory bundle is incompatible'); return }
+    my $task = {
+        capability => $capability, database_identity => $database_identity,
+        candidate_library => $candidate_library, snapshot_lms_path => $lms_path,
+        snapshot_dir => $job_dir, snapshot_task => 1, on_done => $on_done, on_error => $on_error,
+        on_progress => $on_progress, on_worker => $on_worker,
+    };
+    push @async_prepare_queue, $task;
+    _start_next_async_prepare();
+    return $task;
+}
+
+sub cancel_snapshot_preparation {
+    my ($task) = @_;
+    return unless ref($task) eq 'HASH' && $task->{snapshot_task} && !$task->{snapshot_finished};
+    $task->{snapshot_cancelled} = 1;
+    if ($async_prepare_worker && $async_prepare_worker->{task} == $task && !main::ISWINDOWS) {
+        my $pid = $async_prepare_worker->{pid};
+        my $waited = waitpid($pid, WNOHANG);
+        kill 'TERM', $pid if $waited == 0;
+    } else {
+        for my $index (0 .. $#async_prepare_queue) {
+            next unless $async_prepare_queue[$index] == $task;
+            splice @async_prepare_queue, $index, 1;
+            $task->{snapshot_finished} = 1;
+            $task->{on_error}->('Snapshot inventory preparation cancelled');
+            last;
+        }
+    }
+    return 1;
 }
 
 sub prepare_async {

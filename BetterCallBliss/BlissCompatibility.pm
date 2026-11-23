@@ -165,7 +165,7 @@ sub snapshot {
             && !$optimizer_supports_guidance_spi_v2;
     push @problems,
         'an LMS library scan is updating the catalog; preview will resume when it finishes'
-        if $scanning;
+        if $scanning && $^O eq 'MSWin32';
     push @problems, 'the LMS music folder is not configured' unless $music_root;
 
     my $matrix_available = $bliss_ext->{compatible} && -r $matrix ? 1 : 0;

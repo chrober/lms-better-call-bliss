@@ -59,7 +59,8 @@ BEGIN {
     $INC{'Slim/Utils/Prefs.pm'} = __FILE__;
 
     package Slim::Music::Import;
-    sub stillScanning { return 0 }
+    our $scanning = 0;
+    sub stillScanning { return $scanning }
     $INC{'Slim/Music/Import.pm'} = __FILE__;
 
     package Slim::Utils::Misc;
@@ -135,6 +136,16 @@ ok(Plugins::BetterCallBliss::BlissCompatibility::snapshot()->{duration_extension
     'duration extension is independently detected');
 
 ok($snapshot->{ready}, 'compatible optimizer and readable Bliss database are ready');
+{
+    local $Slim::Music::Import::scanning = 1;
+    my $during_scan = Plugins::BetterCallBliss::BlissCompatibility::snapshot();
+    if ($^O eq 'MSWin32') {
+        ok(!$during_scan->{ready}, 'Windows remains scan-blocked until asynchronous snapshot preparation is supported');
+    } else {
+        ok($during_scan->{ready} && $during_scan->{scanning},
+            'a scan does not block previews when snapshot preparation is supported');
+    }
+}
 ok($snapshot->{database_available}, 'the readable Bliss database is reported explicitly');
 ok($snapshot->{bliss_compatible}, 'original BlissMixer satisfies the required base version');
 ok($snapshot->{blissmixerlab_compatible}, 'BlissMixerLab is detected independently');

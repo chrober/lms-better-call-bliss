@@ -134,6 +134,10 @@ sub _resolved_tracks {
         if scalar(grep { !$seen{$_} } keys %source);
     _fail('INVALID_PREVIEW', 'The preview does not contain every resolved bridge')
         if scalar(grep { !$seen{$_} } keys %bridge);
+    if ($job->{live_database_path} || ref($job->{candidate_inventory}) eq 'HASH') {
+        require Plugins::BetterCallBliss::ScanOutputValidation;
+        Plugins::BetterCallBliss::ScanOutputValidation::validate($job, \@tracks);
+    }
     return (\@tracks, \@urls);
 }
 

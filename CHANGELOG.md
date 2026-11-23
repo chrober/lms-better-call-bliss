@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.22.18
+
+- Allow previews and Bliss me there actions during Lyrion library scans on
+  Unix-like systems using isolated database snapshots and live output checks.
+- Keep Windows scan-time jobs blocked until non-blocking preparation is available;
+  jobs overtaken by a scan fail safely and can be retried.
+
 ## 0.22.17
 
 - Share candidate-library snapshots with Bliss Mixer Lab and refresh previously used scopes after library scans.

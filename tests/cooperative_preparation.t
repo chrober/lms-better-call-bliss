@@ -109,7 +109,7 @@ like(
 );
 like(
     $jobs,
-    qr/CandidateInventory::prepare_async\(.*?prepared_candidate_inventory.*?_start_preview_from_built/s,
+    qr/CandidateInventory::prepare_async.*?prepared_candidate_inventory.*?_start_preview_from_built/s,
     'preview startup continues asynchronously after candidate-library capture',
 );
 

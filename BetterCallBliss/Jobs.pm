@@ -5,6 +5,7 @@ use Digest::SHA qw(sha256_hex);
 use Errno qw(ESRCH);
 use File::Basename qw(basename);
 use File::Path qw(make_path);
+use File::Spec;
 use Fcntl qw(:flock);
 use File::Slurp qw(read_file write_file);
 use Scalar::Util qw(blessed);
@@ -24,6 +25,7 @@ use Slim::Player::Source;
 use Plugins::BetterCallBliss::BlissCompatibility;
 use Plugins::BetterCallBliss::BridgeResolver;
 use Plugins::BetterCallBliss::CandidateInventory;
+use Plugins::BetterCallBliss::ScanJobBinding;
 use Plugins::BetterCallBliss::CandidateGuidance;
 use Plugins::BetterCallBliss::DurationTarget;
 use Plugins::BetterCallBliss::GuidanceProviderDiscovery;
@@ -260,8 +262,21 @@ sub _history_busy_end {
     return unless $job;
     $job->{_history_busy}-- if $job->{_history_busy};
     _remember_running($job) if ($job->{state} || '') eq 'running';
+    _cleanup_scan_snapshot($job)
+        if !$job->{_history_busy} && ($job->{state} || '') ne 'running';
     _remember_terminal($job)
         if !$job->{_history_busy} && ($job->{state} || '') ne 'running';
+}
+
+sub _cleanup_scan_snapshot {
+    my ($job) = @_;
+    my $process = $job && $job->{_scan_snapshot_process} || return;
+    return if $job->{_history_busy};
+    if (eval { $process->cleanup(discard_inventory => 1); 1 }) {
+        delete $job->{_scan_snapshot_process};
+    } else {
+        $log->warn('Could not clean up job database snapshots: ' . ($@ || 'unknown error'));
+    }
 }
 
 sub _json {
@@ -416,6 +431,7 @@ sub _running_phase_detail {
         return 'Status: ' . $stage . '.'
             if $stage eq 'Preparing source and candidate library'
                 || $stage eq 'Capturing candidate library'
+                || $stage eq 'Capturing library database snapshots'
                 || $stage =~ /^Rebuilding candidate library:/
                 || $stage eq 'Preparing play-count guidance'
                 || $stage eq 'Matching Last.fm guidance to candidate library';
@@ -800,13 +816,17 @@ sub _resolve_guidance_and_launch {
             }
             $current->{candidate_guidance} = $guidance_stats;
             my $launch_ok = eval {
+                Plugins::BetterCallBliss::ScanJobBinding::validate_scan_state(
+                    $current, eval { Slim::Music::Import->stillScanning() } || 0,
+                    eval { Slim::Music::Import->lastScanTime() });
                 _launch_optimizer($current, $built, $resolved_bundle);
                 1;
             };
-            _fail_deferred_route_job(
-                $job_id, $@ || 'Could not prepare optimizer request',
-                'OPTIMIZER_LAUNCH_FAILED',
-            ) unless $launch_ok;
+            unless ($launch_ok) {
+                my $error = $@ || 'Could not prepare optimizer request';
+                _fail_deferred_route_job($job_id, $error,
+                    $error =~ /^LIBRARY_SCAN_STARTED:/ ? 'LIBRARY_SCAN_STARTED' : 'OPTIMIZER_LAUNCH_FAILED');
+            }
         },
     );
 }
@@ -859,9 +879,70 @@ sub _read_provider_semantic_bundle {
     return ref($bundle) eq 'HASH' ? $bundle : undef;
 }
 
+sub _start_scan_snapshot_phase {
+    my ($job_id, $dir, $semantic_path, $built, $fields, $lyrion_path) = @_;
+    my $job = $jobs{$job_id} || return;
+    return unless ($job->{state} || '') eq 'running';
+    my $process = eval {
+        my $bundle = Plugins::BetterCallBliss::CandidateInventory::_register_shared_bundle();
+        local @INC = (File::Spec->catdir($bundle, 'lib'), @INC);
+        require Plugins::BetterCallBliss::ScanSnapshotProcess;
+        Plugins::BetterCallBliss::ScanSnapshotProcess->start(
+            parent_dir => $dir, lyrion_path => $lyrion_path,
+            bliss_path => $built->{capability}->{database},
+        );
+    };
+    unless ($process) {
+        _fail_deferred_route_job($job_id, $@ || 'Could not start database snapshots', 'SNAPSHOT_PREPARATION_FAILED');
+        return;
+    }
+    $job->{stage} = 'Capturing library database snapshots';
+    $job->{_scan_snapshot_process} = $process;
+    my $snapshot_pid = $process->can('pid') ? $process->pid : undef;
+    $job->{_history_optimizer_pid} = $snapshot_pid
+        if defined($snapshot_pid) && "$snapshot_pid" =~ /\A[1-9]\d*\z/;
+    _history_busy_begin($job);
+    my $check;
+    $check = sub {
+        my $status = $process->poll;
+        if (($status->{state} || '') eq 'running') {
+            Slim::Utils::Timers::setTimer(undef, time() + 0.25, $check);
+            return;
+        }
+        my $current = $jobs{$job_id};
+        if (!$current || ($current->{state} || '') ne 'running' || ($status->{state} || '') ne 'completed') {
+            eval { $process->cleanup; 1 } or $log->warn('Could not clean up job database snapshots: ' . ($@ || 'unknown error'));
+            delete $job->{_scan_snapshot_process};
+            _history_busy_end($job);
+            _fail_deferred_route_job($job_id, $status->{error} || 'Database snapshot preparation failed', 'SNAPSHOT_PREPARATION_FAILED')
+                if $current && ($current->{state} || '') eq 'running';
+            $check = undef;
+            return;
+        }
+        _history_busy_end($job);
+        my %next_fields = (%{$fields || {}}, scan_snapshot => $status, scan_snapshot_process => $process);
+        my $ok = eval { _start_preview_from_built($job_id, $dir, $semantic_path, $built, \%next_fields); 1 };
+        _fail_deferred_route_job($job_id, $@ || 'Could not prepare snapshot preview', 'SNAPSHOT_PREPARATION_FAILED') unless $ok;
+        $check = undef;
+    };
+    Slim::Utils::Timers::setTimer(undef, time() + 0.25, $check);
+    return $job;
+}
+
 sub _start_preview_from_built {
     my ($job_id, $dir, $semantic_path, $built, $fields) = @_;
     $fields ||= {};
+    my $needs_scan_snapshot = ($fields->{prepare_scan_snapshot} || Slim::Music::Import->stillScanning())
+        && ref($fields->{scan_snapshot}) ne 'HASH';
+    if ($needs_scan_snapshot) {
+        my %snapshot_fields = %$fields;
+        delete $snapshot_fields{prepared_candidate_inventory};
+        $snapshot_fields{prepare_scan_snapshot} = 1;
+        $fields = \%snapshot_fields;
+    }
+    if (ref($fields->{scan_snapshot}) eq 'HASH' && !$built->{live_database_path}) {
+        $built = Plugins::BetterCallBliss::ScanJobBinding::bind($built, $fields->{scan_snapshot});
+    }
     my $existing_job = $jobs{$job_id};
     return $existing_job
         if $existing_job && ($existing_job->{state} || '') ne 'running';
@@ -931,7 +1012,9 @@ sub _start_preview_from_built {
             : '',
         restart_count => $built->{request}->{route}->{search}->{restart_count},
         native_command => $native_command,
+        scan_generation => scalar(eval { Slim::Music::Import->lastScanTime() }),
         database_identity => $database_identity,
+        defined($built->{live_database_path}) ? (live_database_path => $built->{live_database_path}) : (),
         candidate_inventory => $candidate_inventory
             ? $candidate_inventory->{status} : undef,
         semantic_path => $semantic_path,
@@ -940,6 +1023,8 @@ sub _start_preview_from_built {
         stderr_path => $stderr_path,
         progress_path => $progress_path,
     };
+    $jobs{$job_id}->{_scan_snapshot_process} = $fields->{scan_snapshot_process}
+        if $fields->{scan_snapshot_process};
     for my $key (qw(
         route_to_track quick_route auto_apply route_output_skip_source_count
         route_output_skip_suffix_count route_player_id
@@ -1042,6 +1127,11 @@ sub _start_preview_from_built {
         }
     }
 
+    if ($needs_scan_snapshot) {
+        my $lyrion_path = Plugins::BetterCallBliss::CandidateInventory::_lms_database_path();
+        return _start_scan_snapshot_phase($job_id, $dir, $semantic_path, $built, $fields, $lyrion_path);
+    }
+
     if ($native_command eq 'bridge') {
         $jobs{$job_id}->{stage} = 'Capturing candidate library';
         if (!$candidate_inventory) {
@@ -1051,12 +1141,18 @@ sub _start_preview_from_built {
             my $preparation_finished = 0;
             my $finish_preparation = sub {
                 return if $preparation_finished++;
+                delete $preparing_job->{_scan_inventory_task};
                 _history_busy_end($preparing_job);
             };
             my $prepare_ok = eval {
-                Plugins::BetterCallBliss::CandidateInventory::prepare_async(
+                my $prepare = ref($fields->{scan_snapshot}) eq 'HASH'
+                    ? \&Plugins::BetterCallBliss::CandidateInventory::prepare_snapshots_async
+                    : \&Plugins::BetterCallBliss::CandidateInventory::prepare_async;
+                my @snapshot_args = ref($fields->{scan_snapshot}) eq 'HASH'
+                    ? ($fields->{scan_snapshot}->{snapshots}->{lyrion}, $fields->{scan_snapshot}->{directory}) : ();
+                my $handle = $prepare->(
                     $built->{capability}, $database_identity,
-                    $built->{candidate_library},
+                    $built->{candidate_library}, @snapshot_args,
                     sub {
                         my $prepared = shift;
                         $finish_preparation->();
@@ -1085,7 +1181,16 @@ sub _start_preview_from_built {
                         $job->{stage} = $message
                             if $job && ($job->{state} || '') eq 'running';
                     },
+                    (ref($fields->{scan_snapshot}) eq 'HASH' ? (sub {
+                        my $pid = shift;
+                        my $job = $jobs{$job_id} || return;
+                        return unless ($job->{state} || '') eq 'running';
+                        $job->{_history_optimizer_pid} = $pid;
+                        _remember_running($job);
+                    }) : ()),
                 );
+                $preparing_job->{_scan_inventory_task} = $handle
+                    if ref($fields->{scan_snapshot}) eq 'HASH' && !$preparation_finished && $handle;
                 1;
             };
             $finish_preparation->() unless $prepare_ok;
@@ -1361,6 +1466,7 @@ sub _fail_deferred_route_job {
     $job->{error_code} = $code || 'ROUTE_START_FAILED';
     $job->{error} = substr($message, 0, 400);
     $job->{native_message} = $job->{error};
+    _cleanup_scan_snapshot($job) unless $job->{_history_busy};
     $log->error(
         "job=$job_id stage=Failed code=$job->{error_code}"
         . " message=$job->{error}"
@@ -1569,7 +1675,7 @@ sub start_route_to_track_preview_deferred {
     die "Optimizer binary is unavailable"
         unless $optimizer_binary && -x $optimizer_binary;
     die "An LMS library scan is in progress; try Bliss me there again after it finishes"
-        if Slim::Music::Import->stillScanning();
+        if $^O eq 'MSWin32' && Slim::Music::Import->stillScanning();
 
     my %route_options = (%{$options || {}});
     my $route_source = Plugins::BetterCallBliss::RouteMode::normalize_source(
@@ -1587,7 +1693,7 @@ sub start_route_to_track_preview_deferred {
         undef, time() + 0.01, sub {
             my $current = $jobs{$job_id};
             return unless $current && ($current->{state} || '') eq 'running';
-            if (Slim::Music::Import->stillScanning()) {
+            if ($^O eq 'MSWin32' && Slim::Music::Import->stillScanning()) {
                 _fail_deferred_route_job(
                     $job_id,
                     'An LMS library scan started before the route could be prepared; try again after it finishes',
@@ -1859,6 +1965,9 @@ sub _poll {
         }
         my $normalized;
         my $normalize_ok = eval {
+            Plugins::BetterCallBliss::ScanJobBinding::validate_scan_state(
+                $job, eval { Slim::Music::Import->stillScanning() } || 0,
+                eval { Slim::Music::Import->lastScanTime() });
             if ($job->{options}->{extension_mode} ne 'none') {
                 die "DATABASE_CHANGED: bliss.db changed while the preview was running\n"
                     unless (_file_identity($job->{capability}->{database}) || '')
@@ -2080,6 +2189,7 @@ sub _poll {
             );
         }
     }
+    _cleanup_scan_snapshot($job) unless $job->{_history_busy};
     _remember_terminal($job);
 }
 
@@ -2101,6 +2211,11 @@ sub _mark_cancelled {
     $job->{finished_at} = time();
     $job->{error_code} = 'CANCELLED';
     $job->{error} = 'Preview cancelled by user. No playlist or player queue was changed.';
+    my $snapshot_task = delete $job->{_scan_inventory_task};
+    Plugins::BetterCallBliss::CandidateInventory::cancel_snapshot_preparation($snapshot_task)
+        if $snapshot_task;
+    $job->{_scan_snapshot_process}->cancel
+        if $job->{_scan_snapshot_process} && $job->{_history_busy} && !$snapshot_task;
     _remember_terminal($job);
     return $job;
 }
@@ -2419,6 +2534,7 @@ sub shutdown {
     my @shutdown_jobs = values %jobs;
     for my $job (@shutdown_jobs) {
         next unless ($job->{state} || '') eq 'running';
+        eval { $job->{_scan_snapshot_process}->cancel } if $job->{_scan_snapshot_process};
         my $process = $job->{process};
         if ($process) {
             my $stopped = eval {

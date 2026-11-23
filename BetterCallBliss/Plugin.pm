@@ -423,7 +423,7 @@ sub routeToCommand {
         return;
     }
 
-    if (Slim::Music::Import->stillScanning()) {
+    if ($^O eq 'MSWin32' && Slim::Music::Import->stillScanning()) {
         my $message = $request->string(
             'PLUGIN_BETTERCALLBLISS_LIBRARY_SCAN_IN_PROGRESS',
         );

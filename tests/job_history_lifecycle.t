@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use FindBin;
+use lib "$FindBin::Bin/..";
 use File::Temp qw(tempdir);
 use Fcntl qw(:flock);
 use Test::More;
@@ -27,12 +28,28 @@ BEGIN {
     sub setTimer { push @callbacks, $_[2] }
     package Slim::Utils::Strings;
     sub string { return shift }
+    package Slim::Music::Import;
+    our $scanning = 0;
+    sub stillScanning { return $scanning }
     package HistoryTestProcess;
     sub alive { $_[0]->{alive} }
     sub die { 0 }
     sub exit_code { 0 }
+    package Plugins::BetterCallBliss::ScanSnapshotProcess;
+    our $next;
+    sub start { return $next }
+    package HistoryTestSnapshotProcess;
+    sub poll { return $_[0]->{status} }
+    sub cancel { $_[0]->{cancelled}++; $_[0]->{status} = {state => 'cancelled'} }
+    sub cleanup { $_[0]->{cleaned}++ }
+    sub pid { 987654 }
     package Plugins::BetterCallBliss::CandidateInventory;
     sub init {} sub shutdown {}
+    sub _register_shared_bundle { '/test/shared-inventory' }
+    our @snapshot_cancellations;
+    our @snapshot_preparations;
+    sub cancel_snapshot_preparation { push @snapshot_cancellations, $_[0] }
+    sub prepare_snapshots_async { push @snapshot_preparations, [@_]; return {snapshot_task => 1} }
     package Plugins::BetterCallBliss::UserNotification;
     sub route_failure {}
     package Plugins::BetterCallBliss::GuidanceProviderDiscovery;
@@ -51,6 +68,7 @@ BEGIN {
         Plugins/BetterCallBliss/RequestBuilder.pm Plugins/BetterCallBliss/PlaylistWriter.pm
         Plugins/BetterCallBliss/QueueWriter.pm Plugins/BetterCallBliss/RepeatConflicts.pm
         Plugins/BetterCallBliss/RouteMode.pm Plugins/BetterCallBliss/UserNotification.pm
+        Plugins/BetterCallBliss/ScanSnapshotProcess.pm
     )) { $INC{$module} = __FILE__ }
 }
 
@@ -270,5 +288,162 @@ my $large_notice = Plugins::BetterCallBliss::Jobs::get($large_id);
 is($large_notice && $large_notice->{error_code}, 'PREVIEW_NOT_RETAINED', 'oversized preview returns an explicit notice');
 like($large_notice && $large_notice->{error}, qr/storage limit/i, 'oversized notice explains the storage limit');
 Plugins::BetterCallBliss::Jobs::shutdown();
+
+my $snapshot_task = {};
+my $snapshot_job = {state => 'running', _scan_inventory_task => $snapshot_task};
+Plugins::BetterCallBliss::Jobs::_mark_cancelled($snapshot_job);
+is($snapshot_job->{state}, 'cancelled', 'cancelling a snapshot job marks it cancelled');
+is($Plugins::BetterCallBliss::CandidateInventory::snapshot_cancellations[-1], $snapshot_task,
+    'cancelling a snapshot job stops its inventory worker');
+ok(!exists $snapshot_job->{_scan_inventory_task}, 'cancelled job releases its worker handle');
+
+my $handoff_dir = tempdir(CLEANUP => 1);
+my $frozen_bliss = "$handoff_dir/bliss-snapshot.db";
+open my $frozen_file, '>', $frozen_bliss or die $!;
+print {$frozen_file} 'frozen';
+close $frozen_file;
+my $handoff = {
+    capability => {database => '/live/bliss.db'},
+    request => {artifacts => {database => {path => '/live/bliss.db'}},
+        source_tracks => [{id => 'source'}], route => {search => {restart_count => 1}}},
+    options => {extension_mode => 'test_extension'}, candidate_library => {id => 'scope'},
+};
+my $launched = Plugins::BetterCallBliss::Jobs::_start_preview_from_built(
+    'preview-6000-scan', $handoff_dir, "$handoff_dir/semantic.json", $handoff,
+    {playlist_title => 'Test', scan_snapshot => {directory => $handoff_dir,
+        snapshots => {lyrion => "$handoff_dir/lyrion-snapshot.db", bliss => $frozen_bliss}}},
+);
+my $args = $Plugins::BetterCallBliss::CandidateInventory::snapshot_preparations[-1];
+is($args->[0]->{database}, $frozen_bliss, 'job passes the frozen Bliss database to inventory preparation');
+is($args->[3], "$handoff_dir/lyrion-snapshot.db", 'job passes the frozen Lyrion database to inventory preparation');
+is($launched->{capability}->{database}, $frozen_bliss, 'bridge resolution retains the same frozen Bliss database');
+is($launched->{live_database_path}, '/live/bliss.db', 'job retains the live Bliss path for later revalidation');
+ok($launched->{_scan_inventory_task}, 'running job retains its cancellable inventory task');
+Plugins::BetterCallBliss::Jobs::cancel('preview-6000-scan');
+is($launched->{state}, 'cancelled', 'snapshot preparation can be cancelled through the job');
+
+my $snapshot_dir = tempdir(CLEANUP => 1);
+like(Plugins::BetterCallBliss::Jobs::compact_status({state => 'running',
+    stage => 'Capturing library database snapshots', lastfm_state => 'preparing',
+    options => {extension_mode => 'automatic'}}), qr/Capturing library database snapshots/,
+    'live status identifies snapshot capture rather than Last.fm acquisition');
+my $capture = bless {status => {state => 'running'}}, 'HistoryTestSnapshotProcess';
+$Plugins::BetterCallBliss::ScanSnapshotProcess::next = $capture;
+my $capture_job = Plugins::BetterCallBliss::Jobs::_create_deferred_sequence_job(
+    'preview-6000-capture', 'Snapshot test', 2, {}, {});
+@Slim::Utils::Timers::callbacks = ();
+my ($continued_built, $continued_fields);
+{
+    no warnings 'redefine';
+    local *Plugins::BetterCallBliss::Jobs::_start_preview_from_built = sub {
+        (undef, undef, undef, $continued_built, $continued_fields) = @_;
+    };
+    Plugins::BetterCallBliss::Jobs::_start_scan_snapshot_phase('preview-6000-capture',
+        $snapshot_dir, "$snapshot_dir/semantic.json", $handoff, {}, '/live/library.db');
+    ok(!$continued_fields && $capture_job->{stage} =~ /snapshot/i,
+        'snapshot capture starts without launching the optimizer');
+    is($capture_job->{_history_optimizer_pid}, 987654,
+        'snapshot worker PID is retained to protect active files after a restart');
+    $capture->{status} = {state => 'completed', directory => $snapshot_dir,
+        snapshots => {lyrion => 'frozen-library', bliss => 'frozen-bliss'}};
+    my $timer = shift @Slim::Utils::Timers::callbacks;
+    $timer->();
+    is($continued_fields->{scan_snapshot}->{snapshots}->{bliss}, 'frozen-bliss',
+        'completed snapshot is handed to preview preparation');
+    is($continued_fields->{scan_snapshot_process}, $capture,
+        'the process remains associated with the job for later cleanup');
+}
+
+my $cancel_capture = bless {status => {state => 'running'}}, 'HistoryTestSnapshotProcess';
+$Plugins::BetterCallBliss::ScanSnapshotProcess::next = $cancel_capture;
+my $cancel_capture_job = Plugins::BetterCallBliss::Jobs::_create_deferred_sequence_job(
+    'preview-6000-capture-cancel', 'Snapshot cancel', 2, {}, {});
+@Slim::Utils::Timers::callbacks = ();
+Plugins::BetterCallBliss::Jobs::_start_scan_snapshot_phase('preview-6000-capture-cancel',
+    $snapshot_dir, "$snapshot_dir/semantic.json", $handoff, {}, '/live/library.db');
+Plugins::BetterCallBliss::Jobs::cancel('preview-6000-capture-cancel');
+ok($cancel_capture->{cancelled}, 'job cancellation stops snapshot capture');
+my $cancel_timer = shift @Slim::Utils::Timers::callbacks;
+$cancel_timer->();
+ok($cancel_capture->{cleaned}, 'cancelled snapshot capture is cleaned after worker exit');
+
+my $automatic_capture = bless {status => {state => 'running'}}, 'HistoryTestSnapshotProcess';
+$Plugins::BetterCallBliss::ScanSnapshotProcess::next = $automatic_capture;
+my $live_fixture = "$snapshot_dir/live-bliss.db";
+open my $live_file, '>', $live_fixture or die $!;
+print {$live_file} 'live';
+close $live_file;
+my $live_handoff = {%$handoff,
+    capability => {%{$handoff->{capability}}, database => $live_fixture},
+    request => {%{$handoff->{request}}, artifacts => {database => {path => $live_fixture}}}};
+my $automatic_job = Plugins::BetterCallBliss::Jobs::_create_deferred_sequence_job(
+    'preview-6000-auto-capture', 'Snapshot start', 2, {}, {});
+@Slim::Utils::Timers::callbacks = ();
+{
+    no warnings 'redefine';
+    local *Plugins::BetterCallBliss::CandidateInventory::_lms_database_path = sub { '/live/library.db' };
+    Plugins::BetterCallBliss::Jobs::_start_preview_from_built('preview-6000-auto-capture',
+        $snapshot_dir, "$snapshot_dir/semantic.json", $live_handoff, {prepare_scan_snapshot => 1, playlist_title => 'Test'});
+}
+ok(Plugins::BetterCallBliss::Jobs::get('preview-6000-auto-capture')->{stage} =~ /snapshot/i,
+    'snapshot-enabled preview starts the background capture phase');
+Plugins::BetterCallBliss::Jobs::cancel('preview-6000-auto-capture');
+my $automatic_timer = shift @Slim::Utils::Timers::callbacks;
+$automatic_timer->() if $automatic_timer;
+
+my $race_capture = bless {status => {state => 'running'}}, 'HistoryTestSnapshotProcess';
+$Plugins::BetterCallBliss::ScanSnapshotProcess::next = $race_capture;
+my $race_job = Plugins::BetterCallBliss::Jobs::_create_deferred_sequence_job(
+    'preview-6000-scan-race', 'Scan race', 2, {}, {});
+@Slim::Utils::Timers::callbacks = ();
+my $race_ok;
+{
+    no warnings 'redefine';
+    local $Slim::Music::Import::scanning = 1;
+    local *Plugins::BetterCallBliss::CandidateInventory::_lms_database_path = sub { '/live/library.db' };
+    $race_ok = eval { Plugins::BetterCallBliss::Jobs::_start_preview_from_built('preview-6000-scan-race',
+        $snapshot_dir, "$snapshot_dir/semantic.json", $live_handoff, {playlist_title => 'Test'}); 1 };
+}
+ok($race_ok && Plugins::BetterCallBliss::Jobs::get('preview-6000-scan-race')->{stage} =~ /snapshot/i,
+    'a scan starting after request capture triggers a snapshot rather than using live databases');
+Plugins::BetterCallBliss::Jobs::cancel('preview-6000-scan-race');
+my $race_timer = shift @Slim::Utils::Timers::callbacks;
+$race_timer->() if $race_timer;
+
+my $replacement_fields;
+{
+    no warnings 'redefine';
+    local $Slim::Music::Import::scanning = 1;
+    local *Plugins::BetterCallBliss::CandidateInventory::_lms_database_path = sub { '/live/library.db' };
+    local *Plugins::BetterCallBliss::Jobs::_start_scan_snapshot_phase = sub { $replacement_fields = $_[4] };
+    Plugins::BetterCallBliss::Jobs::_start_preview_from_built('preview-6000-race-inventory',
+        $snapshot_dir, "$snapshot_dir/semantic.json", $live_handoff, {playlist_title => 'Test', prepared_candidate_inventory => {old => 1}});
+}
+ok($replacement_fields && !exists($replacement_fields->{prepared_candidate_inventory}),
+    'a scan starting during candidate capture discards the old inventory before snapshotting');
+
+my $failed_capture = bless {status => {state => 'running'}}, 'HistoryTestSnapshotProcess';
+$Plugins::BetterCallBliss::ScanSnapshotProcess::next = $failed_capture;
+my $failed_capture_job = Plugins::BetterCallBliss::Jobs::_create_deferred_sequence_job(
+    'preview-6000-capture-fail', 'Snapshot failure', 2, {}, {});
+@Slim::Utils::Timers::callbacks = ();
+Plugins::BetterCallBliss::Jobs::_start_scan_snapshot_phase('preview-6000-capture-fail',
+    $snapshot_dir, "$snapshot_dir/semantic.json", $handoff, {}, '/live/library.db');
+$failed_capture->{status} = {state => 'failed', error => 'database unavailable'};
+my $failed_timer = shift @Slim::Utils::Timers::callbacks;
+$failed_timer->();
+is($failed_capture_job->{state}, 'failed', 'snapshot failure marks the preview failed');
+is($failed_capture_job->{error_code}, 'SNAPSHOT_PREPARATION_FAILED', 'snapshot failure has an explicit error code');
+ok($failed_capture->{cleaned}, 'failed snapshot capture is cleaned after worker exit');
+
+my $shutdown_capture = bless {status => {state => 'running'}}, 'HistoryTestSnapshotProcess';
+$Plugins::BetterCallBliss::ScanSnapshotProcess::next = $shutdown_capture;
+Plugins::BetterCallBliss::Jobs::_create_deferred_sequence_job(
+    'preview-6000-capture-shutdown', 'Snapshot shutdown', 2, {}, {});
+@Slim::Utils::Timers::callbacks = ();
+Plugins::BetterCallBliss::Jobs::_start_scan_snapshot_phase('preview-6000-capture-shutdown',
+    $snapshot_dir, "$snapshot_dir/semantic.json", $handoff, {}, '/live/library.db');
+Plugins::BetterCallBliss::Jobs::shutdown();
+ok($shutdown_capture->{cancelled}, 'server shutdown requests snapshot worker cancellation');
 
 done_testing();
