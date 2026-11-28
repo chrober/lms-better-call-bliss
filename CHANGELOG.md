@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.19
+
+- Bundle optimizer 0.2.10 with bounded album- and artist-level listening
+  guidance support for compatible providers.
+
 ## 0.22.18
 
 - Allow previews and Bliss me there actions during Lyrion library scans on
