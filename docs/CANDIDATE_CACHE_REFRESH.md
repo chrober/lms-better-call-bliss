@@ -1,12 +1,11 @@
 # Post-scan candidate-library cache refresh
 
-**Status: experimental development branch.** A shared, bundled candidate
-inventory and a post-scan refresher are integrated in the development
-branches of Better Call Bliss and Bliss Mixer Lab. Isolated Pi fixtures cover
-both hosts, shared reuse, scan refresh and cancellation. They have not been
-deployed or verified with an installed Lyrion server. The following sections
-record the original motivation and design; they describe the released behavior
-unless explicitly marked as experimental.
+**Status: implemented and released.** Better Call Bliss and Bliss Mixer Lab
+bundle the shared candidate inventory and post-scan refresher. Pi tests covered
+both hosts, and Lab added in-scope tracks during a scan. Broader platform,
+concurrency and performance validation remains useful. The sections below
+retain the original motivation and proposal; where they differ, this status
+and the shared inventory plan describe the current implementation.
 
 The shared refresher remembers scopes that have actually been requested and
 serially updates those scopes after a scan in a low-priority worker. It does
@@ -36,7 +35,7 @@ library. A user observed roughly a minute in that phase. Subsequent runs can
 reuse a valid cache. The aim is to move that work out of the first interactive
 request without making playback or the Lyrion web interface unresponsive.
 
-## Current behavior
+## Original baseline before shared refresh
 
 - `CandidateInventory.pm` builds a candidate inventory from local Lyrion audio
   tracks and usable `bliss.db` rows. It stores per-scope state and artifacts,
@@ -66,7 +65,7 @@ Implementation references: [`CandidateInventory.pm`](../BetterCallBliss/Candidat
 [`ARCHITECTURE.md`](ARCHITECTURE.md). The BlissMixer importer and analyser live
 in the [upstream plugin repository](https://github.com/CDrummond/lms-blissmixer).
 
-## Agreed behavior
+## Original proposed behavior
 
 - Offer an opt-in Better Call Bliss setting for automatic background refresh
   after a completed Lyrion scan. Leave the setting off by default.

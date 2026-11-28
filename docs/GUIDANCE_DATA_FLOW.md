@@ -64,7 +64,7 @@ job. The resulting request is immutable for the optimizer process lifetime.
 | Strategy, Static weights, Adaptive context, repeat windows and genre policy | BlissMixer current settings, with Better Call Bliss job overrides | Better Call Bliss, then optimizer | Shapes the acoustic matrix, hard repeat checks, and the frozen eligible candidate library. |
 | Learned matrix and blend | Optional BlissMixerLab | Better Call Bliss, then optimizer | Supplies an optional matrix artifact and learned blend for Adaptive scoring. Its absence uses the documented Bliss fallback. |
 | Last.fm acquisition source, similar-track influence and similar-artist strategy/level | Last.fm provider defaults, then optional Better Call Bliss host/job overrides | Better Call Bliss policy resolver, then optimizer guidance policy | The host may override LastMix versus API Key for its own jobs, while the provider alone owns the API key. Similar-track is a bounded `lastfm_track` influence. Similar-artist is either a bounded influence or a `target_percent` policy, according to the provider's declared capability. Zero disables its channel. |
-| Local listening and library influences, each from -100 to 100; date saturation horizons | Library Signals settings are the provider defaults. Better Call Bliss keeps the provider disabled by default, then offers sparse host and per-job overrides after it is enabled. | Better Call Bliss policy resolver, then the provider factory and optimizer guidance policy | Non-zero values become signed `playcount`, `last_played`, and/or `library_age` policy weights. Better Call Bliss freezes `as_of_unix_seconds`; the provider factory owns trusted `persist.db` and binary resolution and receives the effective horizons. All zero channels leave the native provider unstarted. |
+| Local listening and library influences, each from -100 to 100; date saturation horizons | Library Signals settings are the provider defaults. Better Call Bliss keeps the provider disabled by default, then offers sparse host and per-job overrides after it is enabled. | Better Call Bliss policy resolver, then the provider factory and optimizer guidance policy | Non-zero values become signed track, album and artist play-count/last-played weights and/or `library_age` weight. Better Call Bliss freezes `as_of_unix_seconds`; the provider factory owns trusted read-only database and binary resolution and receives the effective horizons. All zero channels leave the native provider unstarted. |
 | Candidate library | Active Lyrion virtual library, source exclusions, LMS membership, and captured genre policy | Better Call Bliss, then optimizer | Determines which *generated* tracks are eligible. It is frozen before native search starts. |
 
 Native provider executables do not read preferences or web-form values. A Lyrion
@@ -204,11 +204,11 @@ and continues with Bliss-only search.
 | Provider | Data acquisition | `prepare` work | `score` work |
 | --- | --- | --- | --- |
 | `bliss-guidance-lastfm` | Its Lyrion provider supplies the source default and keeps the API key private; the host may save a source override. LastMix mode returns raw observations to Better Call Bliss for local resolution; API Key mode gives the native provider a launch-only key plus provider-owned graph policy and paths. | Verifies and indexes resolved Last.fm relations or reads/acquires the required anchor relations through its SQLite graph. It maps host track anchors to Last.fm artist source IDs from artist MBIDs, with a normalized-name fallback only when needed. | Expands global and edge track context through that prepared mapping, reads only the bounded candidate batch, and emits positive `lastfm_track` and/or `lastfm_artist` signals where evidence exists. No score request performs network I/O. |
-| `bliss-guidance-library-signals` | Its separately installed Lyrion provider owns defaults, including the listening-history source, while Better Call Bliss may persist a host-specific override exposed from the provider descriptor. The provider resolves its own binary and trusted read-only `persist.db` path and returns the effective configuration. Better Call Bliss does not build a full-library signal JSON file. | Opens one read-only SQLite snapshot; streams the frozen eligible identity population to build compact `playcount`, `last_played`, and `library_age` distributions. | Looks up only uncached URL MD5s from the bounded candidate batch in the same snapshot, then emits the available normalized signals. Missing persistent rows and missing `added` values are neutral. |
+| `bliss-guidance-library-signals` | Its separately installed Lyrion provider owns defaults, including the listening-history source, while Better Call Bliss may persist a host-specific override exposed from the provider descriptor. The provider resolves its binary and trusted read-only `persist.db` and, when aggregate guidance is enabled, catalog resources. Better Call Bliss does not build a full-library signal JSON file. | Opens a read-only SQLite snapshot and prepares track distributions and enabled album/artist groups using frozen candidate identities. Exact Bliss-credit grouping also needs trusted Bliss and identity inputs. | Looks up bounded candidate identities in the same snapshot and emits available normalized track and aggregate signals. Missing values remain neutral. |
 
-Each distribution is calculated from the complete frozen eligible candidate
-population so that a candidate's percentile is comparable across planner
-batches. The provider does **not** retain a whole-library `urlmd5 -> signals`
+Track play-count distributions use the frozen eligible candidate population;
+aggregate play-count distributions use the groups represented by that inventory.
+The provider does **not** retain a whole-library `urlmd5 -> signals`
 map; it keeps distributions plus a bounded cache of values actually requested
 during scoring. When the Library Signals provider is configured to use the
 enabled Alternative Play Count (APC) plugin, APC supplies the existing play-count
@@ -276,7 +276,10 @@ The optimizer aggregates only declared channels:
   active, then derives deterministic calibrated multipliers inside that bounded
   pool. Overlapping evidence contributes to both targets; Bliss constraints and
   acoustic qualification always remain authoritative.
-- `playcount`, `last_played`, and `library_age` are normalized unary signals.
+- `playcount`, `last_played`, `library_age`, `album_playcount`,
+  `artist_playcount`, `album_last_played` and `artist_last_played` are
+  normalized candidate signals. Related track/album/artist listening signals
+  are combined as bounded play-count and last-played families.
   Their signed per-job policy weights determine whether lower or higher values
   are preferred. `last_played = 0` represents never played; a missing
   persistence row or missing library-age timestamp is neutral rather than

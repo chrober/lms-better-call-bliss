@@ -809,21 +809,27 @@ failing work from turning candidate scoring into network activity.
 ### Local listening and library guidance
 
 The optional **Library Signals** Lyrion provider contributes post-qualification
-signals for newly generated tracks: play count, last played, and library age.
+signals for newly generated tracks: track, album and artist play count and
+last played, plus track library age.
 Its own settings page owns the saved defaults. Better Call Bliss discovers the
 provider, leaves it disabled by default, and can apply sparse host or per-job
 overrides after you enable it. Negative play-count values prefer tracks with
 lower LMS play counts, positive values prefer higher counts, and zero disables
 that channel. Last-played and library-age use the same signed direction and
-their configured saturation horizons.
+their configured saturation horizons. Album and artist play counts sum track
+plays, not complete album or artist listening sessions; last played is the most
+recent known play of a track in that group. Related track, album and artist
+observations contribute within bounded play-count and last-played families.
 
 When any of its channels is non-zero, Better Call Bliss freezes a
 checksum-protected list of eligible candidate identities and asks the provider
-factory to return its trusted binary and read-only Lyrion `persist.db` resource.
-The provider opens one SQLite read snapshot, streams that frozen identity
-population to establish tied play-count and time-signal distributions, then
+factory to return its trusted binary and read-only Lyrion `persist.db` resource;
+enabled aggregate signals also use trusted catalog data and artist identity.
+The provider opens a read-only SQLite snapshot, streams that frozen identity
+population to establish a tied play-count distribution and, when enabled,
+prepares album and artist aggregates, then
 looks up only the bounded Bliss-qualified candidates that the optimizer actually
-scores. Missing counts rank as zero plays; unknown dates remain neutral. The
+scores. Missing counts and unknown dates remain neutral. The
 optimizer applies the result as bounded guidance after local membership, genre,
 acoustic, uniqueness, and repeat qualification. It cannot admit an otherwise
 rejected track. Reorder only has fixed membership and does not apply these
@@ -831,8 +837,8 @@ signals.
 
 This has the same user-facing direction as BlissMixer and BlissMixerLab's shared
 play-count preference: `-100` favors less-played tracks, `+100` favors
-more-played tracks, and `0` disables it. Both use tied percentile ranks and
-treat an unavailable count as zero. The mechanics are deliberately not
+more-played tracks, and `0` disables it. Both use tied percentile ranks; the
+provider keeps unavailable counts distinct from known zero. The mechanics are deliberately not
 identical: BlissMixer/Lab samples its live Bliss/DSTM candidate pool with the
 shared `CandidateSelection` weighting, whereas Better Call Bliss applies one
 provider signal inside a multi-step route or extension planner, using a frozen
